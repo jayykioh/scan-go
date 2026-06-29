@@ -1,0 +1,71 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: S⚡G
+      - generic [ref=e7]:
+        - paragraph [ref=e8]: CỔNG ĐĂNG NHẬP QUẢN TRỊ & MUA SẮM
+        - heading "ScanGo Lite Space Portal" [level=1] [ref=e9]
+    - button "Khôi phục ban đầu" [ref=e10] [cursor=pointer]:
+      - img [ref=e11]
+      - text: Khôi phục ban đầu
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e18]: 🚀 CHỌN VAI TRÒ ĐỂ BẮT ĐẦU ĐĂNG NHẬP
+      - generic [ref=e19]:
+        - heading "Bún Phở Kinh Kỳ" [level=1] [ref=e20]
+        - paragraph [ref=e21]: Chào mừng bạn đến với hệ thống ScanGo Lite. Trải nghiệm hệ thống đặt món hoàn chỉnh dán góc bàn, vận hành không cần bất kỳ linh kiện hay thiết bị POS đắt đỏ nào!
+      - generic [ref=e22]:
+        - button "Chủ quán 1. CHỦ CỬA HÀNG (Owner) Báo cáo doanh thu realtime, sửa menu món ăn, thiết lập khuyến mãi tự động và lập QR Code dán bàn." [ref=e23] [cursor=pointer]:
+          - generic [ref=e24]:
+            - img [ref=e26]
+            - generic [ref=e29]: Chủ quán
+          - generic [ref=e30]:
+            - heading "1. CHỦ CỬA HÀNG (Owner)" [level=4] [ref=e31]
+            - paragraph [ref=e32]: Báo cáo doanh thu realtime, sửa menu món ăn, thiết lập khuyến mãi tự động và lập QR Code dán bàn.
+        - button "Thu ngân 2. THU NGÂN QUẦY (Cashier) Duyệt thanh toán tiền mặt/chuyển khoản ngân hàng, hỗ trợ tách lẻ tài chính (Split Bill) thông minh." [ref=e33] [cursor=pointer]:
+          - generic [ref=e34]:
+            - img [ref=e36]
+            - generic [ref=e39]: Thu ngân
+          - generic [ref=e40]:
+            - heading "2. THU NGÂN QUẦY (Cashier)" [level=4] [ref=e41]
+            - paragraph [ref=e42]: Duyệt thanh toán tiền mặt/chuyển khoản ngân hàng, hỗ trợ tách lẻ tài chính (Split Bill) thông minh.
+        - button "Nhà bếp 3. TRẠM KDS BẾP (Kitchen) Hiển thị màn hình bếp trực quan, điều phối đơn nấu nướng theo thứ tự thời gian gọi chuẩn xác." [ref=e43] [cursor=pointer]:
+          - generic [ref=e44]:
+            - img [ref=e46]
+            - generic [ref=e48]: Nhà bếp
+          - generic [ref=e49]:
+            - heading "3. TRẠM KDS BẾP (Kitchen)" [level=4] [ref=e50]
+            - paragraph [ref=e51]: Hiển thị màn hình bếp trực quan, điều phối đơn nấu nướng theo thứ tự thời gian gọi chuẩn xác.
+        - button "3-Trong-1 ⚡ CHỦ TOÀN NĂNG (Solo) Hợp nhất [Chủ + Thu Ngân + Đầu Bếp] rảnh tay. Chấp nhận đơn, nấu, thu tiền 1 chạm, quản lý kho tức khắc!" [ref=e52] [cursor=pointer]:
+          - generic [ref=e53]:
+            - img [ref=e55]
+            - generic [ref=e58]: 3-Trong-1
+          - generic [ref=e59]:
+            - heading "⚡ CHỦ TOÀN NĂNG (Solo)" [level=4] [ref=e60]
+            - paragraph [ref=e61]: Hợp nhất [Chủ + Thu Ngân + Đầu Bếp] rảnh tay. Chấp nhận đơn, nấu, thu tiền 1 chạm, quản lý kho tức khắc!
+        - button "Khách hàng 4. KHÁCH GỌI MÓN (Customer) Đặt món quét mã tại bàn, cập nhật trạng thái đơn nấu realtime, đăng ký Loyalty không cần mật khẩu." [ref=e62] [cursor=pointer]:
+          - generic [ref=e63]:
+            - img [ref=e65]
+            - generic [ref=e67]: Khách hàng
+          - generic [ref=e68]:
+            - heading "4. KHÁCH GỌI MÓN (Customer)" [level=4] [ref=e69]
+            - paragraph [ref=e70]: Đặt món quét mã tại bàn, cập nhật trạng thái đơn nấu realtime, đăng ký Loyalty không cần mật khẩu.
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - img [ref=e73]
+          - generic [ref=e76]: Cấu hình mô hình quán kinh doanh
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]: "Ngành nghề (Tự động thích nghi menu):"
+            - combobox [ref=e80] [cursor=pointer]:
+              - option "🍜 Quán ăn / Phở / Noodle Shop" [selected]
+              - option "☕ Quán Café / Nước giải khát"
+              - option "🍻 Nhà hàng / Quán nhậu / Lẩu gầm cầu"
+              - option "🥐 Tiệm bánh ngọt Pháp / Cakes"
+              - option "🧋 Quán Trà sữa Boba / Pudding"
+          - generic [ref=e81]:
+            - generic [ref=e82]: "Hành vi thanh toán mặc định:"
+            - combobox [ref=e83] [cursor=pointer]:
+              - option "💵 Trả sau (Ăn xong rồi thu ngân tính tiền)" [selected]
+              - option "💳 Trả trước (Thanh toán để gửi lệnh bếp nấu)"
+  - contentinfo [ref=e84]: ScanGo Lite Workspace Portal • Real-time Data Synced across all connected systems

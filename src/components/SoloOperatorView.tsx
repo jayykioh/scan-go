@@ -612,7 +612,7 @@ export default function SoloOperatorView({
   // Search filter for integrated loyalty panel
   const filteredLoyaltyMembers = loyaltyMembers.filter(m => {
     const s = searchLoyaltyQuery.toLowerCase().trim();
-    return m.phone.includes(s) || m.name.toLowerCase().includes(s);
+    return m.phone.includes(s) || (m.name ?? '').toLowerCase().includes(s);
   });
 
   if (!onboardCompleted) {

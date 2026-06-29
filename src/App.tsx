@@ -1,12 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig } from './types';
 import { MOCK_LOYALTY_MEMBERS, MOCK_MENU_ITEMS, INDUSTRY_TEMPLATES } from './mockData';
 import PhoneSimulator from './components/PhoneSimulator';
-import OwnerView from './components/OwnerView';
-import CashierView from './components/CashierView';
-import KitchenView from './components/KitchenView';
-import CustomerView from './components/CustomerView';
-import SoloOperatorView from './components/SoloOperatorView';
+import { usePersistentState } from './hooks/usePersistentState';
 import { 
   Sparkles, 
   Nfc, 
@@ -24,9 +20,26 @@ import {
   Check
 } from 'lucide-react';
 
+const OwnerView = lazy(() => import('./components/OwnerView'));
+const CashierView = lazy(() => import('./components/CashierView'));
+const KitchenView = lazy(() => import('./components/KitchenView'));
+const CustomerView = lazy(() => import('./components/CustomerView'));
+const SoloOperatorView = lazy(() => import('./components/SoloOperatorView'));
+
+function RoleLoading() {
+  return (
+    <div className="mx-auto flex aspect-[9/18.5] w-full max-w-[370px] items-center justify-center rounded-[48px] border-8 border-zinc-900 bg-white shadow-xl" role="status">
+      <div className="text-center">
+        <span className="mx-auto block size-7 animate-spin rounded-full border-2 border-zinc-200 border-t-blue-600" aria-hidden="true" />
+        <p className="mt-3 text-xs font-semibold text-zinc-600">Đang mở màn hình…</p>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   // Global shared state
-  const [tenantConfig, setTenantConfig] = useState<TenantConfig>({
+  const [tenantConfig, setTenantConfig] = usePersistentState<TenantConfig>('scango:tenant:v1', {
     shopName: 'Bún Phở Kinh Kỳ',
     industry: 'quan_an',
     pricingTier: 'Pro', // Default to Pro for the richest demo features
@@ -45,7 +58,7 @@ export default function App() {
   });
 
   // Active tables configured by owner
-  const [tables, setTables] = useState<TableConfig[]>([
+  const [tables, setTables] = usePersistentState<TableConfig[]>('scango:tables:v1', [
     { id: '1', name: 'Bàn 01' },
     { id: '2', name: 'Bàn 02' },
     { id: '3', name: 'Bàn 03' },
@@ -55,16 +68,16 @@ export default function App() {
   ]);
 
   // Track if each actor has done onboarding/signin
-  const [ownerOnboarded, setOwnerOnboarded] = useState(true);
-  const [soloOnboarded, setSoloOnboarded] = useState(false);
-  const [cashierOnboarded, setCashierOnboarded] = useState(true);
-  const [kitchenOnboarded, setKitchenOnboarded] = useState(true);
+  const [ownerOnboarded, setOwnerOnboarded] = usePersistentState('scango:owner-onboarded:v1', true);
+  const [soloOnboarded, setSoloOnboarded] = usePersistentState('scango:solo-onboarded:v1', false);
+  const [cashierOnboarded, setCashierOnboarded] = usePersistentState('scango:cashier-onboarded:v1', true);
+  const [kitchenOnboarded, setKitchenOnboarded] = usePersistentState('scango:kitchen-onboarded:v1', true);
 
   // Active Menu items matching the selected industry engine template
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(MOCK_MENU_ITEMS.quan_an);
+  const [menuItems, setMenuItems] = usePersistentState<MenuItem[]>('scango:menu:v1', MOCK_MENU_ITEMS.quan_an);
 
   // Active orders synced across all actors
-  const [orders, setOrders] = useState<Order[]>([
+  const [orders, setOrders] = usePersistentState<Order[]>('scango:orders:v1', [
     {
       id: 'ord_1',
       tableId: '1',
@@ -89,10 +102,15 @@ export default function App() {
       timestamp: new Date(Date.now() - 60000), // 1 min ago
       paymentMode: 'Pay-Later',
     }
-  ]);
+  ], {
+    deserialize: (value) => (JSON.parse(value) as Order[]).map((order) => ({
+      ...order,
+      timestamp: new Date(String(order.timestamp)),
+    })),
+  });
 
   // Active loyalty list
-  const [loyaltyMembers, setLoyaltyMembers] = useState<LoyaltyMember[]>(MOCK_LOYALTY_MEMBERS);
+  const [loyaltyMembers, setLoyaltyMembers] = usePersistentState<LoyaltyMember[]>('scango:loyalty:v1', MOCK_LOYALTY_MEMBERS);
 
   // Customer dynamic simulator helper values
   const [simulationTableId, setSimulationTableId] = useState<string>('2');
@@ -101,8 +119,13 @@ export default function App() {
   // Layout views toggle
   const [viewMode, setViewMode] = useState<'login' | 'owner' | 'cashier' | 'kitchen' | 'customer' | 'grid' | 'solo'>('login');
 
-  // Load new menu template on industry change
+  const previousIndustry = useRef(tenantConfig.industry);
+
+  // Load a new menu template only when the operator changes industry.
   useEffect(() => {
+    if (previousIndustry.current === tenantConfig.industry) return;
+    previousIndustry.current = tenantConfig.industry;
+
     const selectedList = MOCK_MENU_ITEMS[tenantConfig.industry] || MOCK_MENU_ITEMS.quan_an;
     setMenuItems(selectedList);
 
@@ -169,7 +192,18 @@ export default function App() {
       discountMinAmount: 150000,
       discountAmount: 15000,
       discountEnabled: true,
+      discountTriggerType: 'auto',
+      discountConditionType: 'quantity',
+      discountTargetDishId: 'all',
     });
+    setTables([
+      { id: '1', name: 'Bàn 01' },
+      { id: '2', name: 'Bàn 02' },
+      { id: '3', name: 'Bàn 03' },
+      { id: '4', name: 'Bàn 04' },
+      { id: '5', name: 'Bàn 05' },
+      { id: '6', name: 'Bàn 06' },
+    ]);
     setMenuItems(MOCK_MENU_ITEMS.quan_an);
     setOrders([
       {
@@ -188,14 +222,16 @@ export default function App() {
     setSoloOnboarded(false);
     setCashierOnboarded(true);
     setKitchenOnboarded(true);
+    setSimulationTableId('2');
+    setNfcTriggeredAlert(null);
   };
 
   if (viewMode === 'login') {
     return (
-      <div className="min-h-screen bg-zinc-50/50 text-zinc-900 flex flex-col font-sans antialiased animate-fadeIn">
+      <div className="min-h-dvh bg-zinc-50/50 text-zinc-900 flex flex-col font-sans antialiased animate-fadeIn">
         
         {/* Upper Main Banner Workspace (simplified for login portal) */}
-        <header className="bg-white border-b border-zinc-200 px-6 py-4 flex justify-between items-center z-10 select-none shadow-sm">
+        <header className="bg-white border-b border-zinc-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 z-10 select-none shadow-sm">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center font-extrabold text-white text-xl tracking-tighter shadow-sm select-none">
               S⚡G
@@ -207,17 +243,17 @@ export default function App() {
               </h1>
             </div>
           </div>
-          <button 
+          <button
             type="button"
             onClick={handleResetSim}
-            className="px-3 py-1.5 text-[10.5px] font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded-lg flex items-center gap-1.5 transition-all shadow-sm uppercase cursor-pointer"
+            className="min-h-11 px-3 py-2 text-[10.5px] font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded-xl flex items-center gap-1.5 transition-all shadow-sm uppercase cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Khôi phục ban đầu
           </button>
         </header>
 
         {/* Central Card Grid for Actor Login */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 select-none">
+        <main id="main-content" className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 md:p-12 select-none">
           <div className="max-w-4xl w-full text-center space-y-6 animate-fadeIn">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-100 border border-zinc-200 rounded-full text-[9px] font-bold text-zinc-800 uppercase tracking-widest leading-none">
               🚀 CHỌN VAI TRÒ ĐỂ BẮT ĐẦU ĐĂNG NHẬP
@@ -376,7 +412,7 @@ export default function App() {
             </div>
 
           </div>
-        </div>
+        </main>
 
         {/* Small branding label */}
         <footer className="py-4 text-center border-t border-zinc-200/50 bg-zinc-50 text-[9px] font-mono text-zinc-500 uppercase select-none">
@@ -387,7 +423,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50/30 text-zinc-800 flex flex-col font-sans antialiased">
+    <div className="min-h-dvh bg-zinc-50/30 text-zinc-800 flex flex-col font-sans antialiased">
       
       {/* Upper Main Banner Workspace */}
       <header className="bg-white border-b border-zinc-200 px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 z-10 select-none shadow-sm">
@@ -406,8 +442,8 @@ export default function App() {
         </div>
 
         {/* Workspace controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="bg-zinc-150/80 border border-zinc-200 rounded-xl p-0.5 flex text-xs font-semibold shadow-inner">
+        <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          <nav aria-label="Chuyển vai trò" className="bg-zinc-150/80 border border-zinc-200 rounded-xl p-1 flex w-max min-w-full md:min-w-0 text-xs font-semibold shadow-inner">
             <button 
               onClick={() => setViewMode('login')}
               className="px-3 py-1.5 rounded-lg text-zinc-800 hover:bg-zinc-200 font-bold flex items-center gap-1 text-xs item-center shrink-0"
@@ -455,7 +491,7 @@ export default function App() {
             >
               Khách hàng
             </button>
-          </div>
+          </nav>
         </div>
       </header>
 
@@ -552,6 +588,7 @@ export default function App() {
 
         {/* Synced Phone Simulator Display (Focused view) */}
         <section className="lg:col-span-3 grid grid-cols-1 max-w-md mx-auto w-full">
+          <Suspense fallback={<RoleLoading />}>
           
           {/* ACTOR SOLO: ALL IN ONE */}
           {viewMode === 'solo' && (
@@ -697,7 +734,7 @@ export default function App() {
               </PhoneSimulator>
             </div>
           )}
-
+          </Suspense>
         </section>
 
       </main>

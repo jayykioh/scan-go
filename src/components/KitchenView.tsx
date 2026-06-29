@@ -33,10 +33,16 @@ export default function KitchenView({
 }: KitchenProps) {
   const [activeShift, setActiveShift] = useState(false);
   const [activePin, setActivePin] = useState('');
+  const [pinError, setPinError] = useState('');
 
   const handleKitchenSignIn = (e: React.FormEvent) => {
     e.preventDefault();
+    if (activePin.length !== 4) {
+      setPinError('Vui lòng nhập đủ 4 số để nhận ca.');
+      return;
+    }
     setActiveShift(true);
+    setPinError('');
     setOnboardCompleted(true);
   };
 
@@ -84,12 +90,17 @@ export default function KitchenView({
           <input 
             type="password" 
             value={activePin}
-            onChange={(e) => setActivePin(e.target.value.replace(/\D/g, ''))}
+            onChange={(e) => {
+              setActivePin(e.target.value.replace(/\D/g, ''));
+              setPinError('');
+            }}
             placeholder="••••"
             maxLength={4}
             className="w-32 bg-[#F2F2F7] border border-[#E5E5EA] rounded-2xl text-center tracking-[0.4em] font-mono text-xl py-3 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 shadow-sm font-bold"
           />
-          <p className="text-[10px] text-[#8E8E93] font-medium">Nhập số bất kỳ để bắt đầu</p>
+          <p role={pinError ? 'alert' : undefined} className={`text-[10px] font-medium ${pinError ? 'text-red-700' : 'text-[#8E8E93]'}`}>
+            {pinError || 'Nhập mã PIN 4 số để bắt đầu'}
+          </p>
         </form>
 
         <motion.button 

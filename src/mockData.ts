@@ -5,17 +5,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
     category_type: 'quan_an',
     menu_layout: 'list_don_gian',
     default_payment_mode: 'Pay-Later',
-    modifier_groups: [
-      {
-        name: 'Thêm Đồ',
-        required: false,
-        options: [
-          { name: 'Thêm thịt', price: 15000 },
-          { name: 'Thêm quẩy (3 chiếc)', price: 10000 },
-          { name: 'Thêm trứng chần', price: 5000 },
-        ],
-      },
-    ],
+    modifier_groups: [],
     theme_tokens: {
       primary: '#f97316', // Bright soft orange
       secondary: '#fff7ed', // Cream background
@@ -133,6 +123,11 @@ export const MOCK_MENU_ITEMS: Record<string, MenuItem[]> = {
       description: 'Thịt bò xào tái chín thơm mùi tỏi gừng, nước dùng đậm béo chuẩn vị truyền thống Hà Nội.',
       inStock: true,
       stockCount: 45,
+      toppings: [
+        { name: 'Thêm thịt bò', price: 20000 },
+        { name: 'Thêm quẩy (3 chiếc)', price: 10000 },
+        { name: 'Thêm trứng chần', price: 5000 },
+      ],
     },
     {
       id: 'qa2',
@@ -201,6 +196,10 @@ export const MOCK_MENU_ITEMS: Record<string, MenuItem[]> = {
       description: 'Sự cân bằng hoàn hảo giữa đắng đậm Phin espresso Việt Nam và lớp kem muối mịn béo ngậy.',
       inStock: true,
       stockCount: 80,
+      toppings: [
+        { name: 'Thêm shot espresso', price: 8000 },
+        { name: 'Thêm kem sữa tươi', price: 5000 },
+      ],
     },
     {
       id: 'qc2',
@@ -258,6 +257,10 @@ export const MOCK_MENU_ITEMS: Record<string, MenuItem[]> = {
       description: 'Bánh sừng bò Pháp nhiều lớp bơ thơm ngát, sốt phô mai tươi béo thơm dồi dào hảo hạng.',
       inStock: true,
       stockCount: 15,
+      toppings: [
+        { name: 'Thêm sốt phô mai', price: 8000 },
+        { name: 'Thêm bơ tỏi', price: 5000 },
+      ],
     },
     {
       id: 'tb2',
@@ -293,6 +296,11 @@ export const MOCK_MENU_ITEMS: Record<string, MenuItem[]> = {
       description: 'Trà đen Ceylon hảo hạng đun liu riu cùng sữa đặc cao cấp, kèm boba đen mút dẻo mịn.',
       inStock: true,
       stockCount: 50,
+      toppings: [
+        { name: 'Trân châu đường hổ', price: 8000 },
+        { name: 'Thạch trái cây', price: 7000 },
+        { name: 'Kem cheese', price: 12000 },
+      ],
     },
     {
       id: 'ts2',
@@ -328,6 +336,11 @@ export const MOCK_MENU_ITEMS: Record<string, MenuItem[]> = {
       description: 'Nước dùng chua ngọt chưng ớt sa tế xiêm, cá thác lác dẻo quánh tự quết tại bàn dai ngon sần sật.',
       inStock: true,
       stockCount: 15,
+      toppings: [
+        { name: 'Thêm cá thác lác', price: 50000 },
+        { name: 'Thêm rau nhúng', price: 15000 },
+        { name: 'Thêm mì tôm', price: 8000 },
+      ],
     },
     {
       id: 'nh2',

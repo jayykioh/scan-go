@@ -30,7 +30,7 @@ export interface MenuItem {
   description: string;
   inStock: boolean;
   stockCount: number;
-  modifiers?: { name: string; checked?: boolean }[];
+  toppings?: { name: string; price: number }[];
 }
 
 export interface OrderItem {
@@ -42,7 +42,7 @@ export interface OrderItem {
   selectedModifiers?: string[];
 }
 
-export type OrderStatus = 'pending' | 'cooking' | 'ready' | 'paid';
+export type OrderStatus = 'pending' | 'cooking' | 'ready' | 'served' | 'paid';
 
 export interface Order {
   id: string;
@@ -90,4 +90,12 @@ export interface TenantConfig {
   discountTriggerType?: 'auto' | 'manual'; // 'auto' (automatic when qualified) or 'manual' (customer type code)
   discountConditionType?: 'amount' | 'quantity' | 'both'; // 3 choices: 'amount' (số tiền), 'quantity' (số món), 'both' (cả hai)
   discountTargetDishId?: string; // 'all' or specific menuItem id (chỉ món đó được áp dụng)
+}
+
+export interface StaffAccount {
+  id: string;
+  name: string;
+  pin: string;
+  roles: { isKitchen: boolean; isWaiter: boolean; isCashier: boolean; };
+  isActive: boolean;
 }

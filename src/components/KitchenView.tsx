@@ -19,6 +19,7 @@ interface KitchenProps {
   onboardCompleted: boolean;
   setOnboardCompleted: (val: boolean) => void;
   tables?: TableConfig[];
+  embedded?: boolean;
 }
 
 export default function KitchenView({
@@ -30,6 +31,7 @@ export default function KitchenView({
   onboardCompleted,
   setOnboardCompleted,
   tables = [],
+  embedded = false,
 }: KitchenProps) {
   const [activeShift, setActiveShift] = useState(false);
   const [activePin, setActivePin] = useState('');
@@ -62,7 +64,7 @@ export default function KitchenView({
   };
 
   // Sign in screen matching Apple security design
-  if (!activeShift) {
+  if (!embedded && !activeShift) {
     return (
       <motion.div 
         initial={{ opacity: 0, y: 10 }}

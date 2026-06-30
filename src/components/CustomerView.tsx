@@ -512,7 +512,7 @@ export default function CustomerView({
                         <Plus className="w-4 h-4" />
                       </button>
                     ) : (
-                      <span className="text-[10px] bg-[#F5F5F7] text-[#808080] border border-[#B5C7D8] px-2 py-1 rounded-[21px] font-semibold uppercase self-end">HẾT MÓN</span>
+                      <span className="text-[10px] bg-[#F5F5F7] text-[#808080] border border-[#B5C7D8] px-2 py-1 rounded-[21px] font-semibold uppercase self-end">OUT</span>
                     )}
                   </div>
                 );
@@ -687,6 +687,35 @@ export default function CustomerView({
                     </div>
                   </div>
                 ))}
+                {activeItemForModifier.toppings && activeItemForModifier.toppings.length > 0 && (
+                  <div className="space-y-[4px]">
+                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-[#808080]">
+                      <span>Topping thêm cho món</span>
+                      <span className="text-[9px] text-gray-500 font-bold">Tùy chọn</span>
+                    </div>
+                    <div className="space-y-[4px]">
+                      {activeItemForModifier.toppings.map(opt => {
+                        const isChecked = selectedModifiers.includes(opt.name);
+                        return (
+                          <div 
+                            key={opt.name}
+                            onClick={() => handleToggleModifierOpt(opt.name, opt.price)}
+                            className={`p-[13px] rounded-[21px] border transition-all cursor-pointer flex justify-between items-center ${
+                              isChecked 
+                                ? 'border-[#155BD0] bg-[#155BD0]/5 text-[#155BD0] font-bold' 
+                                : 'border-[#B5C7D8] bg-white text-zinc-700 hover:bg-[#F5F5F7]'
+                            }`}
+                          >
+                            <span className="font-medium">{opt.name}</span>
+                            <span className="font-mono text-[11px] font-bold tabular-nums">
+                              {opt.price === 0 ? 'Miễn phí' : `+${opt.price.toLocaleString()}đ`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="pt-[13px] border-t border-[#B5C7D8] flex justify-between items-center bg-white">
@@ -968,7 +997,7 @@ export default function CustomerView({
 
                     <div className="flex flex-col items-center gap-1.5 z-10">
                       <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                        ['pending', 'cooking', 'ready'].includes(order.status) 
+                        ['pending', 'cooking', 'ready', 'served'].includes(order.status) 
                           ? 'bg-[#155BD0] text-white ring-4 ring-[#155BD0]/10' 
                           : 'bg-[#F5F5F7] text-gray-400 border border-[#B5C7D8]'
                       }`}>
@@ -979,7 +1008,7 @@ export default function CustomerView({
 
                     <div className="flex flex-col items-center gap-1.5 z-10">
                       <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                        ['cooking', 'ready'].includes(order.status) 
+                        ['cooking', 'ready', 'served'].includes(order.status) 
                           ? 'bg-[#155BD0] text-white ring-4 ring-[#155BD0]/10' 
                           : 'bg-[#F5F5F7] text-gray-400 border border-[#B5C7D8]'
                       }`}>
@@ -990,7 +1019,7 @@ export default function CustomerView({
 
                     <div className="flex flex-col items-center gap-1.5 z-10">
                       <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                        ['ready'].includes(order.status) 
+                        ['ready', 'served'].includes(order.status) 
                           ? 'bg-emerald-600 text-white animate-pulse ring-4 ring-emerald-50' 
                           : 'bg-[#F5F5F7] text-gray-400 border border-[#B5C7D8]'
                       }`}>
@@ -998,12 +1027,24 @@ export default function CustomerView({
                       </div>
                       <span className="text-[#2D2B30] font-semibold">Bưng lên</span>
                     </div>
+
+                    <div className="flex flex-col items-center gap-1.5 z-10">
+                      <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                        ['served'].includes(order.status) 
+                          ? 'bg-emerald-600 text-white ring-4 ring-emerald-50' 
+                          : 'bg-[#F5F5F7] text-gray-400 border border-[#B5C7D8]'
+                      }`}>
+                        4
+                      </div>
+                      <span className="text-[#2D2B30] font-semibold">Đã phục vụ</span>
+                    </div>
                   </div>
 
                   <div className="bg-[#F5F5F7] p-3 rounded-[21px] border border-[#B5C7D8] text-[11px] text-[#707070] leading-relaxed text-pretty">
                     {order.status === 'pending' && '⏳ Bếp chính của chúng tôi đã ghi nhận đơn và đang chuẩn bị chế biến đúng thứ tự.'}
                     {order.status === 'cooking' && '🔥 Đầu bếp đang đứng chế biến trực tiếp, món nóng thơm chuẩn vị sắp bưng ra.'}
                     {order.status === 'ready' && '🎉 Món ngon đã chín tới ngạt ngào! Nhân viên đang chuẩn bị khay bưng ra bàn.'}
+                    {order.status === 'served' && '✅ Món đã được phục vụ tận bàn. Chúc bạn ngon miệng!'}
                   </div>
                 </div>
               ))}

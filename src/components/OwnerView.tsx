@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig } from '../types';
+import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount } from '../types';
 import { INDUSTRY_TEMPLATES } from '../mockData';
 import { 
   Building2, 
@@ -40,10 +40,12 @@ interface OwnerProps {
   onTriggerNfcTag: (tableId: string) => void;
   onboardCompleted: boolean;
   setOnboardCompleted: (val: boolean) => void;
-  setViewMode: React.Dispatch<React.SetStateAction<'login' | 'grid' | 'owner' | 'cashier' | 'kitchen' | 'customer' | 'solo'>>;
+  setViewMode: React.Dispatch<React.SetStateAction<'login' | 'grid' | 'owner' | 'cashier' | 'kitchen' | 'customer' | 'solo' | 'staff'>>;
   setSimulationTableId: (val: string) => void;
   tables: TableConfig[];
   setTables: React.Dispatch<React.SetStateAction<TableConfig[]>>;
+  staffAccounts: StaffAccount[];
+  setStaffAccounts: React.Dispatch<React.SetStateAction<StaffAccount[]>>;
 }
 
 export default function OwnerView({
@@ -60,8 +62,10 @@ export default function OwnerView({
   setSimulationTableId,
   tables,
   setTables,
+  staffAccounts,
+  setStaffAccounts,
 }: OwnerProps) {
-  const [activeTab, setActiveTab] = useState<'kpi' | 'menu' | 'nfc' | 'ai'>('kpi');
+  const [activeTab, setActiveTab] = useState<'kpi' | 'menu' | 'nfc' | 'ai' | 'staff'>('kpi');
   
   // Onboarding parameters
   const [tempShopName, setTempShopName] = useState('Phở Kinh Kỳ');
@@ -83,6 +87,9 @@ export default function OwnerView({
   const [formDescription, setFormDescription] = useState('');
   const [formImage, setFormImage] = useState('');
   const [formStockCount, setFormStockCount] = useState(50);
+  const [formToppings, setFormToppings] = useState<{ name: string; price: number }[]>([]);
+  const [newToppingName, setNewToppingName] = useState('');
+  const [newToppingPrice, setNewToppingPrice] = useState(0);
 
   // Promos
   const [promoCode, setPromoCode] = useState(tenantConfig.discountCode || 'MUANHIEU15K');
@@ -98,6 +105,37 @@ export default function OwnerView({
   const [newTableName, setNewTableName] = useState('');
   const [editingTableId, setEditingTableId] = useState<string | null>(null);
   const [editingTableOriginalName, setEditingTableOriginalName] = useState('');
+
+  // Staff management
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffPin, setNewStaffPin] = useState('');
+  const [newStaffRoles, setNewStaffRoles] = useState({ isKitchen: false, isWaiter: false, isCashier: false });
+  const [showAddStaff, setShowAddStaff] = useState(false);
+
+  const handleAddStaff = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStaffName.trim() || newStaffPin.length < 3) return;
+    if (!newStaffRoles.isKitchen && !newStaffRoles.isWaiter && !newStaffRoles.isCashier) return;
+    setStaffAccounts(prev => [...prev, {
+      id: String(Date.now()),
+      name: newStaffName.trim(),
+      pin: newStaffPin,
+      roles: { ...newStaffRoles },
+      isActive: true,
+    }]);
+    setNewStaffName('');
+    setNewStaffPin('');
+    setNewStaffRoles({ isKitchen: false, isWaiter: false, isCashier: false });
+    setShowAddStaff(false);
+  };
+
+  const handleToggleStaffActive = (id: string) => {
+    setStaffAccounts(prev => prev.map(a => a.id === id ? { ...a, isActive: !a.isActive } : a));
+  };
+
+  const handleDeleteStaff = (id: string) => {
+    setStaffAccounts(prev => prev.filter(a => a.id !== id));
+  };
 
   const handleAddTableSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,6 +293,9 @@ export default function OwnerView({
     setFormDescription('');
     setFormImage('');
     setFormStockCount(50);
+    setFormToppings([]);
+    setNewToppingName('');
+    setNewToppingPrice(0);
   };
 
   const handleStartAddForm = () => {
@@ -278,6 +319,7 @@ export default function OwnerView({
       image: formImage || 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&q=80&w=600',
       inStock: Number(formStockCount) > 0,
       stockCount: Number(formStockCount) || 50,
+      toppings: formToppings.length > 0 ? formToppings : undefined,
     };
 
     setMenuItems(prev => [newDish, ...prev]);
@@ -296,6 +338,9 @@ export default function OwnerView({
     setFormDescription(item.description || '');
     setFormImage(item.image);
     setFormStockCount(item.stockCount ?? 50);
+    setFormToppings(item.toppings ? [...item.toppings] : []);
+    setNewToppingName('');
+    setNewToppingPrice(0);
   };
 
   const handleEditDishSubmit = (e: React.FormEvent) => {
@@ -314,7 +359,8 @@ export default function OwnerView({
           description: formDescription.trim(),
           image: formImage || item.image,
           stockCount: Number(formStockCount),
-          inStock: Number(formStockCount) > 0
+          inStock: Number(formStockCount) > 0,
+          toppings: formToppings.length > 0 ? formToppings : undefined,
         };
       }
       return item;
@@ -570,9 +616,9 @@ export default function OwnerView({
         </div>
 
         {/* Tab Selection Row adhering to minimalist Claude design */}
-        <div className="grid grid-cols-4 bg-[#F5F5F7] p-1 rounded-[21px] border border-[#B5C7D8]/50 text-[11px] font-semibold select-none">
+        <div className="grid grid-cols-5 bg-[#F5F5F7] p-1 rounded-[21px] border border-[#B5C7D8]/50 text-[11px] font-semibold select-none">
           <button 
-            onClick={() => { setActiveTab('kpi'); setShowAddForm(false); setEditingItem(null); }}
+            onClick={() => { setActiveTab('kpi'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); }}
             className={`py-1.5 rounded-[21px] transition-all flex justify-center items-center ${
               activeTab === 'kpi' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
@@ -588,7 +634,7 @@ export default function OwnerView({
             Món ăn
           </button>
           <button 
-            onClick={() => { setActiveTab('nfc'); setShowAddForm(false); setEditingItem(null); }}
+            onClick={() => { setActiveTab('nfc'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); }}
             className={`py-1.5 rounded-[21px] transition-all flex justify-center items-center ${
               activeTab === 'nfc' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
@@ -596,7 +642,15 @@ export default function OwnerView({
             Bàn QR
           </button>
           <button 
-            onClick={() => { setActiveTab('ai'); setShowAddForm(false); setEditingItem(null); }}
+            onClick={() => { setActiveTab('staff'); setShowAddForm(false); setEditingItem(null); }}
+            className={`py-1.5 rounded-[21px] transition-all flex justify-center items-center ${
+              activeTab === 'staff' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
+            }`}
+          >
+            Nhân viên
+          </button>
+          <button 
+            onClick={() => { setActiveTab('ai'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); }}
             className={`py-1.5 rounded-[21px] transition-all flex justify-center items-center relative ${
               activeTab === 'ai' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
@@ -1120,8 +1174,27 @@ export default function OwnerView({
                             >
                               Huỷ
                             </button>
-                          </div>
-                        </div>
+                  </div>
+
+                  <div className="space-y-[4px] border-t border-[#B5C7D8]/30 pt-3">
+                    <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Topping thêm cho món</label>
+                    {formToppings.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {formToppings.map((t, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] px-2 py-0.5 text-[10px] font-semibold">
+                            {t.name} <span className="font-mono text-[#155BD0]">+{t.price.toLocaleString()}đ</span>
+                            <button type="button" onClick={() => setFormToppings(prev => prev.filter((_, j) => j !== i))} className="text-red-500 hover:text-red-700 font-bold ml-0.5">&times;</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-1.5">
+                      <input type="text" value={newToppingName} onChange={(e) => setNewToppingName(e.target.value)} placeholder="Tên topping" className="flex-1 bg-white border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 text-[11px] focus:outline-2 focus:outline-[#155BD0]" />
+                      <input type="number" min={0} value={newToppingPrice} onChange={(e) => setNewToppingPrice(Number(e.target.value))} placeholder="Giá" className="w-20 bg-white border border-[#B5C7D8] rounded-[21px] px-2 py-1.5 text-[11px] tabular-nums focus:outline-2 focus:outline-[#155BD0]" />
+                      <button type="button" onClick={() => { if (newToppingName.trim() && newToppingPrice >= 0) { setFormToppings(prev => [...prev, { name: newToppingName.trim(), price: newToppingPrice }]); setNewToppingName(''); setNewToppingPrice(0); } }} className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white text-[10px] font-bold px-3 rounded-[21px] cursor-pointer">+ Thêm</button>
+                    </div>
+                  </div>
+                </div>
                       ) : (
                         <div>
                           <div className="flex items-center gap-1 justify-center select-none">
@@ -1298,6 +1371,114 @@ export default function OwnerView({
                 Gửi
               </button>
             </form>
+          </div>
+        )}
+
+        {activeTab === 'staff' && (
+          <div className="space-y-[13px] animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[12px] font-bold flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#155BD0]" />
+                Tài khoản nhân viên
+              </h3>
+              <button
+                onClick={() => setShowAddStaff(!showAddStaff)}
+                className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white text-[10px] px-3 py-1.5 rounded-[21px] font-semibold transition-all cursor-pointer"
+              >
+                + Thêm
+              </button>
+            </div>
+
+            {showAddStaff && (
+              <form onSubmit={handleAddStaff} className="bg-[#F5F5F7] border border-[#B5C7D8] p-4 rounded-[21px] space-y-3">
+                <input
+                  value={newStaffName}
+                  onChange={e => setNewStaffName(e.target.value)}
+                  placeholder="Tên nhân viên"
+                  className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-2 text-[12px] text-[#2D2B30] focus:outline-2 focus:outline-[#155BD0]"
+                />
+                <input
+                  value={newStaffPin}
+                  onChange={e => setNewStaffPin(e.target.value)}
+                  placeholder="Mã PIN (3-6 số)"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-2 text-[12px] text-[#2D2B30] focus:outline-2 focus:outline-[#155BD0]"
+                />
+                <div className="flex gap-3 text-[11px]">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newStaffRoles.isKitchen}
+                      onChange={e => setNewStaffRoles(p => ({ ...p, isKitchen: e.target.checked }))}
+                      className="accent-[#155BD0]"
+                    />
+                    Bếp
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newStaffRoles.isWaiter}
+                      onChange={e => setNewStaffRoles(p => ({ ...p, isWaiter: e.target.checked }))}
+                      className="accent-[#155BD0]"
+                    />
+                    Phục vụ
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newStaffRoles.isCashier}
+                      onChange={e => setNewStaffRoles(p => ({ ...p, isCashier: e.target.checked }))}
+                      className="accent-[#155BD0]"
+                    />
+                    Thu ngân
+                  </label>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] py-2 rounded-[21px] font-semibold transition-colors cursor-pointer"
+                >
+                  Lưu nhân viên
+                </button>
+              </form>
+            )}
+
+            <div className="space-y-[4px]">
+              {staffAccounts.length === 0 && (
+                <p className="text-[#8E8E93] text-xs text-center py-4">Chưa có nhân viên nào. Thêm nhân viên để bắt đầu.</p>
+              )}
+              {staffAccounts.map(account => (
+                <div key={account.id} className="flex items-center justify-between bg-white border border-[#B5C7D8] p-3 rounded-[21px] text-[12px]">
+                  <div className="space-y-1">
+                    <p className="font-semibold text-[#2D2B30]">{account.name}</p>
+                    <div className="flex gap-1">
+                      {account.roles.isKitchen && <span className="bg-[#155BD0]/10 text-[#155BD0] text-[9px] px-2 py-0.5 rounded-full font-semibold">Bếp</span>}
+                      {account.roles.isWaiter && <span className="bg-emerald-600/10 text-emerald-700 text-[9px] px-2 py-0.5 rounded-full font-semibold">Phục vụ</span>}
+                      {account.roles.isCashier && <span className="bg-amber-600/10 text-amber-700 text-[9px] px-2 py-0.5 rounded-full font-semibold">Thu ngân</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleToggleStaffActive(account.id)}
+                      className={`text-[10px] px-2.5 py-1 rounded-[21px] font-semibold cursor-pointer transition-colors ${
+                        account.isActive
+                          ? 'bg-emerald-600/10 text-emerald-700'
+                          : 'bg-gray-100 text-[#8E8E93]'
+                      }`}
+                    >
+                      {account.isActive ? 'Hoạt động' : 'Tạm ngưng'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteStaff(account.id)}
+                      className="text-red-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

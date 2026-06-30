@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig } from './types';
+import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount } from './types';
 import { MOCK_LOYALTY_MEMBERS, MOCK_MENU_ITEMS, INDUSTRY_TEMPLATES } from './mockData';
 import PhoneSimulator from './components/PhoneSimulator';
 import OwnerView from './components/OwnerView';
@@ -7,6 +7,7 @@ import CashierView from './components/CashierView';
 import KitchenView from './components/KitchenView';
 import CustomerView from './components/CustomerView';
 import SoloOperatorView from './components/SoloOperatorView';
+import StaffView from './components/StaffView';
 import { 
   Sparkles, 
   Nfc, 
@@ -94,12 +95,21 @@ export default function App() {
   // Active loyalty list
   const [loyaltyMembers, setLoyaltyMembers] = useState<LoyaltyMember[]>(MOCK_LOYALTY_MEMBERS);
 
+  // Staff accounts
+  const [staffAccounts, setStaffAccounts] = useState<StaffAccount[]>([
+    { id: 'staff_1', name: 'Đầu bếp A', pin: '0000', roles: { isKitchen: true, isWaiter: false, isCashier: false }, isActive: true },
+    { id: 'staff_2', name: 'Phục vụ B', pin: '1111', roles: { isKitchen: false, isWaiter: true, isCashier: false }, isActive: true },
+    { id: 'staff_3', name: 'Thu ngân C', pin: '2222', roles: { isKitchen: false, isWaiter: false, isCashier: true }, isActive: true },
+    { id: 'staff_4', name: 'Nhân viên tổng', pin: '3333', roles: { isKitchen: true, isWaiter: true, isCashier: true }, isActive: true },
+  ]);
+  const [currentStaff, setCurrentStaff] = useState<StaffAccount | null>(null);
+
   // Customer dynamic simulator helper values
   const [simulationTableId, setSimulationTableId] = useState<string>('2');
   const [nfcTriggeredAlert, setNfcTriggeredAlert] = useState<string | null>(null);
   
   // Layout views toggle
-  const [viewMode, setViewMode] = useState<'login' | 'owner' | 'cashier' | 'kitchen' | 'customer' | 'grid' | 'solo'>('login');
+  const [viewMode, setViewMode] = useState<'login' | 'owner' | 'cashier' | 'kitchen' | 'customer' | 'grid' | 'solo' | 'staff'>('login');
 
   // Load new menu template on industry change
   useEffect(() => {
@@ -233,7 +243,7 @@ export default function App() {
             </div>
 
             {/* Actor Selection Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 max-w-6xl mx-auto mt-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto mt-8">
               {/* Card Owner */}
               <button
                 type="button"
@@ -323,6 +333,24 @@ export default function App() {
                   <p className="text-[10.5px] text-zinc-500 line-clamp-3 mt-1 leading-normal font-medium">Đặt món quét mã tại bàn, cập nhật trạng thái đơn nấu realtime, đăng ký Loyalty không cần mật khẩu.</p>
                 </div>
               </button>
+
+              {/* Card Staff */}
+              <button
+                type="button"
+                onClick={() => setViewMode('staff')}
+                className="bg-white border border-zinc-200 hover:border-zinc-900 rounded-2xl p-5 text-left flex flex-col justify-between hover:shadow-md transition-all h-[180px] cursor-pointer group"
+              >
+                <div className="flex justify-between items-start w-full">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-650 border border-zinc-200 group-hover:scale-105 transition-transform">
+                     <UserCheck className="w-5 h-5" />
+                  </div>
+                  <span className="text-[8px] bg-zinc-100 text-zinc-800 border border-zinc-200 px-1.5 py-0.5 rounded font-bold font-mono uppercase tracking-wider">Nhân viên</span>
+                </div>
+                <div className="mt-2 text-left">
+                  <h4 className="text-[12.5px] font-bold text-zinc-900 uppercase tracking-tight group-hover:text-zinc-900 transition-colors">5. NHÂN VIÊN (Staff)</h4>
+                  <p className="text-[10.5px] text-zinc-500 line-clamp-3 mt-1 leading-normal font-medium">Đăng nhập bằng mã PIN cá nhân. Bếp / Phục vụ / Thu ngân — hiển thị theo vai trò được phân quyền.</p>
+                </div>
+              </button>
             </div>
 
             {/* Quick config in Login page */}
@@ -399,7 +427,7 @@ export default function App() {
             <div>
               <p className="text-[10px] text-zinc-500 font-mono tracking-widest leading-none font-bold uppercase">MÀN HÌNH CHUYÊN BIỆT ĐANG HOẠT ĐỘNG</p>
               <h1 className="text-sm font-bold text-zinc-900 tracking-tight flex items-center gap-1.5 mt-1">
-                {tenantConfig.shopName} <span className="text-[10px] bg-zinc-100 text-zinc-800 font-bold px-2 py-0.5 rounded border border-zinc-200 uppercase">{viewMode === 'owner' ? 'Chủ quán' : viewMode === 'cashier' ? 'Thu ngân' : viewMode === 'kitchen' ? 'KDS Nhà bếp' : viewMode === 'solo' ? 'Chủ Toàn Năng' : 'Khách hàng'}</span>
+                {tenantConfig.shopName} <span className="text-[10px] bg-zinc-100 text-zinc-800 font-bold px-2 py-0.5 rounded border border-zinc-200 uppercase">{viewMode === 'owner' ? 'Chủ quán' : viewMode === 'cashier' ? 'Thu ngân' : viewMode === 'kitchen' ? 'KDS Nhà bếp' : viewMode === 'solo' ? 'Chủ Toàn Năng' : viewMode === 'staff' ? 'Nhân viên' : 'Khách hàng'}</span>
               </h1>
             </div>
           </div>
@@ -446,6 +474,14 @@ export default function App() {
               }`}
             >
               KDS Bếp
+            </button>
+            <button 
+              onClick={() => setViewMode('staff')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                viewMode === 'staff' ? 'bg-zinc-900 text-white shadow-sm font-bold' : 'text-zinc-700 hover:bg-zinc-200/50'
+              }`}
+            >
+              Nhân viên
             </button>
             <button 
               onClick={() => setViewMode('customer')}
@@ -608,6 +644,8 @@ export default function App() {
                   setSimulationTableId={setSimulationTableId}
                   tables={tables}
                   setTables={setTables}
+                  staffAccounts={staffAccounts}
+                  setStaffAccounts={setStaffAccounts}
                 />
               </PhoneSimulator>
             </div>
@@ -658,6 +696,36 @@ export default function App() {
                   onboardCompleted={kitchenOnboarded}
                   setOnboardCompleted={setKitchenOnboarded}
                   tables={tables}
+                />
+              </PhoneSimulator>
+            </div>
+          )}
+
+          {/* ACTOR 5: STAFF */}
+          {viewMode === 'staff' && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1 text-xs font-semibold px-1 select-none">
+                <UserCheck className="w-4 h-4 text-purple-500" />
+                <span>5. NHÂN VIÊN (STAFF)</span>
+              </div>
+              <PhoneSimulator
+                actorName="Staff"
+                actorColor="#9333ea"
+                onboardStatus="PIN Login"
+              >
+                <StaffView
+                  staffAccounts={staffAccounts}
+                  currentStaff={currentStaff}
+                  setCurrentStaff={setCurrentStaff}
+                  setStaffAccounts={setStaffAccounts}
+                  tenantConfig={tenantConfig}
+                  tables={tables}
+                  orders={orders}
+                  setOrders={setOrders}
+                  menuItems={menuItems}
+                  setMenuItems={setMenuItems}
+                  loyaltyMembers={loyaltyMembers}
+                  setLoyaltyMembers={setLoyaltyMembers}
                 />
               </PhoneSimulator>
             </div>

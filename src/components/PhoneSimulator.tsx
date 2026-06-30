@@ -47,9 +47,9 @@ export default function PhoneSimulator({
           {/* Dynamic Action / Island simulation */}
           <div className="absolute left-1/2 transform -translate-x-1/2 top-2 w-28 h-5.5 bg-black rounded-full flex items-center justify-center gap-1.5 z-50 border border-zinc-800/50">
             {nfcActive ? (
-              <div className="flex items-center gap-1 px-2 py-0.5">
-                <span className="w-1.5 h-1.5 bg-[#155BD0] rounded-full animate-ping"></span>
-                <span className="text-[8px] text-[#155BD0] uppercase font-mono tracking-wider font-semibold">NFC Active</span>
+              <div className="flex items-center gap-1.5 px-2 py-0.5">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                <span className="text-[8px] text-emerald-500 uppercase font-mono tracking-wider font-semibold">NFC Active</span>
               </div>
             ) : (
               <>
@@ -75,7 +75,7 @@ export default function PhoneSimulator({
         {/* Floating App Badge Indicator */}
         <div className="bg-white px-4 py-1.5 flex justify-between items-center border-b border-[#B5C7D8]/50 select-none">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: '#155BD0' }}></span>
+            <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: '#18181b' }}></span>
             <span className="text-[10px] font-bold text-[#2D2B30] tracking-wider uppercase">
               ROLE: {actorName.toUpperCase()}
             </span>

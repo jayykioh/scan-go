@@ -134,10 +134,10 @@ export default function CashierView({
     <div className="flex-grow flex flex-col bg-white font-sans text-[#2D2B30] h-full" id="cashier-main">
       <div className="bg-[#F5F5F7] px-[13px] py-[13px] border-b border-[#B5C7D8]/60 flex justify-between items-center select-none">
         <div className="flex items-center gap-[4px]">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#155BD0] animate-pulse"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
           <span className="text-[12px] font-bold text-[#2D2B30] uppercase tracking-wider">Trạm Quầy Thu Ngân</span>
         </div>
-        <span className="text-[11px] bg-[#155BD0] text-white font-semibold rounded-[21px] px-2.5 py-0.5 tabular-nums">
+        <span className="text-[11px] bg-zinc-900 text-white font-semibold rounded-[21px] px-2.5 py-0.5 tabular-nums">
           {activeUnpaidOrders.length} Đơn Chưa Thanh Toán
         </span>
       </div>
@@ -145,16 +145,16 @@ export default function CashierView({
       <div className="flex-grow overflow-y-auto p-[13px] space-y-[13px] bg-white">
         <div className="text-[10px] font-bold text-[#808080] uppercase tracking-wider select-none flex justify-between">
           <span>Hóa đơn theo bàn ăn đang trực</span>
-          <span className="text-[10px] text-[#155BD0] font-mono lowercase">auto-sync</span>
+          <span className="text-[10px] text-zinc-900 font-mono lowercase">auto-sync</span>
         </div>
 
         {activeUnpaidOrders.length === 0 ? (
-          <div className="bg-[#F5F5F7]/40 p-[34px] rounded-[21px] border border-[#B5C7D8] text-center space-y-[4px] shadow-sm select-none">
-            <span className="text-2xl">💵</span>
-            <div className="text-[14px] font-bold text-[#2D2B30]">Doanh thu đã thu hoàn tất!</div>
-            <p className="text-[12px] text-[#808080] leading-relaxed text-pretty">
-              Không có bàn nào nợ tiền hoặc đang mở đặt món phát sinh.
-            </p>
+          <div className="flex flex-col items-center justify-center py-12 text-center select-none">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4">
+              <CheckCircle className="w-7 h-7 text-emerald-500" />
+            </div>
+            <p className="text-sm font-bold text-zinc-900">Tất cả đã thanh toán!</p>
+            <p className="text-xs text-zinc-400 mt-1">Không có bàn nào nợ tiền</p>
           </div>
         ) : (
           <div className="space-y-[13px]">
@@ -166,15 +166,19 @@ export default function CashierView({
               return (
                 <div 
                   key={order.id} 
-                  className="rounded-[21px] border border-[#B5C7D8] bg-white overflow-hidden shadow-xs hover:border-[#155BD0] transition-colors"
+                  className="rounded-[21px] border border-[#B5C7D8] bg-white overflow-hidden shadow-xs hover:border-zinc-900 transition-colors"
                 >
-                  <div className="bg-[#F5F5F7] px-[13px] py-[13px] border-b border-[#B5C7D8]/45 flex justify-between items-center text-[#2D2B30] select-none">
-                    <span className="text-[12px] font-bold text-[#2D2B30] flex items-center gap-[4px] uppercase">
-                      <Table className="w-4 h-4 text-[#155BD0]" />
+                  <div className="bg-zinc-50 px-4 py-3 border-b border-zinc-100 flex justify-between items-center select-none">
+                    <span className="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-blue-500" />
                       {tableName}
                     </span>
-                    <span className="text-[10px] text-[#808080] font-mono tracking-wider font-semibold uppercase tabular-nums">
-                      #{order.id.slice(-6)} • {order.status === 'ready' ? '🍽️ HOÀN THÀNH MÓN' : '⏳ CHỜ CHẾ BIẾN'}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      order.status === 'ready' ? 'bg-emerald-100 text-emerald-700' :
+                      order.status === 'cooking' ? 'bg-amber-100 text-amber-700' :
+                      'bg-zinc-100 text-zinc-500'
+                    }`}>
+                      {order.status === 'ready' ? 'Sẵn sàng' : order.status === 'cooking' ? 'Đang nấu' : 'Chờ'}
                     </span>
                   </div>
 
@@ -195,7 +199,7 @@ export default function CashierView({
                     {hasLoyaltyPhone && (
                       <div className="bg-[#F5F5F7] p-2 rounded-[21px] border border-[#B5C7D8] flex items-center justify-between text-[11px] text-[#454547]">
                         <div className="flex items-center gap-[4px]">
-                          <Smile className="w-3.5 h-3.5 text-[#155BD0]" />
+                          <Smile className="w-3.5 h-3.5 text-zinc-900" />
                           <span className="font-semibold text-[#2D2B30]">
                             Hội viên: {loyaltyInfo?.name || 'Khách Vãng Lai'}
                           </span>
@@ -204,20 +208,20 @@ export default function CashierView({
                       </div>
                     )}
 
-                    {/* Footer values and buttons */}
-                    <div className="flex justify-between items-center select-none text-[#2D2B30]">
-                      <div className="space-y-[1px]">
-                        <span className="text-[10px] text-[#808080] block uppercase tracking-wider font-bold">Thực Khách Trả</span>
-                        <span className="text-[16px] font-bold text-[#155BD0] font-mono tabular-nums">
+                    {/* Payment row */}
+                    <div className="flex justify-between items-center pt-2 border-t border-zinc-100">
+                      <div>
+                        <span className="text-[10px] text-zinc-400 block uppercase tracking-wider font-bold">Tổng tiền</span>
+                        <span className="text-xl font-bold text-zinc-900 font-mono tabular-nums">
                           {order.total.toLocaleString()}đ
                         </span>
                       </div>
 
-                      <div className="flex gap-[4px]">
+                      <div className="flex gap-2">
                         <button 
                           type="button"
                           onClick={() => handleCancelOrder(order.id)}
-                          className="bg-white border border-red-250 text-[#ef4444] hover:bg-red-50 p-2 rounded-[21px] transition-colors cursor-pointer focus:outline-2 focus:outline-offset-2 focus:outline-red-650"
+                          className="p-2 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
                           title="Hủy hóa đơn"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -226,9 +230,10 @@ export default function CashierView({
                         <button 
                           type="button"
                           onClick={() => handleSettleOrder(order.id)}
-                          className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white font-semibold text-[11px] px-[13px] py-2 rounded-[21px] flex items-center gap-1.5 transition-colors cursor-pointer focus:outline-2 focus:outline-[#155BD0]"
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
                         >
-                          💸 Thu tiền mặt/QR
+                          <CheckCircle className="w-4 h-4" />
+                          Thu tiền
                         </button>
                       </div>
                     </div>
@@ -242,7 +247,7 @@ export default function CashierView({
         {/* Loyalty details list for cashier verification */}
         <div className="bg-white border border-[#B5C7D8] p-[13px] rounded-[21px] shadow-sm text-[#2D2B30] space-y-[13px]">
           <div className="text-[12px] font-bold text-[#2D2B30] uppercase tracking-wider flex items-center gap-[4px] select-none">
-            <CheckCircle className="w-4 h-4 text-[#155BD0]" />
+            <CheckCircle className="w-4 h-4 text-zinc-900" />
             Hội viên trung thành hệ thống
           </div>
           
@@ -254,7 +259,7 @@ export default function CashierView({
                   <p className="text-[10px] text-[#808080] font-mono tabular-nums">SĐT: {member.phone}</p>
                 </div>
                 <div className="text-right space-y-[2px]">
-                  <span className="text-[10px] bg-[#155BD0]/10 text-[#155BD0] px-2 py-0.5 rounded-[21px] font-bold tabular-nums">
+                  <span className="text-[10px] bg-zinc-900/10 text-zinc-900 px-2 py-0.5 rounded-[21px] font-bold tabular-nums">
                     {member.points} pt
                   </span>
                   <p className="text-[9px] text-[#808080] font-mono tabular-nums">Ghé thăm: {member.visits} lần</p>

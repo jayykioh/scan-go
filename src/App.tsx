@@ -1,13 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount } from './types';
 import { MOCK_LOYALTY_MEMBERS, MOCK_MENU_ITEMS, INDUSTRY_TEMPLATES } from './mockData';
 import PhoneSimulator from './components/PhoneSimulator';
-import OwnerView from './components/OwnerView';
-import CashierView from './components/CashierView';
-import KitchenView from './components/KitchenView';
-import CustomerView from './components/CustomerView';
-import SoloOperatorView from './components/SoloOperatorView';
-import StaffView from './components/StaffView';
+import { usePersistentState } from './hooks/usePersistentState';
 import { 
   Sparkles, 
   Nfc, 
@@ -25,9 +20,27 @@ import {
   Check
 } from 'lucide-react';
 
+const OwnerView = lazy(() => import('./components/OwnerView'));
+const CashierView = lazy(() => import('./components/CashierView'));
+const KitchenView = lazy(() => import('./components/KitchenView'));
+const CustomerView = lazy(() => import('./components/CustomerView'));
+const SoloOperatorView = lazy(() => import('./components/SoloOperatorView'));
+const StaffView = lazy(() => import('./components/StaffView'));
+
+function RoleLoading() {
+  return (
+    <div className="mx-auto flex aspect-[9/18.5] w-full max-w-[370px] items-center justify-center rounded-[48px] border-8 border-zinc-900 bg-white shadow-xl" role="status">
+      <div className="text-center">
+        <span className="mx-auto block size-7 animate-spin rounded-full border-2 border-zinc-200 border-t-blue-600" aria-hidden="true" />
+        <p className="mt-3 text-xs font-semibold text-zinc-600">Đang mở màn hình…</p>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   // Global shared state
-  const [tenantConfig, setTenantConfig] = useState<TenantConfig>({
+  const [tenantConfig, setTenantConfig] = usePersistentState<TenantConfig>('scango:tenant:v1', {
     shopName: 'Bún Phở Kinh Kỳ',
     industry: 'quan_an',
     pricingTier: 'Pro', // Default to Pro for the richest demo features
@@ -46,7 +59,7 @@ export default function App() {
   });
 
   // Active tables configured by owner
-  const [tables, setTables] = useState<TableConfig[]>([
+  const [tables, setTables] = usePersistentState<TableConfig[]>('scango:tables:v1', [
     { id: '1', name: 'Bàn 01' },
     { id: '2', name: 'Bàn 02' },
     { id: '3', name: 'Bàn 03' },
@@ -56,16 +69,16 @@ export default function App() {
   ]);
 
   // Track if each actor has done onboarding/signin
-  const [ownerOnboarded, setOwnerOnboarded] = useState(true);
-  const [soloOnboarded, setSoloOnboarded] = useState(false);
-  const [cashierOnboarded, setCashierOnboarded] = useState(true);
-  const [kitchenOnboarded, setKitchenOnboarded] = useState(true);
+  const [ownerOnboarded, setOwnerOnboarded] = usePersistentState('scango:owner-onboarded:v1', true);
+  const [soloOnboarded, setSoloOnboarded] = usePersistentState('scango:solo-onboarded:v1', false);
+  const [cashierOnboarded, setCashierOnboarded] = usePersistentState('scango:cashier-onboarded:v1', true);
+  const [kitchenOnboarded, setKitchenOnboarded] = usePersistentState('scango:kitchen-onboarded:v1', true);
 
   // Active Menu items matching the selected industry engine template
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(MOCK_MENU_ITEMS.quan_an);
+  const [menuItems, setMenuItems] = usePersistentState<MenuItem[]>('scango:menu:v1', MOCK_MENU_ITEMS.quan_an);
 
   // Active orders synced across all actors
-  const [orders, setOrders] = useState<Order[]>([
+  const [orders, setOrders] = usePersistentState<Order[]>('scango:orders:v1', [
     {
       id: 'ord_1',
       tableId: '1',
@@ -90,10 +103,15 @@ export default function App() {
       timestamp: new Date(Date.now() - 60000), // 1 min ago
       paymentMode: 'Pay-Later',
     }
-  ]);
+  ], {
+    deserialize: (value) => (JSON.parse(value) as Order[]).map((order) => ({
+      ...order,
+      timestamp: new Date(String(order.timestamp)),
+    })),
+  });
 
   // Active loyalty list
-  const [loyaltyMembers, setLoyaltyMembers] = useState<LoyaltyMember[]>(MOCK_LOYALTY_MEMBERS);
+  const [loyaltyMembers, setLoyaltyMembers] = usePersistentState<LoyaltyMember[]>('scango:loyalty:v1', MOCK_LOYALTY_MEMBERS);
 
   // Staff accounts
   const [staffAccounts, setStaffAccounts] = useState<StaffAccount[]>([
@@ -111,8 +129,13 @@ export default function App() {
   // Layout views toggle
   const [viewMode, setViewMode] = useState<'login' | 'owner' | 'cashier' | 'kitchen' | 'customer' | 'grid' | 'solo' | 'staff'>('login');
 
-  // Load new menu template on industry change
+  const previousIndustry = useRef(tenantConfig.industry);
+
+  // Load a new menu template only when the operator changes industry.
   useEffect(() => {
+    if (previousIndustry.current === tenantConfig.industry) return;
+    previousIndustry.current = tenantConfig.industry;
+
     const selectedList = MOCK_MENU_ITEMS[tenantConfig.industry] || MOCK_MENU_ITEMS.quan_an;
     setMenuItems(selectedList);
 
@@ -179,7 +202,18 @@ export default function App() {
       discountMinAmount: 150000,
       discountAmount: 15000,
       discountEnabled: true,
+      discountTriggerType: 'auto',
+      discountConditionType: 'quantity',
+      discountTargetDishId: 'all',
     });
+    setTables([
+      { id: '1', name: 'Bàn 01' },
+      { id: '2', name: 'Bàn 02' },
+      { id: '3', name: 'Bàn 03' },
+      { id: '4', name: 'Bàn 04' },
+      { id: '5', name: 'Bàn 05' },
+      { id: '6', name: 'Bàn 06' },
+    ]);
     setMenuItems(MOCK_MENU_ITEMS.quan_an);
     setOrders([
       {
@@ -198,139 +232,144 @@ export default function App() {
     setSoloOnboarded(false);
     setCashierOnboarded(true);
     setKitchenOnboarded(true);
+    setSimulationTableId('2');
+    setNfcTriggeredAlert(null);
   };
 
   if (viewMode === 'login') {
     return (
-      <div className="min-h-screen bg-zinc-50/50 text-zinc-900 flex flex-col font-sans antialiased animate-fadeIn">
+      <div className="min-h-dvh bg-white text-zinc-900 flex flex-col font-sans antialiased animate-fadeIn">
         
-        {/* Upper Main Banner Workspace (simplified for login portal) */}
-        <header className="bg-white border-b border-zinc-200 px-6 py-4 flex justify-between items-center z-10 select-none shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center font-extrabold text-white text-xl tracking-tighter shadow-sm select-none">
-              S⚡G
+        {/* Header */}
+        <header className="bg-white border-b border-zinc-100 px-4 sm:px-6 py-3 flex justify-between items-center z-10 select-none">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center shadow-sm">
+              <Nfc className="w-4.5 h-4.5 text-white" />
             </div>
             <div>
-              <p className="text-[9.5px] text-zinc-500 font-mono tracking-widest leading-none font-extrabold uppercase">CỔNG ĐĂNG NHẬP QUẢN TRỊ & MUA SẮM</p>
-              <h1 className="text-sm font-semibold text-zinc-900 tracking-tight mt-0.5">
-                ScanGo Lite Space Portal
-              </h1>
+              <h1 className="text-sm font-bold text-zinc-900 tracking-tight leading-none">ScanGo</h1>
+              <p className="text-[10px] text-zinc-400 font-medium mt-0.5">{tenantConfig.shopName}</p>
             </div>
           </div>
-          <button 
+          <button
             type="button"
             onClick={handleResetSim}
-            className="px-3 py-1.5 text-[10.5px] font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded-lg flex items-center gap-1.5 transition-all shadow-sm uppercase cursor-pointer"
+            aria-label="Khôi phục dữ liệu demo"
+            className="min-h-9 px-3 py-1.5 text-xs font-semibold text-zinc-600 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5" /> Khôi phục ban đầu
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Reset Demo</span>
           </button>
         </header>
 
-        {/* Central Card Grid for Actor Login */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 select-none">
-          <div className="max-w-4xl w-full text-center space-y-6 animate-fadeIn">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-100 border border-zinc-200 rounded-full text-[9px] font-bold text-zinc-800 uppercase tracking-widest leading-none">
-              🚀 CHỌN VAI TRÒ ĐỂ BẮT ĐẦU ĐĂNG NHẬP
-            </div>
+        {/* Hero + Role Cards */}
+        <main id="main-content" className="flex-1 flex flex-col items-center justify-center px-4 py-10 sm:py-16">
+          <div className="max-w-5xl w-full space-y-8">
             
-            <div className="space-y-2">
-              <h1 className="text-3xl md:text-4xl font-extrabold text-zinc-900 tracking-tight leading-tight">
+            {/* Hero text */}
+            <div className="text-center space-y-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-50 border border-orange-100 rounded-full text-[10px] font-bold text-orange-700 uppercase tracking-widest">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                MVP Demo — Chọn vai trò
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 tracking-tight">
                 {tenantConfig.shopName}
-              </h1>
-              <p className="text-xs md:text-sm text-zinc-650 max-w-xl mx-auto leading-relaxed">
-                Chào mừng bạn đến với hệ thống ScanGo Lite. Trải nghiệm hệ thống đặt món hoàn chỉnh dán góc bàn, vận hành không cần bất kỳ linh kiện hay thiết bị POS đắt đỏ nào!
+              </h2>
+              <p className="text-sm text-zinc-500 max-w-md mx-auto">
+                Hệ thống đặt món QR — không cần thiết bị POS
               </p>
             </div>
 
-            {/* Actor Selection Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto mt-8">
-              {/* Card Owner */}
-              <button
-                type="button"
-                onClick={() => setViewMode('owner')}
-                className="bg-white border border-zinc-200 hover:border-zinc-900 rounded-2xl p-5 text-left flex flex-col justify-between hover:shadow-md transition-all h-[180px] cursor-pointer group"
-              >
-                <div className="flex justify-between items-start w-full">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-650 border border-zinc-200 group-hover:scale-105 transition-transform">
-                     <Building className="w-5 h-5" />
-                  </div>
-                  <span className="text-[8px] bg-zinc-100 text-zinc-800 border border-zinc-200 px-1.5 py-0.5 rounded font-bold font-mono uppercase tracking-wider">Chủ quán</span>
-                </div>
-                <div className="mt-2 text-left">
-                  <h4 className="text-[12.5px] font-bold text-zinc-900 uppercase tracking-tight group-hover:text-zinc-900 transition-colors">1. CHỦ CỬA HÀNG (Owner)</h4>
-                  <p className="text-[10.5px] text-zinc-500 line-clamp-3 mt-1 leading-normal font-medium">Báo cáo doanh thu realtime, sửa menu món ăn, thiết lập khuyến mãi tự động và lập QR Code dán bàn.</p>
-                </div>
-              </button>
-
-              {/* Card Cashier */}
-              <button
-                type="button"
-                onClick={() => setViewMode('cashier')}
-                className="bg-white border border-zinc-200 hover:border-zinc-900 rounded-2xl p-5 text-left flex flex-col justify-between hover:shadow-md transition-all h-[180px] cursor-pointer group"
-              >
-                <div className="flex justify-between items-start w-full">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-650 border border-zinc-200 group-hover:scale-105 transition-transform">
-                     <Wallet className="w-5 h-5" />
-                  </div>
-                  <span className="text-[8px] bg-zinc-100 text-zinc-800 border border-zinc-200 px-1.5 py-0.5 rounded font-bold font-mono uppercase tracking-wider">Thu ngân</span>
-                </div>
-                <div className="mt-2 text-left">
-                  <h4 className="text-[12.5px] font-bold text-zinc-900 uppercase tracking-tight group-hover:text-zinc-900 transition-colors">2. THU NGÂN QUẦY (Cashier)</h4>
-                  <p className="text-[10.5px] text-zinc-500 line-clamp-3 mt-1 leading-normal font-medium">Duyệt thanh toán tiền mặt/chuyển khoản ngân hàng, hỗ trợ tách lẻ tài chính (Split Bill) thông minh.</p>
-                </div>
-              </button>
-
-              {/* Card Kitchen */}
-              <button
-                type="button"
-                onClick={() => setViewMode('kitchen')}
-                className="bg-white border border-zinc-200 hover:border-zinc-900 rounded-2xl p-5 text-left flex flex-col justify-between hover:shadow-md transition-all h-[180px] cursor-pointer group"
-              >
-                <div className="flex justify-between items-start w-full">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-650 border border-zinc-200 group-hover:scale-105 transition-transform">
-                     <ChefHat className="w-5 h-5" />
-                  </div>
-                  <span className="text-[8px] bg-zinc-100 text-zinc-800 border border-zinc-200 px-1.5 py-0.5 rounded font-bold font-mono uppercase tracking-wider">Nhà bếp</span>
-                </div>
-                <div className="mt-2 text-left">
-                  <h4 className="text-[12.5px] font-bold text-zinc-900 uppercase tracking-tight group-hover:text-zinc-900 transition-colors">3. TRẠM KDS BẾP (Kitchen)</h4>
-                  <p className="text-[10.5px] text-zinc-500 line-clamp-3 mt-1 leading-normal font-medium">Hiển thị màn hình bếp trực quan, điều phối đơn nấu nướng theo thứ tự thời gian gọi chuẩn xác.</p>
-                </div>
-              </button>
-
-              {/* Card Solo Owner 3-in-1 */}
+            {/* Role Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {/* Solo — featured */}
               <button
                 type="button"
                 onClick={() => setViewMode('solo')}
-                className="bg-white border-2 border-orange-200 hover:border-orange-500 rounded-2xl p-5 text-left flex flex-col justify-between hover:shadow-md hover:-translate-y-0.5 transition-all h-[180px] cursor-pointer group bg-gradient-to-br from-orange-50/10 via-white to-white"
+                className="lg:order-3 bg-zinc-950 hover:bg-zinc-900 rounded-2xl p-5 text-left flex flex-col gap-3 transition-all cursor-pointer shadow-md border border-zinc-800 min-h-[160px]"
               >
                 <div className="flex justify-between items-start w-full">
-                  <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 border border-orange-200 group-hover:scale-105 transition-transform animate-pulse">
-                     <Sparkles className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-[8px] bg-orange-100 text-orange-800 border border-orange-200 px-1.5 py-0.5 rounded font-extrabold font-mono uppercase tracking-wider">3-Trong-1</span>
+                  <span className="text-[9px] bg-white/20 text-white px-2 py-0.5 rounded-full font-bold tracking-wider">3-IN-1</span>
                 </div>
-                <div className="mt-2 text-left">
-                  <h4 className="text-[12.5px] font-bold text-orange-850 uppercase tracking-tight group-hover:text-orange-950 transition-colors">⚡ CHỦ TOÀN NĂNG (Solo)</h4>
-                  <p className="text-[10.5px] text-zinc-500 line-clamp-3 mt-1 leading-normal font-medium">Hợp nhất [Chủ + Thu Ngân + Đầu Bếp] rảnh tay. Chấp nhận đơn, nấu, thu tiền 1 chạm, quản lý kho tức khắc!</p>
+                <div>
+                  <p className="text-[11px] font-bold text-white/70 uppercase tracking-wider">Chủ Toàn Năng</p>
+                  <p className="text-base font-bold text-white mt-0.5">Solo Operator</p>
+                  <p className="text-[11px] text-white/60 mt-1">Đặt + Nấu + Thu tiền</p>
                 </div>
               </button>
 
-              {/* Card Customer */}
+              {/* Owner */}
+              <button
+                type="button"
+                onClick={() => setViewMode('owner')}
+                className="lg:order-1 bg-white border border-zinc-200 hover:border-orange-300 hover:shadow-md rounded-2xl p-5 text-left flex flex-col gap-3 transition-all cursor-pointer group min-h-[160px]"
+              >
+                <div className="flex justify-between items-start w-full">
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
+                    <Building className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <span className="text-[9px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full font-bold tracking-wider">OWNER</span>
+                </div>
+                <div>
+                  <p className="text-base font-bold text-zinc-900">Chủ Quán</p>
+                  <p className="text-[11px] text-zinc-400 mt-1">Báo cáo, menu, QR bàn</p>
+                </div>
+              </button>
+
+              {/* Cashier */}
+              <button
+                type="button"
+                onClick={() => setViewMode('cashier')}
+                className="lg:order-2 bg-white border border-zinc-200 hover:border-blue-300 hover:shadow-md rounded-2xl p-5 text-left flex flex-col gap-3 transition-all cursor-pointer group min-h-[160px]"
+              >
+                <div className="flex justify-between items-start w-full">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+                    <Wallet className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="text-[9px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full font-bold tracking-wider">CASHIER</span>
+                </div>
+                <div>
+                  <p className="text-base font-bold text-zinc-900">Thu Ngân</p>
+                  <p className="text-[11px] text-zinc-400 mt-1">Thanh toán, tích điểm</p>
+                </div>
+              </button>
+
+              {/* Kitchen */}
+              <button
+                type="button"
+                onClick={() => setViewMode('kitchen')}
+                className="lg:order-4 bg-white border border-zinc-200 hover:border-amber-300 hover:shadow-md rounded-2xl p-5 text-left flex flex-col gap-3 transition-all cursor-pointer group min-h-[160px]"
+              >
+                <div className="flex justify-between items-start w-full">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center">
+                    <ChefHat className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <span className="text-[9px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full font-bold tracking-wider">KITCHEN</span>
+                </div>
+                <div>
+                  <p className="text-base font-bold text-zinc-900">KDS Bếp</p>
+                  <p className="text-[11px] text-zinc-400 mt-1">Nhận đơn, cập nhật trạng thái</p>
+                </div>
+              </button>
+
+              {/* Customer */}
               <button
                 type="button"
                 onClick={() => setViewMode('customer')}
-                className="bg-white border border-zinc-200 hover:border-zinc-900 rounded-2xl p-5 text-left flex flex-col justify-between hover:shadow-md transition-all h-[180px] cursor-pointer group"
+                className="lg:order-5 bg-white border border-zinc-200 hover:border-emerald-300 hover:shadow-md rounded-2xl p-5 text-left flex flex-col gap-3 transition-all cursor-pointer group min-h-[160px]"
               >
                 <div className="flex justify-between items-start w-full">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-650 border border-zinc-200 group-hover:scale-105 transition-transform">
-                     <Smartphone className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                    <Smartphone className="w-5 h-5 text-emerald-600" />
                   </div>
-                  <span className="text-[8px] bg-zinc-100 text-zinc-800 border border-zinc-200 px-1.5 py-0.5 rounded font-bold font-mono uppercase tracking-wider">Khách hàng</span>
+                  <span className="text-[9px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full font-bold tracking-wider">CUSTOMER</span>
                 </div>
-                <div className="mt-2 text-left">
-                  <h4 className="text-[12.5px] font-bold text-zinc-900 uppercase tracking-tight group-hover:text-zinc-900 transition-colors">4. KHÁCH GỌI MÓN (Customer)</h4>
-                  <p className="text-[10.5px] text-zinc-500 line-clamp-3 mt-1 leading-normal font-medium">Đặt món quét mã tại bàn, cập nhật trạng thái đơn nấu realtime, đăng ký Loyalty không cần mật khẩu.</p>
+                <div>
+                  <p className="text-base font-bold text-zinc-900">Khách Hàng</p>
+                  <p className="text-[11px] text-zinc-400 mt-1">Quét QR, gọi món, theo dõi</p>
                 </div>
               </button>
 
@@ -353,16 +392,17 @@ export default function App() {
               </button>
             </div>
 
-            {/* Quick config in Login page */}
-            <div className="max-w-2xl mx-auto bg-zinc-50 border border-zinc-200 p-5 rounded-2xl tracking-normal space-y-3.5 mt-8 shadow-sm">
-              <div className="flex items-center gap-2 text-zinc-900 justify-center">
-                <Settings className="w-4 h-4 text-zinc-500 animate-spin-slow" />
-                <span className="text-[10.5px] font-bold uppercase tracking-wider">Cấu hình mô hình quán kinh doanh</span>
+            {/* Config section */}
+            <div className="max-w-xl mx-auto bg-zinc-50 border border-zinc-200 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Settings className="w-4 h-4 text-zinc-400" />
+                <span className="text-xs font-bold text-zinc-700 uppercase tracking-wider">Cấu hình quán</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left text-xs">
-                <div className="space-y-1">
-                  <label className="text-[9.5px] font-bold uppercase text-zinc-650 block tracking-wide">Ngành nghề (Tự động thích nghi menu):</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-wide block" htmlFor="industry-select">Ngành nghề</label>
                   <select
+                    id="industry-select"
                     value={tenantConfig.industry}
                     onChange={(e) => {
                       const industry = e.target.value as any;
@@ -379,43 +419,43 @@ export default function App() {
                         shopName: shopNames[industry] || 'ScanGo Shop' 
                       }));
                     }}
-                    className="w-full bg-white border border-zinc-250 rounded-xl px-3 py-2 text-sm text-zinc-900 font-semibold focus:outline-none focus:border-zinc-900 cursor-pointer h-10 shadow-sm"
+                    className="w-full bg-white border border-zinc-200 rounded-lg px-3 h-10 text-sm text-zinc-900 font-medium focus:outline-none focus:border-zinc-900 cursor-pointer"
                   >
-                    <option value="quan_an">🍜 Quán ăn / Phở / Noodle Shop</option>
-                    <option value="quan_cafe">☕ Quán Café / Nước giải khát</option>
-                    <option value="nha_hang">🍻 Nhà hàng / Quán nhậu / Lẩu gầm cầu</option>
-                    <option value="tiem_banh">🥐 Tiệm bánh ngọt Pháp / Cakes</option>
-                    <option value="tra_sua">🧋 Quán Trà sữa Boba / Pudding</option>
+                    <option value="quan_an">Quán ăn / Phở</option>
+                    <option value="quan_cafe">Quán Café</option>
+                    <option value="nha_hang">Nhà hàng / Quán nhậu</option>
+                    <option value="tiem_banh">Tiệm bánh</option>
+                    <option value="tra_sua">Trà sữa Boba</option>
                   </select>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[9.5px] font-bold uppercase text-zinc-650 block tracking-wide">Hành vi thanh toán mặc định:</label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-wide block" htmlFor="payment-select">Thanh toán</label>
                   <select
+                    id="payment-select"
                     value={tenantConfig.paymentMode}
                     onChange={(e) => setTenantConfig(prev => ({ ...prev, paymentMode: e.target.value as any }))}
-                    className="w-full bg-white border border-zinc-250 rounded-xl px-3 py-2 text-sm text-zinc-900 font-semibold focus:outline-none focus:border-zinc-900 cursor-pointer h-10 shadow-sm"
+                    className="w-full bg-white border border-zinc-200 rounded-lg px-3 h-10 text-sm text-zinc-900 font-medium focus:outline-none focus:border-zinc-900 cursor-pointer"
                   >
-                    <option value="Pay-Later">💵 Trả sau (Ăn xong rồi thu ngân tính tiền)</option>
-                    <option value="Pay-First">💳 Trả trước (Thanh toán để gửi lệnh bếp nấu)</option>
+                    <option value="Pay-Later">Trả sau (ăn xong tính)</option>
+                    <option value="Pay-First">Trả trước (thanh toán để nấu)</option>
                   </select>
                 </div>
               </div>
             </div>
 
           </div>
-        </div>
+        </main>
 
-        {/* Small branding label */}
-        <footer className="py-4 text-center border-t border-zinc-200/50 bg-zinc-50 text-[9px] font-mono text-zinc-500 uppercase select-none">
-          ScanGo Lite Workspace Portal • Real-time Data Synced across all connected systems
+        <footer className="py-3 text-center border-t border-zinc-100 text-[10px] font-mono text-zinc-400 select-none">
+          ScanGo MVP • localStorage demo
         </footer>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50/30 text-zinc-800 flex flex-col font-sans antialiased">
+    <div className="min-h-dvh bg-zinc-50/30 text-zinc-800 flex flex-col font-sans antialiased">
       
       {/* Upper Main Banner Workspace */}
       <header className="bg-white border-b border-zinc-200 px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 z-10 select-none shadow-sm">
@@ -434,46 +474,47 @@ export default function App() {
         </div>
 
         {/* Workspace controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="bg-zinc-150/80 border border-zinc-200 rounded-xl p-0.5 flex text-xs font-semibold shadow-inner">
+        <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          <nav aria-label="Chuyển vai trò" className="bg-zinc-100 border border-zinc-200 rounded-xl p-1 flex w-max min-w-full md:min-w-0 gap-0.5">
             <button 
               onClick={() => setViewMode('login')}
-              className="px-3 py-1.5 rounded-lg text-zinc-800 hover:bg-zinc-200 font-bold flex items-center gap-1 text-xs item-center shrink-0"
-              title="Quay lại Cổng Chọn Vai Trò"
+              className="px-3 py-1.5 rounded-lg text-zinc-500 hover:bg-white hover:text-zinc-900 font-medium flex items-center gap-1.5 text-xs shrink-0 transition-colors cursor-pointer min-h-[36px]"
+              title="Quay lại"
             >
-              🚪 Đăng xuất
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+              Thoát
             </button>
             <button 
               onClick={() => setViewMode('solo')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                viewMode === 'solo' ? 'bg-orange-600 text-white shadow-sm font-bold animate-pulse' : 'text-zinc-700 hover:bg-zinc-200/50 hover:text-orange-600 font-bold'
+              className={`px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold cursor-pointer min-h-[36px] ${
+                viewMode === 'solo' ? 'bg-zinc-950 text-white shadow-sm' : 'text-zinc-600 hover:bg-white'
               }`}
             >
-              👑 Chủ Toàn Năng
+              Solo
             </button>
             <button 
               onClick={() => setViewMode('owner')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                viewMode === 'owner' ? 'bg-zinc-900 text-white shadow-sm font-bold' : 'text-zinc-700 hover:bg-zinc-200/50'
+              className={`px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold cursor-pointer min-h-[36px] ${
+                viewMode === 'owner' ? 'bg-orange-500 text-white shadow-sm' : 'text-zinc-600 hover:bg-white'
               }`}
             >
-              Chủ quán
+              Owner
             </button>
             <button 
               onClick={() => setViewMode('cashier')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                viewMode === 'cashier' ? 'bg-zinc-900 text-white shadow-sm font-bold' : 'text-zinc-700 hover:bg-zinc-200/50'
+              className={`px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold cursor-pointer min-h-[36px] ${
+                viewMode === 'cashier' ? 'bg-blue-500 text-white shadow-sm' : 'text-zinc-600 hover:bg-white'
               }`}
             >
-              Thu ngân
+              Cashier
             </button>
             <button 
               onClick={() => setViewMode('kitchen')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                viewMode === 'kitchen' ? 'bg-zinc-900 text-white shadow-sm font-bold' : 'text-zinc-700 hover:bg-zinc-200/50'
+              className={`px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold cursor-pointer min-h-[36px] ${
+                viewMode === 'kitchen' ? 'bg-amber-500 text-white shadow-sm' : 'text-zinc-600 hover:bg-white'
               }`}
             >
-              KDS Bếp
+              Kitchen
             </button>
             <button 
               onClick={() => setViewMode('staff')}
@@ -485,109 +526,92 @@ export default function App() {
             </button>
             <button 
               onClick={() => setViewMode('customer')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                viewMode === 'customer' ? 'bg-zinc-900 text-white shadow-sm font-bold' : 'text-zinc-700 hover:bg-zinc-200/50'
+              className={`px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold cursor-pointer min-h-[36px] ${
+                viewMode === 'customer' ? 'bg-emerald-500 text-white shadow-sm' : 'text-zinc-600 hover:bg-white'
               }`}
             >
-              Khách hàng
+              Customer
             </button>
-          </div>
+          </nav>
         </div>
       </header>
 
       {/* Main Sandbox Workspace Layout */}
       <main className="flex-1 p-4 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-4 gap-6 animate-fadeIn">
         
-        {/* Playful Simulation Sandbox Helper panel */}
-        <section className="lg:col-span-1 bg-white border border-zinc-200 rounded-2xl p-4 space-y-4 h-fit select-none shadow-sm">
-          <div className="flex items-center gap-2 text-zinc-900 border-b border-zinc-100 pb-3">
-            <Sparkles className="w-4 h-4 text-zinc-600 fill-zinc-100" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-900">Giả Lập Hệ Thống</h2>
+        {/* Simulation Control Panel */}
+        <section className="lg:col-span-1 bg-white border border-zinc-200 rounded-2xl p-4 space-y-4 h-fit select-none">
+          <div className="flex items-center gap-2 border-b border-zinc-100 pb-3">
+            <Flame className="w-4 h-4 text-orange-500" />
+            <h2 className="text-xs font-bold text-zinc-900">Giả Lập</h2>
           </div>
 
-          {/* Quick preset changer config templates */}
+          {/* Industry preset */}
           <div className="space-y-2">
-            <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-bold block">Chọn Kiểu Quán</span>
-            <div className="grid grid-cols-1 gap-1.5">
-              <button 
-                onClick={() => setTenantConfig(prev => ({ ...prev, industry: 'quan_an', shopName: 'Phở Kinh Kỳ' }))}
-                className={`py-2 px-3 rounded-xl border text-[11px] font-medium transition-all cursor-pointer flex items-center justify-between ${
-                  tenantConfig.industry === 'quan_an'
-                    ? 'border-zinc-900 bg-zinc-950 text-white shadow-sm'
-                    : 'border-zinc-250 bg-white text-zinc-700 hover:bg-zinc-50'
-                }`}
-              >
-                <span>🍜 Phở Kinh Kỳ</span>
-                {tenantConfig.industry === 'quan_an' && <span className="text-[9px] bg-zinc-800 text-zinc-200 px-1.5 py-0.5 rounded font-mono">Đang chạy</span>}
-              </button>
-              <button 
-                onClick={() => setTenantConfig(prev => ({ ...prev, industry: 'quan_cafe', shopName: 'Cà Phê Cổ Đô' }))}
-                className={`py-2 px-3 rounded-xl border text-[11px] font-medium transition-all cursor-pointer flex items-center justify-between ${
-                  tenantConfig.industry === 'quan_cafe'
-                    ? 'border-zinc-900 bg-zinc-950 text-white shadow-sm'
-                    : 'border-zinc-250 bg-white text-zinc-700 hover:bg-zinc-50'
-                }`}
-              >
-                <span>☕ Cà Phê Cổ Đô</span>
-                {tenantConfig.industry === 'quan_cafe' && <span className="text-[9px] bg-zinc-800 text-zinc-200 px-1.5 py-0.5 rounded font-mono">Đang chạy</span>}
-              </button>
-              <button 
-                onClick={() => setTenantConfig(prev => ({ ...prev, industry: 'nha_hang', shopName: 'Nhà Hàng Lá Đỏ' }))}
-                className={`py-2 px-3 rounded-xl border text-[11px] font-medium transition-all cursor-pointer flex items-center justify-between ${
-                  tenantConfig.industry === 'nha_hang'
-                    ? 'border-zinc-900 bg-zinc-950 text-white shadow-sm'
-                    : 'border-zinc-250 bg-white text-zinc-700 hover:bg-zinc-50'
-                }`}
-              >
-                <span>🍻 Nhà Hàng Lá Đỏ</span>
-                {tenantConfig.industry === 'nha_hang' && <span className="text-[9px] bg-zinc-800 text-zinc-200 px-1.5 py-0.5 rounded font-mono">Đang chạy</span>}
-              </button>
+            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold block">Kiểu quán</span>
+            <div className="grid grid-cols-1 gap-1">
+              {[
+                { id: 'quan_an', label: 'Quán Phở', name: 'Phở Kinh Kỳ' },
+                { id: 'quan_cafe', label: 'Quán Café', name: 'Cà Phê Cổ Đô' },
+                { id: 'nha_hang', label: 'Nhà Hàng', name: 'Nhà Hàng Lá Đỏ' },
+              ].map(({ id, label, name }) => (
+                <button
+                  key={id}
+                  onClick={() => setTenantConfig(prev => ({ ...prev, industry: id as any, shopName: name }))}
+                  className={`py-2 px-3 rounded-lg border text-xs font-medium transition-colors cursor-pointer flex items-center justify-between ${
+                    tenantConfig.industry === id
+                      ? 'border-zinc-900 bg-zinc-900 text-white'
+                      : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+                  }`}
+                >
+                  <span>{label}</span>
+                  {tenantConfig.industry === id && <Check className="w-3 h-3" />}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Connected Flow Guide Step Status */}
-          <div className="bg-zinc-50 rounded-xl p-3 space-y-1 text-[11px] text-zinc-600 leading-normal border border-zinc-100">
-            <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-bold block">Quản lý đồng bộ</span>
+          {/* Order status */}
+          <div className="bg-zinc-50 rounded-xl p-3 border border-zinc-100">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold block mb-2">Đơn đang xử lý</span>
             {orders.length === 0 ? (
-              <p>Chưa có đơn hàng nào phát sinh. Hãy thử chạm bàn giả lập góc dưới để thử nghiệm.</p>
+              <p className="text-xs text-zinc-400">Chưa có đơn nào</p>
             ) : (
-              <div className="space-y-1">
-                <p className="font-semibold text-zinc-900">
-                  Có {orders.length} hóa đơn đang đồng bộ.
-                </p>
-                <div className="flex gap-1.5 flex-wrap pt-1">
-                  {orders.map((o) => (
-                    <span key={o.id} className="text-[9px] font-semibold bg-zinc-200/60 px-1.5 py-0.5 rounded text-zinc-850">
-                      Bàn {o.tableId} ({o.status === 'pending' ? 'Chờ' : o.status === 'cooking' ? 'Nấu' : o.status === 'ready' ? 'Bưng' : 'Paid'})
-                    </span>
-                  ))}
-                </div>
+              <div className="flex gap-1 flex-wrap">
+                {orders.map((o) => (
+                  <span key={o.id} className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    o.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                    o.status === 'cooking' ? 'bg-orange-100 text-orange-700' :
+                    o.status === 'ready' ? 'bg-emerald-100 text-emerald-700' :
+                    'bg-zinc-100 text-zinc-500'
+                  }`}>
+                    B{o.tableId}
+                  </span>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Action pushes */}
-          <div className="space-y-2 border-t border-zinc-100 pt-3 text-[10px]">
-            <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-bold block">Tạo đơn giả lập nhanh</span>
-            
+          {/* Quick actions */}
+          <div className="space-y-2 pt-1">
             <button 
               onClick={triggerAutoOrderSimulation}
-              className="w-full bg-zinc-950 hover:bg-zinc-900 text-white py-2 rounded-xl font-medium flex items-center justify-center gap-1.5 shadow-sm transition-all text-xs cursor-pointer active:scale-98"
+              className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors text-xs cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" /> Khách bàn mới chọn món (QR)
+              <Plus className="w-4 h-4" /> Tạo đơn mới
             </button>
-            
             <button 
               onClick={handleClearAllOrders}
-              className="w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-800 py-2 rounded-xl font-medium block text-center border border-zinc-250 cursor-pointer text-xs active:scale-98"
+              className="w-full bg-zinc-50 hover:bg-zinc-100 text-zinc-600 py-2.5 rounded-xl font-medium text-xs border border-zinc-200 cursor-pointer transition-colors"
             >
-              Dọn sạch bàn trống (Clear)
+              Xóa tất cả đơn
             </button>
           </div>
         </section>
 
         {/* Synced Phone Simulator Display (Focused view) */}
         <section className="lg:col-span-3 grid grid-cols-1 max-w-md mx-auto w-full">
+          <Suspense fallback={<RoleLoading />}>
           
           {/* ACTOR SOLO: ALL IN ONE */}
           {viewMode === 'solo' && (
@@ -765,7 +789,7 @@ export default function App() {
               </PhoneSimulator>
             </div>
           )}
-
+          </Suspense>
         </section>
 
       </main>

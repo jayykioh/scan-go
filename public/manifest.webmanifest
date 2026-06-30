@@ -1,0 +1,18 @@
+{
+  "name": "ScanGo - Gọi món QR",
+  "short_name": "ScanGo",
+  "description": "Gọi món QR và vận hành tinh gọn cho quán ăn nhỏ.",
+  "lang": "vi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f8fa",
+  "theme_color": "#155bd0",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

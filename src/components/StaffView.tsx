@@ -184,7 +184,7 @@ export default function StaffView({
                 </div>
                 <div className="text-[11px] text-[#707070] space-y-1 mb-3">
                   {order.items.map(item => (
-                    <div key={item.menuItemId} className="flex justify-between">
+                    <div key={item.menuId} className="flex justify-between">
                       <span>{item.quantity}x {item.name}</span>
                       <span className="tabular-nums">{item.price.toLocaleString()}đ</span>
                     </div>

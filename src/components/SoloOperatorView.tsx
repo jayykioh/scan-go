@@ -24,7 +24,9 @@ import {
   UserPlus,
   Building2,
   ArrowRight,
-  Check
+  Check,
+  Coffee,
+  CreditCard
 } from 'lucide-react';
 
 interface SoloProps {
@@ -670,7 +672,7 @@ export default function SoloOperatorView({
                         : 'bg-white border-[#B5C7D8] text-[#2D2B30] hover:bg-[#F5F5F7]'
                     }`}
                   >
-                    <span className="text-[16px]">🍜</span>
+                    <UtensilsCrossed className="w-5 h-5" />
                     <span className="text-[10px] font-semibold uppercase">Quán ăn / Phở</span>
                   </button>
                   <button 
@@ -681,7 +683,7 @@ export default function SoloOperatorView({
                         : 'bg-white border-[#B5C7D8] text-[#2D2B30] hover:bg-[#F5F5F7]'
                     }`}
                   >
-                    <span className="text-[16px]">☕</span>
+                    <Coffee className="w-5 h-5" />
                     <span className="text-[10px] font-semibold uppercase">Cà phê / Trà sữa</span>
                   </button>
                 </div>
@@ -725,7 +727,7 @@ export default function SoloOperatorView({
                     tempPayMode === 'Pay-Later' ? 'bg-orange-50 text-[#2D2B30] border-orange-500' : 'bg-white border-[#B5C7D8] text-[#2D2B30]'
                   }`}
                 >
-                  <span className="text-xl">🧾</span>
+                  <Receipt className="w-5 h-5 text-orange-600" />
                   <div className="text-[10px] font-bold uppercase leading-tight">Ăn xong trả sau<br/>(Bán chạy nhất)</div>
                 </button>
                 <button 
@@ -734,7 +736,7 @@ export default function SoloOperatorView({
                     tempPayMode === 'Pay-First' ? 'bg-orange-50 text-[#2D2B30] border-orange-500' : 'bg-white border-[#B5C7D8] text-[#2D2B30]'
                   }`}
                 >
-                  <span className="text-xl">💳</span>
+                  <CreditCard className="w-5 h-5 text-orange-600" />
                   <div className="text-[10px] font-bold uppercase leading-tight">Gửi đơn trả trước<br/>(Chống bùng đơn)</div>
                 </button>
               </div>
@@ -802,7 +804,7 @@ export default function SoloOperatorView({
             <div className="flex items-center gap-1.5">
               <span className="inline-flex w-2.5 h-2.5 rounded-full bg-orange-505 animate-pulse shrink-0"></span>
               <span className="text-[9.5px] uppercase tracking-wider font-mono font-black text-orange-400 flex items-center gap-1">
-                ⚙️ HẠNG GÓI: {tenantConfig.pricingTier.toUpperCase()} UNLOCKED
+                <Cpu className="w-3 h-3" /> HẠNG GÓI: {tenantConfig.pricingTier.toUpperCase()} UNLOCKED
               </span>
             </div>
             <h1 className="text-base font-black tracking-tight">{tenantConfig.shopName}</h1>
@@ -811,10 +813,10 @@ export default function SoloOperatorView({
           <button 
             type="button"
             onClick={togglePaymentModeInSolo}
-            className="text-[9.5px] font-bold uppercase py-1 px-3 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded-full text-orange-300 transition-all cursor-pointer select-none"
+            className="text-[9.5px] font-bold uppercase py-1 px-3 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded-full text-orange-300 transition-all cursor-pointer select-none flex items-center gap-1"
             title="Nhấp để chuyển nhanh qua lại Trả Trước / Trả Sau"
           >
-            {tenantConfig.paymentMode === 'Pay-First' ? '💳 QR Trả Trước' : '💵 Trả Sau'}
+            {tenantConfig.paymentMode === 'Pay-First' ? <><CreditCard className="w-3 h-3" /> QR Trả Trước</> : <><Receipt className="w-3 h-3" /> Trả Sau</>}
           </button>
         </div>
 
@@ -955,7 +957,7 @@ export default function SoloOperatorView({
                             <div className="flex items-center gap-1.5">
                               <span className="text-[13px] font-black text-zinc-950">{getTableName(order.tableId)}</span>
                               {order.paymentMode === 'Pay-First' && (
-                                <span className="text-[8.5px] bg-[#155BD0]/10 text-[#155BD0] border border-[#155BD0]/30 font-black px-1 rounded uppercase">TRẢ TRƯỚC</span>
+                                <span className="text-[8.5px] bg-zinc-100 text-zinc-800 border border-zinc-200 font-black px-1 rounded uppercase">TRẢ TRƯỚC</span>
                               )}
                             </div>
                             <span className="text-[9px] font-mono text-zinc-400 font-bold block mt-0.5">MÃ: #{order.id.slice(-6).toUpperCase()} • {new Date(order.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
@@ -1273,13 +1275,13 @@ export default function SoloOperatorView({
             
             {/* PRICING PLANS COMPATIBILITY LOCK ON PRO PORTIONING SYSTEM */}
             {tenantConfig.pricingTier !== 'Pro' ? (
-              <div className="bg-gradient-to-br from-[#1e1b4b]/95 to-[#311042] text-white rounded-2xl p-6 text-center space-y-4 border border-purple-500/30">
-                <div className="w-12 h-12 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/40 flex items-center justify-center mx-auto animate-bounce">
+              <div className="bg-zinc-950 text-white rounded-2xl p-6 text-center space-y-4 border border-zinc-800 shadow-md">
+                <div className="w-12 h-12 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-700 flex items-center justify-center mx-auto">
                   <Shield className="w-6 h-6" />
                 </div>
                 <div className="space-y-1.5">
                   <h3 className="text-sm font-black text-white">Chức năng Định lượng Vật tư & Tính năng Cảnh báo tự động thuộc gói PRO!</h3>
-                  <p className="text-[11px] text-purple-200 leading-relaxed max-w-xs mx-auto font-sans">
+                  <p className="text-[11px] text-zinc-400 leading-relaxed max-w-xs mx-auto font-sans">
                     Nâng tầm quản trị quán ăn sòng phẳng hoàn hảo: tự động trừ số lượng thịt tái dải, bánh phở ra mộc và tính ra COGS/giá vốn lãi thô cực kỳ chặt chẽ!
                   </p>
                 </div>
@@ -1563,7 +1565,7 @@ export default function SoloOperatorView({
                     
                     <button
                       type="submit"
-                      className="w-full bg-[#155BD0] text-white py-1.5 rounded-lg text-[9.5px] font-black uppercase flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border-none"
+                      className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-1.5 rounded-lg text-[9.5px] font-black uppercase flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border-none transition-colors"
                     >
                       <UserPlus className="w-3.5 h-3.5" /> Ghi nhận Đăng ký
                     </button>

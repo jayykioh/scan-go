@@ -27,7 +27,11 @@ import {
   Gift,
   PlusCircle,
   Save,
-  Trash
+  Trash,
+  Coffee,
+  Receipt,
+  UtensilsCrossed,
+  CreditCard
 } from 'lucide-react';
 
 interface OwnerProps {
@@ -381,7 +385,7 @@ export default function OwnerView({
       <div className="flex-grow flex flex-col bg-white p-[34px] font-sans justify-between text-[#2D2B30] h-full" id="owner-onboarding">
         <div>
           <div className="w-[50px] h-[50px] rounded-[21px] bg-[#F5F5F7] border border-[#B5C7D8] flex items-center justify-center mb-[13px]">
-            <Building2 className="w-[24px] h-[24px] text-[#155BD0]" />
+            <Building2 className="w-[24px] h-[24px] text-zinc-900" />
           </div>
           <h2 className="text-[27px] font-medium text-[#2D2B30] tracking-tight text-balance leading-tight">
             Onboarding Workspace
@@ -395,7 +399,7 @@ export default function OwnerView({
               <div 
                 key={idx} 
                 className={`h-1 rounded-[21px] flex-1 transition-all duration-350 ${
-                  idx <= onboardStep ? 'bg-[#155BD0]' : 'bg-[#E5E5EA]'
+                  idx <= onboardStep ? 'bg-zinc-900' : 'bg-[#E5E5EA]'
                 }`}
               />
             ))}
@@ -405,7 +409,7 @@ export default function OwnerView({
         <div className="my-[13px] flex-grow flex flex-col justify-center bg-white border border-[#B5C7D8] rounded-[21px] p-[13px] shadow-sm">
           {onboardStep === 1 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-[#155BD0] font-semibold uppercase tracking-wider">Bước 1: Khởi Tạo Quán Ăn</span>
+              <span className="text-[10px] text-zinc-900 font-semibold uppercase tracking-wider">Bước 1: Khởi Tạo Quán Ăn</span>
               <h3 className="text-[16px] font-semibold text-[#2D2B30]">Chào Chủ Quán! Thương hiệu của bạn là gì?</h3>
               
               <div className="space-y-[4px]">
@@ -415,7 +419,7 @@ export default function OwnerView({
                   value={tempShopName} 
                   required
                   onChange={(e) => setTempShopName(e.target.value)}
-                  className="w-full bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] px-[13px] py-2.5 text-[14px] text-[#2D2B30] focus:outline-2 focus:outline-[#155BD0] focus:outline-offset-2 font-semibold shadow-inner"
+                  className="w-full bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] px-[13px] py-2.5 text-[14px] text-[#2D2B30] focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2 font-semibold shadow-inner"
                   placeholder="E.g. Phở Kinh Kỳ"
                 />
               </div>
@@ -427,22 +431,22 @@ export default function OwnerView({
                     onClick={() => { setTempIndustry('quan_an'); setTempShopName('Phở Truyền Thuyết Kinh Kỳ'); }}
                     className={`p-[13px] rounded-[21px] border text-center flex flex-col items-center gap-1.5 transition-all shadow-sm ${
                       tempIndustry === 'quan_an' 
-                        ? 'bg-[#155BD0] text-white border-[#155BD0]' 
+                        ? 'bg-zinc-900 text-white border-zinc-900' 
                         : 'bg-white border-[#B5C7D8] text-[#2D2B30] hover:bg-[#F5F5F7]'
                     }`}
                   >
-                    <span className="text-[16px]">🍜</span>
+                    <UtensilsCrossed className="w-5 h-5" />
                     <span className="text-[10px] font-semibold uppercase">Quán ăn / Phở</span>
                   </button>
                   <button 
                     onClick={() => { setTempIndustry('quan_cafe'); setTempShopName('Cà Phê Rang Muối Cổ Đô'); }}
                     className={`p-[13px] rounded-[21px] border text-center flex flex-col items-center gap-1.5 transition-all shadow-sm ${
                       tempIndustry === 'quan_cafe' 
-                        ? 'bg-[#155BD0] text-white border-[#155BD0]' 
+                        ? 'bg-zinc-900 text-white border-zinc-900' 
                         : 'bg-white border-[#B5C7D8] text-[#2D2B30] hover:bg-[#F5F5F7]'
                     }`}
                   >
-                    <span className="text-[16px]">☕</span>
+                    <Coffee className="w-5 h-5" />
                     <span className="text-[10px] font-semibold uppercase">Cà phê / Trà sữa</span>
                   </button>
                 </div>
@@ -452,14 +456,14 @@ export default function OwnerView({
 
           {onboardStep === 2 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-[#155BD0] font-semibold uppercase tracking-wider">Bước 2: Gói Sản Phẩm</span>
+              <span className="text-[10px] text-zinc-900 font-semibold uppercase tracking-wider">Bước 2: Gói Sản Phẩm</span>
               <h3 className="text-[16px] font-semibold text-[#2D2B30]">Giấy phép nâng cấp Live-KDS</h3>
               
               <div className="space-y-[4px]">
                 <button 
                   onClick={() => setTempTier('Pro')}
                   className={`w-full p-[13px] rounded-[21px] border text-left transition-all flex items-center justify-between shadow-xs ${
-                    tempTier === 'Pro' ? 'bg-[#155BD0]/5 text-[#2D2B30] border-[#155BD0]' : 'bg-white text-gray-700 border-[#B5C7D8]'
+                    tempTier === 'Pro' ? 'bg-zinc-900/5 text-[#2D2B30] border-zinc-900' : 'bg-white text-gray-700 border-[#B5C7D8]'
                   }`}
                 >
                   <div className="space-y-0.5 max-w-[80%]">
@@ -476,26 +480,26 @@ export default function OwnerView({
 
           {onboardStep === 3 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-[#155BD0] font-semibold uppercase tracking-wider">Bước 3: Quy Trình Trả Tiền</span>
+              <span className="text-[10px] text-zinc-900 font-semibold uppercase tracking-wider">Bước 3: Quy Trình Trả Tiền</span>
               <h3 className="text-[16px] font-semibold text-[#2D2B30]">Chọn chính sách thanh toán tối ưu</h3>
               
               <div className="grid grid-cols-2 gap-[13px]">
                 <button 
                   onClick={() => setTempPayMode('Pay-Later')}
                   className={`p-[13px] rounded-[21px] border text-center flex flex-col items-center gap-[4px] transition-all shadow-xs ${
-                    tempPayMode === 'Pay-Later' ? 'bg-[#155BD0]/5 text-[#2D2B30] border-[#155BD0]' : 'bg-white border-[#B5C7D8] text-[#2D2B30]'
+                    tempPayMode === 'Pay-Later' ? 'bg-zinc-900/5 text-[#2D2B30] border-zinc-900' : 'bg-white border-[#B5C7D8] text-[#2D2B30]'
                   }`}
                 >
-                  <span className="text-xl">🧾</span>
+                  <Receipt className="w-5 h-5 text-zinc-900" />
                   <div className="text-[10px] font-bold uppercase leading-tight">Ăn xong trả sau<br/>(Bán chạy nhất)</div>
                 </button>
                 <button 
                   onClick={() => setTempPayMode('Pay-First')}
                   className={`p-[13px] rounded-[21px] border text-center flex flex-col items-center gap-[4px] transition-all shadow-xs ${
-                    tempPayMode === 'Pay-First' ? 'bg-[#155BD0]/5 text-[#2D2B30] border-[#155BD0]' : 'bg-white border-[#B5C7D8] text-[#2D2B30]'
+                    tempPayMode === 'Pay-First' ? 'bg-zinc-900/5 text-[#2D2B30] border-zinc-900' : 'bg-white border-[#B5C7D8] text-[#2D2B30]'
                   }`}
                 >
-                  <span className="text-xl">💳</span>
+                  <CreditCard className="w-5 h-5 text-zinc-900" />
                   <div className="text-[10px] font-bold uppercase leading-tight">Gửi đơn trả trước<br/>(Chống bùng đơn)</div>
                 </button>
               </div>
@@ -504,7 +508,7 @@ export default function OwnerView({
 
           {onboardStep === 4 && (
             <div className="space-y-[13px] text-[#2D2B30]">
-              <span className="text-[10px] text-[#155BD0] font-semibold uppercase tracking-wider flex items-center gap-1">
+              <span className="text-[10px] text-zinc-900 font-semibold uppercase tracking-wider flex items-center gap-1">
                 <Check className="w-4 h-4 text-emerald-600" /> Cấu hình sẵn sàng
               </span>
               <h3 className="text-[16px] font-semibold text-[#2D2B30]">Toàn bộ workspace đã được tối ưu!</h3>
@@ -525,7 +529,7 @@ export default function OwnerView({
 
         <button 
           onClick={nextStep}
-          className="w-full bg-[#155BD0] hover:bg-[#155BD0]/90 active:translate-y-0.5 text-white py-3.5 rounded-[21px] font-semibold text-[14px] flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+          className="w-full bg-zinc-900 hover:bg-zinc-900/90 active:translate-y-0.5 text-white py-3.5 rounded-[21px] font-semibold text-[14px] flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
         >
           {onboardStep === 4 ? 'Xác nhận Kích Hoạt!' : 'Tiếp Theo'}
           <ArrowRight className="w-3.5 h-3.5" />
@@ -547,12 +551,12 @@ export default function OwnerView({
               <span className="text-[9px] uppercase tracking-wider font-bold text-[#808080] block">QUẢN LÝ LIVE PLATFORM</span>
               <h3 className="text-[16px] font-bold text-[#2D2B30]">{tenantConfig.shopName}</h3>
               <p className="text-[11px] text-[#454547] font-medium">Mô hình: {
-                tenantConfig.industry === 'quan_an' ? '🍜 Thực khách Bắc quán ăn / Phở' : 
-                '☕ Quầy pha nước / Cà phê'
+                tenantConfig.industry === 'quan_an' ? 'Quán ăn / Phở' : 
+                'Cà phê / Trà sữa'
               }</p>
             </div>
             <div className="text-right flex flex-col items-end gap-1 select-none">
-              <span className="inline-block text-[10px] font-bold text-[#155BD0] bg-[#155BD0]/10 border border-[#155BD0]/20 px-2 py-0.5 rounded-[21px]">
+              <span className="inline-block text-[10px] font-bold text-zinc-900 bg-zinc-900/10 border border-zinc-900/20 px-2 py-0.5 rounded-[21px]">
                 Gói {tenantConfig.pricingTier.toUpperCase()}
               </span>
               <p className="text-[9px] text-[#808080] font-semibold uppercase">Workspace chủ</p>
@@ -562,9 +566,9 @@ export default function OwnerView({
           <div className="flex gap-1.5 mt-2.5">
             <button 
               onClick={handleStartOnboarding}
-              className="flex items-center gap-1 text-[10px] text-[#2D2B30] hover:bg-gray-100 bg-white px-2.5 py-1 rounded-[21px] border border-[#B5C7D8] font-semibold transition-all cursor-pointer focus:outline-2 focus:outline-[#155BD0]"
+              className="flex items-center gap-1 text-[10px] text-[#2D2B30] hover:bg-gray-100 bg-white px-2.5 py-1 rounded-[21px] border border-[#B5C7D8] font-semibold transition-all cursor-pointer focus:outline-2 focus:outline-zinc-900"
             >
-              <RefreshCw className="w-3 h-3 text-[#155BD0]" /> Cài đặt lại mô hình
+              <RefreshCw className="w-3 h-3 text-zinc-900" /> Cài đặt lại mô hình
             </button>
           </div>
         </div>
@@ -620,7 +624,7 @@ export default function OwnerView({
 
               <div className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-xs">
                 <span className="text-[10px] text-[#808080] block uppercase font-bold tracking-wider">Biên Lợi Nhuận</span>
-                <span className="text-[21px] font-bold text-[#155BD0] font-mono mt-0.5 block tabular-nums">
+                <span className="text-[21px] font-bold text-zinc-900 font-mono mt-0.5 block tabular-nums">
                   {netProfit.toLocaleString()}đ
                 </span>
                 <span className="text-[10px] text-[#808080] block mt-0.5 font-sans leading-none">Vốn NVL: {totalCost.toLocaleString()}đ</span>
@@ -631,7 +635,7 @@ export default function OwnerView({
             <div className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-xs space-y-[13px]">
               <div className="flex justify-between items-center border-b border-[#B5C7D8]/30 pb-2">
                 <span className="text-[12px] font-bold text-[#2D2B30] uppercase flex items-center gap-1.5">
-                  <Flame className="w-4 h-4 text-[#155BD0]" /> Món được đặt chọn phổ biến
+                  <Flame className="w-4 h-4 text-zinc-900" /> Món được đặt chọn phổ biến
                 </span>
                 <span className="text-[10px] bg-[#F5F5F7] border border-[#B5C7D8] text-[#454547] px-2 py-0.5 rounded-[21px] font-mono font-bold leading-none select-none">Live-chart</span>
               </div>
@@ -644,7 +648,7 @@ export default function OwnerView({
                       <div className="flex justify-between items-center text-[12px]">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 ${
-                            i === 0 ? 'bg-[#155BD0]' : i === 1 ? 'bg-slate-500' : 'bg-slate-400'
+                            i === 0 ? 'bg-zinc-900' : i === 1 ? 'bg-slate-500' : 'bg-slate-400'
                           }`}>
                             {i + 1}
                           </span>
@@ -656,7 +660,7 @@ export default function OwnerView({
                       
                       <div className="w-full bg-[#F5F5F7] rounded-full h-2 overflow-hidden border border-[#B5C7D8]/30">
                         <div 
-                          className="h-full rounded-full transition-all duration-500 bg-[#155BD0]"
+                          className="h-full rounded-full transition-all duration-500 bg-zinc-900"
                           style={{ width: `${percent}%` }}
                         />
                       </div>
@@ -671,7 +675,7 @@ export default function OwnerView({
               <div className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-xs">
                 <div className="flex justify-between items-center border-b border-[#B5C7D8]/30 pb-2">
                   <span className="text-[12px] font-bold text-[#2D2B30] uppercase flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-[#155BD0]" /> Tích luỹ hội viên ({loyaltyMembers.length} người)
+                    <Users className="w-4 h-4 text-zinc-900" /> Tích luỹ hội viên ({loyaltyMembers.length} người)
                   </span>
                   <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-semibold select-none">Tăng trưởng chốt đơn</span>
                 </div>
@@ -684,7 +688,7 @@ export default function OwnerView({
                         <div className="text-[#808080] text-[10px] font-mono tabular-nums">SĐT: {member.phone} • Ghé: {member.visits} lần</div>
                       </div>
                       <div className="text-right">
-                        <span className="font-bold text-[#155BD0] font-mono tabular-nums">{member.points} điểm tích</span>
+                        <span className="font-bold text-zinc-900 font-mono tabular-nums">{member.points} điểm tích</span>
                         <div className="text-[#808080] text-[10px] font-light">{member.isVerified ? '✓ Đã verify OTP' : 'Tạm'}</div>
                       </div>
                     </div>
@@ -707,7 +711,7 @@ export default function OwnerView({
               
               <button 
                 onClick={handleStartAddForm}
-                className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white text-[11px] px-[13px] py-2 rounded-[21px] flex items-center gap-1 transition-all cursor-pointer font-semibold shadow-xs focus:outline-2 focus:outline-[#155BD0]"
+                className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[11px] px-[13px] py-2 rounded-[21px] flex items-center gap-1 transition-all cursor-pointer font-semibold shadow-xs focus:outline-2 focus:outline-zinc-900"
               >
                 <Plus className="w-3.5 h-3.5" /> Thêm Món
               </button>
@@ -716,9 +720,9 @@ export default function OwnerView({
             {/* Campaign coupon manager inside menu settings */}
             <div className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8] space-y-3 relative overflow-hidden text-[#2D2B30]">
               <div className="flex items-center gap-1.5 border-b border-[#B5C7D8]/60 pb-2">
-                <Gift className="w-4 h-4 text-[#155BD0]" />
+                <Gift className="w-4 h-4 text-zinc-900" />
                 <span className="text-[12px] font-bold text-[#2D2B30] uppercase">MÃ KHUYẾN MÃI CHIẾN DỊCH</span>
-                <span className="text-[10px] bg-white border border-[#B5C7D8] text-[#155BD0] px-2 py-0.5 rounded-[21px] font-bold ml-auto uppercase">COUPON CODE</span>
+                <span className="text-[10px] bg-white border border-[#B5C7D8] text-zinc-900 px-2 py-0.5 rounded-[21px] font-bold ml-auto uppercase">COUPON CODE</span>
               </div>
 
               <div className="grid grid-cols-2 gap-[13px] text-[11px]">
@@ -728,7 +732,7 @@ export default function OwnerView({
                     type="text" 
                     value={promoCode} 
                     onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[11px] font-mono text-[#2D2B30] font-bold focus:outline-none focus:border-[#155BD0]"
+                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[11px] font-mono text-[#2D2B30] font-bold focus:outline-none focus:border-zinc-900"
                     placeholder="E.g. GIAM15K"
                   />
                 </div>
@@ -739,7 +743,7 @@ export default function OwnerView({
                     type="number" 
                     value={promoAmount} 
                     onChange={(e) => setPromoAmount(Number(e.target.value))}
-                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[11px] font-mono text-[#2D2B30] font-bold focus:outline-none focus:border-[#155BD0] tabular-nums"
+                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[11px] font-mono text-[#2D2B30] font-bold focus:outline-none focus:border-zinc-900 tabular-nums"
                   />
                 </div>
 
@@ -811,14 +815,14 @@ export default function OwnerView({
                     type="checkbox" 
                     checked={promoEnabled}
                     onChange={(e) => setPromoEnabled(e.target.checked)}
-                    className="rounded text-[#155BD0] focus:ring-[#155BD0] w-3.5 h-3.5"
+                    className="rounded text-zinc-900 focus:ring-zinc-900 w-3.5 h-3.5"
                   />
                   <span>Áp dụng chiến dịch</span>
                 </label>
 
                 <button 
                   onClick={handleUpdatePromoSettings}
-                  className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white text-[11px] font-semibold px-4 py-1.5 rounded-[21px] cursor-pointer shadow-xs focus:outline-2 focus:outline-[#155BD0]"
+                  className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[11px] font-semibold px-4 py-1.5 rounded-[21px] cursor-pointer shadow-xs focus:outline-2 focus:outline-zinc-900"
                 >
                   Áp dụng thay đổi
                 </button>
@@ -833,7 +837,7 @@ export default function OwnerView({
             {(showAddForm || editingItem) && (
               <form 
                 onSubmit={showAddForm ? handleAddDishSubmit : handleEditDishSubmit}
-                className="bg-white border border-[#155BD0] p-[13px] rounded-[21px] space-y-3 shadow-md text-[12px] text-[#2D2B30]"
+                className="bg-white border border-zinc-900 p-[13px] rounded-[21px] space-y-3 shadow-md text-[12px] text-[#2D2B30]"
               >
                 <div className="flex justify-between items-center border-b border-[#B5C7D8]/30 pb-2">
                   <span className="font-bold text-[#2D2B30] uppercase">
@@ -856,7 +860,7 @@ export default function OwnerView({
                       required
                       value={formName} 
                       onChange={(e) => setFormName(e.target.value)}
-                      className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-[#155BD0] font-semibold text-[12px]"
+                      className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-[12px]"
                       placeholder="E.g. Phở mọc chuẩn vị..."
                     />
                   </div>
@@ -869,7 +873,7 @@ export default function OwnerView({
                         required
                         value={formPrice} 
                         onChange={(e) => setFormPrice(Number(e.target.value))}
-                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-[#155BD0] font-semibold text-[12px] tabular-nums"
+                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-[12px] tabular-nums"
                       />
                     </div>
                     <div className="space-y-[4px]">
@@ -879,7 +883,7 @@ export default function OwnerView({
                         required
                         value={formCostPrice} 
                         onChange={(e) => setFormCostPrice(Number(e.target.value))}
-                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-[#155BD0] font-semibold text-[12px] tabular-nums"
+                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-[12px] tabular-nums"
                       />
                     </div>
                   </div>
@@ -949,7 +953,7 @@ export default function OwnerView({
                           type="button"
                           onClick={() => setFormImage(preset.url)}
                           className={`text-[10px] font-semibold px-2.5 py-1.5 rounded-[21px] border transition-all ${
-                            formImage === preset.url ? 'bg-[#155BD0] text-white border-[#155BD0]' : 'bg-[#F5F5F7] border-[#B5C7D8] text-[#2D2B30]'
+                            formImage === preset.url ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-[#F5F5F7] border-[#B5C7D8] text-[#2D2B30]'
                           }`}
                         >
                           {preset.label}
@@ -962,7 +966,7 @@ export default function OwnerView({
                 <div className="flex gap-2.5 pt-2 border-t border-[#B5C7D8]/30">
                   <button 
                     type="submit"
-                    className="flex-1 bg-[#155BD0] hover:bg-[#155BD0]/95 text-white font-semibold py-2.5 rounded-[21px]"
+                    className="flex-1 bg-zinc-900 hover:bg-zinc-900/95 text-white font-semibold py-2.5 rounded-[21px]"
                   >
                     {showAddForm ? 'XÁC NHẬN THÊM' : 'SỬA THAY ĐỔI'}
                   </button>
@@ -982,53 +986,57 @@ export default function OwnerView({
               {menuItems.map(item => (
                 <div 
                   key={item.id} 
-                  className={`p-[13px] rounded-[21px] flex items-center justify-between border transition-all shadow-xs ${
-                    item.inStock ? 'bg-white border-[#B5C7D8] hover:border-[#155BD0]' : 'bg-[#F5F5F7]/40 border-[#B5C7D8] grayscale opacity-60'
+                  className={`p-3 rounded-2xl flex gap-3 border transition-all shadow-sm ${
+                    item.inStock ? 'bg-white border-zinc-200 hover:border-zinc-300' : 'bg-zinc-50 border-zinc-200 opacity-60'
                   }`}
                 >
-                  <div className="flex items-center gap-[13px] min-w-0">
-                    <img src={item.image} alt={item.name} className="w-10 h-10 rounded-[21px] object-cover border border-[#B5C7D8]/50 flex-shrink-0" referrerPolicy="no-referrer" />
-                    <div className="space-y-[2px] min-w-0">
-                      <h4 className="text-[12px] font-bold text-[#2D2B30] line-clamp-1 leading-snug">{item.name}</h4>
-                      <div className="flex items-center gap-2 text-[10px] text-[#808080] font-mono font-bold tracking-tight flex-wrap">
-                        <span className="text-[#155BD0] font-bold text-[11px] tabular-nums">{item.price.toLocaleString()}đ</span>
-                        <span className="tabular-nums">Gốc: {(item.costPrice || Math.round(item.price*0.4)).toLocaleString()}đ</span>
-                        <span className="tabular-nums">Kho: {item.stockCount}</span>
+                  <img src={item.image} alt={item.name} className="w-14 h-14 rounded-xl object-cover border border-zinc-200 flex-shrink-0" referrerPolicy="no-referrer" />
+                  
+                  <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-zinc-900 truncate">{item.name}</h4>
+                        <div className="text-[11px] font-bold text-zinc-900 tabular-nums mt-0.5">{item.price.toLocaleString()}đ</div>
                       </div>
-                      <p className="text-[10px] text-gray-400 line-clamp-1">Danh mục: {item.category} | Loại: {item.type || 'Đồ ăn'}</p>
+                      
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button 
+                          type="button"
+                          onClick={() => handleStartEdit(item)}
+                          className="p-1.5 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setMenuItems(prev => prev.filter(m => m.id !== item.id));
+                          }}
+                          className="p-1.5 text-zinc-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button 
-                      type="button"
-                      onClick={() => handleToggleStock(item.id)}
-                      className={`px-2 py-1 rounded-[21px] text-[10px] font-bold uppercase transition-colors ${
-                        item.inStock 
-                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-250 hover:bg-emerald-100' 
-                          : 'bg-red-50 text-red-650 border border-red-200 hover:bg-red-100'
-                      }`}
-                    >
-                      {item.inStock ? 'ĐANG BÁN' : 'TẠM ẨN'}
-                    </button>
-                    
-                    <button 
-                      type="button"
-                      onClick={() => handleStartEdit(item)}
-                      className="bg-[#F5F5F7] hover:bg-gray-200 text-[#2D2B30] font-semibold text-[10px] px-2.5 py-1 rounded-[21px] border border-[#B5C7D8] uppercase"
-                    >
-                      Sửa
-                    </button>
-
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setMenuItems(prev => prev.filter(m => m.id !== item.id));
-                      }}
-                      className="bg-transparent hover:bg-red-50 text-red-600 font-semibold text-[10px] px-2.5 py-1 rounded-[21px] border border-transparent uppercase"
-                    >
-                      Xóa
-                    </button>
+                    <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-zinc-100">
+                      <div className="flex items-center gap-2 text-[9px] text-zinc-500 font-mono tracking-tight flex-wrap">
+                        <span>Gốc: {(item.costPrice || Math.round(item.price*0.4)).toLocaleString()}đ</span>
+                        <span>Kho: {item.stockCount}</span>
+                      </div>
+                      
+                      <button 
+                        type="button"
+                        onClick={() => handleToggleStock(item.id)}
+                        className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-colors flex-shrink-0 ${
+                          item.inStock 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : 'bg-zinc-200 text-zinc-600'
+                        }`}
+                      >
+                        {item.inStock ? 'ĐANG BÁN' : 'TẠM ẨN'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1055,12 +1063,12 @@ export default function OwnerView({
                   value={newTableName}
                   onChange={(e) => setNewTableName(e.target.value)}
                   placeholder="Ví dụ: Bàn VIP 07, Bàn Sân Vườn 02..."
-                  className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-[13px] py-1.5 text-[11px] text-[#2D2B30] font-semibold focus:outline-none focus:border-[#155BD0] shadow-sm"
+                  className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-[13px] py-1.5 text-[11px] text-[#2D2B30] font-semibold focus:outline-none focus:border-zinc-900 shadow-sm"
                 />
               </div>
               <button 
                 type="submit"
-                className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white text-[11px] px-[13px] py-2.5 rounded-[21px] flex items-center gap-1 shadow-sm h-[38px] transition-all font-semibold cursor-pointer"
+                className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[11px] px-[13px] py-2.5 rounded-[21px] flex items-center gap-1 shadow-sm h-[38px] transition-all font-semibold cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Thêm Bàn
               </button>
@@ -1080,7 +1088,7 @@ export default function OwnerView({
                   return (
                     <div 
                       key={table.id} 
-                      className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] flex flex-col items-center justify-between shadow-2xs hover:border-[#155BD0] transition-all text-center space-y-2.5 relative"
+                      className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] flex flex-col items-center justify-between shadow-2xs hover:border-zinc-900 transition-all text-center space-y-2.5 relative"
                     >
                       <button 
                         type="button"
@@ -1102,7 +1110,7 @@ export default function OwnerView({
                             type="text" 
                             value={editingTableOriginalName}
                             onChange={(e) => setEditingTableOriginalName(e.target.value)}
-                            className="w-full bg-white border border-[#155BD0] text-center text-[11px] font-bold py-1 px-1 rounded-[21px] focus:outline-none"
+                            className="w-full bg-white border border-zinc-900 text-center text-[11px] font-bold py-1 px-1 rounded-[21px] focus:outline-none"
                             placeholder="Tên bàn"
                           />
                           <div className="flex gap-1 justify-center">
@@ -1130,7 +1138,7 @@ export default function OwnerView({
                               type="button"
                               onClick={() => handleStartEditingTable(table.id, table.name)}
                               title="Sửa tên bàn"
-                              className="text-[#155BD0] hover:text-[#0858DC] p-0.5 bg-gray-50 rounded cursor-pointer"
+                              className="text-zinc-900 hover:text-[#0858DC] p-0.5 bg-gray-50 rounded cursor-pointer"
                             >
                               <Edit2 className="w-2.5 h-2.5" />
                             </button>
@@ -1143,7 +1151,7 @@ export default function OwnerView({
                         <button
                           type="button"
                           onClick={() => setSelectedQrTableId(tableIdStr)}
-                          className="w-full bg-[#155BD0] hover:bg-[#155BD0]/95 text-white text-[9px] py-1.5 rounded-[21px] font-semibold transition-colors cursor-pointer"
+                          className="w-full bg-zinc-900 hover:bg-zinc-900/95 text-white text-[9px] py-1.5 rounded-[21px] font-semibold transition-colors cursor-pointer"
                         >
                           Hiển Thị QR
                         </button>
@@ -1187,7 +1195,7 @@ export default function OwnerView({
                             className={`w-1.5 h-1.5 rounded-sm ${
                               (i % 3 === 0 || i % 7 === 0 || (i > 10 && i < 18) || i === 0 || i === 7 || i === 56) 
                                 ? 'bg-white' 
-                                : 'bg-[#155BD0]'
+                                : 'bg-zinc-900'
                             }`} 
                           />
                         ))}
@@ -1209,7 +1217,7 @@ export default function OwnerView({
                   <div className="space-y-[4px]">
                     <button
                       onClick={() => handleSimulateQrScan(selectedQrTableId!)}
-                      className="w-full bg-[#155BD0] hover:bg-[#155BD0]/90 text-white py-2.5 rounded-[21px] text-[11px] font-bold shadow-sm cursor-pointer uppercase tracking-wider"
+                      className="w-full bg-zinc-900 hover:bg-zinc-900/90 text-white py-2.5 rounded-[21px] text-[11px] font-bold shadow-sm cursor-pointer uppercase tracking-wider"
                     >
                       📱 Giả Lập quét QR đặt món
                     </button>
@@ -1246,7 +1254,7 @@ export default function OwnerView({
                   key={i} 
                   className={`p-2.5 rounded-[21px] max-w-[85%] shadow-2xs ${
                     log.sender === 'user' 
-                      ? 'bg-gradient-to-r from-[#155BD0]/10 to-[#155BD0]/5 text-[#2D2B30] ml-auto border border-[#155BD0]/30 font-semibold' 
+                      ? 'bg-gradient-to-r from-zinc-900/10 to-zinc-900/5 text-[#2D2B30] ml-auto border border-zinc-900/30 font-semibold' 
                       : 'bg-white text-[#454547] mr-auto border border-[#B5C7D8] leading-relaxed animate-fadeIn'
                   }`}
                 >
@@ -1289,11 +1297,11 @@ export default function OwnerView({
                 value={chatInput} 
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder="Tra xuất lãi lỗ, đề xuất kinh doanh..."
-                className="flex-grow bg-white border border-[#B5C7D8] rounded-[21px] px-[13px] py-1.5 text-[11px] text-[#2D2B30] font-sans focus:outline-none focus:border-[#155BD0] shadow-sm font-medium"
+                className="flex-grow bg-white border border-[#B5C7D8] rounded-[21px] px-[13px] py-1.5 text-[11px] text-[#2D2B30] font-sans focus:outline-none focus:border-zinc-900 shadow-sm font-medium"
               />
               <button 
                 type="submit"
-                className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white text-[11px] px-4 rounded-[21px] font-bold shadow-sm cursor-pointer"
+                className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[11px] px-4 rounded-[21px] font-bold shadow-sm cursor-pointer"
               >
                 Gửi
               </button>

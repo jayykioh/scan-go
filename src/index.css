@@ -3,14 +3,20 @@
 
 :root {
   color-scheme: light;
-  --color-brand: #155bd0;
-  --color-brand-hover: #1049aa;
+  --color-brand: #ff5722;
+  --color-brand-hover: #e64a19;
   --color-surface: #ffffff;
-  --color-canvas: #f7f8fa;
-  --color-text: #202124;
-  --color-muted: #62666d;
-  --color-border: #dfe3e8;
-  --focus-ring: #2563eb;
+  --color-canvas: #f8f9fa;
+  --color-text: #111827;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --focus-ring: #ff5722;
+  /* Role accent colors */
+  --color-owner: #f97316;
+  --color-cashier: #3b82f6;
+  --color-kitchen: #f59e0b;
+  --color-customer: #10b981;
+  --color-solo: #8b5cf6;
 }
 
 @theme {
@@ -100,3 +106,44 @@ select {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Animations ─────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out both;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 4s linear infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Touch target enforcement */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Role color utilities */
+.role-owner   { color: var(--color-owner); }
+.role-cashier { color: var(--color-cashier); }
+.role-kitchen { color: var(--color-kitchen); }
+.role-customer{ color: var(--color-customer); }
+.role-solo    { color: var(--color-solo); }

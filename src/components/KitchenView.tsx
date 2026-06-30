@@ -122,10 +122,10 @@ export default function KitchenView({
       {/* Header Info */}
       <div className="bg-[#F5F5F7] px-[13px] py-[13px] border-b border-[#B5C7D8]/60 flex justify-between items-center select-none">
         <div className="flex items-center gap-[4px]">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#155BD0] animate-pulse"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
           <span className="text-[12px] font-bold text-[#2D2B30] uppercase tracking-wider">Trạm KDS Nhà Bếp</span>
         </div>
-        <span className="text-[11px] bg-[#155BD0] text-white font-semibold rounded-[21px] px-2.5 py-0.5 tabular-nums">
+        <span className="text-[11px] bg-zinc-900 text-white font-semibold rounded-[21px] px-2.5 py-0.5 tabular-nums">
           {kitchenQueue.length} Đơn Đang Chờ
         </span>
       </div>
@@ -133,16 +133,16 @@ export default function KitchenView({
       <div className="flex-grow overflow-y-auto p-[13px] space-y-[13px] bg-white">
         <div className="flex justify-between items-center text-[10px] font-bold text-[#808080] uppercase tracking-wider select-none">
           <span>Hàng Đợi Chế biến Realtime</span>
-          <span className="text-[10px] text-[#155BD0] font-mono lowercase">máy chủ scan-go</span>
+          <span className="text-[10px] text-zinc-900 font-mono lowercase">máy chủ scan-go</span>
         </div>
 
         {kitchenQueue.length === 0 ? (
-          <div className="bg-[#F5F5F7]/40 p-[34px] rounded-[21px] border border-[#B5C7D8] text-center space-y-[4px] select-none shadow-sm">
-            <span className="text-2xl">👨‍🍳</span>
-            <div className="text-[14px] font-bold text-[#2D2B30]">Bếp đã khép các Ticket!</div>
-            <p className="text-[12px] text-[#808080] leading-relaxed text-pretty">
-              Hoàn thành tốt nhiệm vụ. Chờ khách đặt thêm bún phở hoặc cafe qua dán góc bàn.
-            </p>
+          <div className="flex flex-col items-center justify-center py-12 text-center select-none">
+            <div className="w-14 h-14 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center justify-center mb-4">
+              <CheckCircle className="w-7 h-7 text-emerald-500" />
+            </div>
+            <p className="text-sm font-bold text-zinc-900">Bếp đã rảnh!</p>
+            <p className="text-xs text-zinc-400 mt-1">Chờ đơn mới từ khách</p>
           </div>
         ) : (
           <div className="space-y-[13px]">
@@ -155,14 +155,14 @@ export default function KitchenView({
                   key={order.id} 
                   className={`rounded-[21px] border shadow-xs transition-all overflow-hidden ${
                     isCooking 
-                      ? 'border-[#155BD0] bg-white' 
+                      ? 'border-zinc-900 bg-white' 
                       : 'border-[#B5C7D8] bg-[#F5F5F7]/30'
                   }`}
                 >
                   {/* Card head banner */}
                   <div className="bg-[#F5F5F7] px-[13px] py-[13px] border-b border-[#B5C7D8]/50 flex justify-between items-center select-none text-[#2D2B30]">
                     <span className="text-[12px] font-bold text-[#2D2B30] flex items-center gap-[4px] uppercase select-none">
-                      <UtensilsCrossed className="w-4 h-4 text-[#155BD0]" />
+                      <UtensilsCrossed className="w-4 h-4 text-zinc-900" />
                       {tableName}
                     </span>
                     <span className="text-[10px] text-[#808080] font-mono tracking-wider font-semibold uppercase tabular-nums">
@@ -177,7 +177,7 @@ export default function KitchenView({
                         <div key={item.id} className="flex justify-between items-start text-[12px] border-b border-[#B5C7D8]/20 pb-2.5 last:border-b-0">
                           <div className="text-[#2D2B30] space-y-[2px]">
                             <p className="font-semibold text-[#2D2B30]">
-                              {item.name} <span className="text-[#155BD0] font-bold font-mono ml-1 tabular-nums">x{item.quantity}</span>
+                              {item.name} <span className="text-zinc-900 font-bold font-mono ml-1 tabular-nums">x{item.quantity}</span>
                             </p>
                             
                             {item.selectedModifiers && item.selectedModifiers.length > 0 && (
@@ -194,22 +194,25 @@ export default function KitchenView({
                       ))}
                     </div>
 
-                    <div className="flex gap-[4px] pt-[13px] border-t border-[#B5C7D8]/40">
+                    {/* Action buttons */}
+                    <div className="flex gap-2 pt-3 border-t border-zinc-100">
                       {!isCooking ? (
                         <button 
                           type="button"
                           onClick={() => handleUpdateStatus(order.id, 'cooking')}
-                          className="flex-1 bg-[#155BD0] hover:bg-[#155BD0]/90 text-white font-semibold text-[11px] py-2 rounded-[21px] uppercase tracking-wide cursor-pointer focus:outline-2 focus:outline-[#155BD0]"
+                          className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors"
                         >
-                          🍳 Đứng nấu món
+                          <Flame className="w-4 h-4" />
+                          Bắt đầu nấu
                         </button>
                       ) : (
                         <button 
                           type="button"
                           onClick={() => handleUpdateStatus(order.id, 'ready')}
-                          className="flex-1 bg-[#2D2B30] hover:bg-[#155BD0] text-white font-semibold text-[11px] py-2 rounded-[21px] uppercase tracking-wide cursor-pointer focus:outline-2 focus:outline-[#155BD0]"
+                          className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors"
                         >
-                          ✓ Chín / Gọi phục vụ
+                          <CheckCircle className="w-4 h-4" />
+                          Xong — Bưng ra
                         </button>
                       )}
                     </div>
@@ -220,32 +223,31 @@ export default function KitchenView({
           </div>
         )}
 
-        {/* Quick Stock toggle list for Chefs */}
-        <div className="bg-white border border-[#B5C7D8] p-[13px] rounded-[21px] shadow-sm text-[#2D2B30] space-y-[13px]">
-          <div className="text-[12px] font-bold text-[#2D2B30] uppercase tracking-wider flex items-center gap-[4px] select-none">
-            <AlertCircle className="w-4 h-4 text-[#155BD0]" />
-            Khóa món ăn hết hàng
+          {/* Stock toggle section */}
+          <div className="bg-white border border-zinc-200 p-4 rounded-2xl text-zinc-900 space-y-3">
+            <div className="text-xs font-bold text-zinc-900 uppercase tracking-wider flex items-center gap-2 select-none">
+              <X className="w-4 h-4 text-red-500" />
+              Khóa món hết hàng
+            </div>
+            <div className="space-y-2">
+              {menuItems.map(item => (
+                <div key={item.id} className="flex justify-between items-center bg-zinc-50 px-3 py-2 rounded-xl border border-zinc-100 hover:bg-zinc-100 transition-colors">
+                  <span className="text-xs text-zinc-700 font-medium truncate max-w-[160px]">{item.name}</span>
+                  <button 
+                    type="button"
+                    onClick={() => handleKitchenDisableStock(item.id)}
+                    className={`px-3 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-colors min-h-[28px] ${
+                      item.inStock 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200' 
+                        : 'bg-red-50 text-red-600 border border-red-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200'
+                    }`}
+                  >
+                    {item.inStock ? 'Còn hàng' : 'Hết hàng'}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
-          
-          <div className="space-y-[4px]">
-            {menuItems.map(item => (
-              <div key={item.id} className="flex justify-between items-center bg-[#F5F5F7] p-2.5 rounded-[21px] border border-[#B5C7D8] text-[12px] hover:bg-[#E5E5EA] transition-colors">
-                <div className="text-[#2D2B30] truncate max-w-[170px] font-medium">{item.name}</div>
-                <button 
-                  type="button"
-                  onClick={() => handleKitchenDisableStock(item.id)}
-                  className={`px-3 py-1 rounded-[21px] text-[10px] font-bold cursor-pointer transition-colors focus:outline-2 focus:outline-[#155BD0] ${
-                    item.inStock 
-                      ? 'bg-white text-[#2D2B30] border border-[#B5C7D8] hover:bg-[#155BD0] hover:text-white' 
-                      : 'bg-red-50 text-red-650 border border-red-200'
-                  }`}
-                >
-                  {item.inStock ? 'HẾT MÓN (BÁO)' : 'CÒN MÓN (MỞ)'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

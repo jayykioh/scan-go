@@ -90,7 +90,7 @@ export default function CashierView({
           </div>
           <h3 className="text-2xl font-bold text-[#2D2B30] text-center tracking-tight">Thu Ngân</h3>
           <p className="text-xs text-[#8E8E93] text-center max-w-[240px] mx-auto leading-relaxed">
-            Nhập mã mật khẩu PIN cá nhân của ca trực để tiếp tục.
+            Vui lòng nhập mã PIN.
           </p>
         </div>
 
@@ -119,7 +119,7 @@ export default function CashierView({
           onClick={handleCashierLogin}
           className="w-full bg-zinc-950 hover:bg-zinc-900 text-white py-3.5 rounded-2xl font-semibold text-xs uppercase tracking-wider shadow-sm transition-all cursor-pointer"
         >
-          Xác nhận đăng nhập
+          Đăng nhập
         </motion.button>
       </motion.div>
     );
@@ -133,17 +133,17 @@ export default function CashierView({
       <div className="bg-[#F5F5F7] px-[13px] py-[13px] border-b border-[#B5C7D8]/60 flex justify-between items-center select-none">
         <div className="flex items-center gap-[4px]">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-          <span className="text-[12px] font-bold text-[#2D2B30] uppercase tracking-wider">Trạm Quầy Thu Ngân</span>
+          <span className="text-[12px] font-bold text-[#2D2B30] uppercase tracking-wider">Thu Ngân</span>
         </div>
         <span className="text-[11px] bg-zinc-900 text-white font-semibold rounded-[21px] px-2.5 py-0.5 tabular-nums">
-          {activeUnpaidOrders.length} Đơn Chưa Thanh Toán
+          {activeUnpaidOrders.length} Đơn Nợ
         </span>
       </div>
 
       <div className="flex-grow overflow-y-auto p-[13px] space-y-[13px] bg-white">
         <div className="text-[10px] font-bold text-[#808080] uppercase tracking-wider select-none flex justify-between">
-          <span>Hóa đơn theo bàn ăn đang trực</span>
-          <span className="text-[10px] text-zinc-900 font-mono lowercase">auto-sync</span>
+          <span>Hóa đơn</span>
+          <span className="text-[10px] text-zinc-900 font-mono lowercase">sync</span>
         </div>
 
         {activeUnpaidOrders.length === 0 ? (

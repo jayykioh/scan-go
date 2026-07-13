@@ -624,11 +624,11 @@ export default function SoloOperatorView({
           <div className="w-[50px] h-[50px] rounded-[21px] bg-orange-50 border border-orange-200 flex items-center justify-center mb-[13px]">
             <Sparkles className="w-[24px] h-[24px] text-orange-600" />
           </div>
-          <h2 className="text-[27px] font-medium text-[#2D2B30] tracking-tight text-balance leading-tight">
-            Thiết Lập Mô Hình Toàn Năng
+          <h2 className="text-[24px] font-bold text-[#2D2B30] tracking-tight leading-tight">
+            Thiết lập quán
           </h2>
-          <p className="text-[12px] text-[#808080] mt-1 text-pretty">
-            Cấu hình bàn ăn kỹ thuật số, thực đơn và chính sách bán hàng cực nhanh trong 15 giây.
+          <p className="text-[11px] text-[#808080] mt-1 text-pretty font-medium">
+            Tối ưu hóa quy trình trong 15s.
           </p>
 
           <div className="flex gap-1.5 mt-[13px]">
@@ -646,8 +646,8 @@ export default function SoloOperatorView({
         <div className="my-[13px] flex-grow flex flex-col justify-center bg-white border border-[#B5C7D8] rounded-[21px] p-[13px] shadow-sm">
           {onboardStep === 1 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-orange-600 font-semibold uppercase tracking-wider">Bước 1: Khởi Tạo Quán Ăn</span>
-              <h3 className="text-[16px] font-semibold text-[#2D2B30]">Chào Chủ Toàn Năng! Thương hiệu của bạn là gì?</h3>
+              <span className="text-[10px] text-orange-600 font-bold uppercase tracking-wider">B1: Thông tin quán</span>
+              <h3 className="text-[16px] font-bold text-[#2D2B30]">Tên thương hiệu</h3>
               
               <div className="space-y-[4px]">
                 <label className="block text-[10px] text-[#7E7E7E] font-semibold uppercase tracking-wider">Tên thương hiệu</label>
@@ -693,8 +693,8 @@ export default function SoloOperatorView({
 
           {onboardStep === 2 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-orange-600 font-semibold uppercase tracking-wider">Bước 2: Gói Sản Phẩm</span>
-              <h3 className="text-[16px] font-semibold text-[#2D2B30]">Giấy phép nâng cấp Live-KDS</h3>
+              <span className="text-[10px] text-orange-600 font-bold uppercase tracking-wider">B2: Gói tính năng</span>
+              <h3 className="text-[16px] font-bold text-[#2D2B30]">Chọn gói phù hợp</h3>
               
               <div className="space-y-[4px]">
                 <button 
@@ -704,10 +704,10 @@ export default function SoloOperatorView({
                   }`}
                 >
                   <div className="space-y-0.5 max-w-[80%]">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5 text-orange-500" /> GÓI PRO AI CHỦ TOÀN NĂNG
+                    <div className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-orange-500" /> PRO AI
                     </div>
-                    <p className="text-[10px] text-[#707070] leading-relaxed">Bộ não tối ưu hoá lợi nhuận, KDS realtime và chăm sóc hội viên.</p>
+                    <p className="text-[10px] text-[#707070]">Tối ưu lợi nhuận, KDS realtime.</p>
                   </div>
                   <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-bold">MIỄN PHÍ</span>
                 </button>
@@ -717,8 +717,8 @@ export default function SoloOperatorView({
 
           {onboardStep === 3 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-orange-600 font-semibold uppercase tracking-wider">Bước 3: Quy Trình Trả Tiền</span>
-              <h3 className="text-[16px] font-semibold text-[#2D2B30]">Chọn chính sách thanh toán tối ưu</h3>
+              <span className="text-[10px] text-orange-600 font-bold uppercase tracking-wider">B3: Thanh toán</span>
+              <h3 className="text-[16px] font-bold text-[#2D2B30]">Quy trình thu ngân</h3>
               
               <div className="grid grid-cols-2 gap-[13px]">
                 <button 
@@ -728,7 +728,7 @@ export default function SoloOperatorView({
                   }`}
                 >
                   <Receipt className="w-5 h-5 text-orange-600" />
-                  <div className="text-[10px] font-bold uppercase leading-tight">Ăn xong trả sau<br/>(Bán chạy nhất)</div>
+                  <div className="text-[10px] font-bold uppercase leading-tight">Trả sau<br/><span className="text-[8px] font-medium">(Ăn xong thanh toán)</span></div>
                 </button>
                 <button 
                   onClick={() => setTempPayMode('Pay-First')}
@@ -737,7 +737,7 @@ export default function SoloOperatorView({
                   }`}
                 >
                   <CreditCard className="w-5 h-5 text-orange-600" />
-                  <div className="text-[10px] font-bold uppercase leading-tight">Gửi đơn trả trước<br/>(Chống bùng đơn)</div>
+                  <div className="text-[10px] font-bold uppercase leading-tight">Trả trước<br/><span className="text-[8px] font-medium">(Thanh toán tại quầy)</span></div>
                 </button>
               </div>
             </div>
@@ -745,22 +745,13 @@ export default function SoloOperatorView({
 
           {onboardStep === 4 && (
             <div className="space-y-[13px] text-[#2D2B30]">
-              <span className="text-[10px] text-orange-600 font-semibold uppercase tracking-wider flex items-center gap-1">
-                <Check className="w-4 h-4 text-emerald-600" /> Cấu hình sẵn sàng
-              </span>
-              <h3 className="text-[16px] font-semibold text-[#2D2B30]">Toàn bộ workspace đã được tối ưu!</h3>
-              <p className="text-[11px] text-[#707070] leading-relaxed text-pretty">
-                ScanGo Lite đã nạp tệp món ăn mẫu cho thực đơn của bạn, tự động kích hoạt mã bàn QR thời gian trực để bạn bắt đầu đặt món.
-              </p>
-              <div className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8] text-[11px] space-y-1">
-                <strong className="block text-[#2D2B30] font-semibold">Khả dụng:</strong>
-                <ul className="list-disc list-inside space-y-0.5 text-[10px] text-[#454547]">
-                  <li>Hợp nhất (Chủ + Thu Ngân + Bếp) bận rộn</li>
-                  <li>Tạo mã bàn QR dán trực tiếp</li>
-                  <li>Kênh đồng bộ Realtime: Khách - Bếp - Thu ngân</li>
-                  <li>Bộ định lượng COGS & Kho nguyên liệu</li>
-                </ul>
+              <div className="w-[40px] h-[40px] rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-2">
+                <Check className="w-5 h-5 text-emerald-600" />
               </div>
+              <h3 className="text-[16px] font-bold text-[#2D2B30] text-center">Hoàn tất!</h3>
+              <p className="text-[11px] text-[#707070] text-center">
+                Workspace đã thiết lập xong. Bạn có thể sử dụng QR, KDS và AI ngay lập tức.
+              </p>
             </div>
           )}
         </div>
@@ -769,7 +760,7 @@ export default function SoloOperatorView({
           onClick={nextStep}
           className="w-full bg-orange-600 hover:bg-orange-500 active:translate-y-0.5 text-white py-3.5 rounded-[21px] font-semibold text-[14px] flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
         >
-          {onboardStep === 4 ? 'Xác nhận Kích Hoạt!' : 'Tiếp Theo'}
+          {onboardStep === 4 ? 'Kích Hoạt' : 'Tiếp theo'}
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>

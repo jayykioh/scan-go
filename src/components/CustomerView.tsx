@@ -281,7 +281,7 @@ export default function CustomerView({
           </div>
           <h3 className="text-2xl font-bold text-zinc-900 tracking-tight">Chạm Bàn Đặt Món</h3>
           <p className="text-xs text-[#8E8E93] max-w-[240px] mx-auto leading-relaxed">
-            Chọn vị trí bàn ăn của bạn để đồng bộ giỏ hàng và đặt đơn nhanh.
+            Chọn bàn của bạn.
           </p>
         </div>
 
@@ -332,7 +332,7 @@ export default function CustomerView({
             </div>
             <h4 className="text-xl font-bold text-zinc-900 tracking-tight">Tích Điểm Tự Động</h4>
             <p className="text-xs text-[#8E8E93] max-w-[240px] mx-auto leading-relaxed">
-              Nhập số điện thoại để tích lũy ưu đãi thành viên khi gọi món.
+              Nhập số điện thoại để tích điểm.
             </p>
           </div>
         </div>
@@ -368,7 +368,7 @@ export default function CustomerView({
             disabled={phoneNumber.length < 9}
             className="w-full bg-zinc-950 hover:bg-zinc-900 disabled:opacity-40 disabled:pointer-events-none text-white py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider shadow-sm transition-all cursor-pointer"
           >
-            Đồng ý & tiếp tục
+            Đồng ý
           </motion.button>
           
           <button 
@@ -717,9 +717,9 @@ export default function CustomerView({
               <div className="w-12 h-12 rounded-full bg-[#F5F5F7] border border-[#B5C7D8] flex items-center justify-center mx-auto">
                 <Smartphone className="w-6 h-6 text-zinc-900" />
               </div>
-              <h5 className="text-[14px] font-bold text-[#2D2B30] border-b border-gray-150 pb-1 flex justify-center">Xác Thực OTP Đổi Quà</h5>
+              <h5 className="text-[14px] font-bold text-[#2D2B30] border-b border-gray-150 pb-1 flex justify-center">Xác thực OTP</h5>
               <p className="text-[11px] text-[#707070] text-pretty leading-relaxed">
-                Để bảo mật và tránh gian lận, hệ thống sẽ gửi mã số xác thực về số điện thoại của hội viên.
+                Vui lòng nhập OTP (8888).
               </p>
 
               <form onSubmit={handleVerifyOtpCode} className="space-y-[13px]">

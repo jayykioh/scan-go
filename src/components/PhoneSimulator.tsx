@@ -45,16 +45,16 @@ export default function PhoneSimulator({
           </div>
           
           {/* Dynamic Action / Island simulation */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 top-2 w-28 h-5.5 bg-black rounded-full flex items-center justify-center gap-1.5 z-50 border border-zinc-800/50">
+          <div className="absolute left-1/2 transform -translate-x-1/2 top-2.5 w-[110px] h-[30px] bg-black rounded-full flex items-center justify-center gap-2 z-50">
             {nfcActive ? (
-              <div className="flex items-center gap-1.5 px-2 py-0.5">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                <span className="text-[8px] text-emerald-500 uppercase font-mono tracking-wider font-semibold">NFC Active</span>
+              <div className="flex items-center gap-1.5 px-2">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                <span className="text-[10px] text-emerald-500 uppercase font-semibold">NFC</span>
               </div>
             ) : (
               <>
-                <div className="w-2.5 h-2.5 bg-neutral-900 rounded-full border border-neutral-700/60"></div>
-                <div className="w-1 h-1 bg-neutral-950 rounded-full"></div>
+                <div className="w-3.5 h-3.5 bg-[#111] rounded-full border border-white/5"></div>
+                <div className="w-3.5 h-3.5 bg-[#111] rounded-full border border-white/5"></div>
               </>
             )}
           </div>
@@ -72,18 +72,7 @@ export default function PhoneSimulator({
           </div>
         </div>
 
-        {/* Floating App Badge Indicator */}
-        <div className="bg-white px-4 py-1.5 flex justify-between items-center border-b border-[#B5C7D8]/50 select-none">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: '#18181b' }}></span>
-            <span className="text-[10px] font-bold text-[#2D2B30] tracking-wider uppercase">
-              ROLE: {actorName.toUpperCase()}
-            </span>
-          </div>
-          <span className="text-[9px] bg-[#F5F5F7] text-[#2D2B30] px-1.5 py-0.5 rounded-[21px] font-bold border border-[#B5C7D8]/50 uppercase tracking-wide">
-            {onboardStatus}
-          </span>
-        </div>
+
 
         {/* Simulator Screen Area */}
         <div className="flex-1 overflow-y-auto bg-white flex flex-col relative" style={{ wordBreak: 'break-word' }}>

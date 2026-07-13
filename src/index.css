@@ -1,32 +1,40 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Coiny&family=Sedgwick+Ave+Display&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
   color-scheme: light;
-  --color-brand: #ff5722;
-  --color-brand-hover: #e64a19;
+  --color-brand: #ea580c; /* Safety Orange */
+  --color-brand-hover: #c2410c;
   --color-surface: #ffffff;
-  --color-canvas: #f8f9fa;
-  --color-text: #111827;
-  --color-muted: #6b7280;
-  --color-border: #e5e7eb;
-  --focus-ring: #ff5722;
+  --color-canvas: #f4f4f5; /* off-white paper */
+  --color-text: #09090b; /* stark charcoal */
+  --color-muted: #71717a;
+  --color-border: #27272a; /* high contrast borders */
+  --focus-ring: #ea580c;
   /* Role accent colors */
   --color-owner: #f97316;
   --color-cashier: #3b82f6;
   --color-kitchen: #f59e0b;
   --color-customer: #10b981;
-  --color-solo: #8b5cf6;
+  --color-solo: #0d9488; /* teal-600 */
 }
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  --font-coiny: "Coiny", cursive;
-  --font-sedgwick: "Sedgwick Ave Display", cursive;
-  --font-righteous: "Coiny", cursive;
-  --font-chewy: "Sedgwick Ave Display", cursive;
-  --font-bungee: "Coiny", cursive;
+}
+
+.bg-noise {
+  background-color: var(--color-canvas);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E");
+}
+
+.border-hard {
+  border: 1px solid var(--color-border);
+}
+
+.shadow-hard {
+  box-shadow: 4px 4px 0px 0px var(--color-border);
 }
 
 * {

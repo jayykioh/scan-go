@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Users, Plus, Pencil, Trash2, X, AlertTriangle } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { usePersistentState } from '../../hooks/usePersistentState';
+import { createPortal } from 'react-dom';
 
 interface Staff {
   id: string;
@@ -164,8 +165,8 @@ export default function StaffPage() {
       </div>
 
       {/* Modals */}
-      {(isAddModalOpen || isEditModalOpen) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-fadeIn">
+      {(isAddModalOpen || isEditModalOpen) && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white border-hard shadow-[8px_8px_0_0_#09090b] w-full max-w-md">
             <div className="flex justify-between items-center p-4 border-b border-hard bg-zinc-950 text-white">
               <h2 className="font-mono font-bold text-sm uppercase tracking-widest">
@@ -231,12 +232,13 @@ export default function StaffPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete Warning Modal */}
-      {isDeleteModalOpen && selectedStaff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-fadeIn">
+      {isDeleteModalOpen && selectedStaff && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white border-hard shadow-[8px_8px_0_0_#ef4444] w-full max-w-sm">
             <div className="flex flex-col items-center text-center p-6 space-y-4">
               <div className="w-16 h-16 bg-red-100 border-hard flex items-center justify-center text-red-600">
@@ -262,7 +264,8 @@ export default function StaffPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

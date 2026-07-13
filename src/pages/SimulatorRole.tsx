@@ -1,9 +1,9 @@
-import React, { lazy, Suspense } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { lazy, Suspense, useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSimulator } from '../layouts/SimulatorLayout';
 import { useToast } from '../contexts/ToastContext';
 import PhoneSimulator from '../components/PhoneSimulator';
-import { Sparkles, Building, Wallet, ChefHat, Smartphone, Flame, Check, Plus, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus, X } from 'lucide-react';
 
 const OwnerView = lazy(() => import('../components/OwnerView'));
 const CashierView = lazy(() => import('../components/CashierView'));
@@ -16,235 +16,156 @@ function RoleLoading() {
     <div className="mx-auto flex aspect-[9/18.5] w-full max-w-[370px] items-center justify-center rounded-[48px] border-8 border-zinc-900 bg-white shadow-xl" role="status">
       <div className="text-center">
         <span className="mx-auto block size-7 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-900" aria-hidden="true" />
-        <p className="mt-3 text-xs font-bold text-zinc-900 uppercase font-mono tracking-widest">Đang tải...</p>
+        <p className="mt-3 text-xs font-bold text-zinc-900 uppercase tracking-widest">�ang t?i...</p>
       </div>
     </div>
   );
 }
 
+const ROLES = [
+  { id: 'solo', label: 'Solo Operator' },
+  { id: 'owner', label: 'Owner (Qu?n l?)' },
+  { id: 'cashier', label: 'Thu Ng�n' },
+  { id: 'kitchen', label: 'KDS (B?p)' },
+  { id: 'customer', label: 'Kh�ch h�ng' }
+];
+
 export default function SimulatorRole() {
-  const { role } = useParams<{ role: string }>();
+  const { role: urlRole } = useParams<{ role: string }>();
+  const navigate = useNavigate();
   const ctx = useSimulator();
   const toast = useToast();
 
-  return (
-    <div className="min-h-dvh bg-noise text-zinc-900 flex flex-col font-sans antialiased animate-fadeIn">
-      
-      {/* Workspace Header */}
-      <header className="bg-white border-b border-hard px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 z-10 select-none">
-        <div className="flex items-center gap-4">
-          <Link to="/simulator" className="w-12 h-12 bg-zinc-950 flex items-center justify-center shadow-hard border-hard hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer group">
-            <ArrowLeft className="w-6 h-6 text-white group-hover:-translate-x-1 transition-transform" />
-          </Link>
-          <div>
-            <p className="font-mono text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Active Terminal</p>
-            <h1 className="text-xl font-bold text-zinc-900 tracking-tighter uppercase flex items-center gap-2 mt-0.5">
-              {ctx.tenantConfig.shopName}
-              <span className="text-[10px] bg-orange-600 text-white px-2 py-0.5 font-bold tracking-widest border-hard">
-                {role?.toUpperCase()}
-              </span>
-            </h1>
+  const leftRole = urlRole || 'customer';
+  const [rightRole, setRightRole] = useState<string | null>(null);
+
+  const renderRoleView = (r: string) => {
+    switch(r) {
+      case 'solo': return <SoloOperatorView tenantConfig={ctx.tenantConfig} setTenantConfig={ctx.setTenantConfig} tables={ctx.tables} orders={ctx.orders} setOrders={ctx.setOrders} menuItems={ctx.menuItems} setMenuItems={ctx.setMenuItems} loyaltyMembers={ctx.loyaltyMembers} setLoyaltyMembers={ctx.setLoyaltyMembers} onboardCompleted={ctx.soloOnboarded} setOnboardCompleted={ctx.setSoloOnboarded} />;
+      case 'owner': return <OwnerView tenantConfig={ctx.tenantConfig} setTenantConfig={ctx.setTenantConfig} menuItems={ctx.menuItems} setMenuItems={ctx.setMenuItems} orders={ctx.orders} loyaltyMembers={ctx.loyaltyMembers} onTriggerNfcTag={ctx.handleOwnerNfcAllocation} onboardCompleted={ctx.ownerOnboarded} setOnboardCompleted={ctx.setOwnerOnboarded} setViewMode={() => {}} setSimulationTableId={ctx.setSimulationTableId} tables={ctx.tables} setTables={ctx.setTables} />;
+      case 'cashier': return <CashierView tenantConfig={ctx.tenantConfig} tables={ctx.tables} orders={ctx.orders} setOrders={ctx.setOrders} loyaltyMembers={ctx.loyaltyMembers} setLoyaltyMembers={ctx.setLoyaltyMembers} />;
+      case 'kitchen': return <KitchenView tenantConfig={ctx.tenantConfig} orders={ctx.orders} setOrders={ctx.setOrders} menuItems={ctx.menuItems} setMenuItems={ctx.setMenuItems} onboardCompleted={ctx.kitchenOnboarded} setOnboardCompleted={ctx.setKitchenOnboarded} tables={ctx.tables} />;
+      case 'customer': return <div className="flex-1 flex flex-col relative bg-zinc-50 h-full w-full"><CustomerView tenantConfig={ctx.tenantConfig} menuItems={ctx.menuItems} orders={ctx.orders} setOrders={ctx.setOrders} loyaltyMembers={ctx.loyaltyMembers} setLoyaltyMembers={ctx.setLoyaltyMembers} simulationTableId={ctx.simulationTableId} setSimulationTableId={ctx.setSimulationTableId} tables={ctx.tables} /></div>;
+      default: return null;
+    }
+  };
+
+  const getActorInfo = (r: string) => {
+    switch(r) {
+      case 'solo': return { name: 'Solo', color: '#ea580c', status: ctx.soloOnboarded ? 'All-In-One' : 'Setup Onboarding', isTablet: false };
+      case 'owner': return { name: 'Owner', color: '#f97316', status: ctx.ownerOnboarded ? 'Dashboard Active' : 'Setup Onboarding', isTablet: false };
+      case 'cashier': return { name: 'Cashier', color: '#3b82f6', status: ctx.cashierOnboarded ? 'Live Active' : 'Enter PIN', isTablet: true };
+      case 'kitchen': return { name: 'Kitchen', color: '#f59e0b', status: ctx.kitchenOnboarded ? 'Active Queue' : 'Kitchen SignIn', isTablet: true };
+      case 'customer': return { name: 'Customer', color: '#10b981', status: 'Contactless Client', isTablet: false };
+      default: return { name: 'Unknown', color: '#000', status: '', isTablet: false };
+    }
+  };
+
+  const renderSimulatorFrame = (r: string, isRight: boolean = false) => {
+    const info = getActorInfo(r);
+    const isTabletMode = info.isTablet;
+    
+    return (
+      <div className={`relative flex flex-col items-center justify-center h-full w-full ${rightRole && !isRight ? 'hidden lg:flex' : 'flex'}`}>
+        <div className="absolute top-0 left-0 right-0 z-50 p-4 flex justify-center -translate-y-8">
+          <div className="bg-zinc-950 rounded-2xl p-1.5 flex items-center shadow-xl border border-zinc-800 backdrop-blur-md">
+            <select 
+              value={r}
+              onChange={(e) => {
+                if (isRight) setRightRole(e.target.value);
+                else navigate(`/simulator/${e.target.value}`);
+              }}
+              className="bg-transparent text-white font-bold text-sm px-4 py-2 outline-none cursor-pointer appearance-none pr-8"
+              style={{ backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1em' }}
+            >
+              {ROLES.map(roleOpt => (
+                <option key={roleOpt.id} value={roleOpt.id} className="text-zinc-900 bg-white">{roleOpt.label}</option>
+              ))}
+            </select>
+            {isRight && (
+              <button 
+                onClick={() => setRightRole(null)}
+                className="p-2 ml-1 text-zinc-400 hover:text-white bg-zinc-800 rounded-xl transition-colors cursor-pointer"
+                title="��ng m�n h?nh"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Workspace controls */}
-        <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          <nav aria-label="Chuyển vai trò" className="bg-white border-hard p-1 flex w-max min-w-full md:min-w-0 gap-1 shadow-hard">
-            <Link 
-              to="/simulator"
-              className="px-4 py-2 font-mono font-bold uppercase tracking-widest text-xs bg-white text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer flex items-center gap-2"
-            >
-              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
-              Đổi vai
-            </Link>
-            {['solo', 'owner', 'cashier', 'kitchen', 'customer'].map((r) => (
-              <Link 
-                key={r}
-                to={`/simulator/${r}`}
-                className={`px-4 py-2 font-mono font-bold uppercase tracking-widest text-xs transition-colors cursor-pointer ${
-                  role === r ? 'bg-zinc-950 text-white' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
-                }`}
-              >
-                {r}
-              </Link>
-            ))}
-          </nav>
+        <div className={`transition-all duration-500 ease-in-out ${isTabletMode ? 'w-full max-w-[500px] aspect-[4/3]' : 'w-full max-w-[370px]'} max-h-[85vh]`}>
+          <PhoneSimulator 
+            actorName={info.name} 
+            actorColor={info.color} 
+            onboardStatus={info.status}
+            nfcActive={ctx.nfcTriggeredAlert !== null}
+            isTablet={isTabletMode}
+          >
+            <Suspense fallback={<RoleLoading />}>
+              {renderRoleView(r)}
+            </Suspense>
+          </PhoneSimulator>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-dvh bg-[#F5F5F7] text-zinc-900 flex flex-col font-sans antialiased animate-fadeIn overflow-hidden">
+      
+      <header className="absolute top-6 left-6 z-50 flex flex-wrap gap-3 select-none">
+        <Link to="/simulator" className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border border-zinc-200 hover:scale-105 transition-transform cursor-pointer shrink-0">
+          <ArrowLeft className="w-5 h-5 text-zinc-600" />
+        </Link>
+        
+        <div className="bg-white rounded-full px-5 py-2 shadow-lg border border-zinc-200 flex flex-wrap items-center gap-4">
+          <div className="flex flex-col hidden sm:flex">
+            <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Test Environment</span>
+            <span className="text-sm font-bold text-zinc-900">{ctx.tenantConfig.shopName}</span>
+          </div>
+          <div className="w-px h-8 bg-zinc-200 mx-2 hidden sm:block"></div>
+          
+          <button 
+            onClick={() => { ctx.triggerAutoOrderSimulation(); toast.success('�? th�m 1 ��n h�ng ?o'); }}
+            className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-bold text-xs bg-orange-50 px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> ��n ?o
+          </button>
+          
+          <button 
+            onClick={() => { ctx.handleClearAllOrders(); toast.info('�? x�a to�n b? ��n h�ng'); }}
+            className="flex items-center gap-2 text-zinc-500 hover:text-zinc-700 font-bold text-xs bg-zinc-100 px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" /> X�a Data
+          </button>
         </div>
       </header>
 
-      {/* Main Sandbox Workspace Layout */}
-      <main className="flex-1 p-6 lg:p-10 max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <main className="flex-1 w-full h-dvh flex flex-col lg:flex-row items-center justify-center p-4 lg:p-8 pt-24 gap-12 overflow-hidden bg-noise relative">
         
-        {/* Simulation Control Panel */}
-        <section className="lg:col-span-1 bg-white border-hard shadow-[4px_4px_0_0_#e4e4e7] p-6 space-y-8 h-fit select-none rounded-xl">
-          <div className="flex items-center gap-3 border-b border-zinc-200 pb-4">
-            <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
-              <Flame className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="font-bold text-zinc-900 tracking-tight">Trung tâm điều phối</h2>
-              <p className="text-xs text-zinc-500 font-medium">Bảng điều khiển giả lập</p>
-            </div>
-          </div>
+        <div className={`h-full flex items-center justify-center transition-all ${rightRole ? 'lg:w-1/2 w-full' : 'w-full'}`}>
+          {renderSimulatorFrame(leftRole, false)}
+        </div>
 
-          <div className="space-y-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Trạng thái đơn hàng
-            </span>
-            {ctx.orders.length === 0 ? (
-              <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 text-center">
-                <p className="text-sm text-zinc-500 font-medium">Hệ thống đang chờ đơn mới</p>
-              </div>
-            ) : (
-              <div className="flex gap-2 flex-wrap">
-                {ctx.orders.map((o: any) => (
-                  <span key={o.id} className={`text-xs font-bold px-3 py-1.5 rounded-md flex items-center gap-1.5 ${
-                    o.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                    o.status === 'cooking' ? 'bg-orange-100 text-orange-800' :
-                    o.status === 'ready' ? 'bg-emerald-100 text-emerald-800' :
-                    'bg-zinc-100 text-zinc-800'
-                  }`}>
-                    {o.status === 'pending' && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
-                    {o.status === 'cooking' && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
-                    {o.status === 'ready' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                    Bàn {o.tableId}
-                  </span>
-                ))}
-              </div>
-            )}
+        {rightRole ? (
+          <div className="w-full lg:w-1/2 h-full flex items-center justify-center animate-fadeIn hidden lg:flex">
+            {renderSimulatorFrame(rightRole, true)}
           </div>
-
-          <div className="space-y-3 pt-6 border-t border-zinc-200">
+        ) : (
+          <div className="absolute right-12 top-1/2 -translate-y-1/2 z-40 hidden lg:block">
             <button 
-              onClick={() => {
-                ctx.triggerAutoOrderSimulation();
-                toast.success('Đã thêm 1 đơn hàng ảo vào hệ thống');
-              }}
-              className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+              onClick={() => setRightRole('kitchen')}
+              className="flex flex-col items-center justify-center gap-3 w-24 h-48 bg-white/50 hover:bg-white border-2 border-dashed border-zinc-300 rounded-[2rem] text-zinc-400 hover:text-orange-500 hover:border-orange-300 transition-all cursor-pointer backdrop-blur-sm group shadow-sm hover:shadow-lg"
+              title="M? th�m thi?t b? gi? l?p"
             >
-              <Plus className="w-4 h-4" /> Bơm đơn ảo
-            </button>
-            <button 
-              onClick={() => {
-                ctx.handleClearAllOrders();
-                toast.info('Đã xóa toàn bộ đơn hàng trong phiên');
-              }}
-              className="w-full bg-white hover:bg-zinc-50 text-zinc-700 py-3 rounded-lg font-bold text-sm border border-zinc-200 transition-all cursor-pointer active:scale-[0.98]"
-            >
-              Reset dữ liệu đơn
+              <div className="w-10 h-10 rounded-full bg-zinc-100 group-hover:bg-orange-100 flex items-center justify-center transition-colors">
+                <Plus className="w-6 h-6" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-center px-2">Th�m<br/>M�n H?nh</span>
             </button>
           </div>
-        </section>
-
-        {/* Synced Phone Simulator Display */}
-        <section className="lg:col-span-3 flex justify-center">
-          <div className="w-full max-w-[380px]">
-            <Suspense fallback={<RoleLoading />}>
-              {role === 'solo' && (
-                <PhoneSimulator 
-                  actorName="Solo" 
-                  actorColor="#ea580c" 
-                  onboardStatus={ctx.soloOnboarded ? 'All-In-One' : 'Setup Onboarding'}
-                >
-                  <SoloOperatorView 
-                    tenantConfig={ctx.tenantConfig}
-                    setTenantConfig={ctx.setTenantConfig}
-                    tables={ctx.tables}
-                    orders={ctx.orders}
-                    setOrders={ctx.setOrders}
-                    menuItems={ctx.menuItems}
-                    setMenuItems={ctx.setMenuItems}
-                    loyaltyMembers={ctx.loyaltyMembers}
-                    setLoyaltyMembers={ctx.setLoyaltyMembers}
-                    onboardCompleted={ctx.soloOnboarded}
-                    setOnboardCompleted={ctx.setSoloOnboarded}
-                  />
-                </PhoneSimulator>
-              )}
-              {role === 'owner' && (
-                <PhoneSimulator 
-                  actorName="Owner" 
-                  actorColor="#f97316" 
-                  onboardStatus={ctx.ownerOnboarded ? 'Dashboard Active' : 'Setup Onboarding'}
-                >
-                  <OwnerView 
-                    tenantConfig={ctx.tenantConfig}
-                    setTenantConfig={ctx.setTenantConfig}
-                    menuItems={ctx.menuItems}
-                    setMenuItems={ctx.setMenuItems}
-                    orders={ctx.orders}
-                    loyaltyMembers={ctx.loyaltyMembers}
-                    onTriggerNfcTag={ctx.handleOwnerNfcAllocation}
-                    onboardCompleted={ctx.ownerOnboarded}
-                    setOnboardCompleted={ctx.setOwnerOnboarded}
-                    setViewMode={() => {}}
-                    setSimulationTableId={ctx.setSimulationTableId}
-                    tables={ctx.tables}
-                    setTables={ctx.setTables}
-                  />
-                </PhoneSimulator>
-              )}
-              {role === 'cashier' && (
-                <PhoneSimulator 
-                  actorName="Cashier" 
-                  actorColor="#3b82f6" 
-                  onboardStatus={ctx.cashierOnboarded ? 'Live Active' : 'Enter PIN'}
-                >
-                  <CashierView 
-                    tenantConfig={ctx.tenantConfig}
-                    tables={ctx.tables}
-                    orders={ctx.orders}
-                    setOrders={ctx.setOrders}
-                    loyaltyMembers={ctx.loyaltyMembers}
-                    setLoyaltyMembers={ctx.setLoyaltyMembers}
-                  />
-                </PhoneSimulator>
-              )}
-              {role === 'kitchen' && (
-                <PhoneSimulator 
-                  actorName="Kitchen" 
-                  actorColor="#f59e0b" 
-                  onboardStatus={ctx.kitchenOnboarded ? 'Active Queue' : 'Kitchen SignIn'}
-                >
-                  <KitchenView 
-                    tenantConfig={ctx.tenantConfig}
-                    orders={ctx.orders}
-                    setOrders={ctx.setOrders}
-                    menuItems={ctx.menuItems}
-                    setMenuItems={ctx.setMenuItems}
-                    onboardCompleted={ctx.kitchenOnboarded}
-                    setOnboardCompleted={ctx.setKitchenOnboarded}
-                    tables={ctx.tables}
-                  />
-                </PhoneSimulator>
-              )}
-              {role === 'customer' && (
-                <PhoneSimulator 
-                  actorName="Customer" 
-                  actorColor="#10b981" 
-                  onboardStatus="Contactless Client"
-                  nfcActive={ctx.nfcTriggeredAlert !== null}
-                >
-                  <div className="flex-1 flex flex-col relative bg-zinc-50">
-                    <CustomerView 
-                      tenantConfig={ctx.tenantConfig}
-                      menuItems={ctx.menuItems}
-                      orders={ctx.orders}
-                      setOrders={ctx.setOrders}
-                      loyaltyMembers={ctx.loyaltyMembers}
-                      setLoyaltyMembers={ctx.setLoyaltyMembers}
-                      simulationTableId={ctx.simulationTableId}
-                      setSimulationTableId={ctx.setSimulationTableId}
-                      tables={ctx.tables}
-                    />
-                  </div>
-                </PhoneSimulator>
-              )}
-            </Suspense>
-          </div>
-        </section>
-
+        )}
       </main>
     </div>
   );

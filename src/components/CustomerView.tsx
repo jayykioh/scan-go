@@ -564,7 +564,7 @@ export default function CustomerView({
 
                 return (
                   <div key={cat} className="space-y-[4px]">
-                    <h6 className="text-xs font-bold text-[#2D2B30] bg-[#F5F5F7] px-2 py-0.5 rounded-[21px] w-fit border border-[#B5C7D8]">{cat.to()}</h6>
+                    <h6 className="text-xs font-bold text-[#2D2B30] bg-[#F5F5F7] px-2 py-0.5 rounded-[21px] w-fit border border-[#B5C7D8]">{cat.toUpperCase()}</h6>
                     
                     <div className="space-y-[4px]">
                       {filtered.map(item => {
@@ -832,7 +832,7 @@ export default function CustomerView({
                     <button 
                       type="button"
                       onClick={() => {
-                        if (typedCoupon.to() === tenantConfig.discountCode?.to()) {
+                        if (typedCoupon.toUpperCase() === tenantConfig.discountCode?.toUpperCase()) {
                           setManualCouponApplied(true);
                           setCouponError('');
                         } else {
@@ -1022,4 +1022,5 @@ export default function CustomerView({
 
   return null;
 }
+
 

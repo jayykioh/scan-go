@@ -6,6 +6,7 @@ interface PhoneSimulatorProps {
   actorColor: string;
   onboardStatus: string;
   nfcActive?: boolean;
+  isTablet?: boolean;
 }
 
 export default function PhoneSimulator({
@@ -14,6 +15,7 @@ export default function PhoneSimulator({
   actorColor,
   onboardStatus,
   nfcActive = false,
+  isTablet = false
 }: PhoneSimulatorProps) {
   const [time, setTime] = useState('12:00');
 
@@ -29,40 +31,51 @@ export default function PhoneSimulator({
     return () => clearInterval(interval);
   }, []);
 
-  return (
-    <div className="relative mx-auto max-w-[370px] w-full" id={`phone-simulator-${actorName.toLowerCase()}`}>
-      {/* Outer Phone Bezel */}
-      <div className="relative bg-zinc-950 border-4 border-zinc-900 rounded-[48px] shadow-[0_20px_50px_rgba(9,9,11,0.2)] overflow-hidden aspect-[9/18.5] w-full flex flex-col ring-8 ring-zinc-200/30">
-        
-        {/* Antenna band lines */}
-        <div className="absolute top-12 -left-1 w-1 h-3 bg-zinc-700/60 rounded-r z-50"></div>
-        <div className="absolute top-36 -right-1 w-1 h-3 bg-zinc-700/60 rounded-l z-50"></div>
+  // Determine styles based on tablet vs phone mode
+  const containerClasses = isTablet 
+    ? "relative mx-auto w-full h-full" 
+    : "relative mx-auto max-w-[370px] w-full h-full";
+    
+  const bezelClasses = isTablet
+    ? "relative bg-zinc-950 border-4 border-zinc-900 rounded-[32px] shadow-[0_20px_50px_rgba(9,9,11,0.2)] overflow-hidden w-full h-full flex flex-col ring-8 ring-zinc-200/30"
+    : "relative bg-zinc-950 border-4 border-zinc-900 rounded-[48px] shadow-[0_20px_50px_rgba(9,9,11,0.2)] overflow-hidden aspect-[9/18.5] w-full flex flex-col ring-8 ring-zinc-200/30";
 
+  return (
+    <div className={containerClasses} id={`phone-simulator-${actorName.toLowerCase()}`}>
+      <div className={bezelClasses}>
+        
         {/* Status Bar */}
-        <div className="px-6 pt-3 pb-2 flex justify-between items-center bg-white border-b border-[#B5C7D8]/50 z-40 text-[11px] font-bold text-[#2D2B30] select-none text-balance">
+        <div className="px-6 pt-3 pb-2 flex justify-between items-center bg-white border-b border-[#B5C7D8]/50 z-40 text-[11px] font-bold text-[#2D2B30] select-none">
           <div className="flex items-center gap-1">
             <span className="tabular-nums">{time}</span>
           </div>
           
-          {/* Dynamic Action / Island simulation */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 top-2.5 w-[110px] h-[30px] bg-black rounded-full flex items-center justify-center gap-2 z-50">
-            {nfcActive ? (
-              <div className="flex items-center gap-1.5 px-2">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                <span className="text-[10px] text-emerald-500 uppercase font-semibold">NFC</span>
-              </div>
-            ) : (
-              <>
-                <div className="w-3.5 h-3.5 bg-[#111] rounded-full border border-white/5"></div>
-                <div className="w-3.5 h-3.5 bg-[#111] rounded-full border border-white/5"></div>
-              </>
-            )}
-          </div>
+          {/* Dynamic Action / Island simulation (Phone only) */}
+          {!isTablet && (
+            <div className="absolute left-1/2 transform -translate-x-1/2 top-2.5 w-[110px] h-[30px] bg-black rounded-full flex items-center justify-center gap-2 z-50">
+              {nfcActive ? (
+                <div className="flex items-center gap-1.5 px-2">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                  <span className="text-[10px] text-emerald-500 uppercase font-semibold">NFC</span>
+                </div>
+              ) : (
+                <>
+                  <div className="w-3.5 h-3.5 bg-[#111] rounded-full border border-white/5"></div>
+                  <div className="w-3.5 h-3.5 bg-[#111] rounded-full border border-white/5"></div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* iPad-like top camera for tablet */}
+          {isTablet && (
+             <div className="absolute left-1/2 transform -translate-x-1/2 top-3 flex items-center justify-center">
+                <div className="w-2 h-2 bg-black rounded-full border border-zinc-800"></div>
+             </div>
+          )}
 
           <div className="flex items-center gap-1.5">
-            {/* LTE Indicator */}
-            <span className="font-bold text-[8px] bg-zinc-100 px-1 py-0.2 rounded text-zinc-800">5G</span>
-            {/* Battery Icon */}
+            <span className="font-bold text-[8px] bg-zinc-100 px-1 py-0.2 rounded text-zinc-800">{isTablet ? 'Wi-Fi' : '5G'}</span>
             <div className="flex items-center gap-0.5">
               <div className="w-5 h-2.5 border border-zinc-400 rounded-sm p-0.5 flex items-center">
                 <div className="h-full bg-zinc-900 w-[92%] rounded-[1px]"></div>
@@ -71,8 +84,6 @@ export default function PhoneSimulator({
             </div>
           </div>
         </div>
-
-
 
         {/* Simulator Screen Area */}
         <div className="flex-1 overflow-y-auto bg-white flex flex-col relative" style={{ wordBreak: 'break-word' }}>
@@ -85,9 +96,6 @@ export default function PhoneSimulator({
         </div>
 
       </div>
-
-      {/* Screen Holder/Pedestal Style shadow */}
-      <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-4/5 h-2 bg-gradient-to-r from-transparent via-zinc-900/10 to-transparent blur-md rounded-full shadow-lg"></div>
     </div>
   );
 }

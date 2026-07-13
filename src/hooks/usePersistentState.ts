@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction, useCallback } from 'react';
 
 interface PersistentStateOptions<T> {
   deserialize?: (value: string) => T;
@@ -32,6 +32,21 @@ export function usePersistentState<T>(
       // The app remains usable when storage is unavailable or full.
     }
   }, [key, serialize, value]);
+
+  // Sync state across different tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === key && e.newValue !== null) {
+        try {
+          setValue(deserialize(e.newValue));
+        } catch {
+          // ignore parsing error
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [key, deserialize]);
 
   return [value, setValue];
 }

@@ -203,7 +203,7 @@ export default function SoloOperatorView({
       pricingTier: tier,
       loyaltyEnabled: tier !== 'Free'
     }));
-    triggerPulseText(`⚡ ĐÃ ĐỔI APP SANG GÓI: [ hạng ${tier.to()} ]\n${
+    triggerPulseText(`⚡ ĐÃ ĐỔI APP SANG GÓI: [ hạng ${tier.toUpperCase()} ]\n${
       tier === 'Free' ? '• Giới hạn chức năng cơ bản' :
       tier === 'Lite' ? '• Mở khóa Tích điểm Khách hàng!' :
       '• Toàn năng: Tích điểm + Định lượng giá vốn vật tư!'
@@ -795,7 +795,7 @@ export default function SoloOperatorView({
             <div className="flex items-center gap-1.5">
               <span className="inline-flex w-2.5 h-2.5 rounded-full bg-orange-505 animate-pulse shrink-0"></span>
               <span className="text-[9.5px] font-black text-orange-400 flex items-center gap-1">
-                <Cpu className="w-3 h-3" /> HẠNG GÓI: {tenantConfig.pricingTier.to()} UNLOCKED
+                <Cpu className="w-3 h-3" /> HẠNG GÓI: {tenantConfig.pricingTier.toUpperCase()} UNLOCKED
               </span>
             </div>
             <h1 className="text-base font-black tracking-tight">{tenantConfig.shopName}</h1>
@@ -951,7 +951,7 @@ export default function SoloOperatorView({
                                 <span className="text-[8.5px] bg-zinc-100 text-zinc-800 border border-zinc-200 font-black px-1 rounded ">TRẢ TRƯỚC</span>
                               )}
                             </div>
-                            <span className="text-[9px] text-zinc-400 font-bold block mt-0.5">MÃ: #{order.id.slice(-6).to()} • {new Date(order.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
+                            <span className="text-[9px] text-zinc-400 font-bold block mt-0.5">MÃ: #{order.id.slice(-6).toUpperCase()} • {new Date(order.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
                           </div>
 
                           <div className="text-right">
@@ -1053,7 +1053,7 @@ export default function SoloOperatorView({
                       <div className="flex justify-between items-start text-sm ">
                         <div>
                           <p className="font-extrabold text-zinc-900">{getTableName(invoice.tableId)}</p>
-                          <span className="text-[8.5px] text-zinc-400 font-medium leading-none block mt-0.5">#{invoice.id.slice(-8).to()} • {new Date(invoice.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
+                          <span className="text-[8.5px] text-zinc-400 font-medium leading-none block mt-0.5">#{invoice.id.slice(-8).toUpperCase()} • {new Date(invoice.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
                         <div className="text-right">
                           <span className="font-black text-emerald-600 block">+{(invoice.total).toLocaleString()}đ</span>
@@ -1717,4 +1717,5 @@ export default function SoloOperatorView({
     </div>
   );
 }
+
 

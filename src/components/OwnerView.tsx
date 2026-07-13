@@ -331,7 +331,7 @@ export default function OwnerView({
   const handleUpdatePromoSettings = () => {
     setTenantConfig(prev => ({
       ...prev,
-      discountCode: promoCode.trim().to(),
+      discountCode: promoCode.trim().toUpperCase(),
       discountMinItems: Number(promoMinItems) || 1,
       discountMinAmount: Number(promoMinAmount) || 0,
       discountAmount: Number(promoAmount) || 0,
@@ -549,7 +549,7 @@ export default function OwnerView({
             </div>
             <div className="text-right flex flex-col items-end gap-1 select-none">
               <span className="inline-block text-xs font-bold text-zinc-900 bg-zinc-900/10 border border-zinc-900/20 px-2 py-0.5 rounded-[21px]">
-                Gói {tenantConfig.pricingTier.to()}
+                Gói {tenantConfig.pricingTier.toUpperCase()}
               </span>
               <p className="text-[9px] text-[#808080] font-semibold ">Workspace chủ</p>
             </div>
@@ -723,7 +723,7 @@ export default function OwnerView({
                   <input 
                     type="text" 
                     value={promoCode} 
-                    onChange={(e) => setPromoCode(e.target.value.to())}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                     className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-sm text-[#2D2B30] font-bold focus:outline-none focus:border-zinc-900"
                     placeholder="E.g. GIAM15K"
                   />
@@ -1306,4 +1306,5 @@ export default function OwnerView({
     </div>
   );
 }
+
 

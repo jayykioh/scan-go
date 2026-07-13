@@ -1,8 +1,6 @@
 {
-  "name": "Remix: Remix: ScanGo Lite",
-  "description": "Interactive React Native simulator showing the onboarding and dashboard flows for ScanGo Lite\u0027s four user actors (Owner, Cashier, Kitchen, Customer).",
+  "name": "ScanGo MVP",
+  "description": "Responsive restaurant operations simulator covering owner, cashier, kitchen, solo operator, and customer QR-ordering flows.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": []
 }

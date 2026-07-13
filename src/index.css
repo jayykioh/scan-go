@@ -1,6 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Coiny&family=Sedgwick+Ave+Display&display=swap');
 @import "tailwindcss";
 
+:root {
+  color-scheme: light;
+  --color-brand: #ff5722;
+  --color-brand-hover: #e64a19;
+  --color-surface: #ffffff;
+  --color-canvas: #f8f9fa;
+  --color-text: #111827;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --focus-ring: #ff5722;
+  /* Role accent colors */
+  --color-owner: #f97316;
+  --color-cashier: #3b82f6;
+  --color-kitchen: #f59e0b;
+  --color-customer: #10b981;
+  --color-solo: #8b5cf6;
+}
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -11,12 +29,47 @@
   --font-bungee: "Coiny", cursive;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--color-canvas);
+  scroll-behavior: smooth;
+}
+
 body {
+  min-width: 320px;
+  min-height: 100dvh;
+  margin: 0;
   font-family: var(--font-sans);
-  background-color: #FFFFFF;
-  color: #2D2B30;
+  background-color: var(--color-surface);
+  color: var(--color-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+select {
+  touch-action: manipulation;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--focus-ring) 75%, white);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #bfdbfe;
+  color: #172554;
 }
 
 .tabular-nums {
@@ -39,3 +92,58 @@ body {
   background: rgba(161, 161, 170, 0.5);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Animations ─────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out both;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 4s linear infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Touch target enforcement */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Role color utilities */
+.role-owner   { color: var(--color-owner); }
+.role-cashier { color: var(--color-cashier); }
+.role-kitchen { color: var(--color-kitchen); }
+.role-customer{ color: var(--color-customer); }
+.role-solo    { color: var(--color-solo); }

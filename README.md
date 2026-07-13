@@ -1,13 +1,47 @@
-# ScanGo là gì?
+# ScanGo MVP
 
-**ScanGo** là nền tảng quản lý quán ăn và gọi món bằng mã QR được thiết kế dành cho các quán nhỏ, hộ kinh doanh cá thể và mô hình vận hành ít nhân sự. Hệ thống giúp chủ quán số hóa toàn bộ quy trình từ nhận đơn, chế biến, thanh toán đến quản lý nguyên liệu và theo dõi lợi nhuận.
+ScanGo là bản MVP mô phỏng quy trình gọi món bằng QR cho quán ăn nhỏ. Một nguồn dữ liệu dùng chung kết nối trải nghiệm của khách hàng, bếp, thu ngân, chủ quán và chế độ vận hành một người.
 
-Khách hàng chỉ cần quét mã QR để xem thực đơn và đặt món trực tiếp, trong khi chủ quán có thể quản lý đơn hàng theo quy trình đơn giản từ “Chờ duyệt → Đang chế biến → Sẵn sàng phục vụ → Hoàn tất”. ScanGo hỗ trợ cả hình thức thanh toán trả trước bằng QR và trả sau, giúp giảm thao tác thủ công và hạn chế thất thoát.
+## Phạm vi MVP
 
-Điểm khác biệt của ScanGo nằm ở khả năng **Smart Cost Control** – quản lý nguyên liệu và định lượng món ăn. Chủ quán có thể khai báo công thức, theo dõi giá vốn từng món, tính toán lợi nhuận và đưa ra quyết định điều chỉnh giá bán kịp thời khi chi phí nguyên liệu thay đổi.
+- Khách chọn bàn, nhận diện số điện thoại, chọn món/tùy chọn, áp dụng ưu đãi và theo dõi đơn.
+- Bếp nhận đơn, chuyển trạng thái `Chờ → Đang nấu → Sẵn sàng` và cập nhật món hết hàng.
+- Thu ngân xem đơn theo bàn, hủy hoặc hoàn tất thanh toán và cộng điểm thành viên.
+- Chủ quán quản lý thực đơn, tồn món, bàn/QR, khuyến mãi và báo cáo tổng quan.
+- Chế độ Solo hợp nhất nhận đơn, chế biến, thanh toán, kho nguyên liệu và giá vốn.
+- Dữ liệu demo được lưu trong `localStorage`, vì vậy tải lại trang không làm mất phiên làm việc.
 
-Bên cạnh đó, ScanGo còn tích hợp quản lý tồn món theo thời gian thực, chương trình khách hàng thân thiết và trợ lý AI hỗ trợ tối ưu vận hành cho mô hình “một người làm tất cả”.
+## Chạy dự án
 
-**Sứ mệnh của ScanGo** là giúp các quán ăn nhỏ vận hành chuyên nghiệp hơn, tiết kiệm thời gian, giảm thất thoát và tăng lợi nhuận thông qua công nghệ đơn giản, dễ sử dụng và chi phí hợp lý.
+Yêu cầu Node.js 20 trở lên.
 
-**ScanGo – Smart QR Ordering & Cost Control for Small Restaurants.**
+```bash
+npm install
+npm run dev
+```
+
+Ứng dụng mặc định chạy tại `http://localhost:3000`.
+
+## Kiểm tra trước khi phát hành
+
+```bash
+npm run typecheck
+npm run build
+npm run preview
+```
+
+## Cấu trúc
+
+```text
+public/                  Metadata, favicon và web app manifest
+src/
+  components/            Màn hình theo vai trò và error boundary
+  hooks/                 Trạng thái bền vững trên trình duyệt
+  App.tsx                 App shell và dữ liệu dùng chung
+  mockData.ts             Mẫu ngành hàng, menu và thành viên
+  types.ts                Hợp đồng dữ liệu MVP
+```
+
+## Giới hạn hiện tại
+
+Đây là frontend MVP dùng dữ liệu cục bộ, chưa phải hệ thống production đa thiết bị. Xác thực PIN, QR/NFC, thanh toán, realtime và AI hiện được mô phỏng. Bước tiếp theo để triển khai thực tế là bổ sung API, cơ sở dữ liệu, phân quyền tenant, cổng thanh toán và kênh realtime.

@@ -16,7 +16,7 @@ function RoleLoading() {
     <div className="mx-auto flex aspect-[9/18.5] w-full max-w-[370px] items-center justify-center rounded-[48px] border-8 border-zinc-900 bg-white shadow-xl" role="status">
       <div className="text-center">
         <span className="mx-auto block size-7 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-900" aria-hidden="true" />
-        <p className="mt-3 text-xs font-bold text-zinc-900 uppercase tracking-widest">–ang t?i...</p>
+        <p className="mt-3 text-xs font-bold text-zinc-900 uppercase tracking-widest">ƒêang t·∫£i...</p>
       </div>
     </div>
   );
@@ -24,10 +24,10 @@ function RoleLoading() {
 
 const ROLES = [
   { id: 'solo', label: 'Solo Operator' },
-  { id: 'owner', label: 'Owner (Qu?n l?)' },
-  { id: 'cashier', label: 'Thu Ng‚n' },
-  { id: 'kitchen', label: 'KDS (B?p)' },
-  { id: 'customer', label: 'Kh·ch h‡ng' }
+  { id: 'owner', label: 'Owner (Qu·∫£n l√Ω)' },
+  { id: 'cashier', label: 'Thu Ng√¢n' },
+  { id: 'kitchen', label: 'KDS (B·∫øp)' },
+  { id: 'customer', label: 'Kh√°ch h√†ng' }
 ];
 
 export default function SimulatorRole() {
@@ -86,7 +86,7 @@ export default function SimulatorRole() {
               <button 
                 onClick={() => setRightRole(null)}
                 className="p-2 ml-1 text-zinc-400 hover:text-white bg-zinc-800 rounded-xl transition-colors cursor-pointer"
-                title="–Ûng m‡n h?nh"
+                title="ƒê√≥ng m√†n h√¨nh"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -127,17 +127,17 @@ export default function SimulatorRole() {
           <div className="w-px h-8 bg-zinc-200 mx-2 hidden sm:block"></div>
           
           <button 
-            onClick={() => { ctx.triggerAutoOrderSimulation(); toast.success('–? thÍm 1 ın h‡ng ?o'); }}
+            onClick={() => { ctx.triggerAutoOrderSimulation(); toast.success('ƒê√£ th√™m 1 ƒë∆°n h√†ng ·∫£o'); }}
             className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-bold text-xs bg-orange-50 px-3 py-1.5 rounded-full transition-colors cursor-pointer"
           >
-            <Plus className="w-4 h-4" /> –ın ?o
+            <Plus className="w-4 h-4" /> ƒê∆°n ·∫£o
           </button>
           
           <button 
-            onClick={() => { ctx.handleClearAllOrders(); toast.info('–? xÛa to‡n b? ın h‡ng'); }}
+            onClick={() => { ctx.handleClearAllOrders(); toast.info('ƒê√£ x√≥a to√†n b·ªô ƒë∆°n h√†ng'); }}
             className="flex items-center gap-2 text-zinc-500 hover:text-zinc-700 font-bold text-xs bg-zinc-100 px-3 py-1.5 rounded-full transition-colors cursor-pointer"
           >
-            <X className="w-4 h-4" /> XÛa Data
+            <X className="w-4 h-4" /> X√≥a Data
           </button>
         </div>
       </header>
@@ -157,12 +157,12 @@ export default function SimulatorRole() {
             <button 
               onClick={() => setRightRole('kitchen')}
               className="flex flex-col items-center justify-center gap-3 w-24 h-48 bg-white/50 hover:bg-white border-2 border-dashed border-zinc-300 rounded-[2rem] text-zinc-400 hover:text-orange-500 hover:border-orange-300 transition-all cursor-pointer backdrop-blur-sm group shadow-sm hover:shadow-lg"
-              title="M? thÍm thi?t b? gi? l?p"
+              title="M·ªü th√™m thi·∫øt b·ªã gi·∫£ l·∫≠p"
             >
               <div className="w-10 h-10 rounded-full bg-zinc-100 group-hover:bg-orange-100 flex items-center justify-center transition-colors">
                 <Plus className="w-6 h-6" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-center px-2">ThÍm<br/>M‡n H?nh</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-center px-2">Th√™m<br/>M√†n H√¨nh</span>
             </button>
           </div>
         )}

@@ -5,7 +5,7 @@ import { Plus, Search, Edit2, Trash2, Image as ImageIcon, CheckCircle, XCircle }
 import { useToast } from '../../contexts/ToastContext';
 import { createPortal } from 'react-dom';
 
-const defaultCategories = ['MÛn chÌnh', '–? u?ng', 'Tr·ng mi?ng', '√n v?t'];
+const defaultCategories = ['M√≥n ch√≠nh', 'ƒê·ªì u·ªëng', 'Tr√°ng mi·ªáng', 'ƒÇn v·∫∑t'];
 
 export default function MenuPage() {
   const [menuItems, setMenuItems] = usePersistentState<MenuItem[]>('scango:menu:v1', []);
@@ -27,7 +27,7 @@ export default function MenuPage() {
         price: 0,
         costPrice: 0,
         category: defaultCategories[0],
-        type: '–? „n',
+        type: 'ƒê·ªì ƒÉn',
         image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
         description: '',
         inStock: true,
@@ -48,18 +48,18 @@ export default function MenuPage() {
     
     if (menuItems.some(i => i.id === editingItem.id)) {
       setMenuItems(prev => prev.map(i => i.id === editingItem.id ? editingItem : i));
-      toast.success('–? c?p nh?t mÛn „n');
+      toast.success('ƒê√£ c·∫≠p nh·∫≠t m√≥n ƒÉn');
     } else {
       setMenuItems(prev => [...prev, editingItem]);
-      toast.success('–? thÍm mÛn m?i');
+      toast.success('ƒê√£ th√™m m√≥n m·ªõi');
     }
     handleCloseModal();
   };
 
   const handleDeleteItem = (id: string) => {
-    if (window.confirm('B?n cÛ ch?c mu?n xÛa mÛn n‡y?')) {
+    if (window.confirm('B·∫°n c√≥ ch·∫Øc mu·ªën x√≥a m√≥n n√†y?')) {
       setMenuItems(prev => prev.filter(i => i.id !== id));
-      toast.success('–? xÛa mÛn „n');
+      toast.success('ƒê√£ x√≥a m√≥n ƒÉn');
     }
   };
 
@@ -67,8 +67,8 @@ export default function MenuPage() {
     setMenuItems(prev => prev.map(i => {
       if (i.id === id) {
         const newStock = !i.inStock;
-        if (newStock) toast.success(`–? m? b·n: ${i.name}`);
-        else toast.warning(`–? t?m ng˝ng: ${i.name}`);
+        if (newStock) toast.success(`ƒê√£ m·ªü b√°n: ${i.name}`);
+        else toast.warning(`ƒê√£ t·∫°m ng∆∞ng: ${i.name}`);
         return { ...i, inStock: newStock };
       }
       return i;
@@ -87,14 +87,14 @@ export default function MenuPage() {
     <div className="p-6 md:p-10 max-w-7xl mx-auto w-full animate-fadeIn">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tighter text-zinc-900 uppercase">Qu?n l? Th?c ın</h1>
-          <p className="text-zinc-500 font-medium mt-1">C?u h?nh danh m?c, mÛn „n v‡ t˘y ch?n (Modifier).</p>
+          <h1 className="text-3xl font-bold tracking-tighter text-zinc-900 uppercase">Qu·∫£n l√Ω Th·ª±c ƒë∆°n</h1>
+          <p className="text-zinc-500 font-medium mt-1">C·∫•u h√¨nh danh m·ª•c, m√≥n ƒÉn v√† t√πy ch·ªçn (Modifier).</p>
         </div>
         <button 
           onClick={() => handleOpenModal()}
           className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 font-bold text-sm uppercase tracking-widest shadow-hard border-hard transition-transform active:translate-y-1 flex items-center gap-2"
         >
-          <Plus className="w-5 h-5" /> ThÍm MÛn
+          <Plus className="w-5 h-5" /> Th√™m M√≥n
         </button>
       </div>
 
@@ -104,7 +104,7 @@ export default function MenuPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
           <input 
             type="text" 
-            placeholder="T?m ki?m mÛn „n..."
+            placeholder="T√¨m ki·∫øm m√≥n ƒÉn..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border-hard bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -119,7 +119,7 @@ export default function MenuPage() {
                 selectedCategory === cat ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-600 hover:bg-zinc-100'
               }`}
             >
-              {cat === 'all' ? 'T?t c?' : cat}
+              {cat === 'all' ? 'T·∫•t c·∫£' : cat}
             </button>
           ))}
         </div>
@@ -158,7 +158,7 @@ export default function MenuPage() {
               <h3 className="font-bold text-zinc-900 leading-tight mb-2 flex-1">{item.name}</h3>
               
               <div className="flex items-center justify-between mt-auto pt-4 border-t border-dashed border-zinc-200">
-                <span className="font-mono font-bold">{item.price.toLocaleString('vi-VN')}</span>
+                <span className="font-mono font-bold">{item.price.toLocaleString('vi-VN')}ƒë</span>
                 <button 
                   onClick={() => toggleStock(item.id)}
                   className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider px-2 py-1 border ${
@@ -166,9 +166,9 @@ export default function MenuPage() {
                   }`}
                 >
                   {item.inStock ? (
-                    <><CheckCircle className="w-3 h-3" /> C?n</>
+                    <><CheckCircle className="w-3 h-3" /> C√≤n</>
                   ) : (
-                    <><XCircle className="w-3 h-3" /> H?t</>
+                    <><XCircle className="w-3 h-3" /> H·∫øt</>
                   )}
                 </button>
               </div>
@@ -179,7 +179,7 @@ export default function MenuPage() {
         {filteredItems.length === 0 && (
           <div className="col-span-full py-20 flex flex-col items-center justify-center text-zinc-500 border-2 border-dashed border-zinc-200">
             <ImageIcon className="w-12 h-12 mb-4 text-zinc-300" />
-            <p className="font-medium">Ch˝a cÛ mÛn „n n‡o.</p>
+            <p className="font-medium">Ch∆∞a c√≥ m√≥n ƒÉn n√†o.</p>
           </div>
         )}
       </div>
@@ -190,7 +190,7 @@ export default function MenuPage() {
           <div className="bg-white border-hard shadow-hard w-full max-w-lg mb-20 animate-fadeIn relative">
             <div className="p-6 border-b border-hard flex justify-between items-center bg-zinc-50">
               <h3 className="text-xl font-bold uppercase tracking-tight">
-                {menuItems.some(i => i.id === editingItem.id) ? 'S?a mÛn „n' : 'ThÍm mÛn „n m?i'}
+                {menuItems.some(i => i.id === editingItem.id) ? 'S·ª≠a m√≥n ƒÉn' : 'Th√™m m√≥n ƒÉn m·ªõi'}
               </h3>
               <button onClick={handleCloseModal} className="text-zinc-400 hover:text-zinc-900">
                 <XCircle className="w-6 h-6" />
@@ -199,7 +199,7 @@ export default function MenuPage() {
             
             <form onSubmit={handleSaveItem} className="p-6 space-y-5">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">TÍn mÛn</label>
+                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">T√™n m√≥n</label>
                 <input 
                   type="text" required
                   value={editingItem.name}
@@ -210,7 +210,7 @@ export default function MenuPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Gi· b·n (VN–)</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Gi√° b√°n (VNƒê)</label>
                   <input 
                     type="number" required min="0" step="1000"
                     value={editingItem.price}
@@ -219,7 +219,7 @@ export default function MenuPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Danh m?c</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Danh m·ª•c</label>
                   <input 
                     type="text" required list="categories"
                     value={editingItem.category}
@@ -233,7 +233,7 @@ export default function MenuPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Link ?nh (URL)</label>
+                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Link ·∫¢nh (URL)</label>
                 <input 
                   type="url"
                   value={editingItem.image}
@@ -243,7 +243,7 @@ export default function MenuPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">MÙ t?</label>
+                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">M√¥ t·∫£</label>
                 <textarea 
                   rows={3}
                   value={editingItem.description}
@@ -258,13 +258,13 @@ export default function MenuPage() {
                   onClick={handleCloseModal}
                   className="px-6 py-3 font-bold text-zinc-500 hover:bg-zinc-100 uppercase tracking-widest text-sm transition-colors"
                 >
-                  H?y
+                  H·ªßy
                 </button>
                 <button 
                   type="submit"
                   className="bg-zinc-900 hover:bg-zinc-800 text-white px-8 py-3 font-bold uppercase tracking-widest text-sm shadow-hard transition-transform active:translate-y-1"
                 >
-                  L˝u thay ?i
+                  L∆∞u thay ƒë·ªïi
                 </button>
               </div>
             </form>

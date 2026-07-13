@@ -24,18 +24,18 @@ export default function TablesPage() {
     setTables(prev => [...prev, newTable]);
     setTableName('');
     setIsModalOpen(false);
-    toast.success(`–? thÍm ${newTable.name}`);
+    toast.success(`ƒê√£ th√™m ${newTable.name}`);
   };
 
   const handleDeleteTable = (id: string, name: string) => {
-    if (window.confirm(`B?n cÛ ch?c mu?n xÛa ${name}?`)) {
+    if (window.confirm(`B·∫°n c√≥ ch·∫Øc mu·ªën x√≥a ${name}?`)) {
       setTables(prev => prev.filter(t => t.id !== id));
-      toast.success(`–? xÛa ${name}`);
+      toast.success(`ƒê√£ x√≥a ${name}`);
     }
   };
 
   const handlePrintQR = (name: string) => {
-    toast.info(`–ang in m? QR cho ${name}...`);
+    toast.info(`ƒêang in m√£ QR cho ${name}...`);
     // In a real app, this would open a print dialog or generate a PDF.
   };
 
@@ -43,14 +43,14 @@ export default function TablesPage() {
     <div className="p-6 md:p-10 max-w-7xl mx-auto w-full animate-fadeIn">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tighter text-zinc-900 uppercase">Qu?n l? B‡n</h1>
-          <p className="text-zinc-500 font-medium mt-1">Thi?t l?p sı ? b‡n, in m? QR v‡ qu?n l? th? NFC.</p>
+          <h1 className="text-3xl font-bold tracking-tighter text-zinc-900 uppercase">Qu·∫£n l√Ω B√†n</h1>
+          <p className="text-zinc-500 font-medium mt-1">Thi·∫øt l·∫≠p s∆° ƒë·ªì b√†n, in m√£ QR v√† qu·∫£n l√Ω th·∫ª NFC.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
           className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 font-bold text-sm uppercase tracking-widest shadow-hard border-hard transition-transform active:translate-y-1 flex items-center gap-2"
         >
-          <Plus className="w-5 h-5" /> ThÍm B‡n
+          <Plus className="w-5 h-5" /> Th√™m B√†n
         </button>
       </div>
 
@@ -65,7 +65,7 @@ export default function TablesPage() {
               <button 
                 onClick={() => handleDeleteTable(table.id, table.name)}
                 className="text-zinc-300 hover:text-red-500 transition-colors"
-                title="XÛa b‡n"
+                title="X√≥a b√†n"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -73,10 +73,10 @@ export default function TablesPage() {
             
             <div className="p-5 bg-zinc-50 flex-1 flex flex-col gap-3">
               <div className="flex items-center gap-2 text-xs font-bold text-emerald-600">
-                <CheckCircle className="w-4 h-4" /> <span>NFC ? c?p ph·t</span>
+                <CheckCircle className="w-4 h-4" /> <span>NFC ƒë√£ c·∫•p ph√°t</span>
               </div>
               <div className="flex items-center gap-2 text-xs font-bold text-zinc-500">
-                <SmartphoneNfc className="w-4 h-4" /> <span>H? tr? Tap-to-Order</span>
+                <SmartphoneNfc className="w-4 h-4" /> <span>H·ªó tr·ª£ Tap-to-Order</span>
               </div>
             </div>
 
@@ -85,7 +85,7 @@ export default function TablesPage() {
                 onClick={() => handlePrintQR(table.name)}
                 className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border border-zinc-800 shadow-sm"
               >
-                <Printer className="w-4 h-4" /> In m? QR
+                <Printer className="w-4 h-4" /> In m√£ QR
               </button>
             </div>
           </div>
@@ -96,7 +96,7 @@ export default function TablesPage() {
             <div className="w-16 h-16 mb-4 bg-zinc-200 rounded-full flex items-center justify-center">
               <Plus className="w-8 h-8 text-zinc-400" />
             </div>
-            <p className="font-medium">Ch˝a cÛ b‡n n‡o ˝?c thi?t l?p.</p>
+            <p className="font-medium">Ch∆∞a c√≥ b√†n n√†o ƒë∆∞·ª£c thi·∫øt l·∫≠p.</p>
           </div>
         )}
       </div>
@@ -106,7 +106,7 @@ export default function TablesPage() {
         <div className="fixed inset-0 z-[100] flex justify-center items-start pt-20 bg-zinc-950/40 backdrop-blur-sm">
           <div className="bg-white border-hard shadow-hard w-full max-w-sm animate-fadeIn">
             <div className="p-6 border-b border-hard flex justify-between items-center bg-zinc-50">
-              <h3 className="text-lg font-bold uppercase tracking-tight">ThÍm B‡n M?i</h3>
+              <h3 className="text-lg font-bold uppercase tracking-tight">Th√™m B√†n M·ªõi</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
                 <XCircle className="w-6 h-6" />
               </button>
@@ -114,10 +114,10 @@ export default function TablesPage() {
             
             <form onSubmit={handleAddTable} className="p-6 space-y-5">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">TÍn B‡n</label>
+                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">T√™n B√†n</label>
                 <input 
                   type="text" required autoFocus
-                  placeholder="Vd: B‡n 01, VIP 2..."
+                  placeholder="Vd: B√†n 01, VIP 2..."
                   value={tableName}
                   onChange={(e) => setTableName(e.target.value)}
                   className="w-full px-4 py-3 border-hard focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -128,7 +128,7 @@ export default function TablesPage() {
                 type="submit"
                 className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-3 font-bold uppercase tracking-widest text-sm shadow-hard transition-transform active:translate-y-1"
               >
-                L˝u
+                L∆∞u
               </button>
             </form>
           </div>
@@ -137,4 +137,3 @@ export default function TablesPage() {
       )}
     </div>
   );
-}

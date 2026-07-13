@@ -18,6 +18,7 @@ interface CashierProps {
   setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
   loyaltyMembers: LoyaltyMember[];
   setLoyaltyMembers: React.Dispatch<React.SetStateAction<LoyaltyMember[]>>;
+  embedded?: boolean;
 }
 
 export default function CashierView({
@@ -27,6 +28,7 @@ export default function CashierView({
   setOrders,
   loyaltyMembers,
   setLoyaltyMembers,
+  embedded = false,
 }: CashierProps) {
   const [cashierActiveShift, setCashierActiveShift] = useState(false);
   const [cashierPin, setCashierPin] = useState('');
@@ -76,7 +78,7 @@ export default function CashierView({
   };
 
   // Login Screen
-  if (!cashierActiveShift) {
+  if (!embedded && !cashierActiveShift) {
     return (
       <motion.div 
         initial={{ opacity: 0, y: 10 }}

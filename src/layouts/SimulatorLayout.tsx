@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, useOutletContext } from 'react-router-dom';
-import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig } from '../types';
+import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount } from '../types';
 import { MOCK_LOYALTY_MEMBERS, MOCK_MENU_ITEMS, INDUSTRY_TEMPLATES } from '../mockData';
 import { usePersistentState } from '../hooks/usePersistentState';
 
@@ -13,6 +13,8 @@ export type SimulatorContextType = {
   setMenuItems: (val: any) => void;
   orders: Order[];
   setOrders: (val: any) => void;
+  staffAccounts: StaffAccount[];
+  setStaffAccounts: (val: any) => void;
   loyaltyMembers: LoyaltyMember[];
   setLoyaltyMembers: (val: any) => void;
   ownerOnboarded: boolean;
@@ -108,7 +110,7 @@ export default function SimulatorLayout() {
     })),
   });
 
-  // Active loyalty list
+  const [staffAccounts, setStaffAccounts] = usePersistentState<StaffAccount[]>('scango:staff:v1', []);
   const [loyaltyMembers, setLoyaltyMembers] = usePersistentState<LoyaltyMember[]>('scango:loyalty:v1', MOCK_LOYALTY_MEMBERS);
 
   // Customer dynamic simulator helper values
@@ -227,6 +229,7 @@ export default function SimulatorLayout() {
     tables, setTables,
     menuItems, setMenuItems,
     orders, setOrders,
+    staffAccounts, setStaffAccounts,
     loyaltyMembers, setLoyaltyMembers,
     ownerOnboarded, setOwnerOnboarded,
     soloOnboarded, setSoloOnboarded,

@@ -68,7 +68,7 @@ export default function MenuPage() {
       if (i.id === id) {
         const newStock = !i.inStock;
         if (newStock) toast.success(`Đã mở bán: ${i.name}`);
-        else toast.warning(`Đã tạm ngưng: ${i.name}`);
+        else toast.info(`Đã tạm ngưng: ${i.name}`);
         return { ...i, inStock: newStock };
       }
       return i;

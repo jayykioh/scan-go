@@ -65,6 +65,12 @@ const router = createBrowserRouter([
   }
 ]);
 
+import { ToastProvider } from './contexts/ToastContext';
+
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>
+  );
 }

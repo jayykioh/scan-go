@@ -331,7 +331,7 @@ export default function OwnerView({
   const handleUpdatePromoSettings = () => {
     setTenantConfig(prev => ({
       ...prev,
-      discountCode: promoCode.trim().toUpperCase(),
+      discountCode: promoCode.trim().to(),
       discountMinItems: Number(promoMinItems) || 1,
       discountMinAmount: Number(promoMinAmount) || 0,
       discountAmount: Number(promoAmount) || 0,
@@ -390,7 +390,7 @@ export default function OwnerView({
           <h2 className="text-[24px] font-bold text-[#2D2B30] tracking-tight leading-tight">
             Thiết lập quán
           </h2>
-          <p className="text-[11px] text-[#808080] mt-1 text-pretty font-medium">
+          <p className="text-sm text-[#808080] mt-1 text-pretty font-medium">
             Tối ưu hóa quy trình trong 15s.
           </p>
 
@@ -409,11 +409,11 @@ export default function OwnerView({
         <div className="my-[13px] flex-grow flex flex-col justify-center bg-white border border-[#B5C7D8] rounded-[21px] p-[13px] shadow-sm">
           {onboardStep === 1 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-zinc-900 font-bold uppercase tracking-wider">B1: Thông tin quán</span>
+              <span className="text-xs text-zinc-900 font-bold ">B1: Thông tin quán</span>
               <h3 className="text-[16px] font-bold text-[#2D2B30]">Tên thương hiệu</h3>
               
               <div className="space-y-[4px]">
-                <label className="block text-[10px] text-[#7E7E7E] font-semibold uppercase tracking-wider">Tên thương hiệu</label>
+                <label className="block text-xs text-[#7E7E7E] font-semibold ">Tên thương hiệu</label>
                 <input 
                   type="text" 
                   value={tempShopName} 
@@ -425,7 +425,7 @@ export default function OwnerView({
               </div>
 
               <div className="space-y-[4px]">
-                <label className="block text-[10px] text-[#7E7E7E] font-semibold uppercase tracking-wider mb-1.5">Mô hình phân loại</label>
+                <label className="block text-xs text-[#7E7E7E] font-semibold mb-1.5">Mô hình phân loại</label>
                 <div className="grid grid-cols-2 gap-[13px]">
                   <button 
                     onClick={() => { setTempIndustry('quan_an'); setTempShopName('Phở Truyền Thuyết Kinh Kỳ'); }}
@@ -436,7 +436,7 @@ export default function OwnerView({
                     }`}
                   >
                     <UtensilsCrossed className="w-5 h-5" />
-                    <span className="text-[10px] font-semibold uppercase">Quán ăn / Phở</span>
+                    <span className="text-xs font-semibold ">Quán ăn / Phở</span>
                   </button>
                   <button 
                     onClick={() => { setTempIndustry('quan_cafe'); setTempShopName('Cà Phê Rang Muối Cổ Đô'); }}
@@ -447,7 +447,7 @@ export default function OwnerView({
                     }`}
                   >
                     <Coffee className="w-5 h-5" />
-                    <span className="text-[10px] font-semibold uppercase">Cà phê / Trà sữa</span>
+                    <span className="text-xs font-semibold ">Cà phê / Trà sữa</span>
                   </button>
                 </div>
               </div>
@@ -456,7 +456,7 @@ export default function OwnerView({
 
           {onboardStep === 2 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-zinc-900 font-bold uppercase tracking-wider">B2: Gói tính năng</span>
+              <span className="text-xs text-zinc-900 font-bold ">B2: Gói tính năng</span>
               <h3 className="text-[16px] font-bold text-[#2D2B30]">Chọn gói phù hợp</h3>
               
               <div className="space-y-[4px]">
@@ -467,12 +467,12 @@ export default function OwnerView({
                   }`}
                 >
                   <div className="space-y-0.5 max-w-[80%]">
-                    <div className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1">
+                    <div className="text-sm font-bold flex items-center gap-1">
                       <Sparkles className="w-3.5 h-3.5 text-amber-500" /> PRO AI
                     </div>
-                    <p className="text-[10px] text-[#707070]">Tối ưu lợi nhuận, KDS realtime.</p>
+                    <p className="text-xs text-[#707070]">Tối ưu lợi nhuận, KDS realtime.</p>
                   </div>
-                  <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-bold">MIỄN PHÍ</span>
+                  <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-bold">MIỄN PHÍ</span>
                 </button>
               </div>
             </div>
@@ -480,7 +480,7 @@ export default function OwnerView({
 
           {onboardStep === 3 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-zinc-900 font-bold uppercase tracking-wider">B3: Thanh toán</span>
+              <span className="text-xs text-zinc-900 font-bold ">B3: Thanh toán</span>
               <h3 className="text-[16px] font-bold text-[#2D2B30]">Quy trình thu ngân</h3>
               
               <div className="grid grid-cols-2 gap-[13px]">
@@ -491,7 +491,7 @@ export default function OwnerView({
                   }`}
                 >
                   <Receipt className="w-5 h-5 text-zinc-900" />
-                  <div className="text-[10px] font-bold uppercase leading-tight">Trả sau<br/><span className="text-[8px] font-medium">(Ăn xong thanh toán)</span></div>
+                  <div className="text-xs font-bold leading-tight">Trả sau<br/><span className="text-[8px] font-medium">(Ăn xong thanh toán)</span></div>
                 </button>
                 <button 
                   onClick={() => setTempPayMode('Pay-First')}
@@ -500,7 +500,7 @@ export default function OwnerView({
                   }`}
                 >
                   <CreditCard className="w-5 h-5 text-zinc-900" />
-                  <div className="text-[10px] font-bold uppercase leading-tight">Trả trước<br/><span className="text-[8px] font-medium">(Thanh toán tại quầy)</span></div>
+                  <div className="text-xs font-bold leading-tight">Trả trước<br/><span className="text-[8px] font-medium">(Thanh toán tại quầy)</span></div>
                 </button>
               </div>
             </div>
@@ -512,7 +512,7 @@ export default function OwnerView({
                 <Check className="w-5 h-5 text-emerald-600" />
               </div>
               <h3 className="text-[16px] font-bold text-[#2D2B30] text-center">Hoàn tất!</h3>
-              <p className="text-[11px] text-[#707070] text-center">
+              <p className="text-sm text-[#707070] text-center">
                 Workspace đã thiết lập xong. Bạn có thể sử dụng QR, KDS và AI ngay lập tức.
               </p>
             </div>
@@ -540,25 +540,25 @@ export default function OwnerView({
         <div className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8]/60 shadow-xs relative overflow-hidden select-none">
           <div className="flex justify-between items-start">
             <div className="space-y-[2px]">
-              <span className="text-[9px] uppercase tracking-wider font-bold text-[#808080] block">QUẢN LÝ LIVE PLATFORM</span>
+              <span className="text-[9px] font-bold text-[#808080] block">QUẢN LÝ LIVE PLATFORM</span>
               <h3 className="text-[16px] font-bold text-[#2D2B30]">{tenantConfig.shopName}</h3>
-              <p className="text-[11px] text-[#454547] font-medium">Mô hình: {
+              <p className="text-sm text-[#454547] font-medium">Mô hình: {
                 tenantConfig.industry === 'quan_an' ? 'Quán ăn / Phở' : 
                 'Cà phê / Trà sữa'
               }</p>
             </div>
             <div className="text-right flex flex-col items-end gap-1 select-none">
-              <span className="inline-block text-[10px] font-bold text-zinc-900 bg-zinc-900/10 border border-zinc-900/20 px-2 py-0.5 rounded-[21px]">
-                Gói {tenantConfig.pricingTier.toUpperCase()}
+              <span className="inline-block text-xs font-bold text-zinc-900 bg-zinc-900/10 border border-zinc-900/20 px-2 py-0.5 rounded-[21px]">
+                Gói {tenantConfig.pricingTier.to()}
               </span>
-              <p className="text-[9px] text-[#808080] font-semibold uppercase">Workspace chủ</p>
+              <p className="text-[9px] text-[#808080] font-semibold ">Workspace chủ</p>
             </div>
           </div>
 
           <div className="flex gap-1.5 mt-2.5">
             <button 
               onClick={handleStartOnboarding}
-              className="flex items-center gap-1 text-[10px] text-[#2D2B30] hover:bg-gray-100 bg-white px-2.5 py-1 rounded-[21px] border border-[#B5C7D8] font-semibold transition-all cursor-pointer focus:outline-2 focus:outline-zinc-900"
+              className="flex items-center gap-1 text-xs text-[#2D2B30] hover:bg-gray-100 bg-white px-2.5 py-1 rounded-[21px] border border-[#B5C7D8] font-semibold transition-all cursor-pointer focus:outline-2 focus:outline-zinc-900"
             >
               <RefreshCw className="w-3 h-3 text-zinc-900" /> Cài đặt lại mô hình
             </button>
@@ -566,7 +566,7 @@ export default function OwnerView({
         </div>
 
         {/* Tab Selection Row adhering to minimalist Claude design */}
-        <div className="grid grid-cols-4 bg-[#F5F5F7] p-1 rounded-[21px] border border-[#B5C7D8]/50 text-[11px] font-semibold select-none">
+        <div className="grid grid-cols-4 bg-[#F5F5F7] p-1 rounded-[21px] border border-[#B5C7D8]/50 text-sm font-semibold select-none">
           <button 
             onClick={() => { setActiveTab('kpi'); setShowAddForm(false); setEditingItem(null); }}
             className={`py-1.5 rounded-[21px] transition-all flex justify-center items-center ${
@@ -607,29 +607,29 @@ export default function OwnerView({
           <div className="space-y-[13px] animate-fadeIn">
             <div className="grid grid-cols-2 gap-[13px]">
               <div className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-xs">
-                <span className="text-[10px] text-[#808080] block uppercase font-bold tracking-wider">Doanh Thu Thật</span>
-                <span className="text-[21px] font-bold text-[#2D2B30] font-mono mt-0.5 block tabular-nums">
+                <span className="text-xs text-[#808080] block font-bold ">Doanh Thu Thật</span>
+                <span className="text-[21px] font-bold text-[#2D2B30] mt-0.5 block ">
                   {totalRevenue.toLocaleString()}đ
                 </span>
-                <span className="text-[10px] text-emerald-800 font-semibold block mt-0.5">✓ Real-time POS</span>
+                <span className="text-xs text-emerald-800 font-semibold block mt-0.5">✓ Real-time POS</span>
               </div>
 
               <div className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-xs">
-                <span className="text-[10px] text-[#808080] block uppercase font-bold tracking-wider">Biên Lợi Nhuận</span>
-                <span className="text-[21px] font-bold text-zinc-900 font-mono mt-0.5 block tabular-nums">
+                <span className="text-xs text-[#808080] block font-bold ">Biên Lợi Nhuận</span>
+                <span className="text-[21px] font-bold text-zinc-900 mt-0.5 block ">
                   {netProfit.toLocaleString()}đ
                 </span>
-                <span className="text-[10px] text-[#808080] block mt-0.5 font-sans leading-none">Vốn NVL: {totalCost.toLocaleString()}đ</span>
+                <span className="text-xs text-[#808080] block mt-0.5 font-sans leading-none">Vốn NVL: {totalCost.toLocaleString()}đ</span>
               </div>
             </div>
 
             {/* Top seller analysis block */}
             <div className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-xs space-y-[13px]">
               <div className="flex justify-between items-center border-b border-[#B5C7D8]/30 pb-2">
-                <span className="text-[12px] font-bold text-[#2D2B30] uppercase flex items-center gap-1.5">
+                <span className="text-sm font-bold text-[#2D2B30] flex items-center gap-1.5">
                   <Flame className="w-4 h-4 text-zinc-900" /> Món được đặt chọn phổ biến
                 </span>
-                <span className="text-[10px] bg-[#F5F5F7] border border-[#B5C7D8] text-[#454547] px-2 py-0.5 rounded-[21px] font-mono font-bold leading-none select-none">Live-chart</span>
+                <span className="text-xs bg-[#F5F5F7] border border-[#B5C7D8] text-[#454547] px-2 py-0.5 rounded-[21px] font-bold leading-none select-none">Live-chart</span>
               </div>
 
               <div className="space-y-[13px] pt-1">
@@ -637,17 +637,17 @@ export default function OwnerView({
                   const percent = Math.max(15, Math.min(100, Math.round((dish.quantity / maxPopularity) * 100)));
                   return (
                     <div key={dish.id} className="space-y-[4px]">
-                      <div className="flex justify-between items-center text-[12px]">
+                      <div className="flex justify-between items-center text-sm ">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 ${
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${
                             i === 0 ? 'bg-zinc-900' : i === 1 ? 'bg-slate-500' : 'bg-slate-400'
                           }`}>
                             {i + 1}
                           </span>
                           <span className="font-semibold text-[#2D2B30] truncate">{dish.name}</span>
-                          <span className="text-[10px] text-[#808080] flex-shrink-0">({dish.category})</span>
+                          <span className="text-xs text-[#808080] flex-shrink-0">({dish.category})</span>
                         </div>
-                        <span className="font-mono font-semibold text-[#2D2B30] flex-shrink-0 tabular-nums">{dish.quantity} lượt đặt</span>
+                        <span className="font-semibold text-[#2D2B30] flex-shrink-0 ">{dish.quantity} lượt đặt</span>
                       </div>
                       
                       <div className="w-full bg-[#F5F5F7] rounded-full h-2 overflow-hidden border border-[#B5C7D8]/30">
@@ -666,22 +666,22 @@ export default function OwnerView({
             {tenantConfig.loyaltyEnabled && (
               <div className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-xs">
                 <div className="flex justify-between items-center border-b border-[#B5C7D8]/30 pb-2">
-                  <span className="text-[12px] font-bold text-[#2D2B30] uppercase flex items-center gap-1.5">
+                  <span className="text-sm font-bold text-[#2D2B30] flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-zinc-900" /> Tích luỹ hội viên ({loyaltyMembers.length} người)
                   </span>
-                  <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-semibold select-none">Tăng trưởng chốt đơn</span>
+                  <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-semibold select-none">Tăng trưởng chốt đơn</span>
                 </div>
                 
                 <div className="mt-2.5 space-y-1.5 max-h-[120px] overflow-y-auto">
                   {loyaltyMembers.map((member) => (
-                    <div key={member.phone} className="flex justify-between text-[11px] bg-[#F5F5F7] p-2 rounded-[21px] border border-[#B5C7D8] tracking-tight">
+                    <div key={member.phone} className="flex justify-between text-sm bg-[#F5F5F7] p-2 rounded-[21px] border border-[#B5C7D8] tracking-tight">
                       <div>
                         <div className="font-semibold text-[#2D2B30]">{member.name || 'Hội Viên Mới'}</div>
-                        <div className="text-[#808080] text-[10px] font-mono tabular-nums">SĐT: {member.phone} • Ghé: {member.visits} lần</div>
+                        <div className="text-[#808080] text-xs ">SĐT: {member.phone} • Ghé: {member.visits} lần</div>
                       </div>
                       <div className="text-right">
-                        <span className="font-bold text-zinc-900 font-mono tabular-nums">{member.points} điểm tích</span>
-                        <div className="text-[#808080] text-[10px] font-light">{member.isVerified ? '✓ Đã verify OTP' : 'Tạm'}</div>
+                        <span className="font-bold text-zinc-900 ">{member.points} điểm tích</span>
+                        <div className="text-[#808080] text-xs font-light">{member.isVerified ? '✓ Đã verify OTP' : 'Tạm'}</div>
                       </div>
                     </div>
                   ))}
@@ -697,13 +697,13 @@ export default function OwnerView({
             
             <div className="flex justify-between items-center select-none">
               <div>
-                <span className="text-[12px] font-bold uppercase text-[#2D2B30]">Danh Sách Thực Đơn</span>
-                <p className="text-[10px] text-[#808080] leading-none mt-0.5">Khóa món dán bàn chuẩn xác</p>
+                <span className="text-sm font-bold text-[#2D2B30]">Danh Sách Thực Đơn</span>
+                <p className="text-xs text-[#808080] leading-none mt-0.5">Khóa món dán bàn chuẩn xác</p>
               </div>
               
               <button 
                 onClick={handleStartAddForm}
-                className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[11px] px-[13px] py-2 rounded-[21px] flex items-center gap-1 transition-all cursor-pointer font-semibold shadow-xs focus:outline-2 focus:outline-zinc-900"
+                className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm px-[13px] py-2 rounded-[21px] flex items-center gap-1 transition-all cursor-pointer font-semibold shadow-xs focus:outline-2 focus:outline-zinc-900"
               >
                 <Plus className="w-3.5 h-3.5" /> Thêm Món
               </button>
@@ -713,38 +713,38 @@ export default function OwnerView({
             <div className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8] space-y-3 relative overflow-hidden text-[#2D2B30]">
               <div className="flex items-center gap-1.5 border-b border-[#B5C7D8]/60 pb-2">
                 <Gift className="w-4 h-4 text-zinc-900" />
-                <span className="text-[12px] font-bold text-[#2D2B30] uppercase">MÃ KHUYẾN MÃI CHIẾN DỊCH</span>
-                <span className="text-[10px] bg-white border border-[#B5C7D8] text-zinc-900 px-2 py-0.5 rounded-[21px] font-bold ml-auto uppercase">COUPON CODE</span>
+                <span className="text-sm font-bold text-[#2D2B30] ">MÃ KHUYẾN MÃI CHIẾN DỊCH</span>
+                <span className="text-xs bg-white border border-[#B5C7D8] text-zinc-900 px-2 py-0.5 rounded-[21px] font-bold ml-auto ">COUPON CODE</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-[13px] text-[11px]">
+              <div className="grid grid-cols-2 gap-[13px] text-sm ">
                 <div className="space-y-[4px]">
-                  <label className="block text-[10px] text-[#808080] font-bold uppercase select-none">Mã Khuyến Mãi</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">Mã Khuyến Mãi</label>
                   <input 
                     type="text" 
                     value={promoCode} 
-                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[11px] font-mono text-[#2D2B30] font-bold focus:outline-none focus:border-zinc-900"
+                    onChange={(e) => setPromoCode(e.target.value.to())}
+                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-sm text-[#2D2B30] font-bold focus:outline-none focus:border-zinc-900"
                     placeholder="E.g. GIAM15K"
                   />
                 </div>
                 
                 <div className="space-y-[4px]">
-                  <label className="block text-[10px] text-[#808080] font-bold uppercase select-none">Mức Giảm Giá (đ)</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">Mức Giảm Giá (đ)</label>
                   <input 
                     type="number" 
                     value={promoAmount} 
                     onChange={(e) => setPromoAmount(Number(e.target.value))}
-                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[11px] font-mono text-[#2D2B30] font-bold focus:outline-none focus:border-zinc-900 tabular-nums"
+                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-sm text-[#2D2B30] font-bold focus:outline-none focus:border-zinc-900 "
                   />
                 </div>
 
                 <div className="space-y-[4px]">
-                  <label className="block text-[10px] text-[#808080] font-bold uppercase select-none">Cách Kích Hoạt</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">Cách Kích Hoạt</label>
                   <select
                     value={promoTriggerType}
                     onChange={(e) => setPromoTriggerType(e.target.value as 'auto' | 'manual')}
-                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[10px] font-semibold text-[#2D2B30] focus:outline-none"
+                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-xs font-semibold text-[#2D2B30] focus:outline-none"
                   >
                     <option value="auto">⚡ Tự động áp dụng khi đủ kiện</option>
                     <option value="manual">🔑 Khách tự nhập mã Coupon</option>
@@ -752,11 +752,11 @@ export default function OwnerView({
                 </div>
 
                 <div className="space-y-[4px]">
-                  <label className="block text-[10px] text-[#808080] font-bold uppercase select-none">Tiêu Chí Khách Đạt</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">Tiêu Chí Khách Đạt</label>
                   <select
                     value={promoConditionType}
                     onChange={(e) => setPromoConditionType(e.target.value as 'amount' | 'quantity' | 'both')}
-                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[10px] font-semibold text-[#2D2B30] focus:outline-none"
+                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-xs font-semibold text-[#2D2B30] focus:outline-none"
                   >
                     <option value="amount">💰 Theo tổng số tiền tối thiểu</option>
                     <option value="quantity">🛒 Theo số lượng món ăn</option>
@@ -765,33 +765,33 @@ export default function OwnerView({
                 </div>
 
                 <div className="space-y-[4px]">
-                  <label className="block text-[10px] text-[#808080] font-bold uppercase select-none">Số nước/món tối thiểu</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">Số nước/món tối thiểu</label>
                   <input 
                     type="number" 
                     disabled={promoConditionType === 'amount'}
                     value={promoMinItems} 
                     onChange={(e) => setPromoMinItems(Number(e.target.value))}
-                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[11px] font-mono text-[#2D2B30] font-bold focus:outline-none disabled:opacity-40 tabular-nums"
+                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-sm text-[#2D2B30] font-bold focus:outline-none disabled:opacity-40 "
                   />
                 </div>
 
                 <div className="space-y-[4px]">
-                  <label className="block text-[10px] text-[#808080] font-bold uppercase select-none">Tổng giá tối thiểu (đ)</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">Tổng giá tối thiểu (đ)</label>
                   <input 
                     type="number" 
                     disabled={promoConditionType === 'quantity'}
                     value={promoMinAmount} 
                     onChange={(e) => setPromoMinAmount(Number(e.target.value))}
-                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[11px] font-mono text-[#2D2B30] font-bold focus:outline-none disabled:opacity-40 tabular-nums"
+                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-sm text-[#2D2B30] font-bold focus:outline-none disabled:opacity-40 "
                   />
                 </div>
 
                 <div className="space-y-[4px] col-span-2">
-                  <label className="block text-[10px] text-[#808080] font-bold uppercase select-none">Mức ăn áp dụng riêng biệt</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">Mức ăn áp dụng riêng biệt</label>
                   <select
                     value={promoTargetDishId}
                     onChange={(e) => setPromoTargetDishId(e.target.value)}
-                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[10px] font-semibold text-[#2D2B30] focus:outline-none"
+                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-xs font-semibold text-[#2D2B30] focus:outline-none"
                   >
                     <option value="all">🌐 Áp dụng cho toàn bộ giỏ hàng</option>
                     {menuItems.map(m => (
@@ -802,7 +802,7 @@ export default function OwnerView({
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-[#B5C7D8]/45">
-                <label className="flex items-center gap-1.5 text-[11px] text-[#2D2B30] selection:bg-transparent font-medium cursor-pointer">
+                <label className="flex items-center gap-1.5 text-sm text-[#2D2B30] selection:bg-transparent font-medium cursor-pointer">
                   <input 
                     type="checkbox" 
                     checked={promoEnabled}
@@ -814,13 +814,13 @@ export default function OwnerView({
 
                 <button 
                   onClick={handleUpdatePromoSettings}
-                  className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[11px] font-semibold px-4 py-1.5 rounded-[21px] cursor-pointer shadow-xs focus:outline-2 focus:outline-zinc-900"
+                  className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm font-semibold px-4 py-1.5 rounded-[21px] cursor-pointer shadow-xs focus:outline-2 focus:outline-zinc-900"
                 >
                   Áp dụng thay đổi
                 </button>
               </div>
 
-              <p className="text-[10px] text-[#707070] italic leading-relaxed bg-white p-2.5 rounded-[21px] border border-[#B5C7D8]">
+              <p className="text-xs text-[#707070] italic leading-relaxed bg-white p-2.5 rounded-[21px] border border-[#B5C7D8]">
                 👉 Chương trình kích hoạt: Mã <strong>{promoCode}</strong> giảm giá <strong>{promoAmount.toLocaleString()}đ</strong> {promoTriggerType === 'auto' ? 'ngay lập tức khi đủ điều kiện.' : 'khi khách nhập đúng mã.'} 
               </p>
             </div>
@@ -829,10 +829,10 @@ export default function OwnerView({
             {(showAddForm || editingItem) && (
               <form 
                 onSubmit={showAddForm ? handleAddDishSubmit : handleEditDishSubmit}
-                className="bg-white border border-zinc-900 p-[13px] rounded-[21px] space-y-3 shadow-md text-[12px] text-[#2D2B30]"
+                className="bg-white border border-zinc-900 p-[13px] rounded-[21px] space-y-3 shadow-md text-sm text-[#2D2B30]"
               >
                 <div className="flex justify-between items-center border-b border-[#B5C7D8]/30 pb-2">
-                  <span className="font-bold text-[#2D2B30] uppercase">
+                  <span className="font-bold text-[#2D2B30] ">
                     {showAddForm ? '➕ Thêm món mới vào kho' : '📝 Cập nhật món ăn'}
                   </span>
                   <button 
@@ -846,47 +846,47 @@ export default function OwnerView({
 
                 <div className="space-y-[13px]">
                   <div className="space-y-[4px]">
-                    <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Tên sản phẩm *</label>
+                    <label className="block text-xs text-[#808080] font-bold select-none">Tên sản phẩm *</label>
                     <input 
                       type="text" 
                       required
                       value={formName} 
                       onChange={(e) => setFormName(e.target.value)}
-                      className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-[12px]"
+                      className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-sm "
                       placeholder="E.g. Phở mọc chuẩn vị..."
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-[13px]">
                     <div className="space-y-[4px]">
-                      <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Giá bán khách hàng (đ)</label>
+                      <label className="block text-xs text-[#808080] font-bold select-none">Giá bán khách hàng (đ)</label>
                       <input 
                         type="number" 
                         required
                         value={formPrice} 
                         onChange={(e) => setFormPrice(Number(e.target.value))}
-                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-[12px] tabular-nums"
+                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-sm "
                       />
                     </div>
                     <div className="space-y-[4px]">
-                      <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Giá vốn nguyên liệu * (đ)</label>
+                      <label className="block text-xs text-[#808080] font-bold select-none">Giá vốn nguyên liệu * (đ)</label>
                       <input 
                         type="number" 
                         required
                         value={formCostPrice} 
                         onChange={(e) => setFormCostPrice(Number(e.target.value))}
-                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-[12px] tabular-nums"
+                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-sm "
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-[13px]">
                     <div className="space-y-[4px]">
-                      <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Mục hàng</label>
+                      <label className="block text-xs text-[#808080] font-bold select-none">Mục hàng</label>
                       <select 
                         value={formCategory}
                         onChange={(e) => setFormCategory(e.target.value)}
-                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-1.5 py-1.5 font-semibold text-[11px]"
+                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-1.5 py-1.5 font-semibold text-sm "
                       >
                         <option value="Món nước">Món nước</option>
                         <option value="Khô & Bún">Khô & Bún</option>
@@ -896,30 +896,30 @@ export default function OwnerView({
                       </select>
                     </div>
                     <div className="space-y-[4px]">
-                      <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Kiểu món</label>
+                      <label className="block text-xs text-[#808080] font-bold select-none">Kiểu món</label>
                       <input 
                         type="text"
                         required
                         value={formType}
                         onChange={(e) => setFormType(e.target.value)}
-                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 font-semibold text-[11px]"
+                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 font-semibold text-sm "
                         placeholder="E.g. Đồ ăn, Đồ uống"
                       />
                     </div>
                     <div className="space-y-[4px]">
-                      <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Tồn ban đầu</label>
+                      <label className="block text-xs text-[#808080] font-bold select-none">Tồn ban đầu</label>
                       <input 
                         type="number" 
                         required
                         value={formStockCount} 
                         onChange={(e) => setFormStockCount(Number(e.target.value))}
-                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-2 py-1.5 font-semibold text-[11px] tabular-nums"
+                        className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-2 py-1.5 font-semibold text-sm "
                       />
                     </div>
                   </div>
 
                   <div className="space-y-[4px]">
-                    <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Mô tả món</label>
+                    <label className="block text-xs text-[#808080] font-bold select-none">Mô tả món</label>
                     <textarea 
                       value={formDescription} 
                       onChange={(e) => setFormDescription(e.target.value)}
@@ -929,12 +929,12 @@ export default function OwnerView({
                   </div>
 
                   <div className="space-y-[4px]">
-                    <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Đường dẫn ảnh sản phẩm (URL)</label>
+                    <label className="block text-xs text-[#808080] font-bold select-none">Đường dẫn ảnh sản phẩm (URL)</label>
                     <input 
                       type="text" 
                       value={formImage} 
                       onChange={(e) => setFormImage(e.target.value)}
-                      className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-[11px] font-mono"
+                      className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-sm "
                       placeholder="Dán link ảnh Unsplash hoặc chọn preset..."
                     />
                     
@@ -944,7 +944,7 @@ export default function OwnerView({
                           key={preset.label}
                           type="button"
                           onClick={() => setFormImage(preset.url)}
-                          className={`text-[10px] font-semibold px-2.5 py-1.5 rounded-[21px] border transition-all ${
+                          className={`text-xs font-semibold px-2.5 py-1.5 rounded-[21px] border transition-all ${
                             formImage === preset.url ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-[#F5F5F7] border-[#B5C7D8] text-[#2D2B30]'
                           }`}
                         >
@@ -988,7 +988,7 @@ export default function OwnerView({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <h4 className="text-xs font-bold text-zinc-900 truncate">{item.name}</h4>
-                        <div className="text-[11px] font-bold text-zinc-900 tabular-nums mt-0.5">{item.price.toLocaleString()}đ</div>
+                        <div className="text-sm font-bold text-zinc-900 mt-0.5">{item.price.toLocaleString()}đ</div>
                       </div>
                       
                       <div className="flex items-center gap-1 flex-shrink-0">
@@ -1012,7 +1012,7 @@ export default function OwnerView({
                     </div>
 
                     <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-zinc-100">
-                      <div className="flex items-center gap-2 text-[9px] text-zinc-500 font-mono tracking-tight flex-wrap">
+                      <div className="flex items-center gap-2 text-[9px] text-zinc-500 tracking-tight flex-wrap">
                         <span>Gốc: {(item.costPrice || Math.round(item.price*0.4)).toLocaleString()}đ</span>
                         <span>Kho: {item.stockCount}</span>
                       </div>
@@ -1020,7 +1020,7 @@ export default function OwnerView({
                       <button 
                         type="button"
                         onClick={() => handleToggleStock(item.id)}
-                        className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-colors flex-shrink-0 ${
+                        className={`px-2 py-0.5 rounded text-[9px] font-bold transition-colors flex-shrink-0 ${
                           item.inStock 
                             ? 'bg-emerald-100 text-emerald-800' 
                             : 'bg-zinc-200 text-zinc-600'
@@ -1040,36 +1040,36 @@ export default function OwnerView({
         {activeTab === 'nfc' && (
           <div className="space-y-[13px] animate-fadeIn">
             <div className="space-y-[4px]">
-              <h4 className="text-[12px] font-bold uppercase text-[#2D2B30]">Quản Lý Bàn Ăn & QR Đặt Món</h4>
-              <p className="text-[11px] text-[#707070] leading-relaxed text-pretty">
+              <h4 className="text-sm font-bold text-[#2D2B30]">Quản Lý Bàn Ăn & QR Đặt Món</h4>
+              <p className="text-sm text-[#707070] leading-relaxed text-pretty">
                 Mỗi bàn ăn tự động phát hành 1 mã QR bảo mật. Hãy chạm giả lập NFC dán bàn hoặc quét QR bên dưới để phân luồng trực tiếp hóa đơn và đặt món cho tệp khách.
               </p>
             </div>
 
             <form onSubmit={handleAddTableSubmit} className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8] flex gap-[13px] items-end shadow-2xs">
               <div className="flex-1 space-y-[4px]">
-                <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Tên bàn ăn mới cần thêm</label>
+                <label className="block text-xs text-[#808080] font-bold select-none">Tên bàn ăn mới cần thêm</label>
                 <input 
                   type="text"
                   required
                   value={newTableName}
                   onChange={(e) => setNewTableName(e.target.value)}
                   placeholder="Ví dụ: Bàn VIP 07, Bàn Sân Vườn 02..."
-                  className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-[13px] py-1.5 text-[11px] text-[#2D2B30] font-semibold focus:outline-none focus:border-zinc-900 shadow-sm"
+                  className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-[13px] py-1.5 text-sm text-[#2D2B30] font-semibold focus:outline-none focus:border-zinc-900 shadow-sm"
                 />
               </div>
               <button 
                 type="submit"
-                className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[11px] px-[13px] py-2.5 rounded-[21px] flex items-center gap-1 shadow-sm h-[38px] transition-all font-semibold cursor-pointer"
+                className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm px-[13px] py-2.5 rounded-[21px] flex items-center gap-1 shadow-sm h-[38px] transition-all font-semibold cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Thêm Bàn
               </button>
             </form>
 
             <div className="bg-white border border-[#B5C7D8] rounded-[21px] p-[13px] space-y-[13px] shadow-xs">
-              <div className="text-[11px] font-bold text-[#2D2B30] border-b border-[#B5C7D8]/30 pb-2 flex items-center justify-between select-none">
+              <div className="text-sm font-bold text-[#2D2B30] border-b border-[#B5C7D8]/30 pb-2 flex items-center justify-between select-none">
                 <span>BÀN ĐANG VẬN HÀNH ({tables.length})</span>
-                <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-bold">QR SG-LITE CHỐNG GIAN LẬN</span>
+                <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-bold">QR SG-LITE CHỐNG GIAN LẬN</span>
               </div>
               
               <div className="grid grid-cols-2 gap-[13px] max-h-[280px] overflow-y-auto pr-1">
@@ -1102,14 +1102,14 @@ export default function OwnerView({
                             type="text" 
                             value={editingTableOriginalName}
                             onChange={(e) => setEditingTableOriginalName(e.target.value)}
-                            className="w-full bg-white border border-zinc-900 text-center text-[11px] font-bold py-1 px-1 rounded-[21px] focus:outline-none"
+                            className="w-full bg-white border border-zinc-900 text-center text-sm font-bold py-1 px-1 rounded-[21px] focus:outline-none"
                             placeholder="Tên bàn"
                           />
                           <div className="flex gap-1 justify-center">
                             <button 
                               type="button"
                               onClick={() => handleSaveTableName(table.id)}
-                              className="bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-[21px] flex items-center gap-0.5 cursor-pointer uppercase"
+                              className="bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-[21px] flex items-center gap-0.5 cursor-pointer "
                             >
                               <Check className="w-2.5 h-2.5" /> Lưu
                             </button>
@@ -1125,7 +1125,7 @@ export default function OwnerView({
                       ) : (
                         <div>
                           <div className="flex items-center gap-1 justify-center select-none">
-                            <span className="text-[12px] font-bold text-[#2D2B30]">{table.name}</span>
+                            <span className="text-sm font-bold text-[#2D2B30]">{table.name}</span>
                             <button 
                               type="button"
                               onClick={() => handleStartEditingTable(table.id, table.name)}
@@ -1135,7 +1135,7 @@ export default function OwnerView({
                               <Edit2 className="w-2.5 h-2.5" />
                             </button>
                           </div>
-                          <p className="text-[9px] text-[#808080] font-mono leading-none mt-1 select-none tabular-nums">ID: {table.id}</p>
+                          <p className="text-[9px] text-[#808080] leading-none mt-1 select-none ">ID: {table.id}</p>
                         </div>
                       )}
 
@@ -1168,7 +1168,7 @@ export default function OwnerView({
                 <div className="bg-white p-[34px] rounded-[21px] border border-[#B5C7D8] max-w-xs w-full text-center space-y-[13px] shadow-2xl">
                   
                   <div className="flex justify-between items-center border-b border-[#B5C7D8]/30 pb-2.5 select-none">
-                    <span className="text-[11px] font-bold uppercase text-[#2D2B30]">Xác xuất QR gọi món</span>
+                    <span className="text-sm font-bold text-[#2D2B30]">Xác xuất QR gọi món</span>
                     <button 
                       onClick={() => setSelectedQrTableId(null)}
                       className="text-[#808080] font-bold hover:text-red-500 font-sans cursor-pointer"
@@ -1197,26 +1197,26 @@ export default function OwnerView({
                     <span className="text-[14px] font-bold text-[#2D2B30] tracking-tight">
                       {tables.find(t => t.id === selectedQrTableId)?.name || `Bàn ${selectedQrTableId}`}
                     </span>
-                    <p className="text-[9px] text-[#808080] font-mono tracking-wider font-semibold select-none leading-none">
+                    <p className="text-[9px] text-[#808080] font-semibold select-none leading-none">
                       SCANGO LITE QR SERVICE ACTIVE
                     </p>
                   </div>
 
-                  <p className="text-[11px] text-[#707070] text-pretty leading-relaxed">
+                  <p className="text-sm text-[#707070] text-pretty leading-relaxed">
                     Khách tại bàn <strong>"{tables.find(t => t.id === selectedQrTableId)?.name}"</strong> quét mã QR dán bàn để lập tức tự động đặt món không chờ phục vụ đưa giấy.
                   </p>
 
                   <div className="space-y-[4px]">
                     <button
                       onClick={() => handleSimulateQrScan(selectedQrTableId!)}
-                      className="w-full bg-zinc-900 hover:bg-zinc-900/90 text-white py-2.5 rounded-[21px] text-[11px] font-bold shadow-sm cursor-pointer uppercase tracking-wider"
+                      className="w-full bg-zinc-900 hover:bg-zinc-900/90 text-white py-2.5 rounded-[21px] text-sm font-bold shadow-sm cursor-pointer "
                     >
                       📱 Giả Lập quét QR đặt món
                     </button>
 
                     <button
                       onClick={() => setSelectedQrTableId(null)}
-                      className="w-full text-[#808080] hover:text-[#2D2B30] bg-transparent py-1 text-[11px]"
+                      className="w-full text-[#808080] hover:text-[#2D2B30] bg-transparent py-1 text-sm "
                     >
                       Quay lại Dashboard
                     </button>
@@ -1235,12 +1235,12 @@ export default function OwnerView({
             <div className="bg-[#F5F5F7] p-2 border-b border-[#B5C7D8]/45 flex items-center justify-between select-none">
               <div className="flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span className="text-[10px] font-semibold text-[#2D2B30] uppercase">Trợ lý AI ScanGo Co-pilot</span>
+                <span className="text-xs font-semibold text-[#2D2B30] ">Trợ lý AI ScanGo Co-pilot</span>
               </div>
-              <span className="text-[9px] bg-slate-200 border border-slate-350 text-slate-800 px-1.5 py-0.5 rounded-[21px] font-semibold font-mono">WORKSPACE</span>
+              <span className="text-[9px] bg-slate-200 border border-slate-350 text-slate-800 px-1.5 py-0.5 rounded-[21px] font-semibold ">WORKSPACE</span>
             </div>
 
-            <div className="flex-grow overflow-y-auto p-2 space-y-2 text-[11px] bg-[#F5F5F7]/30">
+            <div className="flex-grow overflow-y-auto p-2 space-y-2 text-sm bg-[#F5F5F7]/30">
               {aiChatLogs.map((log, i) => (
                 <div 
                   key={i} 
@@ -1254,14 +1254,14 @@ export default function OwnerView({
                 </div>
               ))}
               {isTyping && (
-                <div className="bg-transparent text-[#808080] p-2 leading-none text-[10px] animate-pulse">
+                <div className="bg-transparent text-[#808080] p-2 leading-none text-xs animate-pulse">
                   AI Co-pilot đang phân tích dữ liệu...
                 </div>
               )}
             </div>
 
             {/* Quick Prompts buttons */}
-            <div className="p-1 px-[13px] border-t border-[#B5C7D8]/30 flex gap-[4px] overflow-x-auto whitespace-nowrap bg-white select-none text-[10px] scrollbar-none">
+            <div className="p-1 px-[13px] border-t border-[#B5C7D8]/30 flex gap-[4px] overflow-x-auto whitespace-nowrap bg-white select-none text-xs scrollbar-none">
               <button 
                 onClick={() => handleAiQuestion('Món ăn nào trong top yêu thích của quán?')}
                 className="bg-[#F5F5F7] text-[#2D2B30] hover:bg-gray-200 px-3 py-1.5 rounded-[21px] border border-[#B5C7D8] font-semibold shadow-2xs flex-shrink-0"
@@ -1289,11 +1289,11 @@ export default function OwnerView({
                 value={chatInput} 
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder="Tra xuất lãi lỗ, đề xuất kinh doanh..."
-                className="flex-grow bg-white border border-[#B5C7D8] rounded-[21px] px-[13px] py-1.5 text-[11px] text-[#2D2B30] font-sans focus:outline-none focus:border-zinc-900 shadow-sm font-medium"
+                className="flex-grow bg-white border border-[#B5C7D8] rounded-[21px] px-[13px] py-1.5 text-sm text-[#2D2B30] font-sans focus:outline-none focus:border-zinc-900 shadow-sm font-medium"
               />
               <button 
                 type="submit"
-                className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[11px] px-4 rounded-[21px] font-bold shadow-sm cursor-pointer"
+                className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm px-4 rounded-[21px] font-bold shadow-sm cursor-pointer"
               >
                 Gửi
               </button>
@@ -1306,3 +1306,4 @@ export default function OwnerView({
     </div>
   );
 }
+

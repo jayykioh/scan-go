@@ -203,7 +203,7 @@ export default function SoloOperatorView({
       pricingTier: tier,
       loyaltyEnabled: tier !== 'Free'
     }));
-    triggerPulseText(`⚡ ĐÃ ĐỔI APP SANG GÓI: [ hạng ${tier.toUpperCase()} ]\n${
+    triggerPulseText(`⚡ ĐÃ ĐỔI APP SANG GÓI: [ hạng ${tier.to()} ]\n${
       tier === 'Free' ? '• Giới hạn chức năng cơ bản' :
       tier === 'Lite' ? '• Mở khóa Tích điểm Khách hàng!' :
       '• Toàn năng: Tích điểm + Định lượng giá vốn vật tư!'
@@ -627,7 +627,7 @@ export default function SoloOperatorView({
           <h2 className="text-[24px] font-bold text-[#2D2B30] tracking-tight leading-tight">
             Thiết lập quán
           </h2>
-          <p className="text-[11px] text-[#808080] mt-1 text-pretty font-medium">
+          <p className="text-sm text-[#808080] mt-1 text-pretty font-medium">
             Tối ưu hóa quy trình trong 15s.
           </p>
 
@@ -646,11 +646,11 @@ export default function SoloOperatorView({
         <div className="my-[13px] flex-grow flex flex-col justify-center bg-white border border-[#B5C7D8] rounded-[21px] p-[13px] shadow-sm">
           {onboardStep === 1 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-orange-600 font-bold uppercase tracking-wider">B1: Thông tin quán</span>
+              <span className="text-xs text-orange-600 font-bold ">B1: Thông tin quán</span>
               <h3 className="text-[16px] font-bold text-[#2D2B30]">Tên thương hiệu</h3>
               
               <div className="space-y-[4px]">
-                <label className="block text-[10px] text-[#7E7E7E] font-semibold uppercase tracking-wider">Tên thương hiệu</label>
+                <label className="block text-xs text-[#7E7E7E] font-semibold ">Tên thương hiệu</label>
                 <input 
                   type="text" 
                   value={tempShopName} 
@@ -662,7 +662,7 @@ export default function SoloOperatorView({
               </div>
 
               <div className="space-y-[4px]">
-                <label className="block text-[10px] text-[#7E7E7E] font-semibold uppercase tracking-wider mb-1.5">Mô hình phân loại</label>
+                <label className="block text-xs text-[#7E7E7E] font-semibold mb-1.5">Mô hình phân loại</label>
                 <div className="grid grid-cols-2 gap-[13px]">
                   <button 
                     onClick={() => { setTempIndustry('quan_an'); setTempShopName('Phở Truyền Thuyết Kinh Kỳ'); }}
@@ -673,7 +673,7 @@ export default function SoloOperatorView({
                     }`}
                   >
                     <UtensilsCrossed className="w-5 h-5" />
-                    <span className="text-[10px] font-semibold uppercase">Quán ăn / Phở</span>
+                    <span className="text-xs font-semibold ">Quán ăn / Phở</span>
                   </button>
                   <button 
                     onClick={() => { setTempIndustry('quan_cafe'); setTempShopName('Cà Phê Rang Muối Cổ Đô'); }}
@@ -684,7 +684,7 @@ export default function SoloOperatorView({
                     }`}
                   >
                     <Coffee className="w-5 h-5" />
-                    <span className="text-[10px] font-semibold uppercase">Cà phê / Trà sữa</span>
+                    <span className="text-xs font-semibold ">Cà phê / Trà sữa</span>
                   </button>
                 </div>
               </div>
@@ -693,7 +693,7 @@ export default function SoloOperatorView({
 
           {onboardStep === 2 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-orange-600 font-bold uppercase tracking-wider">B2: Gói tính năng</span>
+              <span className="text-xs text-orange-600 font-bold ">B2: Gói tính năng</span>
               <h3 className="text-[16px] font-bold text-[#2D2B30]">Chọn gói phù hợp</h3>
               
               <div className="space-y-[4px]">
@@ -704,12 +704,12 @@ export default function SoloOperatorView({
                   }`}
                 >
                   <div className="space-y-0.5 max-w-[80%]">
-                    <div className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1">
+                    <div className="text-sm font-bold flex items-center gap-1">
                       <Sparkles className="w-3.5 h-3.5 text-orange-500" /> PRO AI
                     </div>
-                    <p className="text-[10px] text-[#707070]">Tối ưu lợi nhuận, KDS realtime.</p>
+                    <p className="text-xs text-[#707070]">Tối ưu lợi nhuận, KDS realtime.</p>
                   </div>
-                  <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-bold">MIỄN PHÍ</span>
+                  <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-bold">MIỄN PHÍ</span>
                 </button>
               </div>
             </div>
@@ -717,7 +717,7 @@ export default function SoloOperatorView({
 
           {onboardStep === 3 && (
             <div className="space-y-[13px]">
-              <span className="text-[10px] text-orange-600 font-bold uppercase tracking-wider">B3: Thanh toán</span>
+              <span className="text-xs text-orange-600 font-bold ">B3: Thanh toán</span>
               <h3 className="text-[16px] font-bold text-[#2D2B30]">Quy trình thu ngân</h3>
               
               <div className="grid grid-cols-2 gap-[13px]">
@@ -728,7 +728,7 @@ export default function SoloOperatorView({
                   }`}
                 >
                   <Receipt className="w-5 h-5 text-orange-600" />
-                  <div className="text-[10px] font-bold uppercase leading-tight">Trả sau<br/><span className="text-[8px] font-medium">(Ăn xong thanh toán)</span></div>
+                  <div className="text-xs font-bold leading-tight">Trả sau<br/><span className="text-[8px] font-medium">(Ăn xong thanh toán)</span></div>
                 </button>
                 <button 
                   onClick={() => setTempPayMode('Pay-First')}
@@ -737,7 +737,7 @@ export default function SoloOperatorView({
                   }`}
                 >
                   <CreditCard className="w-5 h-5 text-orange-600" />
-                  <div className="text-[10px] font-bold uppercase leading-tight">Trả trước<br/><span className="text-[8px] font-medium">(Thanh toán tại quầy)</span></div>
+                  <div className="text-xs font-bold leading-tight">Trả trước<br/><span className="text-[8px] font-medium">(Thanh toán tại quầy)</span></div>
                 </button>
               </div>
             </div>
@@ -749,7 +749,7 @@ export default function SoloOperatorView({
                 <Check className="w-5 h-5 text-emerald-600" />
               </div>
               <h3 className="text-[16px] font-bold text-[#2D2B30] text-center">Hoàn tất!</h3>
-              <p className="text-[11px] text-[#707070] text-center">
+              <p className="text-sm text-[#707070] text-center">
                 Workspace đã thiết lập xong. Bạn có thể sử dụng QR, KDS và AI ngay lập tức.
               </p>
             </div>
@@ -781,8 +781,8 @@ export default function SoloOperatorView({
           >
             <Sparkles className="w-4 h-4 text-orange-400 fill-orange-400/20 shrink-0 mt-0.5" />
             <div className="flex-1 space-y-0.5">
-              <span className="text-[11px] font-bold text-orange-400 font-sans">Nhật ký Hệ thống Thu-Nấu 3-in-1</span>
-              <p className="text-[10px] text-zinc-300 font-medium whitespace-pre-line leading-normal font-sans">{showSimNotification}</p>
+              <span className="text-sm font-bold text-orange-400 font-sans">Nhật ký Hệ thống Thu-Nấu 3-in-1</span>
+              <p className="text-xs text-zinc-300 font-medium whitespace-pre-line leading-normal font-sans">{showSimNotification}</p>
             </div>
           </motion.div>
         )}
@@ -794,8 +794,8 @@ export default function SoloOperatorView({
           <div className="space-y-0.5">
             <div className="flex items-center gap-1.5">
               <span className="inline-flex w-2.5 h-2.5 rounded-full bg-orange-505 animate-pulse shrink-0"></span>
-              <span className="text-[9.5px] uppercase tracking-wider font-mono font-black text-orange-400 flex items-center gap-1">
-                <Cpu className="w-3 h-3" /> HẠNG GÓI: {tenantConfig.pricingTier.toUpperCase()} UNLOCKED
+              <span className="text-[9.5px] font-black text-orange-400 flex items-center gap-1">
+                <Cpu className="w-3 h-3" /> HẠNG GÓI: {tenantConfig.pricingTier.to()} UNLOCKED
               </span>
             </div>
             <h1 className="text-base font-black tracking-tight">{tenantConfig.shopName}</h1>
@@ -804,7 +804,7 @@ export default function SoloOperatorView({
           <button 
             type="button"
             onClick={togglePaymentModeInSolo}
-            className="text-[9.5px] font-bold uppercase py-1 px-3 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded-full text-orange-300 transition-all cursor-pointer select-none flex items-center gap-1"
+            className="text-[9.5px] font-bold py-1 px-3 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded-full text-orange-300 transition-all cursor-pointer select-none flex items-center gap-1"
             title="Nhấp để chuyển nhanh qua lại Trả Trước / Trả Sau"
           >
             {tenantConfig.paymentMode === 'Pay-First' ? <><CreditCard className="w-3 h-3" /> QR Trả Trước</> : <><Receipt className="w-3 h-3" /> Trả Sau</>}
@@ -814,20 +814,20 @@ export default function SoloOperatorView({
         {/* Simplistic Ribbon - Quick summary of today's health */}
         <div className="grid grid-cols-3 gap-2 bg-white/5 p-2.5 rounded-xl text-center select-none">
           <div className="py-1">
-            <span className="text-[8.5px] uppercase tracking-wider text-zinc-400 font-bold block">TIỀN HÔM NAY</span>
-            <span className="text-[13px] font-black text-orange-400 block mt-0.5 tabular-nums">
+            <span className="text-[8.5px] text-zinc-400 font-bold block">TIỀN HÔM NAY</span>
+            <span className="text-sm font-black text-orange-400 block mt-0.5 ">
               {(totalPaidRevenue).toLocaleString('vi-VN')}đ
             </span>
           </div>
           <div className="border-x border-white/10 py-1">
-            <span className="text-[8.5px] uppercase tracking-wider text-zinc-400 font-bold block">HÓA ĐƠN</span>
-            <span className="text-[13px] font-black text-white block mt-0.5 font-sans">
+            <span className="text-[8.5px] text-zinc-400 font-bold block">HÓA ĐƠN</span>
+            <span className="text-sm font-black text-white block mt-0.5 font-sans">
               {paidOrders.length} đã thu
             </span>
           </div>
           <div className="py-1">
-            <span className="text-[8.5px] uppercase tracking-wider text-zinc-400 font-bold block">CHỜ PHỤC VỤ</span>
-            <span className="text-[13px] font-black text-amber-400 block mt-0.5 font-sans">
+            <span className="text-[8.5px] text-zinc-400 font-bold block">CHỜ PHỤC VỤ</span>
+            <span className="text-sm font-black text-amber-400 block mt-0.5 font-sans">
               {activeOrders.length} đơn
             </span>
           </div>
@@ -843,11 +843,11 @@ export default function SoloOperatorView({
             
             {/* Simulation triggers */}
             <div className="flex justify-between items-center px-1">
-              <span className="text-[10px] uppercase font-extrabold text-zinc-500 font-mono tracking-wider">Hành trình đơn hàng hôm nay</span>
+              <span className="text-xs font-extrabold text-zinc-500 ">Hành trình đơn hàng hôm nay</span>
               <button
                 type="button"
                 onClick={handleSoloSimulateOrder}
-                className="bg-orange-600 hover:bg-orange-700 text-white rounded-lg px-2.5 py-1 text-[9.5px] font-extrabold flex items-center gap-1 uppercase tracking-wide shadow-sm font-sans cursor-pointer transition-all"
+                className="bg-orange-600 hover:bg-orange-700 text-white rounded-lg px-2.5 py-1 text-[9.5px] font-extrabold flex items-center gap-1 tracking-wide shadow-sm font-sans cursor-pointer transition-all"
               >
                 <Plus className="w-3.5 h-3.5" /> Giả lập bàn quét QR đặt món
               </button>
@@ -866,7 +866,7 @@ export default function SoloOperatorView({
                     <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5 shrink-0" />
                     <div className="space-y-1">
                       <h4 className="text-xs font-black text-zinc-900">Hoàn tác hóa đơn này về chưa thu tiền?</h4>
-                      <p className="text-[11px] text-zinc-650 leading-relaxed font-sans">Đơn sẽ phục hồi về trạng thái <strong>'Chờ giao khách'</strong>, thu hồi lại điểm thưởng tích lũy của khách hàng liên kết nếu có.</p>
+                      <p className="text-sm text-zinc-650 leading-relaxed font-sans">Đơn sẽ phục hồi về trạng thái <strong>'Chờ giao khách'</strong>, thu hồi lại điểm thưởng tích lũy của khách hàng liên kết nếu có.</p>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2.5 pt-1">
@@ -899,7 +899,7 @@ export default function SoloOperatorView({
                     <AlertTriangle className="w-5 h-5 text-red-650 mt-0.5 shrink-0" />
                     <div className="space-y-1">
                       <h4 className="text-xs font-black text-zinc-900">Huỷ bỏ vĩnh viễn đơn hàng này?</h4>
-                      <p className="text-[11px] text-zinc-650 leading-relaxed font-sans">Hành động này sẽ xóa dữ liệu đơn hàng và hoàn lại các mộc thô đã khấu trừ ra tủ nguyên liệu.</p>
+                      <p className="text-sm text-zinc-650 leading-relaxed font-sans">Hành động này sẽ xóa dữ liệu đơn hàng và hoàn lại các mộc thô đã khấu trừ ra tủ nguyên liệu.</p>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2.5 pt-1">
@@ -924,7 +924,7 @@ export default function SoloOperatorView({
 
             {/* SECTION: ACTIVE ORDERS PROCESSING (3-in-1 Workflow) */}
             <div className="space-y-2.5">
-              <span className="text-[9.5px] uppercase font-black text-zinc-400 font-mono tracking-wider block">1. ĐƠN ĐANG CHẾ BIẾN & CHỜ GIAO ({activeOrders.length})</span>
+              <span className="text-[9.5px] font-black text-zinc-400 block">1. ĐƠN ĐANG CHẾ BIẾN & CHỜ GIAO ({activeOrders.length})</span>
               
               {activeOrders.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-zinc-205 p-6 text-center space-y-2">
@@ -932,7 +932,7 @@ export default function SoloOperatorView({
                     <UtensilsCrossed className="w-5 h-5" />
                   </div>
                   <p className="text-[11.5px] font-bold text-zinc-500">Chưa có bàn nào gọi món</p>
-                  <p className="text-[10px] text-zinc-400">Bấm nút "Giả lập bàn đặt món" góc trên để kiểm nghiệm nhanh luồng đi của đơn.</p>
+                  <p className="text-xs text-zinc-400">Bấm nút "Giả lập bàn đặt món" góc trên để kiểm nghiệm nhanh luồng đi của đơn.</p>
                 </div>
               ) : (
                 <div className="space-y-2.5">
@@ -946,18 +946,18 @@ export default function SoloOperatorView({
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[13px] font-black text-zinc-950">{getTableName(order.tableId)}</span>
+                              <span className="text-sm font-black text-zinc-950">{getTableName(order.tableId)}</span>
                               {order.paymentMode === 'Pay-First' && (
-                                <span className="text-[8.5px] bg-zinc-100 text-zinc-800 border border-zinc-200 font-black px-1 rounded uppercase">TRẢ TRƯỚC</span>
+                                <span className="text-[8.5px] bg-zinc-100 text-zinc-800 border border-zinc-200 font-black px-1 rounded ">TRẢ TRƯỚC</span>
                               )}
                             </div>
-                            <span className="text-[9px] font-mono text-zinc-400 font-bold block mt-0.5">MÃ: #{order.id.slice(-6).toUpperCase()} • {new Date(order.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
+                            <span className="text-[9px] text-zinc-400 font-bold block mt-0.5">MÃ: #{order.id.slice(-6).to()} • {new Date(order.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
                           </div>
 
                           <div className="text-right">
-                            <span className="text-[12px] font-black text-zinc-900 block">{(order.total).toLocaleString()}đ</span>
+                            <span className="text-sm font-black text-zinc-900 block">{(order.total).toLocaleString()}đ</span>
                             {tenantConfig.pricingTier !== 'Free' && order.customerPhone && (
-                              <span className="text-[8.5px] text-zinc-400 font-mono italic block">Mã hội viên: {order.customerPhone.slice(-4)}</span>
+                              <span className="text-[8.5px] text-zinc-400 italic block">Mã hội viên: {order.customerPhone.slice(-4)}</span>
                             )}
                           </div>
                         </div>
@@ -969,7 +969,7 @@ export default function SoloOperatorView({
                               <span className="font-bold text-zinc-800">
                                 {it.quantity}x {it.name}
                               </span>
-                              <span className="font-mono text-zinc-500 text-[10.5px]">
+                              <span className="text-zinc-500 text-[10.5px]">
                                 {(it.price * it.quantity).toLocaleString()}đ
                               </span>
                             </div>
@@ -996,7 +996,7 @@ export default function SoloOperatorView({
                           <button
                             type="button"
                             onClick={() => handleAdvanceStatus(order.id, order.status)}
-                            className={`flex-1 text-white text-[10.5px] py-2 px-4 rounded-xl font-extrabold shadow-xs cursor-pointer transition-all uppercase flex items-center justify-center gap-1.5 ${
+                            className={`flex-1 text-white text-[10.5px] py-2 px-4 rounded-xl font-extrabold shadow-xs cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
                               order.status === 'pending' ? 'bg-orange-600 hover:bg-orange-700 animate-pulse' :
                               order.status === 'cooking' ? 'bg-amber-500 hover:bg-amber-600' :
                               'bg-emerald-600 hover:bg-emerald-700'
@@ -1019,7 +1019,7 @@ export default function SoloOperatorView({
             <div className="bg-white border border-zinc-200 rounded-2xl p-3.5 shadow-2xs space-y-3.5">
               <div className="flex items-center gap-1.5 border-b pb-2 select-none">
                 <History className="w-4 h-4 text-zinc-600" />
-                <h3 className="text-xs font-black uppercase text-zinc-805">2. BIÊN LAI ĐÃ THU - REVERT HOÀN TÁC</h3>
+                <h3 className="text-xs font-black text-zinc-805">2. BIÊN LAI ĐÃ THU - REVERT HOÀN TÁC</h3>
               </div>
 
               {/* Dynamic search input for historical paid invoices */}
@@ -1035,7 +1035,7 @@ export default function SoloOperatorView({
                 {searchRevertQuery && (
                   <button 
                     onClick={() => setSearchRevertQuery('')}
-                    className="absolute right-3 top-2.5 text-[10px] text-zinc-400 hover:text-zinc-600 font-bold"
+                    className="absolute right-3 top-2.5 text-xs text-zinc-400 hover:text-zinc-600 font-bold"
                   >
                     Xóa lọc
                   </button>
@@ -1050,21 +1050,21 @@ export default function SoloOperatorView({
                 <div className="divide-y divide-zinc-150 text-xs">
                   {filteredCompletedOrders.map((invoice) => (
                     <div key={invoice.id} className="py-2.5 space-y-2 first:pt-0 last:pb-0">
-                      <div className="flex justify-between items-start text-[11px]">
+                      <div className="flex justify-between items-start text-sm ">
                         <div>
                           <p className="font-extrabold text-zinc-900">{getTableName(invoice.tableId)}</p>
-                          <span className="text-[8.5px] text-zinc-400 font-mono font-medium leading-none block mt-0.5">#{invoice.id.slice(-8).toUpperCase()} • {new Date(invoice.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
+                          <span className="text-[8.5px] text-zinc-400 font-medium leading-none block mt-0.5">#{invoice.id.slice(-8).to()} • {new Date(invoice.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
                         <div className="text-right">
                           <span className="font-black text-emerald-600 block">+{(invoice.total).toLocaleString()}đ</span>
                           {invoice.customerPhone && (
-                            <span className="text-[8px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 py-0.2 rounded font-mono font-semibold">Tích điểm: {invoice.customerPhone}</span>
+                            <span className="text-[8px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 py-0.2 rounded font-semibold">Tích điểm: {invoice.customerPhone}</span>
                           )}
                         </div>
                       </div>
 
                       {/* Items row in tiny */}
-                      <p className="text-[10px] text-zinc-500 truncate leading-relaxed">
+                      <p className="text-xs text-zinc-500 truncate leading-relaxed">
                         {invoice.items.map(it => `${it.quantity}x ${it.name}`).join(', ')}
                       </p>
 
@@ -1094,9 +1094,9 @@ export default function SoloOperatorView({
             <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 space-y-3 shadow-2xs">
               <div className="flex items-center gap-1.5 border-b pb-2 select-none">
                 <ChefHat className="w-4 h-4 text-orange-600" />
-                <h3 className="text-xs font-black uppercase text-zinc-800">Quản lý đóng/mở món gọi tại QR</h3>
+                <h3 className="text-xs font-black text-zinc-800">Quản lý đóng/mở món gọi tại QR</h3>
               </div>
-              <p className="text-[10px] text-zinc-550 leading-relaxed font-sans">
+              <p className="text-xs text-zinc-550 leading-relaxed font-sans">
                 Nhấp nút bật tắt khi nguyên liệu hết đột xuất giữa ca. Món ngắt sẽ hiển thị dưới dạng <strong>🚫 Báo tạm hết</strong> trên điện thoại khách hàng lập tức.
               </p>
 
@@ -1104,14 +1104,14 @@ export default function SoloOperatorView({
                 {menuItems.map((dish) => (
                   <div key={dish.id} className="flex justify-between items-center bg-zinc-50 p-2 rounded-xl border border-zinc-200">
                     <div className="space-y-0.5 truncate pr-2.5">
-                      <p className="font-bold text-zinc-850 truncate text-[11px]">{dish.name}</p>
-                      <span className="font-mono text-zinc-400 text-[9.5px]">{(dish.price).toLocaleString()}đ • {dish.category}</span>
+                      <p className="font-bold text-zinc-850 truncate text-sm ">{dish.name}</p>
+                      <span className="text-zinc-400 text-[9.5px]">{(dish.price).toLocaleString()}đ • {dish.category}</span>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => toggleItemStock(dish.id)}
-                      className={`text-[10px] py-1 px-3 rounded-xl border font-extrabold tracking-wide uppercase transition-all select-none cursor-pointer ${
+                      className={`text-xs py-1 px-3 rounded-xl border font-extrabold tracking-wide transition-all select-none cursor-pointer ${
                         dish.inStock 
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
                           : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
@@ -1128,7 +1128,7 @@ export default function SoloOperatorView({
             <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 space-y-4 shadow-2xs">
               <div className="flex items-center gap-1.5 border-b pb-2 select-none">
                 <Package className="w-4 h-4 text-orange-600" />
-                <h3 className="text-xs font-black uppercase text-zinc-800">Kho hàng dự trữ & Đầy vật tư</h3>
+                <h3 className="text-xs font-black text-zinc-800">Kho hàng dự trữ & Đầy vật tư</h3>
               </div>
 
               {/* Delete Confirm inline dialog for ingredients safety */}
@@ -1140,8 +1140,8 @@ export default function SoloOperatorView({
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="bg-red-50 border-2 border-red-300 rounded-2xl p-3.5 space-y-2.5"
                   >
-                    <p className="text-[11px] font-bold text-red-950">Bạn thật sự muốn xóa nguyên liệu này? Các công thức liên kết sẽ mất dòng vật tư này.</p>
-                    <div className="flex justify-end gap-2 text-[10px] font-bold">
+                    <p className="text-sm font-bold text-red-950">Bạn thật sự muốn xóa nguyên liệu này? Các công thức liên kết sẽ mất dòng vật tư này.</p>
+                    <div className="flex justify-end gap-2 text-xs font-bold">
                       <button 
                         onClick={() => setDeletingIngId(null)}
                         className="px-2.5 py-1.5 border border-zinc-300 rounded bg-white text-zinc-600 cursor-pointer"
@@ -1169,7 +1169,7 @@ export default function SoloOperatorView({
                   return (
                     <div key={ing.id} className={`p-3 rounded-xl border space-y-1.5 relative ${isLow ? 'bg-amber-50/70 border-amber-300 text-amber-950' : 'bg-zinc-50 border-zinc-200 text-zinc-850'}`}>
                       <div className="flex justify-between items-start">
-                        <span className="font-extrabold text-[11px] pr-5 leading-tight">{ing.name}</span>
+                        <span className="font-extrabold text-sm pr-5 leading-tight">{ing.name}</span>
                         <button
                           type="button"
                           onClick={() => setDeletingIngId(ing.id)}
@@ -1182,9 +1182,9 @@ export default function SoloOperatorView({
                       <div className="flex justify-between items-baseline pt-1">
                         <div className="space-y-0.5">
                           <span className="text-[11.5px] font-black tracking-tight">{weightDisplay}</span>
-                          {isLow && <span className="text-[8px] uppercase tracking-wider bg-amber-500 text-white font-mono font-black px-1 rounded block w-fit">⚠️ Dự báo hụt</span>}
+                          {isLow && <span className="text-[8px] bg-amber-500 text-white font-black px-1 rounded block w-fit">⚠️ Dự báo hụt</span>}
                         </div>
-                        <span className="text-[9.5px] font-mono text-zinc-500">Giá: {ing.costPerUnit}đ/{ing.unit}</span>
+                        <span className="text-[9.5px] text-zinc-500">Giá: {ing.costPerUnit}đ/{ing.unit}</span>
                       </div>
                     </div>
                   );
@@ -1193,7 +1193,7 @@ export default function SoloOperatorView({
 
               {/* QUICK ADD NEW INGREDIENT FORM */}
               <div className="bg-gradient-to-tr from-zinc-50 to-zinc-100 rounded-2xl p-4.5 border border-zinc-200 space-y-3.5">
-                <span className="text-[9.5px] uppercase font-bold text-zinc-400 font-mono block select-none">Nhập kho vật tư thô mới</span>
+                <span className="text-[9.5px] font-bold text-zinc-400 block select-none">Nhập kho vật tư thô mới</span>
                 
                 <form onSubmit={handleAddIngredientForm} className="space-y-3 text-xs leading-none">
                   <div className="space-y-1">
@@ -1214,7 +1214,7 @@ export default function SoloOperatorView({
                       <select
                         value={quickIngUnit}
                         onChange={(e) => setQuickIngUnit(e.target.value)}
-                        className="w-full bg-white border border-zinc-250 p-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-orange-500 font-mono text-xs"
+                        className="w-full bg-white border border-zinc-250 p-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-orange-500 text-xs"
                       >
                         <option value="g">gram (g)</option>
                         <option value="ml">mililit (ml)</option>
@@ -1230,7 +1230,7 @@ export default function SoloOperatorView({
                         required
                         value={quickIngCost}
                         onChange={(e) => setQuickIngCost(e.target.value)}
-                        className="w-full bg-white border border-zinc-250 p-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-orange-500 text-xs font-mono"
+                        className="w-full bg-white border border-zinc-250 p-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-orange-500 text-xs "
                       />
                     </div>
 
@@ -1242,7 +1242,7 @@ export default function SoloOperatorView({
                         required
                         value={quickIngQty}
                         onChange={(e) => setQuickIngQty(e.target.value)}
-                        className="w-full bg-white border border-zinc-250 p-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-orange-500 text-xs font-mono"
+                        className="w-full bg-white border border-zinc-250 p-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-orange-500 text-xs "
                       />
                     </div>
                   </div>
@@ -1272,14 +1272,14 @@ export default function SoloOperatorView({
                 </div>
                 <div className="space-y-1.5">
                   <h3 className="text-sm font-black text-white">Chức năng Định lượng Vật tư & Tính năng Cảnh báo tự động thuộc gói PRO!</h3>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed max-w-xs mx-auto font-sans">
+                  <p className="text-sm text-zinc-400 leading-relaxed max-w-xs mx-auto font-sans">
                     Nâng tầm quản trị quán ăn sòng phẳng hoàn hảo: tự động trừ số lượng thịt tái dải, bánh phở ra mộc và tính ra COGS/giá vốn lãi thô cực kỳ chặt chẽ!
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleUpgradeTier('Pro')}
-                  className="bg-orange-500 hover:bg-orange-400 text-white font-extrabold tracking-wide uppercase px-5 py-2.5 rounded-xl text-[10px] shadow-lg cursor-pointer transition-all select-none pr-6 pl-6"
+                  className="bg-orange-500 hover:bg-orange-400 text-white font-extrabold tracking-wide px-5 py-2.5 rounded-xl text-xs shadow-lg cursor-pointer transition-all select-none pr-6 pl-6"
                 >
                   🚀 KÍCH HOẠT NHANH GÓI PRO MIỄN PHÍ
                 </button>
@@ -1291,9 +1291,9 @@ export default function SoloOperatorView({
                 <div className="bg-white border border-zinc-200 rounded-2xl p-4 shadow-2xs space-y-3.5">
                   <div className="flex items-center gap-1.5 border-b pb-2 select-none">
                     <Scale className="w-4 h-4 text-orange-600" />
-                    <h3 className="text-xs font-black uppercase text-zinc-800">Cơ chế định lượng công thức phơi vốn</h3>
+                    <h3 className="text-xs font-black text-zinc-800">Cơ chế định lượng công thức phơi vốn</h3>
                   </div>
-                  <p className="text-[10px] text-zinc-550 leading-relaxed font-sans">
+                  <p className="text-xs text-zinc-550 leading-relaxed font-sans">
                     Để hệ thống tính toán giá thô của bát đĩa một cách linh nghiệm vĩ mô, anh chị vui lòng kéo gán mức hao hụt vật liệu tương ứng cho một phần phục vụ.
                   </p>
 
@@ -1309,15 +1309,15 @@ export default function SoloOperatorView({
                         <div key={item.id} className="bg-zinc-50 border border-zinc-200/90 rounded-2xl p-3 space-y-2.5">
                           <div className="flex justify-between items-start">
                             <div className="space-y-0.5">
-                              <span className="font-extrabold text-[11px] leading-tight block">{item.name}</span>
-                              <span className="text-[9px] text-[#2ebd59] font-black uppercase font-mono tracking-wider">
+                              <span className="font-extrabold text-sm leading-tight block">{item.name}</span>
+                              <span className="text-[9px] text-[#2ebd59] font-black ">
                                 Lãi gộp {Math.round(marginPct)}%
                               </span>
                             </div>
 
                             <div className="text-right">
-                              <span className="text-[11px] font-mono text-zinc-500">Giá: {item.price.toLocaleString()}đ</span>
-                              <span className="text-[9.5px] font-black text-orange-600 block mt-0.5 font-mono">Vốn thô: {rawCost.toLocaleString()}đ</span>
+                              <span className="text-sm text-zinc-500">Giá: {item.price.toLocaleString()}đ</span>
+                              <span className="text-[9.5px] font-black text-orange-600 block mt-0.5 ">Vốn thô: {rawCost.toLocaleString()}đ</span>
                             </div>
                           </div>
 
@@ -1336,7 +1336,7 @@ export default function SoloOperatorView({
                           {/* INLINE PORTION EDITOR BOX */}
                           {isEditing && (
                             <div className="bg-white p-3 rounded-xl border border-zinc-200 mt-2 space-y-3.5 animate-fadeIn">
-                              <span className="text-[9px] uppercase font-black tracking-wider text-zinc-400 font-mono block">Thiết lập Portion (Định mức mộc thô)</span>
+                              <span className="text-[9px] font-black text-zinc-400 block">Thiết lập Portion (Định mức mộc thô)</span>
                               
                               <div className="space-y-3">
                                 {ingredients.map(ing => {
@@ -1347,11 +1347,11 @@ export default function SoloOperatorView({
                                     <div key={ing.id} className="flex justify-between items-center text-[10.5px] border-b pb-2 last:border-b-0 last:pb-0">
                                       <div className="w-1/3 truncate">
                                         <p className="font-extrabold text-zinc-800 leading-tight truncate">{ing.name}</p>
-                                        <span className="text-[8px] text-zinc-400 block font-mono">đơn vị: {ing.unit}</span>
+                                        <span className="text-[8px] text-zinc-400 block ">đơn vị: {ing.unit}</span>
                                       </div>
 
                                       <div className="flex-1 px-4 text-center space-y-1">
-                                        <span className="font-mono font-black text-zinc-900 text-[11px] block">{qty} {ing.unit}</span>
+                                        <span className="font-black text-zinc-900 text-sm block">{qty} {ing.unit}</span>
                                         
                                         <div className="flex items-center gap-2 select-none">
                                           <button
@@ -1390,7 +1390,7 @@ export default function SoloOperatorView({
                                 <button
                                   type="button"
                                   onClick={() => { setEditingRecipeId(null); triggerPulseText(`Ghi nhận công thức cho: ${item.name}`); }}
-                                  className="bg-zinc-950 text-white font-extrabold text-[9px] uppercase tracking-wider py-1.5 px-3 rounded-lg shadow-sm cursor-pointer border-none"
+                                  className="bg-zinc-950 text-white font-extrabold text-[9px] py-1.5 px-3 rounded-lg shadow-sm cursor-pointer border-none"
                                 >
                                   Xác nhận hoàn thành✓
                                 </button>
@@ -1407,18 +1407,18 @@ export default function SoloOperatorView({
                 <div className="bg-white border border-zinc-200 rounded-2xl p-4 space-y-3.5 shadow-xs">
                   <div className="flex items-center gap-1.5 border-b pb-2 select-none">
                     <TrendingUp className="w-4 h-4 text-orange-600" />
-                    <h4 className="text-xs font-black uppercase text-zinc-805">Phân tích giá thành vốn gộp hôm nay</h4>
+                    <h4 className="text-xs font-black text-zinc-805">Phân tích giá thành vốn gộp hôm nay</h4>
                   </div>
 
                   <div className="space-y-3.5 text-xs">
                     {/* Top revenue */}
                     <div className="space-y-1.5">
-                      <span className="text-[9.5px] uppercase font-bold text-zinc-400 font-mono block">Top món chiếm đoạt doanh thu lớn</span>
+                      <span className="text-[9.5px] font-bold text-zinc-400 block">Top món chiếm đoạt doanh thu lớn</span>
                       <div className="space-y-1">
                         {topRevenueDishes.slice(0, 3).map((dish, i) => (
                           <div key={dish.menuId} className="flex justify-between items-center bg-zinc-50 p-2.5 rounded-xl border border-zinc-200/50">
                             <span className="font-bold text-zinc-850 text-[10.5px]">{i+1}. {dish.name}</span>
-                            <span className="font-mono text-[10px] font-black text-zinc-950">{(dish.revenue).toLocaleString('vi-VN')}đ ({dish.qty} phần)</span>
+                            <span className="text-xs font-black text-zinc-950">{(dish.revenue).toLocaleString('vi-VN')}đ ({dish.qty} phần)</span>
                           </div>
                         ))}
                       </div>
@@ -1426,14 +1426,14 @@ export default function SoloOperatorView({
 
                     {/* Margins */}
                     <div className="space-y-1.5">
-                      <span className="text-[9.5px] uppercase font-bold text-zinc-400 font-mono block">Mực biên lợi nhuận thô cao nhất %</span>
+                      <span className="text-[9.5px] font-bold text-zinc-400 block">Mực biên lợi nhuận thô cao nhất %</span>
                       <div className="grid grid-cols-2 gap-2">
                         {calculatedMargins.slice(0, 4).map((dish) => (
                           <div key={dish.id} className="bg-emerald-50 border border-emerald-150 p-2.5 rounded-xl text-[10.5px] space-y-1">
                             <p className="font-extrabold text-zinc-900 truncate leading-tight">{dish.name}</p>
                             <div className="flex justify-between items-baseline pt-1">
                               <span className="text-emerald-850 font-black">Lãi {dish.percent}%</span>
-                              <span className="text-zinc-500 font-mono text-[8.5px]">vốn {dish.cogs.toLocaleString()}đ</span>
+                              <span className="text-zinc-500 text-[8.5px]">vốn {dish.cogs.toLocaleString()}đ</span>
                             </div>
                           </div>
                         ))}
@@ -1456,9 +1456,9 @@ export default function SoloOperatorView({
             <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 space-y-3.5 shadow-2xs">
               <div className="flex items-center gap-1.5 border-b pb-2 select-none">
                 <Shield className="w-4 h-4 text-orange-600" />
-                <h3 className="text-xs font-black uppercase text-zinc-800">Chọn hạng gói vận hành của cửa tiệm</h3>
+                <h3 className="text-xs font-black text-zinc-800">Chọn hạng gói vận hành của cửa tiệm</h3>
               </div>
-              <p className="text-[10px] text-zinc-500 leading-relaxed font-sans">
+              <p className="text-xs text-zinc-500 leading-relaxed font-sans">
                 Thay đổi nhanh gói dịch vụ ngay tại đây để mở khóa và trải nghiệm sự phân tầng tính năng chuyên nghiệp:
               </p>
 
@@ -1472,8 +1472,8 @@ export default function SoloOperatorView({
                       : 'bg-zinc-50 border-zinc-250 text-zinc-700 hover:bg-zinc-100'
                   }`}
                 >
-                  <span className="text-[11px] font-black block">FREE</span>
-                  <span className="text-[8px] text-zinc-455 font-mono block mt-1">Cơ bản tối giản</span>
+                  <span className="text-sm font-black block">FREE</span>
+                  <span className="text-[8px] text-zinc-455 block mt-1">Cơ bản tối giản</span>
                 </button>
 
                 <button
@@ -1485,8 +1485,8 @@ export default function SoloOperatorView({
                       : 'bg-zinc-50 border-zinc-250 text-zinc-700 hover:bg-zinc-100'
                   }`}
                 >
-                  <span className="text-[11px] font-black block">LITE</span>
-                  <span className="text-[8px] text-emerald-150 font-mono block mt-1">✓ Tích Điểm</span>
+                  <span className="text-sm font-black block">LITE</span>
+                  <span className="text-[8px] text-emerald-150 block mt-1">✓ Tích Điểm</span>
                 </button>
 
                 <button
@@ -1498,8 +1498,8 @@ export default function SoloOperatorView({
                       : 'bg-zinc-50 border-zinc-250 text-zinc-700 hover:bg-zinc-100'
                   }`}
                 >
-                  <span className="text-[11px] font-black block">PRO</span>
-                  <span className="text-[8px] text-orange-100 font-mono block mt-1">🔥 Portion + Cogs</span>
+                  <span className="text-sm font-black block">PRO</span>
+                  <span className="text-[8px] text-orange-100 block mt-1">🔥 Portion + Cogs</span>
                 </button>
               </div>
             </div>
@@ -1508,33 +1508,33 @@ export default function SoloOperatorView({
             <div className="bg-white border border-zinc-200 rounded-2xl p-4 shadow-2xs space-y-3.5">
               <div className="flex items-center gap-1.5 border-b pb-2 select-none">
                 <Gift className="w-4 h-4 text-orange-600" />
-                <h3 className="text-xs font-black uppercase text-zinc-800">Đồng bộ tích điểm khách hàng (Loyalty)</h3>
+                <h3 className="text-xs font-black text-zinc-800">Đồng bộ tích điểm khách hàng (Loyalty)</h3>
               </div>
 
               {tenantConfig.pricingTier === 'Free' ? (
                 <div className="py-6 text-center space-y-3.5">
-                  <p className="text-[10px] text-zinc-450 leading-relaxed max-w-xs mx-auto font-sans">
+                  <p className="text-xs text-zinc-450 leading-relaxed max-w-xs mx-auto font-sans">
                     Hệ thống tích thưởng hội viên hiện đang bị khóa ở bản Free. Vui lòng nâng hạng gói lên LITE hoặc PRO phía trên để tự động mở khóa tính năng này!
                   </p>
                   <button
                     type="button"
                     onClick={() => handleUpgradeTier('Lite')}
-                    className="bg-emerald-605 text-white font-extrabold uppercase py-2 px-4 rounded-xl text-[9px] shadow-sm cursor-pointer"
+                    className="bg-emerald-605 text-white font-extrabold py-2 px-4 rounded-xl text-[9px] shadow-sm cursor-pointer"
                   >
                     Kích hoạt gói LITE để đồng bộ tắp lự
                   </button>
                 </div>
               ) : (
                 <div className="space-y-3 text-xs">
-                  <p className="text-[10px] text-zinc-550 leading-relaxed font-sans">
+                  <p className="text-xs text-zinc-550 leading-relaxed font-sans">
                     Khi khách đặt đơn qua QR bằng App khách có rải Sđt hội viên, hệ thống sẽ tự động cộng tích lũy <strong>1 điểm cho mỗi 10.000đ hóa đơn</strong>.
                   </p>
 
                   {/* Add member inside Solo View */}
                   <form onSubmit={handleCreateMember} className="bg-zinc-50 p-3 rounded-xl border border-zinc-200 space-y-2.5">
-                    <span className="text-[8.5px] uppercase font-black text-zinc-400 block font-mono">Đăng ký Hội viên mới rảnh tay</span>
+                    <span className="text-[8.5px] font-black text-zinc-400 block ">Đăng ký Hội viên mới rảnh tay</span>
                     
-                    {loyaltyMessage && <p className="text-[10px] text-emerald-700 font-bold bg-emerald-50 p-2 rounded-lg border border-emerald-200">{loyaltyMessage}</p>}
+                    {loyaltyMessage && <p className="text-xs text-emerald-700 font-bold bg-emerald-50 p-2 rounded-lg border border-emerald-200">{loyaltyMessage}</p>}
 
                     <div className="grid grid-cols-2 gap-2">
                       <input
@@ -1543,20 +1543,20 @@ export default function SoloOperatorView({
                         placeholder="Số Đthoại..."
                         value={newMemberPhone}
                         onChange={(e) => setNewMemberPhone(e.target.value.replace(/\D/g, ''))}
-                        className="bg-white border p-1.5 rounded text-[11px] focus:outline-none focus:ring-1 focus:ring-orange-500 font-mono input-sms"
+                        className="bg-white border p-1.5 rounded text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 input-sms"
                       />
                       <input
                         type="text"
                         placeholder="Họ tên Khách..."
                         value={newMemberName}
                         onChange={(e) => setNewMemberName(e.target.value)}
-                        className="bg-white border p-1.5 rounded text-[11px] focus:outline-none focus:ring-1 focus:ring-orange-500 input-sms"
+                        className="bg-white border p-1.5 rounded text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 input-sms"
                       />
                     </div>
                     
                     <button
                       type="submit"
-                      className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-1.5 rounded-lg text-[9.5px] font-black uppercase flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border-none transition-colors"
+                      className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-1.5 rounded-lg text-[9.5px] font-black flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border-none transition-colors"
                     >
                       <UserPlus className="w-3.5 h-3.5" /> Ghi nhận Đăng ký
                     </button>
@@ -1579,11 +1579,11 @@ export default function SoloOperatorView({
                       <div key={member.phone} className="p-2.5 hover:bg-zinc-50 flex justify-between items-center text-[10.5px]">
                         <div>
                           <p className="font-extrabold text-zinc-900">{member.name}</p>
-                          <span className="font-mono text-zinc-400 text-[9px] block">SĐT: {member.phone} • ghé chơi {member.visits} ca</span>
+                          <span className="text-zinc-400 text-[9px] block">SĐT: {member.phone} • ghé chơi {member.visits} ca</span>
                         </div>
                         <div className="text-right">
                           <span className="text-[11.5px] font-black text-orange-600 block">{member.points} pt</span>
-                          <span className="text-[8.5px] text-zinc-450 italic font-mono block">Tiêu: {(member.totalSpent).toLocaleString()}đ</span>
+                          <span className="text-[8.5px] text-zinc-450 italic block">Tiêu: {(member.totalSpent).toLocaleString()}đ</span>
                         </div>
                       </div>
                     ))}
@@ -1597,27 +1597,27 @@ export default function SoloOperatorView({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 select-none">
                   <Cpu className="w-5 h-5 text-orange-400 fill-orange-400/20" />
-                  <span className="text-[9.5px] font-extrabold uppercase tracking-widest text-zinc-400 font-mono">ScanGo Co-Chef AI Engine</span>
+                  <span className="text-[9.5px] font-extrabold text-zinc-400 ">ScanGo Co-Chef AI Engine</span>
                 </div>
-                <span className="text-[8.5px] bg-orange-505/20 border border-orange-500/50 text-orange-400 font-black px-2 py-0.5 rounded font-mono">Gemini.v2</span>
+                <span className="text-[8.5px] bg-orange-505/20 border border-orange-500/50 text-orange-400 font-black px-2 py-0.5 rounded ">Gemini.v2</span>
               </div>
 
-              <div className="space-y-3 pt-1 border-t border-white/5 text-[11px] leading-relaxed select-none">
+              <div className="space-y-3 pt-1 border-t border-white/5 text-sm leading-relaxed select-none">
                 
                 {/* 1. Dynamic profitable dish */}
                 <div className="bg-white/5 rounded-xl p-3 border border-white/10 space-y-1">
-                  <span className="text-[8.5px] uppercase tracking-wider font-extrabold text-orange-300 font-mono block">🎯 Món sinh lời tốt nhất quán (Lãi thô %)</span>
+                  <span className="text-[8.5px] font-extrabold text-orange-300 block">🎯 Món sinh lời tốt nhất quán (Lãi thô %)</span>
                   <p className="font-extrabold text-white text-[11.5px]">{calculatedMargins[0]?.name || "Đang phân tích..."}</p>
-                  <p className="text-zinc-300 text-[10px]">
+                  <p className="text-zinc-300 text-xs ">
                     Giá thô gốc chỉ tốn <strong className="text-white">{(calculatedMargins[0]?.cogs || 2700).toLocaleString('vi-VN')}đ</strong> (bán ra {(calculatedMargins[0]?.price || 15000).toLocaleString('vi-VN')}đ). Biên lãi gộp dồi dào đạt <strong className="text-emerald-400">{calculatedMargins[0]?.percent || 82}%</strong>. Anh chị nên ưu tiên đặt món này góc chính diện QR để kích cầu!
                   </p>
                 </div>
 
                 {/* 2. Slow items strategy */}
                 <div className="bg-white/5 rounded-xl p-3 border border-white/10 space-y-1">
-                  <span className="text-[8.5px] uppercase tracking-wider font-extrabold text-amber-400 font-mono block">📊 Kích cầu tiêu thụ món bán chậm</span>
+                  <span className="text-[8.5px] font-extrabold text-amber-400 block">📊 Kích cầu tiêu thụ món bán chậm</span>
                   <p className="font-extrabold text-zinc-200 text-[10.5px]">Món bán chậm gần đây: {slowMovingDishes[0]?.name}</p>
-                  <p className="text-zinc-300 text-[10px]">
+                  <p className="text-zinc-300 text-xs ">
                     Hôm nay chỉ tiêu thụ được vỏn vẹn <strong className="text-amber-300">{slowMovingDishes[0]?.salesQty} suất</strong> bán ra. Mẹo vặt: Nên tung combo ghép cặp ăn kèm một cốc sâm dứa để dọn lò cực sạch, thúc đẩy dòng tiền!
                   </p>
                 </div>
@@ -1625,32 +1625,32 @@ export default function SoloOperatorView({
                 {/* 3. Raw Materials Stock warning alerts */}
                 {ingredients.filter(ing => ing.stockAmount < 1550).length > 0 ? (
                   <div className="bg-red-950/40 rounded-xl p-3 border border-red-900/40 space-y-1">
-                    <span className="text-[8.5px] uppercase tracking-wider font-extrabold text-red-400 font-mono block">🚨 Khẩn cấp: Kho thô chạm đáy cảnh báo</span>
+                    <span className="text-[8.5px] font-extrabold text-red-400 block">🚨 Khẩn cấp: Kho thô chạm đáy cảnh báo</span>
                     <p className="font-extrabold text-red-200 text-[10.5px]">
                       {ingredients.filter(ing => ing.stockAmount < 1550).map(ing => `${ing.name} còn lẻ tẻ ${ing.unit === 'g' ? `${ing.stockAmount}g` : `${ing.stockAmount} ${ing.unit}`}`).join(', ')}
                     </p>
-                    <p className="text-zinc-350 text-[10px]">
+                    <p className="text-zinc-350 text-xs ">
                       Sức dự phòng chỉ còn đủ gánh thêm tầm <strong>~5 bát ăn phục vụ nữa</strong>. Hãy tranh thủ gom thêm sớm kẻo đứt đơn dở lúc cao điểm trưa nay!
                     </p>
                   </div>
                 ) : (
-                  <div className="bg-white/5 rounded-xl p-3 border border-white/10 space-y-1 text-zinc-300 text-[10px]">
-                    <span className="text-[8.5px] uppercase tracking-wider font-extrabold text-zinc-400 font-mono block">⚠️ Cảng kho thô</span>
+                  <div className="bg-white/5 rounded-xl p-3 border border-white/10 space-y-1 text-zinc-300 text-xs ">
+                    <span className="text-[8.5px] font-extrabold text-zinc-400 block">⚠️ Cảng kho thô</span>
                     Kho nguyên mộc thô hiện đang dồi dào, đáp ứng hoàn hảo dòng dọn phục vụ!
                   </div>
                 )}
 
                 {/* 4. Strategic Price Recommendation */}
                 <div className="bg-white/5 rounded-xl p-3 border border-white/10 space-y-1">
-                  <span className="text-[8.5px] uppercase tracking-wider font-extrabold text-emerald-400 font-mono block">📈 Khuyên dùng giá vĩ mô tối ưu</span>
-                  <p className="text-zinc-300 text-[10px]">
+                  <span className="text-[8.5px] font-extrabold text-emerald-400 block">📈 Khuyên dùng giá vĩ mô tối ưu</span>
+                  <p className="text-zinc-300 text-xs ">
                     Giá sỉ đầu nguồn thịt bắp tăng vọt 11%. Anh chị tránh điều chỉnh giá Phở tăng dồn dập khiến khách dội, hãy tung chương trình miễn phí sâm dứa hương lài cho bàn đặt QR trên 150.000đ để bù dòng vốn!
                   </p>
                 </div>
 
               </div>
 
-              <div className="flex justify-between items-center pt-2.5 border-t border-white/10 select-none text-[8.5px] font-mono text-zinc-500">
+              <div className="flex justify-between items-center pt-2.5 border-t border-white/10 select-none text-[8.5px] text-zinc-500">
                 <span>Cập nhật: Mới tức thì</span>
                 <button
                   type="button"
@@ -1717,3 +1717,4 @@ export default function SoloOperatorView({
     </div>
   );
 }
+

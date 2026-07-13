@@ -301,7 +301,7 @@ export default function CustomerView({
           ))}
         </div>
 
-        <p className="text-[10px] text-zinc-400 text-center font-mono py-2">ScanGo NFC Simulator</p>
+        <p className="text-xs text-zinc-400 text-center py-2">ScanGo NFC Simulator</p>
       </motion.div>
     );
   }
@@ -317,7 +317,7 @@ export default function CustomerView({
       >
         <div>
           <div className="flex justify-between items-center mb-10">
-            <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider">Hội viên</span>
+            <span className="text-xs font-bold text-[#8E8E93] ">Hội viên</span>
             <button 
               onClick={handleSkipPhonePrompt}
               className="text-xs text-zinc-900 font-semibold hover:underline cursor-pointer"
@@ -366,7 +366,7 @@ export default function CustomerView({
             type="button"
             onClick={handlePhoneSubmit}
             disabled={phoneNumber.length < 9}
-            className="w-full bg-zinc-950 hover:bg-zinc-900 disabled:opacity-40 disabled:pointer-events-none text-white py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+            className="w-full bg-zinc-950 hover:bg-zinc-900 disabled:opacity-40 disabled:pointer-events-none text-white py-3.5 rounded-2xl font-bold text-xs shadow-sm transition-all cursor-pointer"
           >
             Đồng ý
           </motion.button>
@@ -391,15 +391,15 @@ export default function CustomerView({
           <div>
             <div className="flex items-center gap-[4px]">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-              <span className="text-[16px] font-semibold text-[#2D2B30] tabular-nums">BÀN {simulationTableId.padStart(2, '0')}</span>
+              <span className="text-[16px] font-semibold text-[#2D2B30] ">BÀN {simulationTableId.padStart(2, '0')}</span>
             </div>
-            <h4 className="text-[11px] text-[#707070] font-medium tracking-wide mt-0.5">{tenantConfig.shopName}</h4>
+            <h4 className="text-sm text-[#707070] font-medium tracking-wide mt-0.5">{tenantConfig.shopName}</h4>
           </div>
           
           {activeCustomerOrders.length > 0 && (
             <button 
               onClick={() => setCustStep('order_tracking')}
-              className="bg-white border border-[#B5C7D8] text-zinc-900 text-[10px] px-2.5 py-1 rounded-[21px] font-semibold flex items-center gap-1 cursor-pointer hover:bg-gray-50 focus:outline-2 focus:outline-zinc-900"
+              className="bg-white border border-[#B5C7D8] text-zinc-900 text-xs px-2.5 py-1 rounded-[21px] font-semibold flex items-center gap-1 cursor-pointer hover:bg-gray-50 focus:outline-2 focus:outline-zinc-900"
             >
               <Clock className="w-3 h-3 text-zinc-900" /> THEO DÕI ĐƠN
             </button>
@@ -409,12 +409,12 @@ export default function CustomerView({
         <div className="flex-grow overflow-y-auto p-[13px] space-y-[13px] bg-white">
           {/* Loyalty membership status */}
           {loyaltyProfile && (
-            <div className="bg-[#F5F5F7] border border-[#B5C7D8] p-[13px] rounded-[21px] flex items-center justify-between text-[12px] text-[#454547]">
+            <div className="bg-[#F5F5F7] border border-[#B5C7D8] p-[13px] rounded-[21px] flex items-center justify-between text-sm text-[#454547]">
               <div className="space-y-[2px]">
                 <p className="font-semibold text-[#2D2B30]">Chào {loyaltyProfile.name}!</p>
-                <p className="text-[10px] text-[#808080] font-mono tabular-nums">{loyaltyProfile.phone} • {loyaltyProfile.points} điểm</p>
+                <p className="text-xs text-[#808080] ">{loyaltyProfile.phone} • {loyaltyProfile.points} điểm</p>
               </div>
-              <span className="text-[10px] bg-zinc-900 text-white px-2 py-0.5 rounded-[21px] font-bold tracking-wide uppercase">Hội viên</span>
+              <span className="text-xs bg-zinc-900 text-white px-2 py-0.5 rounded-[21px] font-bold tracking-wide ">Hội viên</span>
             </div>
           )}
 
@@ -422,29 +422,29 @@ export default function CustomerView({
           {tenantConfig.discountEnabled && (
             <div className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8] space-y-[4px] relative overflow-hidden">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] uppercase font-bold text-[#2D2B30] tracking-wider flex items-center gap-1">
+                <span className="text-xs font-bold text-[#2D2B30] flex items-center gap-1">
                   <Ticket className="w-3.5 h-3.5 text-zinc-900" /> Ưu Đãi Tự Động
                 </span>
                 {isPromoEligible ? (
-                  <span className="text-[10px] bg-zinc-900 text-white font-semibold px-2 py-0.5 rounded-[21px] tabular-nums uppercase">Đạt Điều Kiện</span>
+                  <span className="text-xs bg-zinc-900 text-white font-semibold px-2 py-0.5 rounded-[21px] ">Đạt Điều Kiện</span>
                 ) : (
-                  <span className="text-[10px] bg-gray-200 text-gray-800 font-semibold px-2 py-0.5 rounded-[21px] font-mono leading-none">MÃ: {tenantConfig.discountCode}</span>
+                  <span className="text-xs bg-gray-200 text-gray-800 font-semibold px-2 py-0.5 rounded-[21px] leading-none">MÃ: {tenantConfig.discountCode}</span>
                 )}
               </div>
               
-              <p className="text-[12px] text-[#454547] leading-relaxed text-pretty">
-                Giảm <span className="font-semibold text-zinc-900 tabular-nums">-{tenantConfig.discountAmount?.toLocaleString()}đ</span> khi giỏ hàng có trên <span className="font-semibold tabular-nums">{tenantConfig.discountMinItems} món</span> hoặc tổng đơn trên <span className="font-semibold font-mono tabular-nums">{tenantConfig.discountMinAmount?.toLocaleString()}đ</span>.
+              <p className="text-sm text-[#454547] leading-relaxed text-pretty">
+                Giảm <span className="font-semibold text-zinc-900 ">-{tenantConfig.discountAmount?.toLocaleString()}đ</span> khi giỏ hàng có trên <span className="font-semibold ">{tenantConfig.discountMinItems} món</span> hoặc tổng đơn trên <span className="font-semibold ">{tenantConfig.discountMinAmount?.toLocaleString()}đ</span>.
               </p>
 
               {isPromoEligible ? (
-                <div className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 p-2 rounded-xl mt-1 font-medium flex justify-between items-center">
+                <div className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 p-2 rounded-xl mt-1 font-medium flex justify-between items-center">
                   <span>Giảm {tenantConfig.discountAmount?.toLocaleString()}đ đã áp dụng!</span>
                   <Check className="w-3.5 h-3.5 text-emerald-600" />
                 </div>
               ) : (
-                <div className="text-[11px] text-zinc-500 bg-white border border-zinc-200 p-2 rounded-xl mt-1 flex justify-between items-center font-medium">
+                <div className="text-sm text-zinc-500 bg-white border border-zinc-200 p-2 rounded-xl mt-1 flex justify-between items-center font-medium">
                   <span>Thêm món để đủ điều kiện</span>
-                  <span className="font-mono bg-[#F5F5F7] px-2 py-0.5 rounded-[21px] text-[#2D2B30] border border-[#B5C7D8] text-[10px] tabular-nums">{totalQuantity} / {tenantConfig.discountMinItems} món</span>
+                  <span className="bg-[#F5F5F7] px-2 py-0.5 rounded-[21px] text-[#2D2B30] border border-[#B5C7D8] text-xs ">{totalQuantity} / {tenantConfig.discountMinItems} món</span>
                 </div>
               )}
             </div>
@@ -458,7 +458,7 @@ export default function CustomerView({
                   key={type}
                   type="button"
                   onClick={() => setSelectedTypeFilter(type)}
-                  className={`px-3 py-1 text-[11px] font-semibold rounded-[21px] transition-all flex-shrink-0 cursor-pointer border ${
+                  className={`px-3 py-1 text-sm font-semibold rounded-[21px] transition-all flex-shrink-0 cursor-pointer border ${
                     selectedTypeFilter === type
                       ? 'bg-zinc-900 text-white border-zinc-900 shadow-sm'
                       : 'bg-[#F5F5F7] text-[#454547] border-[#B5C7D8] hover:bg-[#E5E5EA]'
@@ -470,9 +470,9 @@ export default function CustomerView({
             </div>
           )}
 
-          <div className="text-[12px] font-bold text-[#2D2B30] uppercase tracking-wider border-b border-[#B5C7D8]/50 pb-1 flex justify-between select-none">
+          <div className="text-sm font-bold text-[#2D2B30] border-b border-[#B5C7D8]/50 pb-1 flex justify-between select-none">
             <span>Danh mục Thực đơn</span>
-            <span className="text-[10px] font-mono text-[#808080] tabular-nums">{displayedMenuItems.length} món</span>
+            <span className="text-xs text-[#808080] ">{displayedMenuItems.length} món</span>
           </div>
 
           {/* List display based on industry layout parameters */}
@@ -491,10 +491,10 @@ export default function CustomerView({
                     <div className="flex-grow space-y-[2px]">
                       <div className="flex items-center gap-[4px] flex-wrap">
                         <h5 className="text-[14px] font-semibold text-[#2D2B30] line-clamp-1">{item.name}</h5>
-                        <span className="text-[10px] bg-[#F5F5F7] text-[#2D2B30] border border-[#B5C7D8] px-1.5 py-0.2 rounded-[21px] font-semibold font-sans">{itemType}</span>
+                        <span className="text-xs bg-[#F5F5F7] text-[#2D2B30] border border-[#B5C7D8] px-1.5 py-0.2 rounded-[21px] font-semibold font-sans">{itemType}</span>
                       </div>
-                      <p className="text-[12px] text-[#808080] line-clamp-2 leading-relaxed text-pretty">{item.description}</p>
-                      <span className="text-[14px] font-bold text-zinc-900 mt-1 block font-mono tabular-nums">
+                      <p className="text-sm text-[#808080] line-clamp-2 leading-relaxed text-pretty">{item.description}</p>
+                      <span className="text-[14px] font-bold text-zinc-900 mt-1 block ">
                         {item.price.toLocaleString()}đ
                       </span>
                     </div>
@@ -508,7 +508,7 @@ export default function CustomerView({
                         <Plus className="w-4 h-4" />
                       </button>
                     ) : (
-                      <span className="text-[10px] bg-[#F5F5F7] text-[#808080] border border-[#B5C7D8] px-2 py-1 rounded-[21px] font-semibold uppercase self-end">HẾT MÓN</span>
+                      <span className="text-xs bg-[#F5F5F7] text-[#808080] border border-[#B5C7D8] px-2 py-1 rounded-[21px] font-semibold self-end">HẾT MÓN</span>
                     )}
                   </div>
                 );
@@ -530,17 +530,17 @@ export default function CustomerView({
                       {!item.inStock ? (
                         <span className="absolute top-1 right-1 bg-red-650 text-white text-[9px] px-1.5 py-0.2 rounded-[21px] font-bold">HẾT</span>
                       ) : (
-                        <span className="absolute top-1 right-1 bg-white/95 text-[10px] text-[#2D2B30] border border-[#B5C7D8] px-1.5 py-0.2 rounded-[21px] font-semibold font-sans">{itemType}</span>
+                        <span className="absolute top-1 right-1 bg-white/95 text-xs text-[#2D2B30] border border-[#B5C7D8] px-1.5 py-0.2 rounded-[21px] font-semibold font-sans">{itemType}</span>
                       )}
                     </div>
                     
                     <div className="mt-1 flex-grow">
-                      <h5 className="text-[12px] font-semibold text-[#2D2B30] line-clamp-1">{item.name}</h5>
-                      <p className="text-[10px] text-[#808080] line-clamp-1 text-pretty">{item.description}</p>
+                      <h5 className="text-sm font-semibold text-[#2D2B30] line-clamp-1">{item.name}</h5>
+                      <p className="text-xs text-[#808080] line-clamp-1 text-pretty">{item.description}</p>
                     </div>
 
                     <div className="flex justify-between items-center mt-1">
-                      <span className="text-[12px] font-bold text-zinc-900 font-mono tabular-nums">
+                      <span className="text-sm font-bold text-zinc-900 ">
                         {item.price.toLocaleString()}đ
                       </span>
                       {item.inStock && (
@@ -564,7 +564,7 @@ export default function CustomerView({
 
                 return (
                   <div key={cat} className="space-y-[4px]">
-                    <h6 className="text-[10px] font-bold text-[#2D2B30] bg-[#F5F5F7] px-2 py-0.5 rounded-[21px] w-fit border border-[#B5C7D8]">{cat.toUpperCase()}</h6>
+                    <h6 className="text-xs font-bold text-[#2D2B30] bg-[#F5F5F7] px-2 py-0.5 rounded-[21px] w-fit border border-[#B5C7D8]">{cat.to()}</h6>
                     
                     <div className="space-y-[4px]">
                       {filtered.map(item => {
@@ -578,10 +578,10 @@ export default function CustomerView({
                               <img src={item.image} alt={item.name} className="w-10 h-10 rounded-[21px] object-cover border border-[#B5C7D8]/50" referrerPolicy="no-referrer" />
                               <div className="space-y-[2px]">
                                 <div className="flex items-center gap-[4px] flex-wrap">
-                                  <h5 className="text-[12px] font-semibold text-[#2D2B30]">{item.name}</h5>
+                                  <h5 className="text-sm font-semibold text-[#2D2B30]">{item.name}</h5>
                                   <span className="text-[8px] bg-[#F5F5F7] text-[#2D2B30] border border-[#B5C7D8] px-1 rounded-[21px] font-semibold font-sans">{itemType}</span>
                                 </div>
-                                <span className="text-[12px] font-bold text-zinc-900 font-mono tabular-nums">{item.price.toLocaleString()}đ</span>
+                                <span className="text-sm font-bold text-zinc-900 ">{item.price.toLocaleString()}đ</span>
                               </div>
                             </div>
                             
@@ -593,7 +593,7 @@ export default function CustomerView({
                                 +
                               </button>
                             ) : (
-                              <span className="text-[10px] text-[#808080] font-bold uppercase">HẾT</span>
+                              <span className="text-xs text-[#808080] font-bold ">HẾT</span>
                             )}
                           </div>
                         );
@@ -612,19 +612,19 @@ export default function CustomerView({
             <div className="flex items-center gap-[13px]">
               <div className="relative bg-[#F5F5F7] p-2.5 border border-[#B5C7D8] rounded-[21px]">
                 <ShoppingBag className="w-4 h-4 text-[#2D2B30]" />
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-zinc-900 text-white text-[10px] font-bold rounded-full flex items-center justify-center tabular-nums">
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-zinc-900 text-white text-xs font-bold rounded-full flex items-center justify-center ">
                   {cart.reduce((s, i) => s + i.quantity, 0)}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-[#808080] block uppercase font-bold select-none">Tạm tính</span>
-                <span className="text-[14px] font-bold text-[#2D2B30] font-mono tabular-nums">{cartTotal.toLocaleString()}đ</span>
+                <span className="text-xs text-[#808080] block font-bold select-none">Tạm tính</span>
+                <span className="text-[14px] font-bold text-[#2D2B30] ">{cartTotal.toLocaleString()}đ</span>
               </div>
             </div>
 
             <button 
               onClick={() => setCustStep('cart_summary')}
-              className="bg-zinc-900 hover:bg-zinc-900/95 text-white text-[12px] font-semibold px-4 py-2.5 rounded-[21px] active:scale-95 shadow-sm transition-all flex items-center gap-1 cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
+              className="bg-zinc-900 hover:bg-zinc-900/95 text-white text-sm font-semibold px-4 py-2.5 rounded-[21px] active:scale-95 shadow-sm transition-all flex items-center gap-1 cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
             >
               Xem Giỏ Hàng <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -638,7 +638,7 @@ export default function CustomerView({
               <div className="flex justify-between items-start">
                 <div>
                   <h4 className="text-[14px] font-bold text-[#2D2B30]">{activeItemForModifier.name}</h4>
-                  <p className="text-[12px] text-zinc-900 font-bold font-mono mt-0.5 tabular-nums">{activeItemForModifier.price.toLocaleString()}đ</p>
+                  <p className="text-sm text-zinc-900 font-bold mt-0.5 ">{activeItemForModifier.price.toLocaleString()}đ</p>
                 </div>
                 <button 
                   onClick={() => setActiveItemForModifier(null)}
@@ -648,10 +648,10 @@ export default function CustomerView({
                 </button>
               </div>
 
-              <div className="space-y-[13px] text-[12px]">
+              <div className="space-y-[13px] text-sm ">
                 {template.modifier_groups.map(group => (
                   <div key={group.name} className="space-y-[4px]">
-                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-[#808080]">
+                    <div className="flex justify-between items-center text-xs font-bold text-[#808080]">
                       <span>{group.name}</span>
                       {group.required ? (
                         <span className="text-[9px] bg-red-100 text-red-650 px-1.5 py-0.2 rounded-[21px] font-bold">Bắt buộc</span>
@@ -674,7 +674,7 @@ export default function CustomerView({
                             }`}
                           >
                             <span className="font-medium">{opt.name}</span>
-                            <span className="font-mono text-[11px] font-bold tabular-nums">
+                            <span className="text-sm font-bold ">
                               {opt.price === 0 ? 'Miễn phí' : `+${opt.price.toLocaleString()}đ`}
                             </span>
                           </div>
@@ -687,15 +687,15 @@ export default function CustomerView({
 
               <div className="pt-[13px] border-t border-[#B5C7D8] flex justify-between items-center bg-white">
                 <div>
-                  <span className="text-[10px] text-[#808080] block uppercase font-bold">Đơn giá món</span>
-                  <span className="text-[16px] font-bold text-[#2D2B30] font-mono tabular-nums">
+                  <span className="text-xs text-[#808080] block font-bold">Đơn giá món</span>
+                  <span className="text-[16px] font-bold text-[#2D2B30] ">
                     {(activeItemForModifier.price + modifierPriceSum).toLocaleString()}đ
                   </span>
                 </div>
                 
                 <button 
                   onClick={handleAddWithModifiers}
-                  className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[12px] font-semibold px-4 py-2.5 rounded-[21px] transition-colors cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
+                  className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm font-semibold px-4 py-2.5 rounded-[21px] transition-colors cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
                 >
                   Thêm Vào Giỏ
                 </button>
@@ -718,7 +718,7 @@ export default function CustomerView({
                 <Smartphone className="w-6 h-6 text-zinc-900" />
               </div>
               <h5 className="text-[14px] font-bold text-[#2D2B30] border-b border-gray-150 pb-1 flex justify-center">Xác thực OTP</h5>
-              <p className="text-[11px] text-[#707070] text-pretty leading-relaxed">
+              <p className="text-sm text-[#707070] text-pretty leading-relaxed">
                 Vui lòng nhập OTP (8888).
               </p>
 
@@ -732,30 +732,30 @@ export default function CustomerView({
                     setOtpCode(e.target.value.replace(/\D/g, ''));
                     setOtpError('');
                   }}
-                  className="w-32 bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] text-center tracking-[0.3em] text-[16px] py-1.5 text-[#2D2B30] font-black focus:outline-none focus:border-zinc-900 shadow-inner font-mono tabular-nums"
+                  className="w-32 bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] text-center tracking-[0.3em] text-[16px] py-1.5 text-[#2D2B30] font-black focus:outline-none focus:border-zinc-900 shadow-inner "
                   placeholder="••••"
                 />
 
-                {otpError && <p className="text-[10px] text-red-650 font-semibold block">{otpError}</p>}
+                {otpError && <p className="text-xs text-red-650 font-semibold block">{otpError}</p>}
 
                 <div className="flex gap-2">
                   <button 
                     type="button"
                     onClick={() => setShowOtpRequired(false)}
-                    className="flex-1 bg-[#F5F5F7] text-[#2D2B30] border border-[#B5C7D8] hover:bg-gray-150 text-[12px] py-1.5 rounded-[21px] font-semibold cursor-pointer"
+                    className="flex-1 bg-[#F5F5F7] text-[#2D2B30] border border-[#B5C7D8] hover:bg-gray-150 text-sm py-1.5 rounded-[21px] font-semibold cursor-pointer"
                   >
                     Hủy
                   </button>
                   <button 
                     type="submit"
-                    className="flex-1 bg-zinc-900 hover:bg-zinc-900/90 text-white text-[12px] py-1.5 rounded-[21px] font-semibold cursor-pointer focus:outline-2 focus:outline-zinc-900"
+                    className="flex-1 bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm py-1.5 rounded-[21px] font-semibold cursor-pointer focus:outline-2 focus:outline-zinc-900"
                   >
                     Xác nhận
                   </button>
                 </div>
               </form>
 
-              <p className="text-[9px] text-[#808080] font-mono select-none">💡 Nhập 8888 để vượt qua xác thực nhanh</p>
+              <p className="text-[9px] text-[#808080] select-none">💡 Nhập 8888 để vượt qua xác thực nhanh</p>
             </div>
           </div>
         )}
@@ -764,24 +764,24 @@ export default function CustomerView({
           <div className="flex justify-between items-center border-b border-[#B5C7D8]/65 pb-2 mb-[13px] select-none">
             <button 
               onClick={() => setCustStep('menu')}
-              className="text-[12px] text-zinc-900 font-semibold hover:underline cursor-pointer flex items-center"
+              className="text-sm text-zinc-900 font-semibold hover:underline cursor-pointer flex items-center"
             >
               ← Thực Đơn
             </button>
-            <span className="text-[12px] font-bold text-[#2D2B30] tracking-tight uppercase tabular-nums">Giỏ hàng bàn {simulationTableId}</span>
+            <span className="text-sm font-bold text-[#2D2B30] tracking-tight ">Giỏ hàng bàn {simulationTableId}</span>
           </div>
 
           <div className="space-y-[4px] max-h-[220px] overflow-y-auto pr-1">
             {cart.map(item => (
-              <div key={item.id} className="p-[13px] bg-[#F5F5F7]/40 border border-[#B5C7D8] rounded-[21px] flex justify-between items-center text-[12px] hover:border-zinc-900 transition-colors">
+              <div key={item.id} className="p-[13px] bg-[#F5F5F7]/40 border border-[#B5C7D8] rounded-[21px] flex justify-between items-center text-sm hover:border-zinc-900 transition-colors">
                 <div className="space-y-0.5">
                   <h6 className="font-semibold text-[#2D2B30]">{item.name}</h6>
                   {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                    <div className="text-[10px] text-[#808080]">
+                    <div className="text-xs text-[#808080]">
                       + {item.selectedModifiers.join(', ')}
                     </div>
                   )}
-                  <span className="font-mono text-zinc-900 font-semibold mt-0.5 block tabular-nums">{item.price.toLocaleString()}đ</span>
+                  <span className="text-zinc-900 font-semibold mt-0.5 block ">{item.price.toLocaleString()}đ</span>
                 </div>
                 
                 <div className="flex items-center gap-[4px]">
@@ -791,7 +791,7 @@ export default function CustomerView({
                   >
                     <Minus className="w-3 h-3" />
                   </button>
-                  <span className="font-semibold font-mono text-[#2D2B30] text-xs w-4 text-center tabular-nums">{item.quantity}</span>
+                  <span className="font-semibold text-[#2D2B30] text-xs w-4 text-center ">{item.quantity}</span>
                   <button 
                     onClick={() => handleUpdateCartQty(item.id, 1)}
                     className="w-6 h-6 rounded-[21px] bg-white hover:bg-gray-100 border border-[#B5C7D8] flex items-center justify-center text-[#2D2B30] cursor-pointer"
@@ -808,7 +808,7 @@ export default function CustomerView({
           {tenantConfig.discountEnabled && (
             <div className="space-y-1.5 border-b border-[#B5C7D8]/40 pb-2">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] uppercase tracking-wider text-[#808080] font-bold">Mã Khuyến Mãi</span>
+                <span className="text-xs text-[#808080] font-bold">Mã Khuyến Mãi</span>
                 {tenantConfig.discountTriggerType === 'auto' ? (
                   <span className="text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-250 px-1.5 rounded-[21px] font-bold">Tự động áp dụng</span>
                 ) : (
@@ -827,12 +827,12 @@ export default function CustomerView({
                         setTypedCoupon(e.target.value);
                         setCouponError('');
                       }}
-                      className="flex-1 bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1 text-[11px] font-semibold text-[#2D2B30] focus:outline-none focus:border-zinc-900 uppercase font-sans"
+                      className="flex-1 bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1 text-sm font-semibold text-[#2D2B30] focus:outline-none focus:border-zinc-900 font-sans"
                     />
                     <button 
                       type="button"
                       onClick={() => {
-                        if (typedCoupon.toUpperCase() === tenantConfig.discountCode?.toUpperCase()) {
+                        if (typedCoupon.to() === tenantConfig.discountCode?.to()) {
                           setManualCouponApplied(true);
                           setCouponError('');
                         } else {
@@ -840,7 +840,7 @@ export default function CustomerView({
                           setCouponError('Mã không trùng khớp!');
                         }
                       }}
-                      className="bg-zinc-900 hover:bg-zinc-900/90 text-white font-bold text-[10px] px-3.5 py-1 rounded-[21px] uppercase cursor-pointer"
+                      className="bg-zinc-900 hover:bg-zinc-900/90 text-white font-bold text-xs px-3.5 py-1 rounded-[21px] cursor-pointer"
                     >
                       Áp dụng
                     </button>
@@ -853,7 +853,7 @@ export default function CustomerView({
                   )}
                 </div>
               ) : (
-                <div className="text-[11px] text-[#707070] italic">
+                <div className="text-sm text-[#707070] italic">
                   Đã tự động cộng hưởng mã {tenantConfig.discountCode} khi đạt điều kiện.
                 </div>
               )}
@@ -861,10 +861,10 @@ export default function CustomerView({
           )}
 
           {loyaltyProfile && (
-            <div className="flex justify-between items-center text-[12px] border-b border-[#B5C7D8]/40 pb-2">
+            <div className="flex justify-between items-center text-sm border-b border-[#B5C7D8]/40 pb-2">
               <div>
-                <span className="text-[9px] uppercase tracking-wider text-[#808080] block font-bold">Loyalty Hub</span>
-                <span className="text-[#2D2B30] font-semibold font-mono tabular-nums">{loyaltyProfile.points} điểm khả dụng</span>
+                <span className="text-[9px] text-[#808080] block font-bold">Loyalty Hub</span>
+                <span className="text-[#2D2B30] font-semibold ">{loyaltyProfile.points} điểm khả dụng</span>
               </div>
               
               {!redeemedPoints ? (
@@ -883,33 +883,33 @@ export default function CustomerView({
           )}
 
           {/* Pricing summary matching design spec */}
-          <div className="space-y-1 text-[12px] text-[#808080]">
+          <div className="space-y-1 text-sm text-[#808080]">
             <div className="flex justify-between">
               <span>Hóa đơn cộng dồn:</span>
-              <span className="font-mono font-semibold text-[#2D2B30] tabular-nums">{cartTotal.toLocaleString()}đ</span>
+              <span className="font-semibold text-[#2D2B30] ">{cartTotal.toLocaleString()}đ</span>
             </div>
             
             {redeemedPoints && (
               <div className="flex justify-between text-zinc-900 font-semibold">
                 <span>Ưu đãi thành viên đổi:</span>
-                <span className="font-mono tabular-nums">-20.000đ</span>
+                <span className="">-20.000đ</span>
               </div>
             )}
 
             {isPromoEligible && (
               <div className="flex justify-between text-zinc-900 font-semibold">
                 <span>Ưu đãi giảm giá ({tenantConfig.discountCode}):</span>
-                <span className="font-mono tabular-nums">-{promoDiscountAmount.toLocaleString()}đ</span>
+                <span className="">-{promoDiscountAmount.toLocaleString()}đ</span>
               </div>
             )}
 
             <div className="flex justify-between text-[#2D2B30] text-[14px] font-bold pt-2 border-t border-[#B5C7D8]/35">
               <span>KHÁCH CẦN THANH TOÁN:</span>
-              <span className="font-mono text-zinc-900 tabular-nums">{finalTotal.toLocaleString()}đ</span>
+              <span className="text-zinc-900 ">{finalTotal.toLocaleString()}đ</span>
             </div>
           </div>
 
-          <div className="text-[10px] text-[#808080] flex items-center gap-1.5 leading-relaxed font-light select-none">
+          <div className="text-xs text-[#808080] flex items-center gap-1.5 leading-relaxed font-light select-none">
             <AlertCircle className="w-3.5 h-3.5 text-zinc-900 flex-shrink-0" />
             <span>Mô hình quán: {tenantConfig.paymentMode === 'Pay-First' ? 'Trả trước (Pay-First)' : 'Trả sau (Pay-Later)'}</span>
           </div>
@@ -932,10 +932,10 @@ export default function CustomerView({
       <div className="flex-grow flex flex-col bg-white p-[13px] font-sans justify-between text-[#2D2B30] h-full" id="cust-order-tracking">
         <div>
           <div className="flex justify-between items-center border-b border-[#B5C7D8]/60 pb-2 mb-[13px] select-none">
-            <h5 className="text-[10px] uppercase font-bold text-[#2D2B30] tracking-wider font-sans">TRẠNG THÁI GỌI MÓN REALTIME</h5>
+            <h5 className="text-xs font-bold text-[#2D2B30] font-sans">TRẠNG THÁI GỌI MÓN REALTIME</h5>
             <button 
               onClick={() => setCustStep('menu')}
-              className="text-[10px] text-zinc-900 font-semibold hover:underline bg-transparent px-2.5 py-1 rounded-[21px] cursor-pointer focus:outline-2 focus:outline-zinc-900"
+              className="text-xs text-zinc-900 font-semibold hover:underline bg-transparent px-2.5 py-1 rounded-[21px] cursor-pointer focus:outline-2 focus:outline-zinc-900"
             >
               Đặt thêm món+
             </button>
@@ -945,7 +945,7 @@ export default function CustomerView({
             <div className="bg-[#F5F5F7] p-[34px] rounded-[21px] border border-[#B5C7D8] text-center space-y-[13px]">
               <span className="text-2xl">✅</span>
               <p className="text-[14px] font-bold text-[#2D2B30]">Bữa ăn đã khép lại và thanh toán!</p>
-              <p className="text-[12px] text-[#808080] leading-relaxed text-pretty">
+              <p className="text-sm text-[#808080] leading-relaxed text-pretty">
                 ScanGo Lite xin chân thành cảm ơn quý khách. Hãy tiếp tục chọn nhãn bàn để đặt thêm món mới tùy thích.
               </p>
             </div>
@@ -953,17 +953,17 @@ export default function CustomerView({
             <div className="space-y-[13px]">
               {activeCustomerOrders.map((order) => (
                 <div key={order.id} className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] space-y-[13px] shadow-sm">
-                  <div className="flex justify-between items-center text-[12px] border-b border-[#B5C7D8]/30 pb-2 select-none">
-                    <span className="font-bold text-[#2D2B30] font-mono tabular-nums">ĐƠN HÀNG #{order.id.slice(-6)}</span>
-                    <span className="font-semibold text-zinc-900 font-mono tabular-nums">{order.total.toLocaleString()}đ</span>
+                  <div className="flex justify-between items-center text-sm border-b border-[#B5C7D8]/30 pb-2 select-none">
+                    <span className="font-bold text-[#2D2B30] ">ĐƠN HÀNG #{order.id.slice(-6)}</span>
+                    <span className="font-semibold text-zinc-900 ">{order.total.toLocaleString()}đ</span>
                   </div>
 
                   {/* Staged horizontal process circles matching Apple tracking style */}
-                  <div className="pt-2 flex justify-between items-center relative text-[10px] font-sans">
+                  <div className="pt-2 flex justify-between items-center relative text-xs font-sans">
                     <div className="absolute top-3 left-4 right-4 h-0.5 bg-[#B5C7D8]/40 z-0"></div>
 
                     <div className="flex flex-col items-center gap-1.5 z-10">
-                      <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-xs font-bold ${
                         ['pending', 'cooking', 'ready'].includes(order.status) 
                           ? 'bg-zinc-900 text-white ring-4 ring-zinc-900/10' 
                           : 'bg-[#F5F5F7] text-gray-400 border border-[#B5C7D8]'
@@ -974,7 +974,7 @@ export default function CustomerView({
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 z-10">
-                      <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-xs font-bold ${
                         ['cooking', 'ready'].includes(order.status) 
                           ? 'bg-zinc-900 text-white ring-4 ring-zinc-900/10' 
                           : 'bg-[#F5F5F7] text-gray-400 border border-[#B5C7D8]'
@@ -985,7 +985,7 @@ export default function CustomerView({
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 z-10">
-                      <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-xs font-bold ${
                         ['ready'].includes(order.status) 
                           ? 'bg-emerald-600 text-white animate-pulse ring-4 ring-emerald-50' 
                           : 'bg-[#F5F5F7] text-gray-400 border border-[#B5C7D8]'
@@ -996,7 +996,7 @@ export default function CustomerView({
                     </div>
                   </div>
 
-                  <div className="bg-[#F5F5F7] p-3 rounded-[21px] border border-[#B5C7D8] text-[11px] text-[#707070] leading-relaxed text-pretty">
+                  <div className="bg-[#F5F5F7] p-3 rounded-[21px] border border-[#B5C7D8] text-sm text-[#707070] leading-relaxed text-pretty">
                     {order.status === 'pending' && '⏳ Bếp chính của chúng tôi đã ghi nhận đơn và đang chuẩn bị chế biến đúng thứ tự.'}
                     {order.status === 'cooking' && '🔥 Đầu bếp đang đứng chế biến trực tiếp, món nóng thơm chuẩn vị sắp bưng ra.'}
                     {order.status === 'ready' && '🎉 Món ngon đã chín tới ngạt ngào! Nhân viên đang chuẩn bị khay bưng ra bàn.'}
@@ -1012,7 +1012,7 @@ export default function CustomerView({
             setCustStep('nfc_tap');
             setCart([]);
           }}
-          className="w-full bg-white border border-[#B5C7D8] text-[12px] py-3 rounded-[21px] text-[#2D2B30] font-semibold hover:bg-[#F5F5F7] transition-colors cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
+          className="w-full bg-white border border-[#B5C7D8] text-sm py-3 rounded-[21px] text-[#2D2B30] font-semibold hover:bg-[#F5F5F7] transition-colors cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
         >
           Mock Chạm NFC Mới (Rời bàn / Thay bàn)
         </button>
@@ -1022,3 +1022,4 @@ export default function CustomerView({
 
   return null;
 }
+

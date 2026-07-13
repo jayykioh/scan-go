@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useSimulator } from '../layouts/SimulatorLayout';
+import { useToast } from '../contexts/ToastContext';
 import PhoneSimulator from '../components/PhoneSimulator';
 import { Sparkles, Building, Wallet, ChefHat, Smartphone, Flame, Check, Plus, ArrowLeft } from 'lucide-react';
 
@@ -24,6 +25,7 @@ function RoleLoading() {
 export default function SimulatorRole() {
   const { role } = useParams<{ role: string }>();
   const ctx = useSimulator();
+  const toast = useToast();
 
   return (
     <div className="min-h-dvh bg-noise text-zinc-900 flex flex-col font-sans antialiased animate-fadeIn">
@@ -74,42 +76,61 @@ export default function SimulatorRole() {
       <main className="flex-1 p-6 lg:p-10 max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-4 gap-8">
         
         {/* Simulation Control Panel */}
-        <section className="lg:col-span-1 bg-white border-hard shadow-hard p-6 space-y-8 h-fit select-none">
-          <div className="flex items-center gap-2 border-b border-hard pb-4">
-            <Flame className="w-5 h-5 text-orange-600" />
-            <h2 className="font-mono text-sm font-bold text-zinc-900 uppercase tracking-widest">Trình điều khiển</h2>
+        <section className="lg:col-span-1 bg-white border-hard shadow-[4px_4px_0_0_#e4e4e7] p-6 space-y-8 h-fit select-none rounded-xl">
+          <div className="flex items-center gap-3 border-b border-zinc-200 pb-4">
+            <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
+              <Flame className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-bold text-zinc-900 tracking-tight">Trung tâm điều phối</h2>
+              <p className="text-xs text-zinc-500 font-medium">Bảng điều khiển giả lập</p>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Đơn đang xử lý</span>
+          <div className="space-y-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Trạng thái đơn hàng
+            </span>
             {ctx.orders.length === 0 ? (
-              <p className="font-mono text-xs text-zinc-400 uppercase tracking-widest">Không có dữ liệu</p>
+              <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 text-center">
+                <p className="text-sm text-zinc-500 font-medium">Hệ thống đang chờ đơn mới</p>
+              </div>
             ) : (
               <div className="flex gap-2 flex-wrap">
                 {ctx.orders.map((o: any) => (
-                  <span key={o.id} className={`font-mono text-[10px] font-bold px-3 py-1 border-hard uppercase tracking-widest ${
-                    o.status === 'pending' ? 'bg-amber-100 text-amber-900' :
-                    o.status === 'cooking' ? 'bg-orange-100 text-orange-900' :
-                    o.status === 'ready' ? 'bg-emerald-100 text-emerald-900' :
-                    'bg-zinc-100 text-zinc-900'
+                  <span key={o.id} className={`text-xs font-bold px-3 py-1.5 rounded-md flex items-center gap-1.5 ${
+                    o.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                    o.status === 'cooking' ? 'bg-orange-100 text-orange-800' :
+                    o.status === 'ready' ? 'bg-emerald-100 text-emerald-800' :
+                    'bg-zinc-100 text-zinc-800'
                   }`}>
-                    B{o.tableId}
+                    {o.status === 'pending' && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
+                    {o.status === 'cooking' && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
+                    {o.status === 'ready' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                    Bàn {o.tableId}
                   </span>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="space-y-3 pt-4 border-t border-hard">
+          <div className="space-y-3 pt-6 border-t border-zinc-200">
             <button 
-              onClick={ctx.triggerAutoOrderSimulation}
-              className="w-full bg-zinc-950 hover:bg-zinc-800 text-white py-4 font-mono font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-colors cursor-pointer border-hard"
+              onClick={() => {
+                ctx.triggerAutoOrderSimulation();
+                toast.success('Đã thêm 1 đơn hàng ảo vào hệ thống');
+              }}
+              className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
             >
               <Plus className="w-4 h-4" /> Bơm đơn ảo
             </button>
             <button 
-              onClick={ctx.handleClearAllOrders}
-              className="w-full bg-white hover:bg-zinc-100 text-zinc-900 py-4 font-mono font-bold text-xs uppercase tracking-widest border-hard transition-colors cursor-pointer"
+              onClick={() => {
+                ctx.handleClearAllOrders();
+                toast.info('Đã xóa toàn bộ đơn hàng trong phiên');
+              }}
+              className="w-full bg-white hover:bg-zinc-50 text-zinc-700 py-3 rounded-lg font-bold text-sm border border-zinc-200 transition-all cursor-pointer active:scale-[0.98]"
             >
               Reset dữ liệu đơn
             </button>

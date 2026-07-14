@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, useOutletContext } from 'react-router-dom';
 import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount } from '../types';
-import { MOCK_LOYALTY_MEMBERS, MOCK_MENU_ITEMS, INDUSTRY_TEMPLATES } from '../mockData';
+import { MOCK_LOYALTY_MEMBERS, MOCK_MENU_ITEMS, INDUSTRY_TEMPLATES, MOCK_STAFF_ACCOUNTS } from '../mockData';
 import { usePersistentState } from '../hooks/usePersistentState';
 
 export type SimulatorContextType = {
@@ -15,6 +15,8 @@ export type SimulatorContextType = {
   setOrders: (val: any) => void;
   staffAccounts: StaffAccount[];
   setStaffAccounts: (val: any) => void;
+  currentStaff: StaffAccount | null;
+  setCurrentStaff: (val: any) => void;
   loyaltyMembers: LoyaltyMember[];
   setLoyaltyMembers: (val: any) => void;
   ownerOnboarded: boolean;
@@ -110,7 +112,48 @@ export default function SimulatorLayout() {
     })),
   });
 
-  const [staffAccounts, setStaffAccounts] = usePersistentState<StaffAccount[]>('scango:staff:v1', []);
+  const [staffAccounts, setStaffAccounts] = usePersistentState<StaffAccount[]>('scango:staff:v1', MOCK_STAFF_ACCOUNTS, {
+    deserialize: (value: string) => {
+      const parsed = JSON.parse(value) as unknown[];
+      const migrated = parsed
+        .map((entry: any): StaffAccount | null => {
+          if (entry?.roles && typeof entry.pin === 'string') {
+            return {
+              id: String(entry.id),
+              name: String(entry.name || 'Nhân viên'),
+              pin: entry.pin,
+              roles: {
+                isKitchen: Boolean(entry.roles.isKitchen),
+                isWaiter: Boolean(entry.roles.isWaiter),
+                isCashier: Boolean(entry.roles.isCashier),
+              },
+              isActive: entry.isActive !== false,
+            };
+          }
+
+          if (entry?.role) {
+            const role = String(entry.role).toLowerCase();
+            return {
+              id: String(entry.id || Date.now()),
+              name: String(entry.name || 'Nhân viên'),
+              pin: '0000',
+              roles: {
+                isKitchen: role.includes('bếp') || role.includes('đầu'),
+                isWaiter: role.includes('phục'),
+                isCashier: role.includes('thu') || role.includes('quản'),
+              },
+              isActive: entry.status !== 'Nghỉ phép',
+            };
+          }
+
+          return null;
+        })
+        .filter((entry): entry is StaffAccount => entry !== null);
+
+      return migrated.length > 0 ? migrated : MOCK_STAFF_ACCOUNTS;
+    },
+  });
+  const [currentStaff, setCurrentStaff] = useState<StaffAccount | null>(null);
   const [loyaltyMembers, setLoyaltyMembers] = usePersistentState<LoyaltyMember[]>('scango:loyalty:v1', MOCK_LOYALTY_MEMBERS);
 
   // Customer dynamic simulator helper values
@@ -216,6 +259,8 @@ export default function SimulatorLayout() {
       }
     ]);
     setLoyaltyMembers(MOCK_LOYALTY_MEMBERS);
+    setStaffAccounts(MOCK_STAFF_ACCOUNTS);
+    setCurrentStaff(null);
     setOwnerOnboarded(true);
     setSoloOnboarded(false);
     setCashierOnboarded(true);
@@ -230,6 +275,7 @@ export default function SimulatorLayout() {
     menuItems, setMenuItems,
     orders, setOrders,
     staffAccounts, setStaffAccounts,
+    currentStaff, setCurrentStaff,
     loyaltyMembers, setLoyaltyMembers,
     ownerOnboarded, setOwnerOnboarded,
     soloOnboarded, setSoloOnboarded,

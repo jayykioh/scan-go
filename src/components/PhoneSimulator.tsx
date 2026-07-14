@@ -34,11 +34,11 @@ export default function PhoneSimulator({
   // Determine styles based on tablet vs phone mode
   const containerClasses = isTablet 
     ? "relative mx-auto w-full h-full" 
-    : "relative mx-auto max-w-[370px] w-full h-full";
+    : "relative mx-auto max-w-[390px] w-full h-full";
     
   const bezelClasses = isTablet
     ? "relative bg-zinc-950 border-4 border-zinc-900 rounded-[32px] shadow-[0_20px_50px_rgba(9,9,11,0.2)] overflow-hidden w-full h-full flex flex-col ring-8 ring-zinc-200/30"
-    : "relative bg-zinc-950 border-4 border-zinc-900 rounded-[48px] shadow-[0_20px_50px_rgba(9,9,11,0.2)] overflow-hidden aspect-[9/18.5] w-full flex flex-col ring-8 ring-zinc-200/30";
+    : "relative bg-zinc-950 border-4 border-zinc-900 rounded-[48px] shadow-[0_20px_50px_rgba(9,9,11,0.2)] overflow-hidden w-full h-full min-h-0 flex flex-col ring-8 ring-zinc-200/30";
 
   return (
     <div className={containerClasses} id={`phone-simulator-${actorName.toLowerCase()}`}>

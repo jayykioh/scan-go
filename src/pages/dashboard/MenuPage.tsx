@@ -4,6 +4,7 @@ import { MenuItem } from '../../types';
 import { Plus, Search, Edit2, Trash2, Image as ImageIcon, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { createPortal } from 'react-dom';
+import GuideModal from '../../components/GuideModal';
 
 const defaultCategories = ['Món chính', 'Đồ uống', 'Tráng miệng', 'Ăn vặt'];
 
@@ -14,6 +15,9 @@ export default function MenuPage() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [deletingItem, setDeletingItem] = useState<MenuItem | null>(null);
+  const [newToppingName, setNewToppingName] = useState('');
+  const [newToppingPrice, setNewToppingPrice] = useState(0);
   
   const toast = useToast();
 
@@ -40,6 +44,8 @@ export default function MenuPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingItem(null);
+    setNewToppingName('');
+    setNewToppingPrice(0);
   };
 
   const handleSaveItem = (e: React.FormEvent) => {
@@ -56,11 +62,21 @@ export default function MenuPage() {
     handleCloseModal();
   };
 
-  const handleDeleteItem = (id: string) => {
-    if (window.confirm('Bạn có chắc muốn xóa món này?')) {
-      setMenuItems(prev => prev.filter(i => i.id !== id));
-      toast.success('Đã xóa món ăn');
-    }
+  const handleDeleteItem = () => {
+    if (!deletingItem) return;
+    setMenuItems(prev => prev.filter(i => i.id !== deletingItem.id));
+    toast.success('Đã xóa món ăn');
+    setDeletingItem(null);
+  };
+
+  const handleAddTopping = () => {
+    if (!editingItem || !newToppingName.trim()) return;
+    setEditingItem({
+      ...editingItem,
+      toppings: [...(editingItem.toppings || []), { name: newToppingName.trim(), price: Math.max(0, newToppingPrice) }]
+    });
+    setNewToppingName('');
+    setNewToppingPrice(0);
   };
 
   const toggleStock = (id: string) => {
@@ -85,6 +101,15 @@ export default function MenuPage() {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto w-full animate-fadeIn">
+      <GuideModal
+        storageKey="scango:guide:menu:v1"
+        title="Tạo menu sẵn sàng cho khách"
+        steps={[
+          { title: 'Thêm món chính trước', body: 'Nhập tên, giá bán, giá vốn và ảnh. Mỗi món sẽ xuất hiện ngay trên link menu công khai.' },
+          { title: 'Chia loại rõ ràng', body: 'Dùng danh mục và loại món để khách lọc nhanh: đồ ăn, đồ uống, tráng miệng hoặc ăn vặt.' },
+          { title: 'Thêm topping nếu cần', body: 'Topping trong form sẽ hiển thị như lựa chọn thêm ở app khách hàng.' },
+        ]}
+      />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tighter text-zinc-900 uppercase">Quản lý Thực đơn</h1>
@@ -145,7 +170,7 @@ export default function MenuPage() {
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button 
-                  onClick={() => handleDeleteItem(item.id)}
+                  onClick={() => setDeletingItem(item)}
                   className="w-8 h-8 bg-white border border-hard flex items-center justify-center text-red-500 hover:bg-red-50 shadow-sm"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -208,7 +233,7 @@ export default function MenuPage() {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Giá bán (VNĐ)</label>
                   <input 
@@ -218,6 +243,18 @@ export default function MenuPage() {
                     className="w-full px-4 py-3 border-hard focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Giá vốn (VNĐ)</label>
+                  <input 
+                    type="number" required min="0" step="1000"
+                    value={editingItem.costPrice}
+                    onChange={(e) => setEditingItem({...editingItem, costPrice: Number(e.target.value)})}
+                    className="w-full px-4 py-3 border-hard focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Danh mục</label>
                   <input 
@@ -230,6 +267,38 @@ export default function MenuPage() {
                     {defaultCategories.map(c => <option key={c} value={c} />)}
                   </datalist>
                 </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Loại món</label>
+                  <select
+                    value={editingItem.type || 'Đồ ăn'}
+                    onChange={(e) => setEditingItem({...editingItem, type: e.target.value})}
+                    className="w-full px-4 py-3 border-hard focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                  >
+                    <option value="Đồ ăn">Đồ ăn</option>
+                    <option value="Đồ uống">Đồ uống</option>
+                    <option value="Tráng miệng">Tráng miệng</option>
+                    <option value="Ăn vặt">Ăn vặt</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Tồn món</label>
+                  <input 
+                    type="number" required min="0"
+                    value={editingItem.stockCount}
+                    onChange={(e) => {
+                      const stockCount = Number(e.target.value);
+                      setEditingItem({...editingItem, stockCount, inStock: stockCount > 0});
+                    }}
+                    className="w-full px-4 py-3 border-hard focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono"
+                  />
+                </div>
+                <label className="flex items-center gap-3 p-4 border-hard cursor-pointer hover:bg-zinc-50 self-end">
+                  <input type="checkbox" checked={editingItem.inStock} onChange={(e) => setEditingItem({...editingItem, inStock: e.target.checked, stockCount: e.target.checked && editingItem.stockCount === 0 ? 50 : editingItem.stockCount})} className="accent-orange-600" />
+                  <span className="font-bold text-xs uppercase tracking-widest">Đang bán</span>
+                </label>
               </div>
 
               <div>
@@ -252,6 +321,25 @@ export default function MenuPage() {
                 />
               </div>
 
+              <div className="space-y-3 pt-4 border-t border-hard">
+                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500">Topping / modifier riêng</label>
+                {(editingItem.toppings || []).length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {(editingItem.toppings || []).map((topping, index) => (
+                      <span key={`${topping.name}-${index}`} className="inline-flex items-center gap-2 bg-zinc-50 border-hard px-3 py-1 text-xs font-bold">
+                        {topping.name} +{topping.price.toLocaleString('vi-VN')}đ
+                        <button type="button" onClick={() => setEditingItem({...editingItem, toppings: (editingItem.toppings || []).filter((_, i) => i !== index)})} className="text-red-500 hover:text-red-700">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="grid grid-cols-[1fr_120px_auto] gap-2">
+                  <input type="text" value={newToppingName} onChange={(e) => setNewToppingName(e.target.value)} placeholder="Tên topping" className="w-full px-4 py-3 border-hard focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                  <input type="number" min={0} step={1000} value={newToppingPrice} onChange={(e) => setNewToppingPrice(Number(e.target.value))} placeholder="Giá" className="w-full px-4 py-3 border-hard focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono" />
+                  <button type="button" onClick={handleAddTopping} className="px-4 py-3 bg-zinc-900 text-white font-bold text-xs uppercase tracking-widest border-hard">Thêm</button>
+                </div>
+              </div>
+
               <div className="pt-4 border-t border-hard flex justify-end gap-3">
                 <button 
                   type="button" 
@@ -268,6 +356,22 @@ export default function MenuPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+      {deletingItem && createPortal(
+        <div className="fixed inset-0 z-[100] flex justify-center items-center p-4 bg-zinc-950/40 backdrop-blur-sm">
+          <div className="bg-white border-hard shadow-[8px_8px_0_0_#ef4444] w-full max-w-sm p-6 text-center space-y-5 animate-fadeIn">
+            <XCircle className="w-12 h-12 text-red-600 mx-auto" />
+            <div>
+              <h3 className="text-xl font-bold uppercase tracking-tight text-zinc-900">Xóa món?</h3>
+              <p className="text-sm text-zinc-500 mt-2">Xóa <span className="font-bold text-zinc-900">{deletingItem.name}</span> khỏi thực đơn.</p>
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setDeletingItem(null)} className="flex-1 px-4 py-3 border-hard font-bold text-xs uppercase tracking-widest">Hủy</button>
+              <button type="button" onClick={handleDeleteItem} className="flex-1 px-4 py-3 bg-red-600 text-white border-hard font-bold text-xs uppercase tracking-widest">Xóa</button>
+            </div>
           </div>
         </div>,
         document.body

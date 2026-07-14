@@ -1,4 +1,4 @@
-import { MenuItem, IndustryTemplate, LoyaltyMember } from './types';
+import { MenuItem, IndustryTemplate, LoyaltyMember, StaffAccount } from './types';
 
 export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
   quan_an: {
@@ -394,4 +394,28 @@ export const MOCK_LOYALTY_MEMBERS: LoyaltyMember[] = [
   { phone: '0901234567', name: 'Trần Thị Mai', points: 120, totalSpent: 1200000, visits: 5, isVerified: true },
   { phone: '0933344455', name: 'Lê Hoàng Minh', points: 55, totalSpent: 550000, visits: 2, isVerified: false },
   { phone: '0977888999', name: 'Phạm Thanh Thảo', points: 0, totalSpent: 0, visits: 0, isVerified: false },
+];
+
+export const MOCK_STAFF_ACCOUNTS: StaffAccount[] = [
+  {
+    id: 'staff_cashier_1',
+    name: 'Nguyễn Văn A',
+    pin: '1111',
+    roles: { isKitchen: false, isWaiter: false, isCashier: true },
+    isActive: true,
+  },
+  {
+    id: 'staff_kitchen_1',
+    name: 'Trần Thị B',
+    pin: '2222',
+    roles: { isKitchen: true, isWaiter: false, isCashier: false },
+    isActive: true,
+  },
+  {
+    id: 'staff_shift_1',
+    name: 'Lê Văn C',
+    pin: '3333',
+    roles: { isKitchen: false, isWaiter: true, isCashier: true },
+    isActive: false,
+  },
 ];

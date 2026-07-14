@@ -72,6 +72,9 @@ export interface LoyaltyMember {
 export interface TableConfig {
   id: string;
   name: string;
+  tableSecret?: string;
+  qrPayload?: string;
+  nfcWritten?: boolean;
 }
 
 export interface TenantConfig {

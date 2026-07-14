@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useSimulator } from '../layouts/SimulatorLayout';
-import { RefreshCw, Sparkles, Building, Wallet, ChefHat, Smartphone, Settings, ArrowLeft } from 'lucide-react';
+import { RefreshCw, Sparkles, Building, Wallet, ChefHat, Smartphone, Settings, ArrowLeft, Users } from 'lucide-react';
 
 export default function SimulatorIndex() {
   const { tenantConfig, setTenantConfig, handleResetSim } = useSimulator();
@@ -47,7 +47,7 @@ export default function SimulatorIndex() {
           </div>
 
           {/* Role Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-0 border-hard bg-zinc-950">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-0 border-hard bg-zinc-950">
             {/* Solo — featured */}
             <Link
               to="/simulator/solo"
@@ -120,7 +120,7 @@ export default function SimulatorIndex() {
             {/* Customer */}
             <Link
               to="/simulator/customer"
-              className="lg:order-5 bg-white hover:bg-zinc-50 p-6 flex flex-col gap-4 transition-colors cursor-pointer group min-h-[160px]"
+              className="lg:order-5 bg-white hover:bg-zinc-50 p-6 flex flex-col gap-4 transition-colors cursor-pointer border-b md:border-b-0 md:border-r border-hard group min-h-[160px]"
             >
               <div className="flex justify-between items-start w-full">
                 <div className="w-10 h-10 bg-zinc-950 flex items-center justify-center border-hard group-hover:-translate-y-1 transition-transform">
@@ -131,6 +131,22 @@ export default function SimulatorIndex() {
               <div>
                 <p className="text-base font-bold text-zinc-900 uppercase tracking-tight">Khách Hàng</p>
                 <p className="font-mono text-[10px] text-zinc-500 mt-2 tracking-widest uppercase">Quét QR</p>
+              </div>
+            </Link>
+
+            <Link
+              to="/simulator/staff"
+              className="lg:order-6 bg-white hover:bg-zinc-50 p-6 flex flex-col gap-4 transition-colors cursor-pointer group min-h-[160px]"
+            >
+              <div className="flex justify-between items-start w-full">
+                <div className="w-10 h-10 bg-zinc-950 flex items-center justify-center border-hard group-hover:-translate-y-1 transition-transform">
+                  <Users className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-[9px] bg-zinc-100 text-zinc-900 px-2 py-0.5 font-bold tracking-wider uppercase border-hard">STAFF</span>
+              </div>
+              <div>
+                <p className="text-base font-bold text-zinc-900 uppercase tracking-tight">Nhân Viên</p>
+                <p className="font-mono text-[10px] text-zinc-500 mt-2 tracking-widest uppercase">PIN & Vai trò</p>
               </div>
             </Link>
           </div>

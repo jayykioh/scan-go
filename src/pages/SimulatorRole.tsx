@@ -10,6 +10,7 @@ const CashierView = lazy(() => import('../components/CashierView'));
 const KitchenView = lazy(() => import('../components/KitchenView'));
 const CustomerView = lazy(() => import('../components/CustomerView'));
 const SoloOperatorView = lazy(() => import('../components/SoloOperatorView'));
+const StaffView = lazy(() => import('../components/StaffView'));
 
 function RoleLoading() {
   return (
@@ -27,7 +28,8 @@ const ROLES = [
   { id: 'owner', label: 'Owner (Quản lý)' },
   { id: 'cashier', label: 'Thu Ngân' },
   { id: 'kitchen', label: 'KDS (Bếp)' },
-  { id: 'customer', label: 'Khách hàng' }
+  { id: 'customer', label: 'Khách hàng' },
+  { id: 'staff', label: 'Nhân viên' }
 ];
 
 export default function SimulatorRole() {
@@ -46,6 +48,7 @@ export default function SimulatorRole() {
       case 'cashier': return <CashierView tenantConfig={ctx.tenantConfig} tables={ctx.tables} orders={ctx.orders} setOrders={ctx.setOrders} loyaltyMembers={ctx.loyaltyMembers} setLoyaltyMembers={ctx.setLoyaltyMembers} />;
       case 'kitchen': return <KitchenView tenantConfig={ctx.tenantConfig} orders={ctx.orders} setOrders={ctx.setOrders} menuItems={ctx.menuItems} setMenuItems={ctx.setMenuItems} onboardCompleted={ctx.kitchenOnboarded} setOnboardCompleted={ctx.setKitchenOnboarded} tables={ctx.tables} />;
       case 'customer': return <div className="flex-1 flex flex-col relative bg-zinc-50 h-full w-full"><CustomerView tenantConfig={ctx.tenantConfig} menuItems={ctx.menuItems} orders={ctx.orders} setOrders={ctx.setOrders} loyaltyMembers={ctx.loyaltyMembers} setLoyaltyMembers={ctx.setLoyaltyMembers} simulationTableId={ctx.simulationTableId} setSimulationTableId={ctx.setSimulationTableId} tables={ctx.tables} /></div>;
+      case 'staff': return <StaffView staffAccounts={ctx.staffAccounts} currentStaff={ctx.currentStaff} setCurrentStaff={ctx.setCurrentStaff} setStaffAccounts={ctx.setStaffAccounts} tenantConfig={ctx.tenantConfig} tables={ctx.tables} orders={ctx.orders} setOrders={ctx.setOrders} menuItems={ctx.menuItems} setMenuItems={ctx.setMenuItems} loyaltyMembers={ctx.loyaltyMembers} setLoyaltyMembers={ctx.setLoyaltyMembers} />;
       default: return null;
     }
   };
@@ -57,6 +60,7 @@ export default function SimulatorRole() {
       case 'cashier': return { name: 'Cashier', color: '#3b82f6', status: ctx.cashierOnboarded ? 'Live Active' : 'Enter PIN', isTablet: true };
       case 'kitchen': return { name: 'Kitchen', color: '#f59e0b', status: ctx.kitchenOnboarded ? 'Active Queue' : 'Kitchen SignIn', isTablet: true };
       case 'customer': return { name: 'Customer', color: '#10b981', status: 'Contactless Client', isTablet: false };
+      case 'staff': return { name: 'Staff', color: '#155BD0', status: ctx.currentStaff ? 'Shift Active' : 'PIN Login', isTablet: false };
       default: return { name: 'Unknown', color: '#000', status: '', isTablet: false };
     }
   };
@@ -94,7 +98,7 @@ export default function SimulatorRole() {
           </div>
         </div>
 
-        <div className={`transition-all duration-500 ease-in-out ${isTabletMode ? 'w-full max-w-[500px] aspect-[4/3]' : 'w-full max-w-[370px]'} max-h-[85vh]`}>
+        <div className={`transition-all duration-500 ease-in-out ${isTabletMode ? 'w-full max-w-[620px] h-[min(760px,calc(100dvh-9rem))] min-h-[560px]' : 'w-full max-w-[390px] h-[min(860px,calc(100dvh-8rem))] min-h-[720px]'}`}>
           <PhoneSimulator 
             actorName={info.name} 
             actorColor={info.color} 
@@ -112,9 +116,9 @@ export default function SimulatorRole() {
   };
 
   return (
-    <div className="min-h-dvh bg-[#F5F5F7] text-zinc-900 flex flex-col font-sans antialiased animate-fadeIn overflow-hidden">
+    <div className="min-h-dvh bg-[#F5F5F7] text-zinc-900 flex flex-col font-sans antialiased animate-fadeIn">
       
-      <header className="absolute top-6 left-6 z-50 flex flex-wrap gap-3 select-none">
+      <header className="relative z-50 flex flex-wrap gap-3 select-none p-4 lg:absolute lg:top-6 lg:left-6 lg:p-0">
         <Link to="/simulator" className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border border-zinc-200 hover:scale-105 transition-transform cursor-pointer shrink-0">
           <ArrowLeft className="w-5 h-5 text-zinc-600" />
         </Link>
@@ -142,7 +146,7 @@ export default function SimulatorRole() {
         </div>
       </header>
 
-      <main className="flex-1 w-full h-dvh flex flex-col lg:flex-row items-center justify-center p-4 lg:p-8 pt-24 gap-12 overflow-hidden bg-noise relative">
+      <main className="flex-1 w-full min-h-[calc(100dvh-6rem)] flex flex-col lg:flex-row items-center justify-start lg:justify-center p-4 lg:p-8 lg:pt-24 gap-12 overflow-y-auto lg:overflow-hidden bg-noise relative">
         
         <div className={`h-full flex items-center justify-center transition-all ${rightRole ? 'lg:w-1/2 w-full' : 'w-full'}`}>
           {renderSimulatorFrame(leftRole, false)}

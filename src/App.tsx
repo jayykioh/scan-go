@@ -17,6 +17,7 @@ const TablesPage = lazy(() => import('./pages/dashboard/TablesPage'));
 
 const SimulatorIndex = lazy(() => import('./pages/SimulatorIndex'));
 const SimulatorRole = lazy(() => import('./pages/SimulatorRole'));
+const PublicMenuPage = lazy(() => import('./pages/PublicMenuPage'));
 
 const FallbackLoader = () => (
   <div className="min-h-screen w-full flex items-center justify-center bg-[#F5F5F7]">
@@ -62,6 +63,10 @@ const router = createBrowserRouter([
         ]
       }
     ]
+  },
+  {
+    path: '/menu/:tableId',
+    element: <PublicMenuPage />
   },
   {
     path: '/',

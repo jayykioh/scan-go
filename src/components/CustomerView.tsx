@@ -1,21 +1,8 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { TenantConfig, MenuItem, Order, OrderItem, LoyaltyMember, TableConfig } from '../types';
+import { AnimatePresence, motion } from 'motion/react';
+import { AlertCircle, Check, ChevronLeft, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Ticket, X } from 'lucide-react';
 import { INDUSTRY_TEMPLATES } from '../mockData';
-import { 
-  ShoppingBag, 
-  Nfc, 
-  Plus, 
-  Minus, 
-  Smartphone, 
-  Clock, 
-  Check, 
-  ChevronRight, 
-  AlertCircle,
-  X,
-  Ticket,
-  Gift
-} from 'lucide-react';
+import { LoyaltyMember, MenuItem, Order, OrderItem, TableConfig, TenantConfig } from '../types';
 
 interface CustomerProps {
   tenantConfig: TenantConfig;
@@ -27,7 +14,18 @@ interface CustomerProps {
   simulationTableId: string;
   setSimulationTableId: (val: string) => void;
   tables: TableConfig[];
+  directMenu?: boolean;
 }
+
+type CustomerStep = 'table_pick' | 'menu' | 'tracking';
+
+const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`;
+
+const inferItemType = (item: MenuItem) => {
+  if (item.type) return item.type;
+  const drinkWords = ['Giải nhiệt', 'Đồ uống', 'Trà', 'Cà phê', 'Trà sữa', 'Đá xay'];
+  return drinkWords.some(word => item.category.includes(word) || item.name.includes(word)) ? 'Đồ uống' : 'Đồ ăn';
+};
 
 export default function CustomerView({
   tenantConfig,
@@ -39,1029 +37,480 @@ export default function CustomerView({
   simulationTableId,
   setSimulationTableId,
   tables,
+  directMenu = false,
 }: CustomerProps) {
-  // Navigation / screen states
-  const [custStep, setCustStep] = useState<'nfc_tap' | 'phone_prompt' | 'menu' | 'cart_summary' | 'order_tracking'>('nfc_tap');
-  
-  // State for optional phone registration
+  const [step, setStep] = useState<CustomerStep>(directMenu ? 'menu' : 'table_pick');
+  const [cart, setCart] = useState<OrderItem[]>([]);
+  const [activeItem, setActiveItem] = useState<MenuItem | null>(null);
+  const [selectedModifiers, setSelectedModifiers] = useState<string[]>([]);
+  const [modifierPrice, setModifierPrice] = useState(0);
+  const [selectedType, setSelectedType] = useState('Tất cả');
+  const [query, setQuery] = useState('');
+  const [showCart, setShowCart] = useState(false);
+  const [showLoyalty, setShowLoyalty] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [loyaltyProfile, setLoyaltyProfile] = useState<LoyaltyMember | null>(null);
-
-  // States for active cart
-  const [cart, setCart] = useState<OrderItem[]>([]);
-  const [activeItemForModifier, setActiveItemForModifier] = useState<MenuItem | null>(null);
-  const [selectedModifiers, setSelectedModifiers] = useState<string[]>([]);
-  const [modifierPriceSum, setModifierPriceSum] = useState(0);
-
-  // States for OTP loyalty redemption
-  const [showOtpRequired, setShowOtpRequired] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [otpVerified, setOtpVerified] = useState(false);
   const [redeemedPoints, setRedeemedPoints] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
 
-  // Coupon manual entry states
-  const [typedCoupon, setTypedCoupon] = useState('');
-  const [manualCouponApplied, setManualCouponApplied] = useState(false);
-  const [couponError, setCouponError] = useState('');
-
-  // Food type filters
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('Tất cả');
-
   const template = INDUSTRY_TEMPLATES[tenantConfig.industry] || INDUSTRY_TEMPLATES.quan_an;
+  const tableName = tables.find(table => table.id === simulationTableId)?.name || `Bàn ${simulationTableId}`;
+  const activeCustomerOrders = orders.filter(order => order.tableId === simulationTableId && order.status !== 'paid');
+  const availableTypes = ['Tất cả', ...Array.from(new Set(menuItems.map(inferItemType)))];
 
-  // Dynamically extract unique food types
-  const availableTypes = [
-    'Tất cả', 
-    ...Array.from(new Set(menuItems.map(item => item.type || (['Giải nhiệt', 'Đồ uống', 'Trà', 'Cà phê', 'Cà phê truyền thống', 'Đá xay', 'Trà sữa', 'Cà phê hiện đại', 'Trà trái cây'].some(word => item.category.includes(word) || item.name.includes(word)) ? 'Đồ uống' : 'Đồ ăn')).filter((t): t is string => !!t)))
-  ];
-
-  const displayedMenuItems = menuItems.filter(item => {
-    const itemType = item.type || (['Giải nhiệt', 'Đồ uống', 'Trà', 'Cà phê', 'Cà phê truyền thống', 'Đá xay', 'Trà sữa', 'Cà phê hiện đại', 'Trà trái cây'].some(word => item.category.includes(word) || item.name.includes(word)) ? 'Đồ uống' : 'Đồ ăn');
-    if (selectedTypeFilter === 'Tất cả') return true;
-    return itemType === selectedTypeFilter;
+  const filteredItems = menuItems.filter(item => {
+    const matchesType = selectedType === 'Tất cả' || inferItemType(item) === selectedType;
+    const matchesQuery = item.name.toLowerCase().includes(query.trim().toLowerCase());
+    return matchesType && matchesQuery;
   });
 
-  const handleNfcScan = (table: string) => {
-    setSimulationTableId(table);
-    setCustStep('phone_prompt');
-  };
-
-  const handlePhoneSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phoneNumber.trim().length >= 9) {
-      const existing = loyaltyMembers.find(m => m.phone === phoneNumber.trim());
-      if (existing) {
-        setLoyaltyProfile(existing);
-      } else {
-        const newProf: LoyaltyMember = {
-          phone: phoneNumber.trim(),
-          name: customerName.trim() || 'Khách Mới',
-          points: 15,
-          totalSpent: 0,
-          visits: 1,
-          isVerified: false,
-        };
-        setLoyaltyProfile(newProf);
-        setLoyaltyMembers(prev => [...prev, newProf]);
-      }
-    }
-    setCustStep('menu');
-  };
-
-  const handleSkipPhonePrompt = () => {
-    setCustStep('menu');
-  };
-
-  const openModifiersModal = (item: MenuItem) => {
-    setActiveItemForModifier(item);
-    setSelectedModifiers([]);
-    setModifierPriceSum(0);
-  };
-
-  const handleToggleModifierOpt = (optName: string, optPrice: number) => {
-    if (selectedModifiers.includes(optName)) {
-      setSelectedModifiers(prev => prev.filter(x => x !== optName));
-      setModifierPriceSum(prev => prev - optPrice);
-    } else {
-      setSelectedModifiers(prev => [...prev, optName]);
-      setModifierPriceSum(prev => prev + optPrice);
-    }
-  };
-
-  const handleAddWithModifiers = () => {
-    if (!activeItemForModifier) return;
-    
-    const itemUniqueId = `${activeItemForModifier.id}-${selectedModifiers.sort().join(',')}`;
-    const existingCartItemIndex = cart.findIndex(i => {
-      const iUniqueId = `${i.menuId}-${(i.selectedModifiers || []).sort().join(',')}`;
-      return iUniqueId === itemUniqueId;
-    });
-
-    const calculatedPrice = activeItemForModifier.price + modifierPriceSum;
-
-    if (existingCartItemIndex > -1) {
-      setCart(prev => prev.map((item, idx) => {
-        if (idx === existingCartItemIndex) {
-          return { ...item, quantity: item.quantity + 1 };
-        }
-        return item;
-      }));
-    } else {
-      const cartItem: OrderItem = {
-        id: itemUniqueId,
-        menuId: activeItemForModifier.id,
-        name: activeItemForModifier.name,
-        price: calculatedPrice,
-        quantity: 1,
-        selectedModifiers: selectedModifiers,
-      };
-      setCart(prev => [...prev, cartItem]);
-    }
-
-    setActiveItemForModifier(null);
-  };
-
-  const handleUpdateCartQty = (id: string, delta: number) => {
-    setCart(prev => prev.map(item => {
-      if (item.id === id) {
-        const nextQty = item.quantity + delta;
-        return nextQty > 0 ? { ...item, quantity: nextQty } : null;
-      }
-      return item;
-    }).filter((x): x is OrderItem => x !== null));
-  };
-
-  const handleRequestRedemption = () => {
-    if (!loyaltyProfile) return;
-    if (loyaltyProfile.points < 30 && !redeemedPoints) {
-      setOtpError('Bạn cần tối thiểu 30 điểm để đổi ưu đãi giảm giá 20.000đ.');
-      return;
-    }
-    setOtpError('');
-    setShowOtpRequired(true);
-  };
-
-  const handleVerifyOtpCode = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otpCode === '8888' || otpCode === '1234' || otpCode.length >= 4) {
-      setOtpVerified(true);
-      setRedeemedPoints(true);
-      setShowOtpRequired(false);
-      
-      if (loyaltyProfile) {
-        const updated = {
-          ...loyaltyProfile,
-          points: Math.max(0, loyaltyProfile.points - 30),
-          isVerified: true
-        };
-        setLoyaltyProfile(updated);
-        setLoyaltyMembers(prev => prev.map(m => m.phone === updated.phone ? updated : m));
-      }
-    } else {
-      setOtpError('Mã OTP không đúng (Nhập 8888)');
-    }
-  };
-
   const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
+  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const isTargetSpecificDish = tenantConfig.discountTargetDishId && tenantConfig.discountTargetDishId !== 'all';
-  const targetItemInCart = isTargetSpecificDish
-    ? cart.find(item => item.menuId === tenantConfig.discountTargetDishId)
-    : null;
+  const targetItemInCart = isTargetSpecificDish ? cart.find(item => item.menuId === tenantConfig.discountTargetDishId) : null;
+  const qualifyingQuantity = isTargetSpecificDish ? targetItemInCart?.quantity || 0 : totalQuantity;
+  const qualifyingAmount = isTargetSpecificDish ? (targetItemInCart?.price || 0) * (targetItemInCart?.quantity || 0) : cartTotal;
 
-  const qualifyingQuantity = isTargetSpecificDish ? (targetItemInCart ? targetItemInCart.quantity : 0) : totalQuantity;
-  const qualifyingAmount = isTargetSpecificDish ? (targetItemInCart ? (targetItemInCart.price * targetItemInCart.quantity) : 0) : cartTotal;
-
-  let isConditionSatisfied = false;
-  if (tenantConfig.discountEnabled) {
+  const promoConditionMet = (() => {
+    if (!tenantConfig.discountEnabled) return false;
     const minItems = tenantConfig.discountMinItems ?? 3;
     const minAmount = tenantConfig.discountMinAmount ?? 150000;
-    
-    if (tenantConfig.discountConditionType === 'amount') {
-      isConditionSatisfied = qualifyingAmount >= minAmount;
-    } else if (tenantConfig.discountConditionType === 'both') {
-      isConditionSatisfied = qualifyingAmount >= minAmount && qualifyingQuantity >= minItems;
-    } else {
-      isConditionSatisfied = qualifyingQuantity >= minItems;
+    if (tenantConfig.discountConditionType === 'amount') return qualifyingAmount >= minAmount;
+    if (tenantConfig.discountConditionType === 'both') return qualifyingAmount >= minAmount && qualifyingQuantity >= minItems;
+    return qualifyingQuantity >= minItems;
+  })();
+
+  const promoDiscount = promoConditionMet ? tenantConfig.discountAmount || 0 : 0;
+  const loyaltyDiscount = redeemedPoints ? 20000 : 0;
+  const finalTotal = Math.max(0, cartTotal - promoDiscount - loyaltyDiscount);
+
+  const openItem = (item: MenuItem) => {
+    if (!item.inStock) return;
+    setActiveItem(item);
+    setSelectedModifiers([]);
+    setModifierPrice(0);
+  };
+
+  const toggleModifier = (name: string, price: number) => {
+    if (selectedModifiers.includes(name)) {
+      setSelectedModifiers(prev => prev.filter(value => value !== name));
+      setModifierPrice(prev => prev - price);
+      return;
     }
-  }
+    setSelectedModifiers(prev => [...prev, name]);
+    setModifierPrice(prev => prev + price);
+  };
 
-  const isCodeMatched = tenantConfig.discountTriggerType === 'manual' ? manualCouponApplied : true;
-  const isPromoEligible = tenantConfig.discountEnabled && isConditionSatisfied && isCodeMatched;
-  
-  const promoDiscountAmount = isPromoEligible ? (tenantConfig.discountAmount ?? 15000) : 0;
-  const loyaltyDiscountAmount = redeemedPoints ? 20000 : 0;
-  const finalDiscount = loyaltyDiscountAmount + promoDiscountAmount;
-  const finalTotal = Math.max(0, cartTotal - finalDiscount);
+  const addActiveItemToCart = () => {
+    if (!activeItem) return;
+    const modifiers = [...selectedModifiers].sort();
+    const id = `${activeItem.id}-${modifiers.join('|')}`;
+    const price = activeItem.price + modifierPrice;
+    setCart(prev => {
+      const existing = prev.find(item => item.id === id);
+      if (existing) {
+        return prev.map(item => item.id === id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { id, menuId: activeItem.id, name: activeItem.name, price, quantity: 1, selectedModifiers: modifiers }];
+    });
+    setActiveItem(null);
+  };
 
-  const handleSubmitOrderToSystem = () => {
+  const updateCartQty = (id: string, delta: number) => {
+    setCart(prev => prev
+      .map(item => item.id === id ? { ...item, quantity: item.quantity + delta } : item)
+      .filter(item => item.quantity > 0));
+  };
+
+  const saveLoyaltyProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (phoneNumber.trim().length < 9) return;
+    const existing = loyaltyMembers.find(member => member.phone === phoneNumber.trim());
+    if (existing) {
+      setLoyaltyProfile(existing);
+    } else {
+      const created: LoyaltyMember = {
+        phone: phoneNumber.trim(),
+        name: customerName.trim() || 'Khách mới',
+        points: 15,
+        totalSpent: 0,
+        visits: 1,
+        isVerified: false,
+      };
+      setLoyaltyProfile(created);
+      setLoyaltyMembers(prev => [...prev, created]);
+    }
+    setShowLoyalty(false);
+  };
+
+  const redeemWithOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loyaltyProfile) return;
+    if (loyaltyProfile.points < 30) {
+      setOtpError('Bạn cần 30 điểm để đổi ưu đãi.');
+      return;
+    }
+    if (otpCode.length < 4) {
+      setOtpError('Nhập OTP 4 số.');
+      return;
+    }
+    const updated = { ...loyaltyProfile, points: Math.max(0, loyaltyProfile.points - 30), isVerified: true };
+    setLoyaltyProfile(updated);
+    setLoyaltyMembers(prev => prev.map(member => member.phone === updated.phone ? updated : member));
+    setRedeemedPoints(true);
+    setOtpError('');
+  };
+
+  const submitOrder = () => {
     if (cart.length === 0) return;
-
-    const newOrder: Order = {
+    const order: Order = {
       id: `ord_${Date.now()}`,
-      tableId: simulationTableId || '2',
+      tableId: simulationTableId,
       items: cart,
       total: finalTotal,
       status: 'pending',
       timestamp: new Date(),
-      customerPhone: phoneNumber || undefined,
+      customerPhone: loyaltyProfile?.phone || phoneNumber || undefined,
       isLoyaltyApplied: redeemedPoints,
       paymentMode: tenantConfig.paymentMode,
+      appliedDiscountCode: promoConditionMet ? tenantConfig.discountCode : undefined,
     };
-
-    setOrders(prev => [...prev, newOrder]);
+    setOrders(prev => [...prev, order]);
     setCart([]);
-    setCustStep('order_tracking');
+    setShowCart(false);
+    setStep('tracking');
   };
 
-  const activeCustomerOrders = orders.filter(
-    o => o.tableId === simulationTableId && o.status !== 'paid'
-  );
-
-  // STEP 1: NFC STICKER SIMULATION
-  if (custStep === 'nfc_tap') {
+  if (step === 'table_pick') {
     return (
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex-grow flex flex-col bg-white p-8 font-sans justify-between text-[#2D2B30] h-full" 
-        id="cust-nfc-tap"
-      >
-        <div className="text-center mt-12 space-y-4">
-          <div className="relative w-16 h-16 rounded-3xl bg-[#F5F5F7] border border-[#E5E5EA] flex items-center justify-center mx-auto mb-4 overflow-hidden shadow-sm">
-            <motion.div 
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-              className="absolute inset-0 bg-zinc-900/5 rounded-3xl"
-            />
-            <Nfc className="w-6 h-6 text-zinc-900 relative z-10" />
+      <div className="h-full bg-[#f7f7f8] text-zinc-950 flex flex-col p-5">
+        <div className="pt-8 pb-6">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-emerald-700 shadow-sm">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" /> ScanGo ready
           </div>
-          <h3 className="text-2xl font-bold text-zinc-900 tracking-tight">Chạm Bàn Đặt Món</h3>
-          <p className="text-xs text-[#8E8E93] max-w-[240px] mx-auto leading-relaxed">
-            Chọn bàn của bạn.
-          </p>
+          <h1 className="mt-5 text-[34px] leading-[0.95] font-black tracking-[-0.05em]">Chọn bàn để mở menu.</h1>
+          <p className="mt-3 text-sm text-zinc-500">Mô phỏng QR/NFC. Link public sẽ mở thẳng menu theo bàn.</p>
         </div>
 
-        <div className="space-y-2 my-6 max-h-[220px] overflow-y-auto pr-1">
-          {tables.map((table) => (
-            <button 
+        <div className="flex-1 overflow-y-auto space-y-2 pb-4">
+          {tables.map(table => (
+            <button
               key={table.id}
-              onClick={() => handleNfcScan(table.id)}
-              className="w-full bg-white hover:bg-zinc-50 border border-zinc-200 hover:border-zinc-900 text-zinc-900 py-3 px-4 rounded-2xl flex justify-between items-center transition-colors group text-left cursor-pointer"
+              type="button"
+              onClick={() => { setSimulationTableId(table.id); setStep('menu'); }}
+              className="w-full rounded-[24px] bg-white p-4 text-left shadow-sm border border-zinc-100 flex items-center justify-between active:scale-[0.99] transition-transform"
             >
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-bold text-zinc-900">{table.name}</span>
-                <span className="text-xs text-zinc-400">Chạm để chọn</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-900 transition-colors" />
+              <span className="font-bold text-zinc-950">{table.name}</span>
+              <span className="rounded-full bg-zinc-950 px-3 py-1 text-[11px] font-bold text-white">Mở menu</span>
             </button>
           ))}
         </div>
-
-        <p className="text-xs text-zinc-400 text-center py-2">ScanGo NFC Simulator</p>
-      </motion.div>
-    );
-  }
-
-  // STEP 2: PHONE PROMPT FOR LOYALTY
-  if (custStep === 'phone_prompt') {
-    return (
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex-grow flex flex-col bg-white p-8 font-sans justify-between text-[#2D2B30] h-full" 
-        id="cust-phone-prompt"
-      >
-        <div>
-          <div className="flex justify-between items-center mb-10">
-            <span className="text-xs font-bold text-[#8E8E93] ">Hội viên</span>
-            <button 
-              onClick={handleSkipPhonePrompt}
-              className="text-xs text-zinc-900 font-semibold hover:underline cursor-pointer"
-            >
-              Bỏ qua →
-            </button>
-          </div>
-
-          <div className="text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#F5F5F7] border border-[#E5E5EA] flex items-center justify-center mx-auto mb-2 shadow-sm">
-              <Gift className="w-5 h-5 text-zinc-900" />
-            </div>
-            <h4 className="text-xl font-bold text-zinc-900 tracking-tight">Tích Điểm Tự Động</h4>
-            <p className="text-xs text-[#8E8E93] max-w-[240px] mx-auto leading-relaxed">
-              Nhập số điện thoại để tích điểm.
-            </p>
-          </div>
-        </div>
-
-        <form onSubmit={handlePhoneSubmit} className="space-y-3 my-4">
-          <div className="space-y-1">
-            <input 
-              type="tel"
-              required
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-              placeholder="Nhập số điện thoại"
-              className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-2xl px-4 py-3 text-sm text-center text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 shadow-sm font-bold placeholder:font-normal placeholder:text-[#AEAEB2]"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <input 
-              type="text"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Họ tên của bạn (tùy chọn)"
-              className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-2xl px-4 py-3 text-sm text-center text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 shadow-sm placeholder:text-[#AEAEB2]"
-            />
-          </div>
-        </form>
-
-        <div className="space-y-2">
-          <motion.button 
-            whileTap={{ scale: 0.97 }}
-            type="button"
-            onClick={handlePhoneSubmit}
-            disabled={phoneNumber.length < 9}
-            className="w-full bg-zinc-950 hover:bg-zinc-900 disabled:opacity-40 disabled:pointer-events-none text-white py-3.5 rounded-2xl font-bold text-xs shadow-sm transition-all cursor-pointer"
-          >
-            Đồng ý
-          </motion.button>
-          
-          <button 
-            type="button"
-            onClick={handleSkipPhonePrompt}
-            className="w-full text-[#8E8E93] hover:text-zinc-900 py-1 text-xs font-semibold cursor-pointer transition-colors"
-          >
-            Gọi món không tích điểm
-          </button>
-        </div>
-      </motion.div>
-    );
-  }
-
-  // STEP 3: CONTACTLESS MAIN MENU
-  if (custStep === 'menu') {
-    return (
-      <div className="flex-grow flex flex-col bg-white font-sans text-[#2D2B30] h-full" id="cust-menu">
-        <div className="px-[13px] py-[13px] border-b border-[#B5C7D8]/60 flex justify-between items-center bg-[#F5F5F7]/80">
-          <div>
-            <div className="flex items-center gap-[4px]">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-              <span className="text-[16px] font-semibold text-[#2D2B30] ">BÀN {simulationTableId.padStart(2, '0')}</span>
-            </div>
-            <h4 className="text-sm text-[#707070] font-medium tracking-wide mt-0.5">{tenantConfig.shopName}</h4>
-          </div>
-          
-          {activeCustomerOrders.length > 0 && (
-            <button 
-              onClick={() => setCustStep('order_tracking')}
-              className="bg-white border border-[#B5C7D8] text-zinc-900 text-xs px-2.5 py-1 rounded-[21px] font-semibold flex items-center gap-1 cursor-pointer hover:bg-gray-50 focus:outline-2 focus:outline-zinc-900"
-            >
-              <Clock className="w-3 h-3 text-zinc-900" /> THEO DÕI ĐƠN
-            </button>
-          )}
-        </div>
-
-        <div className="flex-grow overflow-y-auto p-[13px] space-y-[13px] bg-white">
-          {/* Loyalty membership status */}
-          {loyaltyProfile && (
-            <div className="bg-[#F5F5F7] border border-[#B5C7D8] p-[13px] rounded-[21px] flex items-center justify-between text-sm text-[#454547]">
-              <div className="space-y-[2px]">
-                <p className="font-semibold text-[#2D2B30]">Chào {loyaltyProfile.name}!</p>
-                <p className="text-xs text-[#808080] ">{loyaltyProfile.phone} • {loyaltyProfile.points} điểm</p>
-              </div>
-              <span className="text-xs bg-zinc-900 text-white px-2 py-0.5 rounded-[21px] font-bold tracking-wide ">Hội viên</span>
-            </div>
-          )}
-
-          {/* Automatic discount campaign block */}
-          {tenantConfig.discountEnabled && (
-            <div className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8] space-y-[4px] relative overflow-hidden">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-[#2D2B30] flex items-center gap-1">
-                  <Ticket className="w-3.5 h-3.5 text-zinc-900" /> Ưu Đãi Tự Động
-                </span>
-                {isPromoEligible ? (
-                  <span className="text-xs bg-zinc-900 text-white font-semibold px-2 py-0.5 rounded-[21px] ">Đạt Điều Kiện</span>
-                ) : (
-                  <span className="text-xs bg-gray-200 text-gray-800 font-semibold px-2 py-0.5 rounded-[21px] leading-none">MÃ: {tenantConfig.discountCode}</span>
-                )}
-              </div>
-              
-              <p className="text-sm text-[#454547] leading-relaxed text-pretty">
-                Giảm <span className="font-semibold text-zinc-900 ">-{tenantConfig.discountAmount?.toLocaleString()}đ</span> khi giỏ hàng có trên <span className="font-semibold ">{tenantConfig.discountMinItems} món</span> hoặc tổng đơn trên <span className="font-semibold ">{tenantConfig.discountMinAmount?.toLocaleString()}đ</span>.
-              </p>
-
-              {isPromoEligible ? (
-                <div className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 p-2 rounded-xl mt-1 font-medium flex justify-between items-center">
-                  <span>Giảm {tenantConfig.discountAmount?.toLocaleString()}đ đã áp dụng!</span>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                </div>
-              ) : (
-                <div className="text-sm text-zinc-500 bg-white border border-zinc-200 p-2 rounded-xl mt-1 flex justify-between items-center font-medium">
-                  <span>Thêm món để đủ điều kiện</span>
-                  <span className="bg-[#F5F5F7] px-2 py-0.5 rounded-[21px] text-[#2D2B30] border border-[#B5C7D8] text-xs ">{totalQuantity} / {tenantConfig.discountMinItems} món</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Filters row conforming to Apple minimal styles */}
-          {availableTypes.length > 1 && (
-            <div className="flex gap-[4px] overflow-x-auto pb-1 scrollbar-none select-none">
-              {availableTypes.map(type => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setSelectedTypeFilter(type)}
-                  className={`px-3 py-1 text-sm font-semibold rounded-[21px] transition-all flex-shrink-0 cursor-pointer border ${
-                    selectedTypeFilter === type
-                      ? 'bg-zinc-900 text-white border-zinc-900 shadow-sm'
-                      : 'bg-[#F5F5F7] text-[#454547] border-[#B5C7D8] hover:bg-[#E5E5EA]'
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="text-sm font-bold text-[#2D2B30] border-b border-[#B5C7D8]/50 pb-1 flex justify-between select-none">
-            <span>Danh mục Thực đơn</span>
-            <span className="text-xs text-[#808080] ">{displayedMenuItems.length} món</span>
-          </div>
-
-          {/* List display based on industry layout parameters */}
-          {template.menu_layout === 'list_don_gian' ? (
-            <div className="space-y-[4px]">
-              {displayedMenuItems.map(item => {
-                const itemType = item.type || (['Giải nhiệt', 'Đồ uống', 'Trà', 'Cà phê', 'Cà phê truyền thống', 'Đá xay', 'Trà sữa', 'Cà phê hiện đại', 'Trà trái cây'].some(word => item.category.includes(word) || item.name.includes(word)) ? 'Đồ uống' : 'Đồ ăn');
-                return (
-                  <div 
-                    key={item.id} 
-                    className={`p-[13px] rounded-[21px] border border-[#B5C7D8] bg-white flex justify-between items-start gap-[13px] transition-all ${
-                      !item.inStock ? 'opacity-40 grayscale' : 'hover:border-zinc-900'
-                    }`}
-                  >
-                    <img src={item.image} alt={item.name} className="w-[50px] h-[50px] rounded-[21px] object-cover flex-shrink-0 border border-[#B5C7D8]/50" referrerPolicy="no-referrer" />
-                    <div className="flex-grow space-y-[2px]">
-                      <div className="flex items-center gap-[4px] flex-wrap">
-                        <h5 className="text-[14px] font-semibold text-[#2D2B30] line-clamp-1">{item.name}</h5>
-                        <span className="text-xs bg-[#F5F5F7] text-[#2D2B30] border border-[#B5C7D8] px-1.5 py-0.2 rounded-[21px] font-semibold font-sans">{itemType}</span>
-                      </div>
-                      <p className="text-sm text-[#808080] line-clamp-2 leading-relaxed text-pretty">{item.description}</p>
-                      <span className="text-[14px] font-bold text-zinc-900 mt-1 block ">
-                        {item.price.toLocaleString()}đ
-                      </span>
-                    </div>
-                    
-                    {item.inStock ? (
-                      <button 
-                        onClick={() => openModifiersModal(item)}
-                        className="bg-zinc-900 hover:bg-zinc-900/90 active:scale-95 text-white w-[32px] h-[32px] rounded-[21px] flex items-center justify-center self-end flex-shrink-0 transition-colors cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
-                        aria-label="Thêm món"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      <span className="text-[10px] bg-[#F5F5F7] text-[#808080] border border-[#B5C7D8] px-2 py-1 rounded-[21px] font-semibold uppercase self-end">HẾT MÓN</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : template.menu_layout === 'grid_bien_the' ? (
-            <div className="grid grid-cols-2 gap-[13px]">
-              {displayedMenuItems.map(item => {
-                const itemType = item.type || (['Giải nhiệt', 'Đồ uống', 'Trà', 'Cà phê', 'Cà phê truyền thống', 'Đá xay', 'Trà sữa', 'Cà phê hiện đại', 'Trà trái cây'].some(word => item.category.includes(word) || item.name.includes(word)) ? 'Đồ uống' : 'Đồ ăn');
-                return (
-                  <div 
-                    key={item.id} 
-                    className={`bg-white border border-[#B5C7D8] rounded-[21px] overflow-hidden p-[13px] flex flex-col justify-between h-[180px] transition-all ${
-                      !item.inStock ? 'opacity-40 grayscale' : 'hover:border-zinc-900'
-                    }`}
-                  >
-                    <div className="relative">
-                      <img src={item.image} alt={item.name} className="w-full h-16 rounded-[21px] object-cover border border-[#B5C7D8]/50" referrerPolicy="no-referrer" />
-                      {!item.inStock ? (
-                        <span className="absolute top-1 right-1 bg-red-650 text-white text-[9px] px-1.5 py-0.2 rounded-[21px] font-bold">HẾT</span>
-                      ) : (
-                        <span className="absolute top-1 right-1 bg-white/95 text-xs text-[#2D2B30] border border-[#B5C7D8] px-1.5 py-0.2 rounded-[21px] font-semibold font-sans">{itemType}</span>
-                      )}
-                    </div>
-                    
-                    <div className="mt-1 flex-grow">
-                      <h5 className="text-sm font-semibold text-[#2D2B30] line-clamp-1">{item.name}</h5>
-                      <p className="text-xs text-[#808080] line-clamp-1 text-pretty">{item.description}</p>
-                    </div>
-
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-sm font-bold text-zinc-900 ">
-                        {item.price.toLocaleString()}đ
-                      </span>
-                      {item.inStock && (
-                        <button 
-                          onClick={() => openModifiersModal(item)}
-                          className="bg-zinc-900 hover:bg-zinc-900/90 text-white w-6 h-6 rounded-[21px] flex items-center justify-center active:scale-95 text-xs font-semibold cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
-                        >
-                          +
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="space-y-[13px]">
-              {['Khai vị', 'Món chính / Lẩu', 'Món lai rai', 'Đồ uống'].map(cat => {
-                const filtered = displayedMenuItems.filter(i => i.category === cat || (cat === 'Món chính / Lẩu' && i.category.includes('Lẩu')));
-                if (filtered.length === 0) return null;
-
-                return (
-                  <div key={cat} className="space-y-[4px]">
-                    <h6 className="text-xs font-bold text-[#2D2B30] bg-[#F5F5F7] px-2 py-0.5 rounded-[21px] w-fit border border-[#B5C7D8]">{cat.toUpperCase()}</h6>
-                    
-                    <div className="space-y-[4px]">
-                      {filtered.map(item => {
-                        const itemType = item.type || (['Giải nhiệt', 'Đồ uống', 'Trà', 'Cà phê', 'Cà phê truyền thống', 'Đá xay', 'Trà sữa', 'Cà phê hiện đại', 'Trà trái cây'].some(word => item.category.includes(word) || item.name.includes(word)) ? 'Đồ uống' : 'Đồ ăn');
-                        return (
-                          <div 
-                            key={item.id} 
-                            className="p-[13px] bg-white border border-[#B5C7D8] rounded-[21px] flex items-center gap-[13px] justify-between transition-all hover:border-zinc-900"
-                          >
-                            <div className="flex items-center gap-[13px]">
-                              <img src={item.image} alt={item.name} className="w-10 h-10 rounded-[21px] object-cover border border-[#B5C7D8]/50" referrerPolicy="no-referrer" />
-                              <div className="space-y-[2px]">
-                                <div className="flex items-center gap-[4px] flex-wrap">
-                                  <h5 className="text-sm font-semibold text-[#2D2B30]">{item.name}</h5>
-                                  <span className="text-[8px] bg-[#F5F5F7] text-[#2D2B30] border border-[#B5C7D8] px-1 rounded-[21px] font-semibold font-sans">{itemType}</span>
-                                </div>
-                                <span className="text-sm font-bold text-zinc-900 ">{item.price.toLocaleString()}đ</span>
-                              </div>
-                            </div>
-                            
-                            {item.inStock ? (
-                              <button 
-                                onClick={() => openModifiersModal(item)}
-                                className="bg-zinc-900 hover:bg-zinc-900/90 text-white w-6 h-6 rounded-[21px] flex items-center justify-center font-bold active:scale-95 cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
-                              >
-                                +
-                              </button>
-                            ) : (
-                              <span className="text-xs text-[#808080] font-bold ">HẾT</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Dynamic footer checkout button panel */}
-        {cart.length > 0 && (
-          <div className="bg-white p-[13px] border-t border-[#B5C7D8] flex justify-between items-center z-30 shadow-md">
-            <div className="flex items-center gap-[13px]">
-              <div className="relative bg-[#F5F5F7] p-2.5 border border-[#B5C7D8] rounded-[21px]">
-                <ShoppingBag className="w-4 h-4 text-[#2D2B30]" />
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-zinc-900 text-white text-xs font-bold rounded-full flex items-center justify-center ">
-                  {cart.reduce((s, i) => s + i.quantity, 0)}
-                </span>
-              </div>
-              <div>
-                <span className="text-xs text-[#808080] block font-bold select-none">Tạm tính</span>
-                <span className="text-[14px] font-bold text-[#2D2B30] ">{cartTotal.toLocaleString()}đ</span>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setCustStep('cart_summary')}
-              className="bg-zinc-900 hover:bg-zinc-900/95 text-white text-sm font-semibold px-4 py-2.5 rounded-[21px] active:scale-95 shadow-sm transition-all flex items-center gap-1 cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
-            >
-              Xem Giỏ Hàng <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-
-        {/* Modifier Customizer sheet modal */}
-        {activeItemForModifier && (
-          <div className="absolute inset-0 bg-black/40 flex flex-col justify-end z-50">
-            <div className="bg-white rounded-t-[21px] border-t border-[#B5C7D8] p-[13px] space-y-[13px] max-h-[85%] overflow-y-auto shadow-xl text-[#2D2B30]">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="text-[14px] font-bold text-[#2D2B30]">{activeItemForModifier.name}</h4>
-                  <p className="text-sm text-zinc-900 font-bold mt-0.5 ">{activeItemForModifier.price.toLocaleString()}đ</p>
-                </div>
-                <button 
-                  onClick={() => setActiveItemForModifier(null)}
-                  className="w-8 h-8 rounded-full bg-[#F5F5F7] text-[#2D2B30] border border-[#B5C7D8] flex items-center justify-center cursor-pointer hover:bg-[#E5E5EA] focus:outline-2 focus:outline-zinc-900"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="space-y-[13px] text-sm ">
-                {template.modifier_groups.map(group => (
-                  <div key={group.name} className="space-y-[4px]">
-                    <div className="flex justify-between items-center text-xs font-bold text-[#808080]">
-                      <span>{group.name}</span>
-                      {group.required ? (
-                        <span className="text-[9px] bg-red-100 text-red-650 px-1.5 py-0.2 rounded-[21px] font-bold">Bắt buộc</span>
-                      ) : (
-                        <span className="text-[9px] text-gray-500 font-bold">Tùy chọn</span>
-                      )}
-                    </div>
-
-                    <div className="space-y-[4px]">
-                      {group.options.map(opt => {
-                        const isChecked = selectedModifiers.includes(opt.name);
-                        return (
-                          <div 
-                            key={opt.name}
-                            onClick={() => handleToggleModifierOpt(opt.name, opt.price)}
-                            className={`p-[13px] rounded-[21px] border transition-all cursor-pointer flex justify-between items-center ${
-                              isChecked 
-                                ? 'border-zinc-900 bg-zinc-900/5 text-zinc-900 font-bold' 
-                                : 'border-[#B5C7D8] bg-white text-zinc-700 hover:bg-[#F5F5F7]'
-                            }`}
-                          >
-                            <span className="font-medium">{opt.name}</span>
-                            <span className="text-sm font-bold ">
-                              {opt.price === 0 ? 'Miễn phí' : `+${opt.price.toLocaleString()}đ`}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-                {activeItemForModifier.toppings && activeItemForModifier.toppings.length > 0 && (
-                  <div className="space-y-[4px]">
-                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-[#808080]">
-                      <span>Topping thêm cho món</span>
-                      <span className="text-[9px] text-gray-500 font-bold">Tùy chọn</span>
-                    </div>
-                    <div className="space-y-[4px]">
-                      {activeItemForModifier.toppings.map(opt => {
-                        const isChecked = selectedModifiers.includes(opt.name);
-                        return (
-                          <div 
-                            key={opt.name}
-                            onClick={() => handleToggleModifierOpt(opt.name, opt.price)}
-                            className={`p-[13px] rounded-[21px] border transition-all cursor-pointer flex justify-between items-center ${
-                              isChecked 
-                                ? 'border-[#155BD0] bg-[#155BD0]/5 text-[#155BD0] font-bold' 
-                                : 'border-[#B5C7D8] bg-white text-zinc-700 hover:bg-[#F5F5F7]'
-                            }`}
-                          >
-                            <span className="font-medium">{opt.name}</span>
-                            <span className="font-mono text-[11px] font-bold tabular-nums">
-                              {opt.price === 0 ? 'Miễn phí' : `+${opt.price.toLocaleString()}đ`}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-[13px] border-t border-[#B5C7D8] flex justify-between items-center bg-white">
-                <div>
-                  <span className="text-xs text-[#808080] block font-bold">Đơn giá món</span>
-                  <span className="text-[16px] font-bold text-[#2D2B30] ">
-                    {(activeItemForModifier.price + modifierPriceSum).toLocaleString()}đ
-                  </span>
-                </div>
-                
-                <button 
-                  onClick={handleAddWithModifiers}
-                  className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm font-semibold px-4 py-2.5 rounded-[21px] transition-colors cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
-                >
-                  Thêm Vào Giỏ
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
 
-  // STEP 4: CART SUMMARY & OTP DISCOUNTS
-  if (custStep === 'cart_summary') {
-    return (
-      <div className="flex-grow flex flex-col bg-white p-[13px] font-sans justify-between relative text-[#2D2B30] h-full" id="cust-cart-summary">
-        {showOtpRequired && (
-          <div className="absolute inset-0 bg-black/45 flex items-center justify-center p-4 z-50">
-            <div className="bg-white border border-[#B5C7D8] rounded-[21px] p-[13px] w-full space-y-[13px] text-center shadow-xl">
-              <div className="w-12 h-12 rounded-full bg-[#F5F5F7] border border-[#B5C7D8] flex items-center justify-center mx-auto">
-                <Smartphone className="w-6 h-6 text-zinc-900" />
+  return (
+    <div className="h-full bg-[#f7f7f8] text-zinc-950 flex flex-col overflow-hidden">
+      <div className="relative flex-1 overflow-y-auto pb-28">
+        {step === 'tracking' ? (
+          <TrackingScreen orders={activeCustomerOrders} tableName={tableName} onBack={() => setStep('menu')} />
+        ) : (
+          <>
+            <section className="sticky top-0 z-20 bg-[#f7f7f8]/90 backdrop-blur-xl px-4 pt-4 pb-3 border-b border-white/70">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.16em] truncate">{tableName}</p>
+                  <h1 className="text-[22px] font-black tracking-[-0.04em] truncate">{tenantConfig.shopName}</h1>
+                </div>
+                <button type="button" onClick={() => setShowLoyalty(true)} className="shrink-0 rounded-full bg-white px-3 py-2 text-[11px] font-bold text-zinc-800 shadow-sm border border-zinc-100">
+                  {loyaltyProfile ? `${loyaltyProfile.points} điểm` : 'Hội viên'}
+                </button>
               </div>
-              <h5 className="text-[14px] font-bold text-[#2D2B30] border-b border-gray-150 pb-1 flex justify-center">Xác thực OTP</h5>
-              <p className="text-sm text-[#707070] text-pretty leading-relaxed">
-                Vui lòng nhập OTP (8888).
-              </p>
 
-              <form onSubmit={handleVerifyOtpCode} className="space-y-[13px]">
-                <input 
-                  type="password"
-                  maxLength={4} 
-                  required
-                  value={otpCode}
-                  onChange={(e) => {
-                    setOtpCode(e.target.value.replace(/\D/g, ''));
-                    setOtpError('');
-                  }}
-                  className="w-32 bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] text-center tracking-[0.3em] text-[16px] py-1.5 text-[#2D2B30] font-black focus:outline-none focus:border-zinc-900 shadow-inner "
-                  placeholder="••••"
-                />
+              <div className="mt-3 flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm border border-zinc-100">
+                <Search className="h-4 w-4 text-zinc-400" />
+                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Tìm món, đồ uống..." className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-zinc-400" />
+              </div>
+            </section>
 
-                {otpError && <p className="text-xs text-red-650 font-semibold block">{otpError}</p>}
+            <section className="px-4 pt-4 space-y-4">
+              <div className="rounded-[30px] bg-zinc-950 text-white p-5 overflow-hidden relative shadow-xl">
+                <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-orange-500/40 blur-2xl" />
+                <div className="relative flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-bold text-orange-200 uppercase tracking-[0.18em]">Menu hôm nay</p>
+                    <h2 className="mt-1 text-[27px] leading-none font-black tracking-[-0.05em]">Gọi món nhanh, bếp nhận ngay.</h2>
+                  </div>
+                  <Sparkles className="h-6 w-6 text-orange-300 shrink-0" />
+                </div>
+                <div className="relative mt-4 flex gap-2 text-[11px] font-bold">
+                  <span className="rounded-full bg-white/12 px-3 py-1">{filteredItems.length} món</span>
+                  <span className="rounded-full bg-white/12 px-3 py-1">{tenantConfig.paymentMode === 'Pay-First' ? 'Trả trước' : 'Trả sau'}</span>
+                </div>
+              </div>
 
-                <div className="flex gap-2">
-                  <button 
+              {tenantConfig.discountEnabled && (
+                <div className="rounded-[24px] bg-white p-4 shadow-sm border border-zinc-100 flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-orange-100 flex items-center justify-center"><Ticket className="h-5 w-5 text-orange-600" /></div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black text-zinc-950">Ưu đãi {tenantConfig.discountCode}</p>
+                    <p className="text-xs text-zinc-500 truncate">Giảm {money(tenantConfig.discountAmount || 0)} khi đủ điều kiện</p>
+                  </div>
+                  {promoConditionMet && <Check className="h-5 w-5 text-emerald-600" />}
+                </div>
+              )}
+
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+                {availableTypes.map(type => (
+                  <button
+                    key={type}
                     type="button"
-                    onClick={() => setShowOtpRequired(false)}
-                    className="flex-1 bg-[#F5F5F7] text-[#2D2B30] border border-[#B5C7D8] hover:bg-gray-150 text-sm py-1.5 rounded-[21px] font-semibold cursor-pointer"
+                    onClick={() => setSelectedType(type)}
+                    className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${selectedType === type ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-600 border border-zinc-100'}`}
                   >
-                    Hủy
+                    {type}
                   </button>
-                  <button 
-                    type="submit"
-                    className="flex-1 bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm py-1.5 rounded-[21px] font-semibold cursor-pointer focus:outline-2 focus:outline-zinc-900"
-                  >
-                    Xác nhận
-                  </button>
-                </div>
-              </form>
+                ))}
+              </div>
 
-              <p className="text-[9px] text-[#808080] select-none">💡 Nhập 8888 để vượt qua xác thực nhanh</p>
-            </div>
-          </div>
+              <div className={template.menu_layout === 'grid_bien_the' ? 'grid grid-cols-2 gap-3' : 'space-y-3'}>
+                {filteredItems.map(item => (
+                  <MenuCard key={item.id} item={item} compact={template.menu_layout === 'grid_bien_the'} onOpen={() => openItem(item)} />
+                ))}
+              </div>
+
+              {filteredItems.length === 0 && (
+                <div className="rounded-[28px] bg-white p-8 text-center border border-zinc-100">
+                  <p className="font-black text-zinc-900">Chưa có món phù hợp</p>
+                  <p className="mt-1 text-sm text-zinc-500">Thử đổi bộ lọc hoặc tìm từ khóa khác.</p>
+                </div>
+              )}
+            </section>
+          </>
         )}
-
-        <div>
-          <div className="flex justify-between items-center border-b border-[#B5C7D8]/65 pb-2 mb-[13px] select-none">
-            <button 
-              onClick={() => setCustStep('menu')}
-              className="text-sm text-zinc-900 font-semibold hover:underline cursor-pointer flex items-center"
-            >
-              ← Thực Đơn
-            </button>
-            <span className="text-sm font-bold text-[#2D2B30] tracking-tight ">Giỏ hàng bàn {simulationTableId}</span>
-          </div>
-
-          <div className="space-y-[4px] max-h-[220px] overflow-y-auto pr-1">
-            {cart.map(item => (
-              <div key={item.id} className="p-[13px] bg-[#F5F5F7]/40 border border-[#B5C7D8] rounded-[21px] flex justify-between items-center text-sm hover:border-zinc-900 transition-colors">
-                <div className="space-y-0.5">
-                  <h6 className="font-semibold text-[#2D2B30]">{item.name}</h6>
-                  {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                    <div className="text-xs text-[#808080]">
-                      + {item.selectedModifiers.join(', ')}
-                    </div>
-                  )}
-                  <span className="text-zinc-900 font-semibold mt-0.5 block ">{item.price.toLocaleString()}đ</span>
-                </div>
-                
-                <div className="flex items-center gap-[4px]">
-                  <button 
-                    onClick={() => handleUpdateCartQty(item.id, -1)}
-                    className="w-6 h-6 rounded-[21px] bg-white hover:bg-gray-100 border border-[#B5C7D8] flex items-center justify-center text-[#2D2B30] cursor-pointer"
-                  >
-                    <Minus className="w-3 h-3" />
-                  </button>
-                  <span className="font-semibold text-[#2D2B30] text-xs w-4 text-center ">{item.quantity}</span>
-                  <button 
-                    onClick={() => handleUpdateCartQty(item.id, 1)}
-                    className="w-6 h-6 rounded-[21px] bg-white hover:bg-gray-100 border border-[#B5C7D8] flex items-center justify-center text-[#2D2B30] cursor-pointer"
-                  >
-                    <Plus className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-[13px] bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8] my-[13px]">
-          {tenantConfig.discountEnabled && (
-            <div className="space-y-1.5 border-b border-[#B5C7D8]/40 pb-2">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-[#808080] font-bold">Mã Khuyến Mãi</span>
-                {tenantConfig.discountTriggerType === 'auto' ? (
-                  <span className="text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-250 px-1.5 rounded-[21px] font-bold">Tự động áp dụng</span>
-                ) : (
-                  <span className="text-[9px] bg-gray-100 text-[#2D2B30] border border-[#B5C7D8] px-1.5 rounded-[21px] font-bold">Nhập mã tay</span>
-                )}
-              </div>
-
-              {tenantConfig.discountTriggerType === 'manual' ? (
-                <div className="space-y-1">
-                  <div className="flex gap-1.5">
-                    <input 
-                      type="text"
-                      placeholder="Mã giảm giá..."
-                      value={typedCoupon}
-                      onChange={(e) => {
-                        setTypedCoupon(e.target.value);
-                        setCouponError('');
-                      }}
-                      className="flex-1 bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1 text-sm font-semibold text-[#2D2B30] focus:outline-none focus:border-zinc-900 font-sans"
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        if (typedCoupon.toUpperCase() === tenantConfig.discountCode?.toUpperCase()) {
-                          setManualCouponApplied(true);
-                          setCouponError('');
-                        } else {
-                          setManualCouponApplied(false);
-                          setCouponError('Mã không trùng khớp!');
-                        }
-                      }}
-                      className="bg-zinc-900 hover:bg-zinc-900/90 text-white font-bold text-xs px-3.5 py-1 rounded-[21px] cursor-pointer"
-                    >
-                      Áp dụng
-                    </button>
-                  </div>
-                  {couponError && <p className="text-[9px] text-[#ef4444] font-semibold">{couponError}</p>}
-                  {manualCouponApplied && (
-                    <p className="text-[9px] text-emerald-700 font-semibold flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" /> Khớp mã ưu đãi: {tenantConfig.discountCode}!
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="text-sm text-[#707070] italic">
-                  Đã tự động cộng hưởng mã {tenantConfig.discountCode} khi đạt điều kiện.
-                </div>
-              )}
-            </div>
-          )}
-
-          {loyaltyProfile && (
-            <div className="flex justify-between items-center text-sm border-b border-[#B5C7D8]/40 pb-2">
-              <div>
-                <span className="text-[9px] text-[#808080] block font-bold">Loyalty Hub</span>
-                <span className="text-[#2D2B30] font-semibold ">{loyaltyProfile.points} điểm khả dụng</span>
-              </div>
-              
-              {!redeemedPoints ? (
-                <button 
-                  onClick={handleRequestRedemption}
-                  className="bg-zinc-900 hover:bg-zinc-900 text-white font-bold text-[9px] px-2.5 py-1 rounded-[21px] cursor-pointer"
-                >
-                  ĐỔI GIẢM 20K (Tốn 30pt)
-                </button>
-              ) : (
-                <div className="text-emerald-700 text-[9px] font-bold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-[21px] border border-emerald-250">
-                  <Check className="w-3 h-3" /> ĐÃ ĐỔI GIẢM 20K
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Pricing summary matching design spec */}
-          <div className="space-y-1 text-sm text-[#808080]">
-            <div className="flex justify-between">
-              <span>Hóa đơn cộng dồn:</span>
-              <span className="font-semibold text-[#2D2B30] ">{cartTotal.toLocaleString()}đ</span>
-            </div>
-            
-            {redeemedPoints && (
-              <div className="flex justify-between text-zinc-900 font-semibold">
-                <span>Ưu đãi thành viên đổi:</span>
-                <span className="">-20.000đ</span>
-              </div>
-            )}
-
-            {isPromoEligible && (
-              <div className="flex justify-between text-zinc-900 font-semibold">
-                <span>Ưu đãi giảm giá ({tenantConfig.discountCode}):</span>
-                <span className="">-{promoDiscountAmount.toLocaleString()}đ</span>
-              </div>
-            )}
-
-            <div className="flex justify-between text-[#2D2B30] text-[14px] font-bold pt-2 border-t border-[#B5C7D8]/35">
-              <span>KHÁCH CẦN THANH TOÁN:</span>
-              <span className="text-zinc-900 ">{finalTotal.toLocaleString()}đ</span>
-            </div>
-          </div>
-
-          <div className="text-xs text-[#808080] flex items-center gap-1.5 leading-relaxed font-light select-none">
-            <AlertCircle className="w-3.5 h-3.5 text-zinc-900 flex-shrink-0" />
-            <span>Mô hình quán: {tenantConfig.paymentMode === 'Pay-First' ? 'Trả trước (Pay-First)' : 'Trả sau (Pay-Later)'}</span>
-          </div>
-
-          <button 
-            type="button"
-            onClick={handleSubmitOrderToSystem}
-            className="w-full bg-zinc-900 hover:bg-zinc-900/90 active:translate-y-0.5 text-white rounded-[21px] py-3.5 font-semibold text-[14px] tracking-wide shadow-sm transition-all cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
-          >
-            {tenantConfig.paymentMode === 'Pay-First' ? 'THANH TOÁN & GỬI BẾP (PAY-FIRST)' : 'GỬI ĐƠN HÀNG LỢI THỜI GIAN'}
-          </button>
-        </div>
       </div>
-    );
-  }
 
-  // STEP 5: ORDER TRACKING PROGRESS
-  if (custStep === 'order_tracking') {
-    return (
-      <div className="flex-grow flex flex-col bg-white p-[13px] font-sans justify-between text-[#2D2B30] h-full" id="cust-order-tracking">
-        <div>
-          <div className="flex justify-between items-center border-b border-[#B5C7D8]/60 pb-2 mb-[13px] select-none">
-            <h5 className="text-xs font-bold text-[#2D2B30] font-sans">TRẠNG THÁI GỌI MÓN REALTIME</h5>
-            <button 
-              onClick={() => setCustStep('menu')}
-              className="text-xs text-zinc-900 font-semibold hover:underline bg-transparent px-2.5 py-1 rounded-[21px] cursor-pointer focus:outline-2 focus:outline-zinc-900"
-            >
-              Đặt thêm món+
-            </button>
-          </div>
-
-          {activeCustomerOrders.length === 0 ? (
-            <div className="bg-[#F5F5F7] p-[34px] rounded-[21px] border border-[#B5C7D8] text-center space-y-[13px]">
-              <span className="text-2xl">✅</span>
-              <p className="text-[14px] font-bold text-[#2D2B30]">Bữa ăn đã khép lại và thanh toán!</p>
-              <p className="text-sm text-[#808080] leading-relaxed text-pretty">
-                ScanGo Lite xin chân thành cảm ơn quý khách. Hãy tiếp tục chọn nhãn bàn để đặt thêm món mới tùy thích.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-[13px]">
-              {activeCustomerOrders.map((order) => (
-                <div key={order.id} className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] space-y-[13px] shadow-sm">
-                  <div className="flex justify-between items-center text-sm border-b border-[#B5C7D8]/30 pb-2 select-none">
-                    <span className="font-bold text-[#2D2B30] ">ĐƠN HÀNG #{order.id.slice(-6)}</span>
-                    <span className="font-semibold text-zinc-900 ">{order.total.toLocaleString()}đ</span>
-                  </div>
-
-                  {/* Staged horizontal process circles matching Apple tracking style */}
-                  <div className="pt-2 flex justify-between items-center relative text-xs font-sans">
-                    <div className="absolute top-3 left-4 right-4 h-0.5 bg-[#B5C7D8]/40 z-0"></div>
-
-                    <div className="flex flex-col items-center gap-1.5 z-10">
-                      <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-xs font-bold ${
-                        ['pending', 'cooking', 'ready'].includes(order.status) 
-                          ? 'bg-zinc-900 text-white ring-4 ring-zinc-900/10' 
-                          : 'bg-[#F5F5F7] text-gray-400 border border-[#B5C7D8]'
-                      }`}>
-                        1
-                      </div>
-                      <span className="text-[#2D2B30] font-semibold">Nhận đơn</span>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1.5 z-10">
-                      <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-xs font-bold ${
-                        ['cooking', 'ready'].includes(order.status) 
-                          ? 'bg-zinc-900 text-white ring-4 ring-zinc-900/10' 
-                          : 'bg-[#F5F5F7] text-gray-400 border border-[#B5C7D8]'
-                      }`}>
-                        2
-                      </div>
-                      <span className="text-[#2D2B30] font-semibold">Đang nấu</span>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1.5 z-10">
-                      <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-xs font-bold ${
-                        ['ready', 'served'].includes(order.status) 
-                          ? 'bg-emerald-600 text-white animate-pulse ring-4 ring-emerald-50' 
-                          : 'bg-[#F5F5F7] text-gray-400 border border-[#B5C7D8]'
-                      }`}>
-                        3
-                      </div>
-                      <span className="text-[#2D2B30] font-semibold">Bưng lên</span>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1.5 z-10">
-                      <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                        ['served'].includes(order.status) 
-                          ? 'bg-emerald-600 text-white ring-4 ring-emerald-50' 
-                          : 'bg-[#F5F5F7] text-gray-400 border border-[#B5C7D8]'
-                      }`}>
-                        4
-                      </div>
-                      <span className="text-[#2D2B30] font-semibold">Đã phục vụ</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-[#F5F5F7] p-3 rounded-[21px] border border-[#B5C7D8] text-sm text-[#707070] leading-relaxed text-pretty">
-                    {order.status === 'pending' && '⏳ Bếp chính của chúng tôi đã ghi nhận đơn và đang chuẩn bị chế biến đúng thứ tự.'}
-                    {order.status === 'cooking' && '🔥 Đầu bếp đang đứng chế biến trực tiếp, món nóng thơm chuẩn vị sắp bưng ra.'}
-                    {order.status === 'ready' && '🎉 Món ngon đã chín tới ngạt ngào! Nhân viên đang chuẩn bị khay bưng ra bàn.'}
-                    {order.status === 'served' && '✅ Món đã được phục vụ tận bàn. Chúc bạn ngon miệng!'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <button 
-          onClick={() => {
-            setCustStep('nfc_tap');
-            setCart([]);
-          }}
-          className="w-full bg-white border border-[#B5C7D8] text-sm py-3 rounded-[21px] text-[#2D2B30] font-semibold hover:bg-[#F5F5F7] transition-colors cursor-pointer focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2"
-        >
-          Mock Chạm NFC Mới (Rời bàn / Thay bàn)
+      {activeCustomerOrders.length > 0 && step === 'menu' && (
+        <button type="button" onClick={() => setStep('tracking')} className="absolute bottom-24 left-4 right-4 z-30 rounded-full bg-white/95 px-4 py-3 text-sm font-black text-zinc-950 shadow-lg border border-zinc-100 flex items-center justify-between backdrop-blur">
+          <span className="flex items-center gap-2"><Clock className="h-4 w-4 text-emerald-600" /> Theo dõi đơn</span>
+          <span className="text-zinc-400">{activeCustomerOrders.length}</span>
         </button>
-      </div>
-    );
-  }
+      )}
 
-  return null;
+      {cart.length > 0 && step === 'menu' && (
+        <button type="button" onClick={() => setShowCart(true)} className="absolute bottom-4 left-4 right-4 z-40 rounded-[24px] bg-zinc-950 px-4 py-3.5 text-white shadow-2xl flex items-center justify-between active:scale-[0.99] transition-transform">
+          <span className="flex items-center gap-3 font-black"><ShoppingBag className="h-5 w-5" /> {totalQuantity} món</span>
+          <span className="font-black">{money(finalTotal)}</span>
+        </button>
+      )}
+
+      <AnimatePresence>
+        {activeItem && (
+          <ItemSheet item={activeItem} template={template} selectedModifiers={selectedModifiers} modifierPrice={modifierPrice} onToggleModifier={toggleModifier} onClose={() => setActiveItem(null)} onAdd={addActiveItemToCart} />
+        )}
+        {showCart && (
+          <CartSheet cart={cart} cartTotal={cartTotal} finalTotal={finalTotal} promoDiscount={promoDiscount} loyaltyDiscount={loyaltyDiscount} paymentMode={tenantConfig.paymentMode} onQty={updateCartQty} onClose={() => setShowCart(false)} onSubmit={submitOrder} />
+        )}
+        {showLoyalty && (
+          <LoyaltySheet profile={loyaltyProfile} phone={phoneNumber} name={customerName} otp={otpCode} otpError={otpError} redeemed={redeemedPoints} onPhone={setPhoneNumber} onName={setCustomerName} onOtp={(value: string) => { setOtpCode(value.replace(/\D/g, '')); setOtpError(''); }} onSave={saveLoyaltyProfile} onRedeem={redeemWithOtp} onClose={() => setShowLoyalty(false)} />
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
+function MenuCard({ item, compact, onOpen }: { item: MenuItem; compact: boolean; onOpen: () => void }) {
+  if (compact) {
+    return (
+      <button type="button" onClick={onOpen} disabled={!item.inStock} className={`text-left rounded-[26px] bg-white p-2.5 shadow-sm border border-zinc-100 overflow-hidden ${!item.inStock ? 'opacity-45 grayscale' : 'active:scale-[0.99] transition-transform'}`}>
+        <img src={item.image} alt={item.name} className="h-28 w-full rounded-[20px] object-cover" referrerPolicy="no-referrer" />
+        <div className="mt-2 space-y-1">
+          <p className="line-clamp-2 min-h-[34px] text-sm font-black leading-tight text-zinc-950">{item.name}</p>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-black">{money(item.price)}</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-950 text-white"><Plus className="h-4 w-4" /></span>
+          </div>
+        </div>
+      </button>
+    );
+  }
 
+  return (
+    <button type="button" onClick={onOpen} disabled={!item.inStock} className={`w-full rounded-[28px] bg-white p-3 text-left shadow-sm border border-zinc-100 flex gap-3 ${!item.inStock ? 'opacity-45 grayscale' : 'active:scale-[0.99] transition-transform'}`}>
+      <img src={item.image} alt={item.name} className="h-24 w-24 rounded-[22px] object-cover shrink-0" referrerPolicy="no-referrer" />
+      <div className="min-w-0 flex-1 py-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="line-clamp-2 text-[15px] font-black leading-tight text-zinc-950">{item.name}</p>
+            <p className="mt-1 line-clamp-1 text-xs font-medium text-zinc-500">{item.description}</p>
+          </div>
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-950 text-white shrink-0"><Plus className="h-4 w-4" /></span>
+        </div>
+        <p className="mt-3 text-base font-black">{money(item.price)}</p>
+      </div>
+    </button>
+  );
+}
+
+function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <motion.div className="absolute inset-0 z-50 flex flex-col justify-end bg-black/35 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <button type="button" className="flex-1" onClick={onClose} aria-label="Đóng" />
+      <motion.div initial={{ y: 40 }} animate={{ y: 0 }} exit={{ y: 40 }} className="max-h-[88%] overflow-y-auto rounded-t-[34px] bg-white p-4 shadow-2xl">
+        {children}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleModifier, onClose, onAdd }: any) {
+  const groups = [...template.modifier_groups, ...(item.toppings?.length ? [{ name: 'Topping', required: false, options: item.toppings }] : [])];
+  return (
+    <Sheet onClose={onClose}>
+      <div className="space-y-4">
+        <div className="relative">
+          <img src={item.image} alt={item.name} className="h-56 w-full rounded-[28px] object-cover" referrerPolicy="no-referrer" />
+          <button type="button" onClick={onClose} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-zinc-950 shadow"><X className="h-5 w-5" /></button>
+        </div>
+        <div>
+          <p className="text-[26px] font-black leading-none tracking-[-0.04em] text-zinc-950">{item.name}</p>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-500">{item.description}</p>
+        </div>
+
+        {groups.map((group: any) => (
+          <div key={group.name} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-black text-zinc-950">{group.name}</p>
+              <span className="text-[11px] font-bold text-zinc-400">{group.required ? 'Bắt buộc' : 'Tùy chọn'}</span>
+            </div>
+            {group.options.map((option: any) => {
+              const checked = selectedModifiers.includes(option.name);
+              return (
+                <button key={option.name} type="button" onClick={() => onToggleModifier(option.name, option.price)} className={`w-full rounded-[20px] px-4 py-3 flex items-center justify-between border ${checked ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-zinc-50 text-zinc-900 border-zinc-100'}`}>
+                  <span className="text-sm font-bold">{option.name}</span>
+                  <span className="text-sm font-black">{option.price ? `+${money(option.price)}` : 'Free'}</span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+
+        <button type="button" onClick={onAdd} className="sticky bottom-0 w-full rounded-[24px] bg-zinc-950 px-4 py-4 text-white font-black flex items-center justify-between shadow-xl">
+          <span>Thêm vào giỏ</span>
+          <span>{money(item.price + modifierPrice)}</span>
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
+function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, loyaltyDiscount, paymentMode, onQty, onClose, onSubmit }: any) {
+  return (
+    <Sheet onClose={onClose}>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[28px] font-black tracking-[-0.05em]">Giỏ hàng</h2>
+          <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="space-y-2">
+          {cart.map((item: OrderItem) => (
+            <div key={item.id} className="rounded-[24px] bg-zinc-50 p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-black text-sm text-zinc-950 line-clamp-1">{item.name}</p>
+                <p className="text-xs text-zinc-500 line-clamp-1">{item.selectedModifiers?.join(', ') || 'Mặc định'}</p>
+                <p className="mt-1 text-sm font-black">{money(item.price)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => onQty(item.id, -1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-zinc-200"><Minus className="h-4 w-4" /></button>
+                <span className="w-5 text-center text-sm font-black">{item.quantity}</span>
+                <button type="button" onClick={() => onQty(item.id, 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-zinc-200"><Plus className="h-4 w-4" /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-[26px] bg-zinc-950 text-white p-4 space-y-2">
+          <div className="flex justify-between text-sm text-zinc-300"><span>Tạm tính</span><span>{money(cartTotal)}</span></div>
+          {promoDiscount > 0 && <div className="flex justify-between text-sm text-emerald-300"><span>Ưu đãi</span><span>-{money(promoDiscount)}</span></div>}
+          {loyaltyDiscount > 0 && <div className="flex justify-between text-sm text-emerald-300"><span>Đổi điểm</span><span>-{money(loyaltyDiscount)}</span></div>}
+          <div className="flex justify-between border-t border-white/10 pt-3 text-lg font-black"><span>Tổng</span><span>{money(finalTotal)}</span></div>
+        </div>
+        <p className="flex items-start gap-2 text-xs text-zinc-500"><AlertCircle className="h-4 w-4 shrink-0 text-zinc-400" /> {paymentMode === 'Pay-First' ? 'Thanh toán tại quầy để bếp nhận đơn.' : 'Bếp nhận đơn ngay, thanh toán sau bữa ăn.'}</p>
+        <button type="button" onClick={onSubmit} className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black shadow-xl">Gửi đơn</button>
+      </div>
+    </Sheet>
+  );
+}
+
+function LoyaltySheet({ profile, phone, name, otp, otpError, redeemed, onPhone, onName, onOtp, onSave, onRedeem, onClose }: any) {
+  return (
+    <Sheet onClose={onClose}>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[28px] font-black tracking-[-0.05em]">Hội viên</h2>
+          <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100"><X className="h-5 w-5" /></button>
+        </div>
+        {profile ? (
+          <form onSubmit={onRedeem} className="space-y-4">
+            <div className="rounded-[28px] bg-gradient-to-br from-zinc-950 to-zinc-800 p-5 text-white">
+              <Gift className="h-6 w-6 text-orange-300" />
+              <p className="mt-5 text-sm text-zinc-300">{profile.name}</p>
+              <p className="text-[36px] font-black tracking-[-0.06em]">{profile.points} điểm</p>
+            </div>
+            <input value={otp} onChange={e => onOtp(e.target.value)} inputMode="numeric" maxLength={4} placeholder="OTP 8888" className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 text-center font-black tracking-[0.3em] outline-none border border-zinc-100" />
+            {otpError && <p className="text-xs font-bold text-red-600">{otpError}</p>}
+            <button type="submit" disabled={redeemed} className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black disabled:opacity-50">{redeemed ? 'Đã đổi ưu đãi' : 'Đổi 30 điểm giảm 20K'}</button>
+          </form>
+        ) : (
+          <form onSubmit={onSave} className="space-y-3">
+            <input value={phone} onChange={e => onPhone(e.target.value.replace(/\D/g, ''))} inputMode="tel" placeholder="Số điện thoại" className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 font-bold outline-none border border-zinc-100" />
+            <input value={name} onChange={e => onName(e.target.value)} placeholder="Tên của bạn (tuỳ chọn)" className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 font-bold outline-none border border-zinc-100" />
+            <button type="submit" className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black">Lưu hội viên</button>
+          </form>
+        )}
+      </div>
+    </Sheet>
+  );
+}
+
+function TrackingScreen({ orders, tableName, onBack }: { orders: Order[]; tableName: string; onBack: () => void }) {
+  return (
+    <div className="min-h-full p-4 space-y-4">
+      <button type="button" onClick={onBack} className="mt-2 flex items-center gap-1 text-sm font-black text-zinc-500"><ChevronLeft className="h-4 w-4" /> Menu</button>
+      <div className="rounded-[32px] bg-zinc-950 text-white p-5">
+        <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.16em]">{tableName}</p>
+        <h1 className="mt-2 text-[31px] leading-none font-black tracking-[-0.06em]">Đơn của bạn</h1>
+      </div>
+      {orders.length === 0 ? (
+        <div className="rounded-[28px] bg-white p-8 text-center border border-zinc-100">
+          <Check className="mx-auto h-10 w-10 text-emerald-600" />
+          <p className="mt-3 font-black text-zinc-950">Bữa ăn đã hoàn tất</p>
+          <p className="mt-1 text-sm text-zinc-500">Bạn có thể quay lại menu để gọi thêm.</p>
+        </div>
+      ) : orders.map(order => (
+        <div key={order.id} className="rounded-[28px] bg-white p-4 shadow-sm border border-zinc-100 space-y-4">
+          <div className="flex justify-between gap-3">
+            <div>
+              <p className="text-sm font-black">#{order.id.slice(-6).toUpperCase()}</p>
+              <p className="text-xs text-zinc-500">{order.items.map(item => `${item.quantity}x ${item.name}`).join(', ')}</p>
+            </div>
+            <span className="font-black">{money(order.total)}</span>
+          </div>
+          <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-black">
+            {[
+              ['pending', 'Nhận'],
+              ['cooking', 'Nấu'],
+              ['ready', 'Xong'],
+              ['served', 'Phục vụ'],
+            ].map(([status, label], index) => {
+              const activeIndex = ['pending', 'cooking', 'ready', 'served'].indexOf(order.status);
+              const active = index <= Math.max(activeIndex, 0);
+              return <div key={status} className={`rounded-full py-2 ${active ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-400'}`}>{label}</div>;
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

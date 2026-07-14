@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 
 interface GuideStep {
   title: string;
@@ -28,34 +28,42 @@ export default function GuideModal({ storageKey, title, eyebrow = 'Hướng dẫ
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-zinc-950/35 p-4 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-lg rounded-[32px] border border-zinc-200 bg-white p-5 shadow-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">{eyebrow}</p>
-            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-zinc-950">{title}</h2>
+    <aside className="fixed bottom-4 right-4 z-[9999] w-[calc(100vw-2rem)] max-w-[380px] animate-fadeIn sm:bottom-6 sm:right-6">
+      <div className="overflow-hidden border-hard bg-white shadow-[8px_8px_0_0_#27272a]">
+        <div className="flex items-start justify-between gap-3 border-b border-hard bg-zinc-950 p-4 text-white">
+          <div className="flex min-w-0 gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-white/20 bg-orange-600 shadow-[3px_3px_0_0_rgba(255,255,255,0.18)]">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-mono text-[9px] font-black uppercase tracking-[0.22em] text-orange-300">ScanGo Assistant</p>
+              <h2 className="mt-1 text-base font-black leading-tight tracking-[-0.03em] text-white">{title}</h2>
+            </div>
           </div>
-          <button type="button" onClick={dismiss} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-600 hover:bg-zinc-200">
-            <X className="h-5 w-5" />
+          <button type="button" onClick={dismiss} className="flex h-8 w-8 shrink-0 items-center justify-center bg-white/10 text-zinc-300 transition-colors hover:bg-white hover:text-zinc-950" aria-label="Ẩn trợ lý hướng dẫn">
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="mt-5 space-y-3">
+        <div className="p-4">
+          <p className="mb-3 font-mono text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">{eyebrow}</p>
+          <div className="space-y-2">
           {steps.map((step, index) => (
-            <div key={step.title} className="flex gap-3 rounded-[24px] bg-zinc-50 p-4 border border-zinc-100">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-xs font-black text-white">{index + 1}</div>
+            <div key={step.title} className="flex gap-3 border border-zinc-200 bg-zinc-50 p-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center bg-zinc-950 font-mono text-[10px] font-black text-white">{index + 1}</div>
               <div>
-                <p className="text-sm font-black text-zinc-950">{step.title}</p>
-                <p className="mt-1 text-sm leading-relaxed text-zinc-500">{step.body}</p>
+                <p className="text-xs font-black uppercase tracking-tight text-zinc-950">{step.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">{step.body}</p>
               </div>
             </div>
           ))}
-        </div>
+          </div>
 
-        <button type="button" onClick={dismiss} className="mt-5 w-full rounded-[24px] bg-zinc-950 py-4 text-sm font-black text-white shadow-lg">
-          Bắt đầu thao tác
-        </button>
+          <button type="button" onClick={dismiss} className="mt-4 w-full bg-orange-600 px-4 py-3 font-mono text-[11px] font-black uppercase tracking-widest text-white shadow-[4px_4px_0_0_#27272a] transition-transform hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 active:shadow-none">
+            Đã hiểu
+          </button>
+        </div>
       </div>
-    </div>
+    </aside>
   );
 }

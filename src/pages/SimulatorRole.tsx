@@ -98,7 +98,7 @@ export default function SimulatorRole() {
           </div>
         </div>
 
-        <div className={`transition-all duration-500 ease-in-out ${isTabletMode ? 'w-full max-w-[620px] h-[min(760px,calc(100dvh-9rem))] min-h-[560px]' : 'w-full max-w-[390px] h-[min(860px,calc(100dvh-8rem))] min-h-[720px]'}`}>
+        <div className={`transition-all duration-500 ease-in-out ${isTabletMode ? 'w-[min(620px,calc(100vw-2rem))] h-[clamp(560px,calc(100dvh-7rem),780px)]' : 'w-[min(390px,calc(100vw-2rem))] h-[clamp(640px,calc(100dvh-7rem),844px)]'}`}>
           <PhoneSimulator 
             actorName={info.name} 
             actorColor={info.color} 

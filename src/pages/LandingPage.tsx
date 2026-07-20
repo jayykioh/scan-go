@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Nfc, ChevronRight, Store, ChefHat, Wallet, Smartphone, ArrowDownRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function LandingPage() {
   return (
@@ -12,12 +13,37 @@ export default function LandingPage() {
 
       {/* Header */}
       <header className="w-full px-6 md:px-12 py-8 flex justify-between items-center z-10 border-b border-hard bg-canvas/80 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-orange-600 flex items-center justify-center border-hard shadow-hard">
+        <motion.div 
+          className="flex items-center gap-3"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: 0.2 }
+            }
+          }}
+        >
+          <motion.div 
+            variants={{
+              hidden: { opacity: 0, scale: 0.5, rotate: -90 },
+              visible: { opacity: 1, scale: 1, rotate: 0, transition: { type: "spring", stiffness: 200, damping: 15 } }
+            }}
+            className="w-10 h-10 bg-orange-600 flex items-center justify-center border-hard shadow-hard"
+          >
             <Nfc className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-2xl font-bold text-zinc-900 tracking-tighter uppercase font-mono">ScanGo_</span>
-        </div>
+          </motion.div>
+          <motion.span 
+            variants={{
+              hidden: { opacity: 0, x: -20 },
+              visible: { opacity: 1, x: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+            className="text-2xl font-bold text-zinc-900 tracking-tighter uppercase font-mono"
+          >
+            ScanGo_
+          </motion.span>
+        </motion.div>
         <div className="flex items-center gap-6">
           <Link to="/login" className="font-mono text-xs font-bold text-zinc-600 hover:text-orange-600 uppercase tracking-widest cursor-pointer transition-colors">
             Đăng nhập
@@ -41,11 +67,16 @@ export default function LandingPage() {
                 Vận hành tuyệt đối
               </span>
             </div>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold text-zinc-900 tracking-tighter leading-[0.9] uppercase mb-8">
+            <motion.h1 
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2, type: "spring", bounce: 0.4 }}
+              className="text-5xl md:text-7xl lg:text-8xl font-extrabold text-zinc-900 tracking-tighter leading-[0.9] uppercase mb-8"
+            >
               Hệ thống<br />
               Đặt món <span className="text-orange-600">QR</span><br />
               Không POS.
-            </h1>
+            </motion.h1>
             
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-8">
               <Link 
@@ -85,43 +116,55 @@ export default function LandingPage() {
             <span className="font-mono text-xs text-zinc-400 uppercase tracking-widest">/ Tính năng cốt lõi</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-hard bg-zinc-950">
+          <motion.div 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.15 }
+              }
+            }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-hard bg-zinc-950"
+          >
             {/* Feature 1 */}
-            <div className="bg-white p-8 border-b md:border-b-0 md:border-r border-hard group hover:bg-zinc-50 transition-colors">
+            <motion.div variants={{ hidden: { opacity: 0, y: 40 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } } }} className="bg-white p-8 border-b md:border-b-0 md:border-r border-hard group hover:bg-zinc-50 transition-colors">
               <div className="w-12 h-12 bg-orange-600 flex items-center justify-center border-hard shadow-hard mb-8 group-hover:-translate-y-1 transition-transform">
                 <Store className="w-6 h-6 text-white" />
               </div>
               <h3 className="font-bold text-xl uppercase tracking-tight mb-3">Quản lý trung tâm</h3>
               <p className="font-mono text-xs text-zinc-600 leading-relaxed">Điều hướng doanh thu, thiết lập menu và kiểm soát phân quyền nhân sự theo thời gian thực.</p>
-            </div>
+            </motion.div>
 
             {/* Feature 2 */}
-            <div className="bg-white p-8 border-b md:border-b-0 md:border-r border-hard group hover:bg-zinc-50 transition-colors">
+            <motion.div variants={{ hidden: { opacity: 0, y: 40 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } } }} className="bg-white p-8 border-b md:border-b-0 md:border-r border-hard group hover:bg-zinc-50 transition-colors">
               <div className="w-12 h-12 bg-emerald-600 flex items-center justify-center border-hard shadow-hard mb-8 group-hover:-translate-y-1 transition-transform">
                 <Smartphone className="w-6 h-6 text-white" />
               </div>
               <h3 className="font-bold text-xl uppercase tracking-tight mb-3">Giao thức Khách hàng</h3>
               <p className="font-mono text-xs text-zinc-600 leading-relaxed">Giao diện quét mã QR tinh gọn, tiếp nhận order ngay tại bàn không độ trễ.</p>
-            </div>
+            </motion.div>
 
             {/* Feature 3 */}
-            <div className="bg-white p-8 border-b lg:border-b-0 lg:border-r border-hard group hover:bg-zinc-50 transition-colors">
+            <motion.div variants={{ hidden: { opacity: 0, y: 40 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } } }} className="bg-white p-8 border-b lg:border-b-0 lg:border-r border-hard group hover:bg-zinc-50 transition-colors">
               <div className="w-12 h-12 bg-amber-600 flex items-center justify-center border-hard shadow-hard mb-8 group-hover:-translate-y-1 transition-transform">
                 <ChefHat className="w-6 h-6 text-white" />
               </div>
               <h3 className="font-bold text-xl uppercase tracking-tight mb-3">Terminal Bếp</h3>
               <p className="font-mono text-xs text-zinc-600 leading-relaxed">Màn hình KDS tiếp nhận trạng thái độc lập, đồng bộ hóa quy trình xuất món.</p>
-            </div>
+            </motion.div>
 
             {/* Feature 4 */}
-            <div className="bg-white p-8 group hover:bg-zinc-50 transition-colors">
+            <motion.div variants={{ hidden: { opacity: 0, y: 40 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } } }} className="bg-white p-8 group hover:bg-zinc-50 transition-colors">
               <div className="w-12 h-12 bg-blue-600 flex items-center justify-center border-hard shadow-hard mb-8 group-hover:-translate-y-1 transition-transform">
                 <Wallet className="w-6 h-6 text-white" />
               </div>
               <h3 className="font-bold text-xl uppercase tracking-tight mb-3">Cổng thanh toán</h3>
               <p className="font-mono text-xs text-zinc-600 leading-relaxed">Xử lý hóa đơn nhanh chóng, chính xác. Tích hợp thanh toán số và quản lý dòng tiền.</p>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
 
       </main>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Nfc, LayoutGrid, Users, Settings, LogOut, UtensilsCrossed, Table2, CircleDollarSign, CreditCard } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
@@ -23,12 +24,37 @@ export default function DashboardLayout() {
         <div className="absolute inset-0 opacity-10 bg-noise pointer-events-none" />
 
         <div className="relative z-10 p-6 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-600 flex items-center justify-center border-hard shadow-hard">
+          <motion.div 
+            className="flex items-center gap-3"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.2 }
+              }
+            }}
+          >
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0, scale: 0.5, rotate: -90 },
+                visible: { opacity: 1, scale: 1, rotate: 0, transition: { type: "spring", stiffness: 200, damping: 15 } }
+              }}
+              className="w-10 h-10 bg-orange-600 flex items-center justify-center border-hard shadow-hard"
+            >
               <Nfc className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold uppercase font-mono tracking-tighter">ScanGo_</span>
-          </div>
+            </motion.div>
+            <motion.span 
+              variants={{
+                hidden: { opacity: 0, x: -20 },
+                visible: { opacity: 1, x: 0, transition: { duration: 0.5, ease: "easeOut" } }
+              }}
+              className="text-xl font-bold uppercase font-mono tracking-tighter"
+            >
+              ScanGo_
+            </motion.span>
+          </motion.div>
         </div>
 
         <nav className="relative z-10 flex-1 px-4 space-y-3">

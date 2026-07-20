@@ -94,7 +94,7 @@ export interface TableConfig {
 export interface TenantConfig {
   shopName: string;
   industry: IndustryType;
-  pricingTier: 'Free' | 'Lite' | 'Pro';
+  pricingTier: 'Lite' | 'Pro' | 'Enterprise';
   paymentMode: 'Pay-First' | 'Pay-Later';
   loyaltyEnabled: boolean;
   loyaltyRate: number; // e.g., 1000đ = 1 point

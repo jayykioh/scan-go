@@ -47,7 +47,7 @@ export default function SettingsPage() {
       ...draft,
       shopName: draft.shopName.trim() || 'ScanGo Shop',
       loyaltyRate: Math.max(1, Number(draft.loyaltyRate) || 1),
-      loyaltyEnabled: draft.pricingTier !== 'Free' && draft.loyaltyEnabled,
+      loyaltyEnabled: draft.pricingTier !== 'Lite' && draft.loyaltyEnabled,
       discountCode: draft.discountCode?.trim().toUpperCase() || 'SCANGO',
       discountMinItems: Math.max(1, Number(draft.discountMinItems) || 1),
       discountMinAmount: Math.max(0, Number(draft.discountMinAmount) || 0),
@@ -98,9 +98,9 @@ export default function SettingsPage() {
             <div className="space-y-3">
               <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500 block">Gói sản phẩm</label>
               <select value={draft.pricingTier} onChange={e => updateDraft('pricingTier', e.target.value as TenantConfig['pricingTier'])} className="w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm font-bold text-zinc-900 focus:outline-none focus:border-orange-600 cursor-pointer transition-colors uppercase">
-                <option value="Free">Free</option>
                 <option value="Lite">Lite</option>
                 <option value="Pro">Pro</option>
+                <option value="Enterprise">Enterprise</option>
               </select>
             </div>
           </div>
@@ -126,8 +126,8 @@ export default function SettingsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <label className="flex items-center gap-3 p-4 border-hard cursor-pointer hover:bg-zinc-50 md:col-span-2">
-              <input type="checkbox" checked={draft.loyaltyEnabled} disabled={draft.pricingTier === 'Free'} onChange={e => updateDraft('loyaltyEnabled', e.target.checked)} className="w-4 h-4 accent-orange-600" />
-              <span className="font-mono text-xs font-bold uppercase tracking-widest">Bật tích điểm hội viên {draft.pricingTier === 'Free' ? '(không khả dụng ở Free)' : ''}</span>
+              <input type="checkbox" checked={draft.loyaltyEnabled} disabled={draft.pricingTier === 'Lite'} onChange={e => updateDraft('loyaltyEnabled', e.target.checked)} className="w-4 h-4 accent-orange-600" />
+              <span className="font-mono text-xs font-bold uppercase tracking-widest">Bật tích điểm hội viên {draft.pricingTier === 'Lite' ? '(không khả dụng ở Lite)' : ''}</span>
             </label>
 
             <div className="space-y-3">

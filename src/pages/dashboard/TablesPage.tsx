@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { TableConfig } from '../../types';
-import { Plus, Trash2, Printer, CheckCircle, SmartphoneNfc, XCircle, Copy, ExternalLink, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Printer, CheckCircle, SmartphoneNfc, XCircle, Copy, ExternalLink, RefreshCw, Edit2 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { createPortal } from 'react-dom';
 import GuideModal from '../../components/GuideModal';

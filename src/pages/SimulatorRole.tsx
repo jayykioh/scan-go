@@ -71,7 +71,7 @@ export default function SimulatorRole() {
     
     return (
       <div className={`relative flex flex-col items-center justify-center h-full w-full ${rightRole && !isRight ? 'hidden lg:flex' : 'flex'}`}>
-        <div className="absolute top-0 left-0 right-0 z-50 p-4 flex justify-center -translate-y-8">
+        <div className="z-50 mb-6 flex justify-center">
           <div className="bg-zinc-950 rounded-2xl p-1.5 flex items-center shadow-xl border border-zinc-800 backdrop-blur-md">
             <select 
               value={r}

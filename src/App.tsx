@@ -6,6 +6,7 @@ import SimulatorLayout from './layouts/SimulatorLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const IntroducePage = lazy(() => import('./pages/IntroducePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 
@@ -38,6 +39,10 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <LandingPage />
+      },
+      {
+        path: 'introduce',
+        element: <IntroducePage />
       },
       {
         path: 'dashboard',

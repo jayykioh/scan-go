@@ -10,10 +10,9 @@ export default function DashboardLayout() {
   };
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-4 py-3 font-mono font-bold uppercase tracking-widest text-xs transition-all cursor-pointer text-left border-hard shadow-hard ${
-      isActive
-        ? 'bg-white text-zinc-900 translate-x-1'
-        : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+    `flex items-center gap-3 px-4 py-3 font-mono font-bold uppercase tracking-widest text-xs transition-all cursor-pointer text-left border-hard shadow-hard ${isActive
+      ? 'bg-white text-zinc-900 translate-x-1'
+      : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
     }`;
 
   return (
@@ -22,7 +21,7 @@ export default function DashboardLayout() {
       <aside className="w-64 bg-zinc-950 text-white flex flex-col hidden md:flex border-r border-hard relative overflow-hidden">
         {/* Subtle noise over dark background */}
         <div className="absolute inset-0 opacity-10 bg-noise pointer-events-none" />
-        
+
         <div className="relative z-10 p-6 mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-orange-600 flex items-center justify-center border-hard shadow-hard">
@@ -31,11 +30,11 @@ export default function DashboardLayout() {
             <span className="text-xl font-bold uppercase font-mono tracking-tighter">ScanGo_</span>
           </div>
         </div>
-        
+
         <nav className="relative z-10 flex-1 px-4 space-y-3">
           <NavLink end to="/dashboard" className={navLinkClass}>
             <LayoutGrid className="w-4 h-4" />
-            Dashboard
+            Doanh thu
           </NavLink>
           <NavLink to="/dashboard/manage" className={navLinkClass}>
             <CircleDollarSign className="w-4 h-4" />
@@ -53,18 +52,18 @@ export default function DashboardLayout() {
             <Users className="w-4 h-4" />
             Nhân sự
           </NavLink>
-          <NavLink to="/dashboard/settings" className={navLinkClass}>
-            <Settings className="w-4 h-4" />
-            Cấu hình
-          </NavLink>
           <NavLink to="/dashboard/subscription" className={navLinkClass}>
             <CreditCard className="w-4 h-4" />
             Gói Dịch Vụ
           </NavLink>
+          <NavLink to="/dashboard/settings" className={navLinkClass}>
+            <Settings className="w-4 h-4" />
+            Cấu hình
+          </NavLink>
         </nav>
 
         <div className="relative z-10 p-4 border-t border-hard">
-          <button 
+          <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-4 py-3 w-full text-zinc-500 hover:text-red-500 font-mono font-bold uppercase tracking-widest text-xs transition-colors cursor-pointer text-left"
           >

@@ -78,13 +78,13 @@ export default function SoloOperatorView({
   // Tab 1: "home" - Đơn hàng & Lịch sử revert, doanh thu hôm nay
   // Tab 2: "pantry" - Bật tắt món, Kho nguyên liệu, thêm nguyên liệu mới
   // Tab 3: "cogs" - Định lượng & Giá vốn (COGS), công thức/định vị
-  // Tab 4: "gói" - Chọn hạng gói của app (Free, Lite, Pro) & Tích điểm & Trợ lý phân tích AI
+  // Tab 4: "gói" - Chọn hạng gói của app (Lite, Pro, Enterprise) & Tích điểm & Trợ lý phân tích AI
   const [activeTab, setActiveTab] = useState<'home' | 'pantry' | 'cogs' | 'gói'>('home');
   
   // Onboarding parameters for Solo
   const [tempShopName, setTempShopName] = useState(tenantConfig.shopName || 'Bún Phở Kinh Kỳ');
   const [tempIndustry, setTempIndustry] = useState<'quan_an' | 'quan_cafe' | 'nha_hang' | 'tiem_banh' | 'tra_sua'>(tenantConfig.industry || 'quan_an');
-  const [tempTier, setTempTier] = useState<'Free' | 'Lite' | 'Pro'>(tenantConfig.pricingTier || 'Pro');
+  const [tempTier, setTempTier] = useState<'Lite' | 'Pro' | 'Enterprise'>(tenantConfig.pricingTier || 'Pro');
   const [tempPayMode, setTempPayMode] = useState<'Pay-First' | 'Pay-Later'>(tenantConfig.paymentMode || 'Pay-Later');
   const [onboardStep, setOnboardStep] = useState(1);
 
@@ -99,7 +99,7 @@ export default function SoloOperatorView({
         industry: tempIndustry,
         pricingTier: tempTier,
         paymentMode: tempPayMode,
-        loyaltyEnabled: tempTier !== 'Free',
+        loyaltyEnabled: tempTier !== 'Lite',
         onboardingStep: 4,
       }));
       setOnboardCompleted(true);
@@ -197,15 +197,15 @@ export default function SoloOperatorView({
   };
 
   // Switch App Pricing Plan Tier
-  const handleUpgradeTier = (tier: 'Free' | 'Lite' | 'Pro') => {
+  const handleUpgradeTier = (tier: 'Lite' | 'Pro' | 'Enterprise') => {
     setTenantConfig(prev => ({
       ...prev,
       pricingTier: tier,
-      loyaltyEnabled: tier !== 'Free'
+      loyaltyEnabled: tier !== 'Lite'
     }));
     triggerPulseText(`⚡ ĐÃ ĐỔI APP SANG GÓI: [ hạng ${tier.toUpperCase()} ]\n${
-      tier === 'Free' ? '• Giới hạn chức năng cơ bản' :
-      tier === 'Lite' ? '• Mở khóa Tích điểm Khách hàng!' :
+      tier === 'Lite' ? '• Giới hạn chức năng cơ bản' :
+      tier === 'Pro' ? '• Mở khóa Tích điểm Khách hàng!' :
       '• Toàn năng: Tích điểm + Định lượng giá vốn vật tư!'
     }`);
   };
@@ -320,7 +320,7 @@ export default function SoloOperatorView({
       nextStatus = 'paid';
       
       // Update customer loyalty points securely (If integrated - Lite/Pro required)
-      if (tenantConfig.pricingTier !== 'Free' && targetOrder.customerPhone) {
+      if (tenantConfig.pricingTier !== 'Lite' && targetOrder.customerPhone) {
         const pointsToAward = Math.floor(targetOrder.total / 10000);
         setLoyaltyMembers(prev => prev.map(member => {
           if (member.phone === targetOrder.customerPhone) {
@@ -354,7 +354,7 @@ export default function SoloOperatorView({
     if (!targetOrder) return;
 
     // Reverse Loyalty score if applicable
-    if (tenantConfig.pricingTier !== 'Free' && targetOrder.customerPhone) {
+    if (tenantConfig.pricingTier !== 'Lite' && targetOrder.customerPhone) {
       const pointsDeducted = Math.floor(targetOrder.total / 10000);
       setLoyaltyMembers(prev => prev.map(member => {
         if (member.phone === targetOrder.customerPhone) {
@@ -956,7 +956,7 @@ export default function SoloOperatorView({
 
                           <div className="text-right">
                             <span className="text-sm font-black text-zinc-900 block">{(order.total).toLocaleString()}đ</span>
-                            {tenantConfig.pricingTier !== 'Free' && order.customerPhone && (
+                            {tenantConfig.pricingTier !== 'Lite' && order.customerPhone && (
                               <span className="text-[8.5px] text-zinc-400 italic block">Mã hội viên: {order.customerPhone.slice(-4)}</span>
                             )}
                           </div>
@@ -1465,28 +1465,15 @@ export default function SoloOperatorView({
               <div className="grid grid-cols-3 gap-1.5 select-none text-center">
                 <button
                   type="button"
-                  onClick={() => handleUpgradeTier('Free')}
+                  onClick={() => handleUpgradeTier('Lite')}
                   className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                    tenantConfig.pricingTier === 'Free'
+                    tenantConfig.pricingTier === 'Lite'
                       ? 'bg-zinc-900 text-white border-zinc-950 shadow-sm'
                       : 'bg-zinc-50 border-zinc-250 text-zinc-700 hover:bg-zinc-100'
                   }`}
                 >
-                  <span className="text-sm font-black block">FREE</span>
-                  <span className="text-[8px] text-zinc-455 block mt-1">Cơ bản tối giản</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleUpgradeTier('Lite')}
-                  className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                    tenantConfig.pricingTier === 'Lite'
-                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm animate-pulse'
-                      : 'bg-zinc-50 border-zinc-250 text-zinc-700 hover:bg-zinc-100'
-                  }`}
-                >
                   <span className="text-sm font-black block">LITE</span>
-                  <span className="text-[8px] text-emerald-150 block mt-1">✓ Tích Điểm</span>
+                  <span className="text-[8px] text-zinc-455 block mt-1">Cơ bản tối giản</span>
                 </button>
 
                 <button
@@ -1494,11 +1481,24 @@ export default function SoloOperatorView({
                   onClick={() => handleUpgradeTier('Pro')}
                   className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
                     tenantConfig.pricingTier === 'Pro'
-                      ? 'bg-orange-600 text-white border-orange-700 shadow-sm'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm animate-pulse'
                       : 'bg-zinc-50 border-zinc-250 text-zinc-700 hover:bg-zinc-100'
                   }`}
                 >
                   <span className="text-sm font-black block">PRO</span>
+                  <span className="text-[8px] text-emerald-150 block mt-1">✓ Tích Điểm</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleUpgradeTier('Enterprise')}
+                  className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+                    tenantConfig.pricingTier === 'Enterprise'
+                      ? 'bg-orange-600 text-white border-orange-700 shadow-sm'
+                      : 'bg-zinc-50 border-zinc-250 text-zinc-700 hover:bg-zinc-100'
+                  }`}
+                >
+                  <span className="text-sm font-black block">ENTERPRISE</span>
                   <span className="text-[8px] text-orange-100 block mt-1">🔥 Portion + Cogs</span>
                 </button>
               </div>
@@ -1511,17 +1511,17 @@ export default function SoloOperatorView({
                 <h3 className="text-xs font-black text-zinc-800">Đồng bộ tích điểm khách hàng (Loyalty)</h3>
               </div>
 
-              {tenantConfig.pricingTier === 'Free' ? (
+              {tenantConfig.pricingTier === 'Lite' ? (
                 <div className="py-6 text-center space-y-3.5">
                   <p className="text-xs text-zinc-450 leading-relaxed max-w-xs mx-auto font-sans">
-                    Hệ thống tích thưởng hội viên hiện đang bị khóa ở bản Free. Vui lòng nâng hạng gói lên LITE hoặc PRO phía trên để tự động mở khóa tính năng này!
+                    Hệ thống tích thưởng hội viên hiện đang bị khóa ở bản Lite. Vui lòng nâng hạng gói lên PRO hoặc ENTERPRISE phía trên để tự động mở khóa tính năng này!
                   </p>
                   <button
                     type="button"
-                    onClick={() => handleUpgradeTier('Lite')}
+                    onClick={() => handleUpgradeTier('Pro')}
                     className="bg-emerald-605 text-white font-extrabold py-2 px-4 rounded-xl text-[9px] shadow-sm cursor-pointer"
                   >
-                    Kích hoạt gói LITE để đồng bộ tắp lự
+                    Kích hoạt gói PRO để đồng bộ tắp lự
                   </button>
                 </div>
               ) : (

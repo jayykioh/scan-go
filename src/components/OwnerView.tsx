@@ -78,7 +78,7 @@ export default function OwnerView({
   // Onboarding parameters
   const [tempShopName, setTempShopName] = useState('Phở Kinh Kỳ');
   const [tempIndustry, setTempIndustry] = useState<'quan_an' | 'quan_cafe' | 'nha_hang' | 'tiem_banh' | 'tra_sua'>('quan_an');
-  const [tempTier, setTempTier] = useState<'Free' | 'Lite' | 'Pro'>('Pro');
+  const [tempTier, setTempTier] = useState<'Lite' | 'Pro' | 'Enterprise'>('Pro');
   const [tempPayMode, setTempPayMode] = useState<'Pay-First' | 'Pay-Later'>('Pay-Later');
   const [onboardStep, setOnboardStep] = useState(1);
 
@@ -343,7 +343,7 @@ export default function OwnerView({
         industry: tempIndustry,
         pricingTier: tempTier,
         paymentMode: tempPayMode,
-        loyaltyEnabled: tempTier !== 'Free',
+        loyaltyEnabled: tempTier !== 'Lite',
       });
       setOnboardStep(4);
     } else if (onboardStep === 4) {

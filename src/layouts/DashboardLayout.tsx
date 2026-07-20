@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Nfc, LayoutGrid, Users, Settings, LogOut, UtensilsCrossed, Table2, CircleDollarSign } from 'lucide-react';
+import { Nfc, LayoutGrid, Users, Settings, LogOut, UtensilsCrossed, Table2, CreditCard } from 'lucide-react';
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export default function DashboardLayout() {
         <nav className="relative z-10 flex-1 px-4 space-y-3">
           <NavLink end to="/dashboard" className={navLinkClass}>
             <LayoutGrid className="w-4 h-4" />
-            Dashboard
+            Doanh thu
           </NavLink>
           <NavLink to="/dashboard/manage" className={navLinkClass}>
             <CircleDollarSign className="w-4 h-4" />
@@ -52,6 +52,10 @@ export default function DashboardLayout() {
           <NavLink to="/dashboard/staff" className={navLinkClass}>
             <Users className="w-4 h-4" />
             Nhân sự
+          </NavLink>
+          <NavLink to="/dashboard/subscription" className={navLinkClass}>
+            <CreditCard className="w-4 h-4" />
+            Gói cước
           </NavLink>
           <NavLink to="/dashboard/settings" className={navLinkClass}>
             <Settings className="w-4 h-4" />

@@ -6,11 +6,12 @@ import SimulatorLayout from './layouts/SimulatorLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const IntroducePage = lazy(() => import('./pages/IntroducePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 
 const OverviewPage = lazy(() => import('./pages/dashboard/OverviewPage'));
-const ManagementPage = lazy(() => import('./pages/dashboard/ManagementPage'));
+const SubscriptionPage = lazy(() => import('./pages/dashboard/SubscriptionPage'));
 const StaffPage = lazy(() => import('./pages/dashboard/StaffPage'));
 const SettingsPage = lazy(() => import('./pages/dashboard/SettingsPage'));
 const MenuPage = lazy(() => import('./pages/dashboard/MenuPage'));
@@ -39,10 +40,15 @@ const router = createBrowserRouter([
         element: <LandingPage />
       },
       {
+        path: 'introduce',
+        element: <IntroducePage />
+      },
+      {
         path: 'dashboard',
         element: <DashboardLayout />,
         children: [
           { index: true, element: <OverviewPage /> },
+          { path: 'subscription', element: <SubscriptionPage /> },
           { path: 'manage', element: <ManagementPage /> },
           { path: 'menu', element: <MenuPage /> },
           { path: 'tables', element: <TablesPage /> },

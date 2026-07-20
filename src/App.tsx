@@ -49,6 +49,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <OverviewPage /> },
           { path: 'subscription', element: <SubscriptionPage /> },
+          { path: 'manage', element: <ManagementPage /> },
           { path: 'menu', element: <MenuPage /> },
           { path: 'tables', element: <TablesPage /> },
           { path: 'staff', element: <StaffPage /> },

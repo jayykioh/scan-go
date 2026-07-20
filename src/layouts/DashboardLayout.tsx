@@ -37,6 +37,10 @@ export default function DashboardLayout() {
             <LayoutGrid className="w-4 h-4" />
             Doanh thu
           </NavLink>
+          <NavLink to="/dashboard/manage" className={navLinkClass}>
+            <CircleDollarSign className="w-4 h-4" />
+            Quản lý quán
+          </NavLink>
           <NavLink to="/dashboard/menu" className={navLinkClass}>
             <UtensilsCrossed className="w-4 h-4" />
             Thực đơn

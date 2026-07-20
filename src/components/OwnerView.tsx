@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount } from '../types';
+import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount, Ingredient, RecipeItem } from '../types';
 import { INDUSTRY_TEMPLATES } from '../mockData';
 import { 
   Building2, 
@@ -50,6 +50,8 @@ interface OwnerProps {
   setTables: React.Dispatch<React.SetStateAction<TableConfig[]>>;
   staffAccounts: StaffAccount[];
   setStaffAccounts: React.Dispatch<React.SetStateAction<StaffAccount[]>>;
+  ingredients?: Ingredient[];
+  setIngredients?: React.Dispatch<React.SetStateAction<Ingredient[]>>;
 }
 
 export default function OwnerView({
@@ -68,8 +70,10 @@ export default function OwnerView({
   setTables,
   staffAccounts,
   setStaffAccounts,
+  ingredients = [],
+  setIngredients = () => {},
 }: OwnerProps) {
-  const [activeTab, setActiveTab] = useState<'kpi' | 'menu' | 'nfc' | 'ai' | 'staff'>('kpi');
+  const [activeTab, setActiveTab] = useState<'kpi' | 'menu' | 'nfc' | 'ai' | 'staff' | 'kho'>('kpi');
   
   // Onboarding parameters
   const [tempShopName, setTempShopName] = useState('Phở Kinh Kỳ');
@@ -94,6 +98,19 @@ export default function OwnerView({
   const [formToppings, setFormToppings] = useState<{ name: string; price: number }[]>([]);
   const [newToppingName, setNewToppingName] = useState('');
   const [newToppingPrice, setNewToppingPrice] = useState(0);
+  
+  // Recipe form
+  const [formRecipe, setFormRecipe] = useState<RecipeItem[]>([]);
+  const [newRecipeIngId, setNewRecipeIngId] = useState('');
+  const [newRecipeQty, setNewRecipeQty] = useState(0);
+
+  // Ingredient Management
+  const [showAddIngForm, setShowAddIngForm] = useState(false);
+  const [editingIng, setEditingIng] = useState<Ingredient | null>(null);
+  const [ingFormName, setIngFormName] = useState('');
+  const [ingFormCost, setIngFormCost] = useState(0);
+  const [ingFormUnit, setIngFormUnit] = useState('kg');
+  const [ingFormStock, setIngFormStock] = useState(0);
 
   // Promos
   const [promoCode, setPromoCode] = useState(tenantConfig.discountCode || 'MUANHIEU15K');
@@ -139,6 +156,56 @@ export default function OwnerView({
 
   const handleDeleteStaff = (id: string) => {
     setStaffAccounts(prev => prev.filter(a => a.id !== id));
+  };
+
+  const resetIngForm = () => {
+    setIngFormName('');
+    setIngFormCost(0);
+    setIngFormUnit('kg');
+    setIngFormStock(0);
+  };
+
+  const handleStartAddIng = () => {
+    resetIngForm();
+    setEditingIng(null);
+    setShowAddIngForm(true);
+  };
+
+  const handleStartEditIng = (ing: Ingredient) => {
+    setEditingIng(ing);
+    setShowAddIngForm(false);
+    setIngFormName(ing.name);
+    setIngFormCost(ing.costPrice);
+    setIngFormUnit(ing.unit);
+    setIngFormStock(ing.stock);
+  };
+
+  const handleIngSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ingFormName.trim()) return;
+
+    if (showAddIngForm) {
+      setIngredients(prev => [...prev, {
+        id: 'ing_' + Date.now(),
+        name: ingFormName.trim(),
+        costPrice: Number(ingFormCost),
+        unit: ingFormUnit,
+        stock: Number(ingFormStock),
+      }]);
+      setShowAddIngForm(false);
+    } else if (editingIng) {
+      setIngredients(prev => prev.map(ing => 
+        ing.id === editingIng.id 
+          ? { ...ing, name: ingFormName.trim(), costPrice: Number(ingFormCost), unit: ingFormUnit, stock: Number(ingFormStock) }
+          : ing
+      ));
+      setEditingIng(null);
+    }
+    resetIngForm();
+  };
+
+  const handleDeleteIng = (id: string) => {
+    setIngredients(prev => prev.filter(i => i.id !== id));
   };
 
   const handleAddTableSubmit = (e: React.FormEvent) => {
@@ -190,7 +257,17 @@ export default function OwnerView({
     if (order.status !== 'paid') return sum;
     return sum + order.items.reduce((itemSum, item) => {
       const originalItem = menuItems.find(m => m.id === item.menuId);
-      const itemCost = originalItem ? originalItem.costPrice : (item.price * 0.4); 
+      
+      let itemCost = 0;
+      if (originalItem && originalItem.recipe && originalItem.recipe.length > 0) {
+        itemCost = originalItem.recipe.reduce((rSum, rItem) => {
+          const ing = ingredients.find(i => i.id === rItem.ingredientId);
+          return rSum + (ing ? ing.costPrice * rItem.quantity : 0);
+        }, 0);
+      } else {
+        itemCost = originalItem ? originalItem.costPrice : (item.price * 0.4); 
+      }
+      
       return itemSum + (itemCost * item.quantity);
     }, 0);
   }, 0);
@@ -300,6 +377,9 @@ export default function OwnerView({
     setFormToppings([]);
     setNewToppingName('');
     setNewToppingPrice(0);
+    setFormRecipe([]);
+    setNewRecipeIngId('');
+    setNewRecipeQty(0);
   };
 
   const handleStartAddForm = () => {
@@ -324,6 +404,7 @@ export default function OwnerView({
       inStock: Number(formStockCount) > 0,
       stockCount: Number(formStockCount) || 50,
       toppings: formToppings.length > 0 ? formToppings : undefined,
+      recipe: formRecipe.length > 0 ? formRecipe : undefined,
     };
 
     setMenuItems(prev => [newDish, ...prev]);
@@ -343,8 +424,11 @@ export default function OwnerView({
     setFormImage(item.image);
     setFormStockCount(item.stockCount ?? 50);
     setFormToppings(item.toppings ? [...item.toppings] : []);
+    setFormRecipe(item.recipe ? [...item.recipe] : []);
     setNewToppingName('');
     setNewToppingPrice(0);
+    setNewRecipeIngId('');
+    setNewRecipeQty(0);
   };
 
   const handleEditDishSubmit = (e: React.FormEvent) => {
@@ -365,6 +449,7 @@ export default function OwnerView({
           stockCount: Number(formStockCount),
           inStock: Number(formStockCount) > 0,
           toppings: formToppings.length > 0 ? formToppings : undefined,
+          recipe: formRecipe.length > 0 ? formRecipe : undefined,
         };
       }
       return item;
@@ -612,47 +697,56 @@ export default function OwnerView({
         </div>
 
         {/* Tab Selection Row adhering to minimalist Claude design */}
-        <div className="grid grid-cols-5 bg-[#F5F5F7] p-1 rounded-[21px] border border-[#B5C7D8]/50 text-[11px] font-semibold select-none">
+        <div className="grid grid-cols-7 bg-[#F5F5F7] p-1 rounded-[21px] border border-[#B5C7D8]/50 text-[11px] font-semibold select-none overflow-x-auto whitespace-nowrap scrollbar-none">
           <button 
-            onClick={() => { setActiveTab('kpi'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); }}
-            className={`py-1.5 rounded-[21px] transition-all flex justify-center items-center ${
+            onClick={() => { setActiveTab('kpi'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); setShowAddIngForm(false); setEditingIng(null); }}
+            className={`py-1.5 px-3 rounded-[21px] transition-all flex justify-center items-center ${
               activeTab === 'kpi' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
           >
             Báo cáo
           </button>
           <button 
-            onClick={() => setActiveTab('menu')}
-            className={`py-1.5 rounded-[21px] transition-all flex justify-center items-center ${
+            onClick={() => { setActiveTab('menu'); setShowAddStaff(false); setShowAddIngForm(false); setEditingIng(null); }}
+            className={`py-1.5 px-3 rounded-[21px] transition-all flex justify-center items-center ${
               activeTab === 'menu' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
           >
             Món ăn
           </button>
           <button 
-            onClick={() => { setActiveTab('nfc'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); }}
-            className={`py-1.5 rounded-[21px] transition-all flex justify-center items-center ${
+            onClick={() => { setActiveTab('kho'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); }}
+            className={`py-1.5 px-3 rounded-[21px] transition-all flex justify-center items-center ${
+              activeTab === 'kho' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
+            }`}
+          >
+            Kho / NVL
+          </button>
+          <button 
+            onClick={() => { setActiveTab('nfc'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); setShowAddIngForm(false); setEditingIng(null); }}
+            className={`py-1.5 px-3 rounded-[21px] transition-all flex justify-center items-center ${
               activeTab === 'nfc' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
           >
             Bàn QR
           </button>
           <button 
-            onClick={() => { setActiveTab('staff'); setShowAddForm(false); setEditingItem(null); }}
-            className={`py-1.5 rounded-[21px] transition-all flex justify-center items-center ${
+            onClick={() => { setActiveTab('staff'); setShowAddForm(false); setEditingItem(null); setShowAddIngForm(false); setEditingIng(null); }}
+            className={`py-1.5 px-3 rounded-[21px] transition-all flex justify-center items-center ${
               activeTab === 'staff' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
           >
             Nhân viên
           </button>
+
           <button 
-            onClick={() => { setActiveTab('ai'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); }}
-            className={`py-1.5 rounded-[21px] transition-all flex justify-center items-center relative ${
+            onClick={() => { setActiveTab('ai'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); setShowAddIngForm(false); setEditingIng(null); }}
+            className={`py-1.5 px-3 rounded-[21px] transition-all flex justify-center items-center relative ${
               activeTab === 'ai' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
           >
             Trợ lý AI
-            <span className="absolute top-1.5 right-2.5 w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-500" />
           </button>
         </div>
 
@@ -1007,6 +1101,53 @@ export default function OwnerView({
                       ))}
                     </div>
                   </div>
+
+                  <div className="space-y-[4px]">
+                    <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Topping thêm cho món</label>
+                    {formToppings.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {formToppings.map((t, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] px-2 py-0.5 text-[10px] font-semibold">
+                            {t.name} <span className="font-mono text-[#155BD0]">+{t.price.toLocaleString()}đ</span>
+                            <button type="button" onClick={() => setFormToppings(prev => prev.filter((_, j) => j !== i))} className="text-red-500 hover:text-red-700 font-bold ml-0.5">&times;</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-1.5">
+                      <input type="text" value={newToppingName} onChange={(e) => setNewToppingName(e.target.value)} placeholder="Tên topping" className="flex-1 bg-white border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 text-[11px] focus:outline-2 focus:outline-[#155BD0]" />
+                      <input type="number" min={0} value={newToppingPrice} onChange={(e) => setNewToppingPrice(Number(e.target.value))} placeholder="Giá" className="w-20 bg-white border border-[#B5C7D8] rounded-[21px] px-2 py-1.5 text-[11px] tabular-nums focus:outline-2 focus:outline-[#155BD0]" />
+                      <button type="button" onClick={() => { if (newToppingName.trim() && newToppingPrice >= 0) { setFormToppings(prev => [...prev, { name: newToppingName.trim(), price: newToppingPrice }]); setNewToppingName(''); setNewToppingPrice(0); } }} className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white text-[10px] font-bold px-3 rounded-[21px] cursor-pointer">+ Thêm</button>
+                    </div>
+                  </div>
+
+                  {/* Recipe selection */}
+                  <div className="space-y-[4px]">
+                    <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Công thức (Trừ kho tự động)</label>
+                    {formRecipe.length > 0 && (
+                      <div className="flex flex-col gap-1.5 mb-2">
+                        {formRecipe.map((r, i) => {
+                          const ing = ingredients.find(x => x.id === r.ingredientId);
+                          return (
+                            <div key={i} className="flex justify-between items-center bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 text-[11px] font-semibold">
+                              <span>{ing?.name || 'Nguyên liệu'} <span className="text-[#808080] font-normal">({r.quantity} {ing?.unit})</span></span>
+                              <button type="button" onClick={() => setFormRecipe(prev => prev.filter((_, j) => j !== i))} className="text-red-500 hover:text-red-700 font-bold">&times;</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="flex gap-1.5">
+                      <select value={newRecipeIngId} onChange={(e) => setNewRecipeIngId(e.target.value)} className="flex-1 bg-white border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 text-[11px] font-semibold focus:outline-2 focus:outline-zinc-900">
+                        <option value="">Chọn nguyên liệu...</option>
+                        {ingredients.map(ing => (
+                          <option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>
+                        ))}
+                      </select>
+                      <input type="number" min={0} step="0.01" value={newRecipeQty} onChange={(e) => setNewRecipeQty(Number(e.target.value))} placeholder="SL" className="w-16 bg-white border border-[#B5C7D8] rounded-[21px] px-2 py-1.5 text-[11px] tabular-nums focus:outline-2 focus:outline-zinc-900" />
+                      <button type="button" onClick={() => { if (newRecipeIngId && newRecipeQty > 0) { setFormRecipe(prev => [...prev, { ingredientId: newRecipeIngId, quantity: newRecipeQty }]); setNewRecipeIngId(''); setNewRecipeQty(0); } }} className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[10px] font-bold px-3 rounded-[21px] cursor-pointer">+ Thêm</button>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-2.5 pt-2 border-t border-[#B5C7D8]/30">
@@ -1089,6 +1230,128 @@ export default function OwnerView({
             </div>
           </div>
         )}
+
+        {/* KHO / NGUYEN LIEU VIEW */}
+        {activeTab === 'kho' && (
+          <div className="space-y-[13px] animate-fadeIn">
+            <div className="flex justify-between items-center">
+              <div className="space-y-[4px]">
+                <h4 className="text-sm font-bold text-[#2D2B30]">Quản lý Kho Nguyên Liệu</h4>
+                <p className="text-[11px] text-[#707070] font-medium leading-relaxed">
+                  Thiết lập nguyên liệu để trừ kho tự động khi bếp nấu xong.
+                </p>
+              </div>
+              {!showAddIngForm && (
+                <button 
+                  onClick={handleStartAddIng}
+                  className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm px-[13px] py-1.5 rounded-[21px] flex items-center gap-1 shadow-sm font-semibold transition-all cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Thêm Nguyên Liệu
+                </button>
+              )}
+            </div>
+
+            {(showAddIngForm || editingIng) && (
+              <form onSubmit={handleIngSubmit} className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-sm animate-fadeIn space-y-[13px]">
+                <div className="space-y-[4px]">
+                  <label className="block text-xs text-[#808080] font-bold select-none">Tên nguyên liệu</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={ingFormName} 
+                    onChange={(e) => setIngFormName(e.target.value)}
+                    className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-sm "
+                    placeholder="VD: Thịt bò bắp, Gạo tẻ..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-[13px]">
+                  <div className="space-y-[4px]">
+                    <label className="block text-xs text-[#808080] font-bold select-none">Giá vốn (đ)</label>
+                    <input 
+                      type="number" 
+                      required
+                      value={ingFormCost} 
+                      onChange={(e) => setIngFormCost(Number(e.target.value))}
+                      className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-sm "
+                    />
+                  </div>
+                  <div className="space-y-[4px]">
+                    <label className="block text-xs text-[#808080] font-bold select-none">Đơn vị tính</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={ingFormUnit} 
+                      onChange={(e) => setIngFormUnit(e.target.value)}
+                      className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-sm "
+                      placeholder="VD: kg, gam, lít..."
+                    />
+                  </div>
+                  <div className="space-y-[4px]">
+                    <label className="block text-xs text-[#808080] font-bold select-none">Tồn kho hiện tại</label>
+                    <input 
+                      type="number" 
+                      required
+                      value={ingFormStock} 
+                      onChange={(e) => setIngFormStock(Number(e.target.value))}
+                      className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-sm "
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex gap-2.5 pt-2 border-t border-[#B5C7D8]/30">
+                  <button 
+                    type="submit"
+                    className="flex-1 bg-zinc-900 hover:bg-zinc-900/95 text-white font-semibold py-2.5 rounded-[21px]"
+                  >
+                    {showAddIngForm ? 'LƯU NGUYÊN LIỆU' : 'CẬP NHẬT'}
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => { setShowAddIngForm(false); setEditingIng(null); }}
+                    className="bg-transparent text-[#808080] px-4 hover:underline py-2 rounded-[21px] font-semibold"
+                  >
+                    Huỷ
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <div className="space-y-2">
+              {ingredients.map(ing => (
+                <div key={ing.id} className="bg-white p-3 rounded-[21px] border border-[#B5C7D8]/50 flex justify-between items-center shadow-sm">
+                  <div>
+                    <h4 className="text-sm font-bold text-[#2D2B30]">{ing.name}</h4>
+                    <p className="text-[11px] font-medium text-[#808080] mt-0.5">
+                      Giá: {ing.costPrice.toLocaleString()}đ / {ing.unit} &bull; Tồn: <span className={ing.stock <= 0 ? "text-red-500 font-bold" : "text-emerald-600 font-bold"}>{ing.stock} {ing.unit}</span>
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleStartEditIng(ing)}
+                      className="p-1.5 text-[#808080] hover:text-[#2D2B30] bg-[#F5F5F7] rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteIng(ing.id)}
+                      className="p-1.5 text-[#808080] hover:text-red-600 bg-[#F5F5F7] rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {ingredients.length === 0 && (
+                <div className="text-center py-6 text-[#808080] text-sm italic border-2 border-dashed border-[#B5C7D8]/50 rounded-[21px]">
+                  Chưa có nguyên liệu nào.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+
 
         {/* TABLES & QR MANAGER VIEW */}
         {activeTab === 'nfc' && (
@@ -1174,25 +1437,6 @@ export default function OwnerView({
                             >
                               Huỷ
                             </button>
-                  </div>
-
-                  <div className="space-y-[4px] border-t border-[#B5C7D8]/30 pt-3">
-                    <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Topping thêm cho món</label>
-                    {formToppings.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {formToppings.map((t, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] px-2 py-0.5 text-[10px] font-semibold">
-                            {t.name} <span className="font-mono text-[#155BD0]">+{t.price.toLocaleString()}đ</span>
-                            <button type="button" onClick={() => setFormToppings(prev => prev.filter((_, j) => j !== i))} className="text-red-500 hover:text-red-700 font-bold ml-0.5">&times;</button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex gap-1.5">
-                      <input type="text" value={newToppingName} onChange={(e) => setNewToppingName(e.target.value)} placeholder="Tên topping" className="flex-1 bg-white border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 text-[11px] focus:outline-2 focus:outline-[#155BD0]" />
-                      <input type="number" min={0} value={newToppingPrice} onChange={(e) => setNewToppingPrice(Number(e.target.value))} placeholder="Giá" className="w-20 bg-white border border-[#B5C7D8] rounded-[21px] px-2 py-1.5 text-[11px] tabular-nums focus:outline-2 focus:outline-[#155BD0]" />
-                      <button type="button" onClick={() => { if (newToppingName.trim() && newToppingPrice >= 0) { setFormToppings(prev => [...prev, { name: newToppingName.trim(), price: newToppingPrice }]); setNewToppingName(''); setNewToppingPrice(0); } }} className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white text-[10px] font-bold px-3 rounded-[21px] cursor-pointer">+ Thêm</button>
-                    </div>
                   </div>
                 </div>
                       ) : (

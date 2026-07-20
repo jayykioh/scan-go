@@ -15,6 +15,7 @@ const StaffPage = lazy(() => import('./pages/dashboard/StaffPage'));
 const SettingsPage = lazy(() => import('./pages/dashboard/SettingsPage'));
 const MenuPage = lazy(() => import('./pages/dashboard/MenuPage'));
 const TablesPage = lazy(() => import('./pages/dashboard/TablesPage'));
+const SubscriptionPage = lazy(() => import('./pages/dashboard/SubscriptionPage'));
 
 const SimulatorIndex = lazy(() => import('./pages/SimulatorIndex'));
 const SimulatorRole = lazy(() => import('./pages/SimulatorRole'));
@@ -47,7 +48,8 @@ const router = createBrowserRouter([
           { path: 'menu', element: <MenuPage /> },
           { path: 'tables', element: <TablesPage /> },
           { path: 'staff', element: <StaffPage /> },
-          { path: 'settings', element: <SettingsPage /> }
+          { path: 'settings', element: <SettingsPage /> },
+          { path: 'subscription', element: <SubscriptionPage /> }
         ]
       },
       {

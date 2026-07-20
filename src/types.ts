@@ -19,11 +19,24 @@ export interface IndustryTemplate {
   theme_tokens: ThemeTokens;
 }
 
+export interface Ingredient {
+  id: string;
+  name: string;
+  costPrice: number;
+  unit: string; // e.g. kg, ml, cái, lít
+  stock: number;
+}
+
+export interface RecipeItem {
+  ingredientId: string;
+  quantity: number;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
   price: number;
-  costPrice: number; // For AI profitability
+  costPrice: number; // For AI profitability (can be auto-calculated if recipe exists)
   category: string;
   type?: string; // Additional type classification adjusted by owner (e.g. Đồ ăn, Đồ uống, Tráng miệng, Ăn vặt)
   image: string;
@@ -31,6 +44,7 @@ export interface MenuItem {
   inStock: boolean;
   stockCount: number;
   toppings?: { name: string; price: number }[];
+  recipe?: RecipeItem[];
 }
 
 export interface OrderItem {

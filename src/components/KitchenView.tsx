@@ -225,31 +225,7 @@ export default function KitchenView({
           </div>
         )}
 
-          {/* Stock toggle section */}
-          <div className="bg-white border border-zinc-200 p-4 rounded-2xl text-zinc-900 space-y-3">
-            <div className="text-xs font-bold text-zinc-900 flex items-center gap-2 select-none">
-              <X className="w-4 h-4 text-red-500" />
-              Khóa món hết hàng
-            </div>
-            <div className="space-y-2">
-              {menuItems.map(item => (
-                <div key={item.id} className="flex justify-between items-center bg-zinc-50 px-3 py-2 rounded-xl border border-zinc-100 hover:bg-zinc-100 transition-colors">
-                  <span className="text-xs text-zinc-700 font-medium truncate max-w-[160px]">{item.name}</span>
-                  <button 
-                    type="button"
-                    onClick={() => handleKitchenDisableStock(item.id)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors min-h-[28px] ${
-                      item.inStock 
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200' 
-                        : 'bg-red-50 text-red-600 border border-red-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200'
-                    }`}
-                  >
-                    {item.inStock ? 'Còn hàng' : 'Hết hàng'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+
       </div>
     </div>
   );

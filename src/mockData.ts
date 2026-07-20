@@ -1,4 +1,12 @@
-import { MenuItem, IndustryTemplate, LoyaltyMember, StaffAccount } from './types';
+import { MenuItem, IndustryTemplate, LoyaltyMember, StaffAccount, Ingredient } from './types';
+
+export const MOCK_INGREDIENTS: Ingredient[] = [
+  { id: 'ing1', name: 'Thịt bò (loại 1)', costPrice: 250000, unit: 'kg', stock: 5 },
+  { id: 'ing2', name: 'Gà ta đồi', costPrice: 120000, unit: 'kg', stock: 10 },
+  { id: 'ing3', name: 'Bún tươi', costPrice: 15000, unit: 'kg', stock: 20 },
+  { id: 'ing4', name: 'Cà phê nguyên chất', costPrice: 180000, unit: 'kg', stock: 3 },
+  { id: 'ing5', name: 'Trân châu đường đen', costPrice: 40000, unit: 'kg', stock: 15 },
+];
 
 export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
   quan_an: {
@@ -128,6 +136,10 @@ export const MOCK_MENU_ITEMS: Record<string, MenuItem[]> = {
         { name: 'Thêm quẩy (3 chiếc)', price: 10000 },
         { name: 'Thêm trứng chần', price: 5000 },
       ],
+      recipe: [
+        { ingredientId: 'ing1', quantity: 0.1 }, // 100g thịt bò
+        { ingredientId: 'ing3', quantity: 0.2 }, // 200g bún
+      ],
     },
     {
       id: 'qa2',
@@ -139,6 +151,10 @@ export const MOCK_MENU_ITEMS: Record<string, MenuItem[]> = {
       description: 'Lũ gà ta chạy đồi dai ngon ngọt thịt, ninh cùng thảo quả đem lại vị thanh tao dồi dào sức khỏe.',
       inStock: true,
       stockCount: 30,
+      recipe: [
+        { ingredientId: 'ing2', quantity: 0.15 }, // 150g gà
+        { ingredientId: 'ing3', quantity: 0.2 }, // 200g bún
+      ],
     },
     {
       id: 'qa3',
@@ -233,6 +249,9 @@ export const MOCK_MENU_ITEMS: Record<string, MenuItem[]> = {
       description: 'Trà đen đậm đà phối sáp ong, trân châu phủ mật ong dẻo dai sần sật.',
       inStock: true,
       stockCount: 22,
+      recipe: [
+        { ingredientId: 'ing5', quantity: 0.05 }, // 50g trân châu
+      ],
     },
     {
       id: 'qc5',

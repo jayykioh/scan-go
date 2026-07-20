@@ -262,6 +262,42 @@ export default function CustomerView({
                 </div>
               )}
 
+              {tenantConfig.loyaltyEnabled && (
+                <div className="rounded-[24px] bg-white p-4 shadow-sm border border-zinc-100 flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                      <Gift className="h-5 w-5 text-emerald-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-black text-zinc-950">Khách hàng thân thiết</p>
+                      <p className="text-xs text-zinc-500 truncate">
+                        {loyaltyProfile ? `${loyaltyProfile.points} điểm tích lũy` : 'Đăng nhập để nhận ưu đãi'}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => setShowLoyalty(true)}
+                      className="shrink-0 rounded-full bg-zinc-950 text-white px-3 py-1.5 text-[11px] font-bold"
+                    >
+                      {loyaltyProfile ? 'Đổi quà' : 'Đăng nhập'}
+                    </button>
+                  </div>
+                  {loyaltyProfile && (
+                    <div className="pt-2 border-t border-zinc-100">
+                      <div className="flex justify-between text-[11px] font-bold text-zinc-500 mb-1.5">
+                        <span>Hạng Bạc</span>
+                        <span>{loyaltyProfile.points}/30 điểm để nhận 20k</span>
+                      </div>
+                      <div className="w-full bg-zinc-100 rounded-full h-1.5 overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 rounded-full transition-all"
+                          style={{ width: `${Math.min(100, (loyaltyProfile.points / 30) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
                 {availableTypes.map(type => (
                   <button

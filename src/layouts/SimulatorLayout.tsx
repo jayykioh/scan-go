@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, useOutletContext } from 'react-router-dom';
 import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount } from '../types';
-import { MOCK_LOYALTY_MEMBERS, MOCK_MENU_ITEMS, INDUSTRY_TEMPLATES, MOCK_STAFF_ACCOUNTS } from '../mockData';
+import { MOCK_LOYALTY_MEMBERS, MOCK_MENU_ITEMS, INDUSTRY_TEMPLATES, MOCK_STAFF_ACCOUNTS, MOCK_INGREDIENTS } from '../mockData';
 import { usePersistentState } from '../hooks/usePersistentState';
+import { Ingredient } from '../types';
 
 export type SimulatorContextType = {
   tenantConfig: TenantConfig;
@@ -13,6 +14,8 @@ export type SimulatorContextType = {
   setMenuItems: (val: any) => void;
   orders: Order[];
   setOrders: (val: any) => void;
+  ingredients: Ingredient[];
+  setIngredients: (val: any) => void;
   staffAccounts: StaffAccount[];
   setStaffAccounts: (val: any) => void;
   currentStaff: StaffAccount | null;
@@ -78,6 +81,7 @@ export default function SimulatorLayout() {
 
   // Active Menu items matching the selected industry engine template
   const [menuItems, setMenuItems] = usePersistentState<MenuItem[]>('scango:menu:v1', MOCK_MENU_ITEMS.quan_an);
+  const [ingredients, setIngredients] = usePersistentState<Ingredient[]>('scango:ingredients:v1', MOCK_INGREDIENTS);
 
   // Active orders synced across all actors
   const [orders, setOrders] = usePersistentState<Order[]>('scango:orders:v1', [
@@ -258,6 +262,7 @@ export default function SimulatorLayout() {
         paymentMode: 'Pay-Later',
       }
     ]);
+    setIngredients(MOCK_INGREDIENTS);
     setLoyaltyMembers(MOCK_LOYALTY_MEMBERS);
     setStaffAccounts(MOCK_STAFF_ACCOUNTS);
     setCurrentStaff(null);
@@ -274,6 +279,7 @@ export default function SimulatorLayout() {
     tables, setTables,
     menuItems, setMenuItems,
     orders, setOrders,
+    ingredients, setIngredients,
     staffAccounts, setStaffAccounts,
     currentStaff, setCurrentStaff,
     loyaltyMembers, setLoyaltyMembers,

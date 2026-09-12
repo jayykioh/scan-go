@@ -1,5 +1,7 @@
 # ScanGo Lite — Context
 
+> Historical prototype context. `docs/SRS.md` and `docs/TECH_STACK.md` supersede conflicts.
+
 ## Purpose
 Contactless QR ordering system for Vietnamese F&B. Customers scan QR at table → order via phone → kitchen receives real-time → staff serves → cashier closes. No POS hardware needed.
 

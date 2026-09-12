@@ -1,5 +1,7 @@
 # ScanGo Lite — Architecture
 
+> Historical prototype architecture. `docs/SRS.md` and `docs/TECH_STACK.md` are authoritative.
+
 ## Stack
 - React 19 + TypeScript + Vite
 - Tailwind CSS v4

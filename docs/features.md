@@ -1,5 +1,7 @@
 # ScanGo Lite — Features
 
+> Historical frontend inventory. `docs/SRS.md` defines approved production behavior and replaces simulations.
+
 ## Order Lifecycle
 `pending → cooking → ready → served → paid`
 

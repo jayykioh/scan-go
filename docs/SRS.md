@@ -108,7 +108,7 @@ The repository contains a frontend prototype with local browser persistence. The
 ---
 
 ## 3. System Architecture Overview
-Use independent Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering, Fulfilment, Payment, Loyalty, Reporting, AI, Subscription, and ADMIN modules. Each module owns its data and public contract. Refer to `TECH_STACK.md §2`; this SRS wins on conflict.
+Use independent Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering, Fulfilment, Payment, Promotion, Loyalty, Reporting, AI, Subscription, and ADMIN modules. Each module owns its data and public contract. Refer to `TECH_STACK.md §2`; this SRS wins on conflict.
 
 ---
 
@@ -155,6 +155,7 @@ Use independent Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering
 ### 4.7 Loyalty, reports, AI, and subscription
 - **REQ-LOY-001 (P2) SHOULD** support configurable point earning and verified-phone redemption. **Acceptance:** Given the default one point per 10,000 VND, when a paid order posts, then points update once; redemption requires valid phone verification.
 - **REQ-RPT-001 (P1) SHOULD** report paid revenue, Cost, gross profit, popular items, and table stats by day, week, and month. **Acceptance:** Given paid orders and complete recipes, when Owner selects a period, then each result reconciles to underlying records.
+- **REQ-RPT-002 (P1) SHOULD** maintain rebuildable daily stats keyed by tenant-local `yyyymmdd`. **Acceptance:** Given order, payment, cancellation, reversal, or refund events, when their transactions commit, then daily counters update exactly once and reconcile to source records.
 - **REQ-AI-001 (P1) SHOULD** provide read-only warnings for loss, low profit, and low ingredient stock. **Acceptance:** Given sufficient data, when Owner asks, then AI cites inputs and formulas; missing data produces a warning, not an invented value.
 - **REQ-SUB-001 (P2) SHOULD** enforce Free, Lite, and Pro entitlements through configuration. **Acceptance:** Given a tenant plan, when Owner requests a restricted feature, then server enforcement matches configured plan entitlements.
 - **REQ-PAY-002 (P2) SHOULD** support automatic transfer confirmation through a replaceable payment adapter. **Acceptance:** Given a valid signed provider event, when the adapter verifies it, then the matching payment posts exactly once.
@@ -188,11 +189,18 @@ Use independent Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering
 | `tenants/{tenantId}/menuItems/{itemId}` | Menu, modifiers, price, cost price, and stock |
 | `tenants/{tenantId}/ingredients/{ingredientId}` | Ingredient quantity and unit Cost |
 | `tenants/{tenantId}/recipes/{recipeId}` | Ingredient quantities for a menu item |
+| `tenants/{tenantId}/stockMovements/{movementId}` | Append-only Inventory effects |
 | `tenants/{tenantId}/tables/{tableId}` | Table identity and revocable access token state |
-| `publicMenus/{token}` | Minimal public projection for one active table link |
+| `publicTableLinks/{token}` | Minimal public projection for one active table link |
+| `tenants/{tenantId}/publicMenuItems/{itemId}` | Public-safe active menu projection |
+| `publicOrderTracking/{trackingToken}` | Minimal Customer tracking projection for one Order |
 | `tenants/{tenantId}/orders/{orderId}` | Immutable price snapshot, lifecycle, and cancellation state |
+| `tenants/{tenantId}/idempotency/{key}` | Retry-safe command result |
 | `tenants/{tenantId}/payments/{paymentId}` | Settlement, reversal, refund, and idempotency data |
-| `tenants/{tenantId}/loyalty/{memberId}` | Verified phone reference, points, visits, and totals |
+| `tenants/{tenantId}/loyaltyMembers/{memberId}` | Verified phone, points, visits, and totals |
+| `tenants/{tenantId}/loyaltyTransactions/{transactionId}` | Append-only Loyalty effects |
+| `tenants/{tenantId}/promotions/{promotionId}` | Promotion eligibility and benefit rules |
+| `tenants/{tenantId}/dailyStats/{yyyymmdd}` | Rebuildable daily totals with item and table subcollections |
 | `tenants/{tenantId}/audit/{eventId}` | Append-only actor, action, target, and server timestamp |
 | `platform/config` | ADMIN runtime defaults and feature flags |
 
@@ -299,6 +307,7 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 | REQ-SOLO-001 | PARTIAL | `src/components/SoloOperatorView.tsx`; shared module state is TODO. |
 | REQ-LOY-001 | PARTIAL | Loyalty UI exists; real phone verification and idempotency are TODO. |
 | REQ-RPT-001 | PARTIAL | Owner and Management metrics exist; durable paid-order reporting is TODO. |
+| REQ-RPT-002 | TODO | Daily materialized stats and rebuild tooling do not exist. |
 | REQ-AI-001 | PARTIAL | Rule-based UI exists; secure Gemini adapter and grounding are TODO. |
 | REQ-SUB-001 | PARTIAL | Subscription UI exists; server entitlements are TODO. |
 | REQ-PAY-002 | TODO | Automatic payment adapter is M3 scope. |
@@ -321,4 +330,6 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 ## Appendices
 - ADR index: `docs/adr/`
 - Glossary: `docs/glossary.md`
+- Data model: `docs/data-model.md`
+- Module contracts: `docs/module/README.md`
 - Research: `research/firestore-foundation.md`

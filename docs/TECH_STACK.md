@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | TECH-SCANGO-001 |
-| Version | 1.0 |
+| Version | 1.1 |
 | Date | 2026-09-12 |
 | Companion to | `SRS.md` §3 |
 | Status | Approved foundation |
@@ -69,9 +69,11 @@ Only `docs/RULES_FIREBASE.md` is active for the database-specific rules.
 - Use append-only audit events and compensating payment records.
 
 ### 5.2 Reporting
-- Build deterministic tenant-scoped aggregates from paid orders.
-- Reconcile report totals against immutable orders and payments.
-- Do not add a separate reporting store before measured need.
+- Store rebuildable daily aggregates under `tenants/{tenantId}/dailyStats/{yyyymmdd}`.
+- Increment created and cancelled order counters from their source events.
+- Update revenue, Cost, and gross profit only from payment, reversal, and refund events.
+- Keep item and table aggregates in bounded subcollections below each day.
+- Reconcile and rebuild every aggregate from immutable orders and payments.
 
 ### 5.3 Cache and rate limits
 - Use no Redis in v1.
@@ -112,3 +114,4 @@ Only `docs/RULES_FIREBASE.md` is active for the database-specific rules.
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-09-12 | Initial approved foundation from frontend evidence and Founder decisions. |
+| 1.1 | 2026-09-12 | Added detailed module boundaries, public projections, and daily stats. |

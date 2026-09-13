@@ -34,7 +34,9 @@
 - Deny access by default.
 - Scope tenant reads through `tenants/{tenantId}/members/{uid}`.
 - Treat `users/{uid}.activeTenantId` as navigation state, not authorization proof.
-- Permit public menu reads only through the minimal active table-token projection.
+- Permit table-link reads only at `publicTableLinks/{token}`.
+- Permit Customer menu reads only from tenant `publicMenuItems` projections.
+- Permit Customer tracking reads only at `publicOrderTracking/{trackingToken}`.
 - Never add unconditional business-data reads or writes.
 - UI gates and server gates must match. Server gates remain authoritative.
 

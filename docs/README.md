@@ -19,10 +19,13 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[RULES.md](RULES.md)** | Common delivery rules | All changes |
 | **[RULES_FIREBASE.md](RULES_FIREBASE.md)** | Active Firestore rules | Data and backend changes |
 | **[glossary.md](glossary.md)** | Approved product terms | All product communication |
+| **[data-model.md](data-model.md)** | Approved Firestore collections and invariants | Data design and migrations |
+| **[module/README.md](module/README.md)** | Independent module contracts | Vertical implementation |
 | **[ADR 0001](adr/0001-use-firestore-and-cloud-functions.md)** | Firestore and Cloud Functions | Database changes |
 | **[ADR 0002](adr/0002-use-independent-product-modules.md)** | Independent modules | Module boundary changes |
 | **[ADR 0003](adr/0003-use-layered-configuration.md)** | Layered configuration | Configuration changes |
 | **[ADR 0004](adr/0004-protect-payment-and-order-history.md)** | Payment and order history | Financial record changes |
+| **[ADR 0005](adr/0005-use-rebuildable-daily-stats.md)** | Rebuildable daily stats | Reporting storage changes |
 | **[USP.md](USP.md)** | Unique Selling Proposition | Writing marketing copy, sales pitches, positioning |
 | **[SWOT.md](SWOT.md)** | Strategic analysis | Quarterly reviews, investor updates, risk assessment |
 | **[PESTEL.md](PESTEL.md)** | Macro-environment analysis | Quarterly strategy reviews, investor discussions, regulatory tracking |

@@ -8,7 +8,9 @@
 The Founder requires each function area to remain independently implementable and testable.
 
 ## Decision
-Separate Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering, Fulfilment, Payment, Loyalty, Reporting, AI, Subscription, and ADMIN modules. Each module owns its data mutations and exposes explicit contracts. Views may compose modules but cannot bypass their rules.
+Separate Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering, Fulfilment, Payment, Promotion, Loyalty, Reporting, AI, Subscription, and ADMIN modules. Each module owns its data mutations and exposes explicit contracts. Views may compose modules but cannot bypass their rules.
+
+Document each contract under `docs/module/{module}.md`. Future web code uses `src/modules/{module}`. Future function code uses `functions/src/modules/{module}`.
 
 ## Consequences
 - Teams can implement vertical slices without sharing internal state.

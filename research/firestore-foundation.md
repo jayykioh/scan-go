@@ -5,6 +5,7 @@ Version: 1.0
 
 ## Findings
 - Firestore Security Rules can use authenticated user data and document lookups to authorize access.
+- Firestore rules authorize complete document reads and are not field-redaction filters.
 - Firestore listeners deliver an initial snapshot and later document changes.
 - Firestore can retry transaction functions after concurrent edits.
 - Transaction functions fail offline and must not directly change application state.
@@ -14,6 +15,7 @@ Version: 1.0
 
 ## ScanGo decisions supported by these findings
 - Store tenant memberships in Firestore and enforce them through Security Rules and Cloud Functions.
+- Keep private menu data separate from public-safe menu projections.
 - Treat `activeTenantId` as selection state, not proof of access.
 - Use listeners for order status and bounded operational queues.
 - Make order, inventory, Loyalty, and payment transactions idempotent.

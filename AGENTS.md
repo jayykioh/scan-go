@@ -14,10 +14,13 @@
 - [Common rules](docs/RULES.md)
 - [Firebase rules](docs/RULES_FIREBASE.md)
 - [Glossary](docs/glossary.md)
+- [Firestore data model](docs/data-model.md)
+- [Module index](docs/module/README.md)
 - [ADR 0001: Firestore and Cloud Functions](docs/adr/0001-use-firestore-and-cloud-functions.md)
 - [ADR 0002: Independent modules](docs/adr/0002-use-independent-product-modules.md)
 - [ADR 0003: Layered configuration](docs/adr/0003-use-layered-configuration.md)
 - [ADR 0004: Payment and order history](docs/adr/0004-protect-payment-and-order-history.md)
+- [ADR 0005: Rebuildable daily stats](docs/adr/0005-use-rebuildable-daily-stats.md)
 - [Firestore research](research/firestore-foundation.md)
 
 ## Agent constraints

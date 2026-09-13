@@ -9,6 +9,7 @@ This glossary follows `docs/context.md` and the approved SRS.
 | Cashier | A Staff role that settles or cancels orders and handles Loyalty operations. |
 | Cost | Deterministic ingredient cost calculated from recipe quantities and ingredient unit values. |
 | Customer | A person who opens a table menu, submits an order, and tracks its status. |
+| Daily stats | Rebuildable tenant totals stored by local `yyyymmdd` for fast reports. |
 | Gross profit | Paid revenue minus Cost for the selected period. |
 | Kitchen | A Staff role that processes pending and cooking orders and controls item availability. |
 | Loyalty | Verified-phone points, visits, and redemption behavior configured by Owner. |
@@ -17,6 +18,8 @@ This glossary follows `docs/context.md` and the approved SRS.
 | Pay-First | Payment confirmation is required before Kitchen receives the order. |
 | Pay-Later | Kitchen receives the order before Cashier settles payment. |
 | Promotion | A configured rule that changes an eligible cart total deterministically. |
+| Public menu item | A public-safe active menu projection without Cost, recipe, or private metadata. |
+| Public table link | The minimal public token projection that resolves one active tenant table. |
 | Reversal | A linked compensating record that corrects a paid transaction without deleting it. |
 | Solo | A combined Owner, Cashier, and Kitchen workflow. |
 | Staff | A tenant user with assigned Cashier, Kitchen, or Waiter roles and reduced permissions. |
@@ -24,6 +27,7 @@ This glossary follows `docs/context.md` and the approved SRS.
 | Table Access | The module that issues, validates, revokes, and regenerates table links. |
 | Table link | A revocable public link used by QR and NFC for one tenant table. |
 | Tenant | One isolated shop workspace and its data. |
+| Tracking token | An opaque Order-specific token that lets Customer read only one tracking projection. |
 | VietQR | The QR payment payload used for bank-transfer instructions. |
 | Waiter | A Staff role that views ready orders and marks them served. |
 | Fulfilment | The Kitchen and Waiter work that moves an order toward service. |

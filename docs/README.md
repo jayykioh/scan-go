@@ -21,6 +21,17 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[glossary.md](glossary.md)** | Approved product terms | All product communication |
 | **[data-model.md](data-model.md)** | Approved Firestore collections and invariants | Data design and migrations |
 | **[module/README.md](module/README.md)** | Independent module contracts | Vertical implementation |
+| **[frontend-ui-integration.md](frontend-ui-integration.md)** | Existing UI and backend integration map | Frontend and backend delivery |
+| **[plan/p0-five-person-assignment.md](plan/p0-five-person-assignment.md)** | P0 master schedule | Four parallel UI and backend tracks |
+| **[plan/week-1-sprint.md](plan/week-1-sprint.md)** | Week 1 sprint plan | Firebase foundation and first vertical slices |
+| **[plan/week-1-sprint.md](plan/week-1-sprint.md)** | Week 1 sprint tasks | First delivery week |
+| **[plan/p0-developer-1.md](plan/p0-developer-1.md)** | Developer 1 P0 plan | Config, Firebase Auth, Tenant |
+| **[plan/p0-developer-2.md](plan/p0-developer-2.md)** | Developer 2 P0 plan | Catalog, Table Access, ADMIN |
+| **[plan/p0-developer-3.md](plan/p0-developer-3.md)** | Developer 3 P0 plan | Ordering, Fulfilment, i18n |
+| **[plan/p0-developer-4.md](plan/p0-developer-4.md)** | Developer 4 P0 plan | Inventory, Payment, durable work |
+| **[plan/initial-p0-ticket-plan.md](plan/initial-p0-ticket-plan.md)** | First ten assignable P0 tickets | Team delivery |
+| **[plan/p0-five-person-assignment.md](plan/p0-five-person-assignment.md)** | Balanced five-person P0 assignment | Parallel team delivery |
+| **[traceability.md](traceability.md)** | P0 requirement-to-ticket mapping | Scope verification |
 | **[ADR 0001](adr/0001-use-firestore-and-cloud-functions.md)** | Firestore and Cloud Functions | Database changes |
 | **[ADR 0002](adr/0002-use-independent-product-modules.md)** | Independent modules | Module boundary changes |
 | **[ADR 0003](adr/0003-use-layered-configuration.md)** | Layered configuration | Configuration changes |

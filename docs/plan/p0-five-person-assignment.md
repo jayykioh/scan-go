@@ -11,6 +11,8 @@ Founder is final acceptance reviewer only. Founder has no implementation task or
 
 All tracks start with frozen contracts, Emulator fixtures, and test doubles.
 
+The shared frame is `docs/plan/p0-parallel-skeleton.md`. It lists the directory tree, the owner of each file, the contract freeze zone, and the four atomic gates.
+
 ## Integration sequence
 1. Validate Config/Auth/Tenant, Catalog, and Table Access contract compatibility.
 2. Compose one cooking transaction from Developer 3 Order mutation and Developer 4 Inventory plan.

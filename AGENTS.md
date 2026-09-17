@@ -19,7 +19,7 @@
 - [Frontend UI integration map](docs/frontend-ui-integration.md)
 - [Initial P0 ticket plan](docs/plan/initial-p0-ticket-plan.md)
 - [Week 1 sprint plan](docs/plan/week-1-sprint.md)
-- [Week 1 sprint plan](docs/plan/week-1-sprint.md)
+- [P0 parallel skeleton](docs/plan/p0-parallel-skeleton.md)
 - [Four-developer P0 UI and backend assignment](docs/plan/p0-five-person-assignment.md)
 - [Developer 1 P0 plan: Config, Auth, Tenant](docs/plan/p0-developer-1.md)
 - [Developer 2 P0 plan: Catalog, Table Access, ADMIN](docs/plan/p0-developer-2.md)

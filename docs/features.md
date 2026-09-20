@@ -1,73 +1,112 @@
-# ScanGo Lite — Features
+# ScanGo Lite — Feature Status
 
-## Order Lifecycle
-`pending → cooking → ready → served → paid`
+> Cập nhật: 2026-09-15. `Implemented` bên dưới nghĩa là đã chạy trong frontend mockup; không đồng nghĩa đã sẵn sàng production.
 
-## Actor Views
+## Tổng quan
 
-### Owner (`src/components/OwnerView.tsx`)
-| Tab | Feature |
-|-----|---------|
-| Báo cáo | Revenue, net profit, cost ratio, order/table stats |
-| Món ăn | Add/edit/delete menu items, categories, pricing |
-| Bàn QR | Add/edit/delete tables, simulate NFC tag scan |
-| Nhân viên | Add/list/toggle/delete staff accounts with role checkboxes (Bếp/Phục vụ/Thu ngân) |
-| Trợ lý AI | Chat with Gemini via `@google/genai`, context-aware business Q&A |
+| Feature | UI | Logic mock | Backend/production |
+|---|---:|---:|---:|
+| Landing, giới thiệu | Implemented | N/A | N/A |
+| Login/Register | Implemented | Navigate-only | Not implemented |
+| Dashboard Owner | Implemented | Partial | Not implemented |
+| Menu management | Implemented | localStorage CRUD | Not implemented |
+| Table management | Implemented | localStorage CRUD | Not implemented |
+| QR public menu | Implemented | Route theo table ID | Security/session chưa có |
+| NFC | Implemented dạng mô phỏng | Alert/flag | Not implemented |
+| Customer ordering | Implemented | localStorage order | Not implemented |
+| Kitchen Display | Implemented | Local order state | Not implemented |
+| Waiter flow | Implemented | Local order state | Not implemented |
+| Cashier/payment | Implemented | Mark paid local | Not implemented |
+| Staff roles/PIN | Implemented | Partial | Auth/RBAC chưa có |
+| Inventory/recipe/COGS | Implemented | Partial, chưa thống nhất | Not implemented |
+| Loyalty | Implemented | Partial | Ledger/OTP chưa có |
+| AI assistant | Implemented | Rule-based responses | Gemini/LLM chưa có |
+| Subscription | Implemented | Đổi flag local | Billing/enforcement chưa có |
+| Realtime | UI mô phỏng | Cùng browser | Multi-device chưa có |
 
-### Cashier (`src/components/CashierView.tsx`)
-- PIN login screen
-- List unpaid orders grouped by table
-- Settle order → accumulates loyalty points (1pt/10k VND)
-- Cancel order
-- View loyalty member list with points/visits
+## Order lifecycle hiện tại
 
-### Kitchen (`src/components/KitchenView.tsx`)
-- PIN login screen
-- Cooking queue sorted by time (oldest first)
-- Accept order (`pending → cooking`)
-- Mark as ready (`cooking → ready`) with call-waiter notification
-- Toggle item stock (inStock)
+```text
+pending → cooking → ready → served → paid
+```
 
-### Staff (`src/components/StaffView.tsx`)
-- PIN login matching `StaffAccount.pin`
-- Adaptive tab bar — only shows tabs matching staff's assigned roles
-- **Bếp tab** — embedded KitchenView (skip login)
-- **Phục vụ tab** — list ready orders grouped, "Đã phục vụ" button → `served` status
-- **Thu ngân tab** — embedded CashierView (skip login)
-- Single role → no tab bar, just the content
-- Logout button in header
+- Customer tạo order `pending`.
+- Kitchen chuyển `pending → cooking → ready`.
+- Waiter chuyển `ready → served`.
+- Cashier chuyển order sang `paid` hoặc xóa order.
 
-### Solo (`src/components/SoloOperatorView.tsx`)
-- Merges owner+cashier+kitchen in one screen
-- Accept/cook/ready orders, settle/cancel, stock toggle
+Đây là state machine phía client. Chưa có server validation, transaction, authorization hoặc audit log.
 
-### Customer (`src/components/CustomerView.tsx`)
-- Select table (simulated)
-- Browse menu by category, add modifiers, add to cart
-- Cart review, apply promo code, place order
-- Track order via 4-step progress: Nhận đơn → Đang nấu → Bưng lên → Đã phục vụ
-- Loyalty registration by phone number
+## Actor views đã có
 
-## Key Flows
+### Owner
 
-### Order Flow (Pay-Later)
-1. Customer orders via phone → `pending`
-2. Kitchen accepts → `cooking`
-3. Kitchen marks ready → `ready`
-4. Waiter serves → `served`
-5. Cashier settles → `paid`
+- KPI doanh thu, chi phí và lợi nhuận dựa trên dữ liệu local.
+- CRUD menu, topping, recipe, nguyên liệu, bàn và nhân sự.
+- Cấu hình promotion, payment mode và pricing tier.
+- Quản lý stock thủ công.
+- Quản lý QR/NFC dạng mô phỏng.
+- AI assistant rule-based dựng sẵn; chưa gọi Gemini.
 
-### Staff Account Flow
-1. Owner creates staff in "Nhân viên" tab (name, PIN, roles)
-2. Staff logs in via StaffView with PIN
-3. View adapts to roles automatically
-4. Owner can toggle active/inactive or delete
+### Customer
 
-## Type Definitions (`src/types.ts`)
-- `OrderStatus` — `'pending' | 'cooking' | 'ready' | 'served' | 'paid'`
-- `Order` — id, tableId, items, total, status, timestamp, customerPhone, paymentMode
-- `MenuItem` — id, name, price, costPrice, category, description, inStock
-- `StaffAccount` — id, name, pin, roles, isActive
-- `TableConfig` — id, name
-- `LoyaltyMember` — phone, name, points, totalSpent, visits
-- `TenantConfig` — shopName, industry, pricingTier, paymentMode, loyalty*, discount*
+- Chọn bàn hoặc mở thẳng `/menu/:tableId`.
+- Lọc/tìm món, chọn modifier/topping, quản lý cart.
+- Áp dụng promotion theo điều kiện local.
+- Tạo loyalty profile, nhập OTP mock và đổi điểm.
+- Gửi order và theo dõi tiến độ.
+
+### Kitchen / Waiter / Cashier / Staff
+
+- Kitchen queue và thao tác trạng thái.
+- Waiter xem order ready và đánh dấu served.
+- Cashier đóng/hủy order và cộng loyalty point.
+- Staff login bằng PIN local và chỉ thấy tab theo role được gán.
+
+### Solo Operator
+
+- Gộp nhận order, chế biến, thu tiền, kho, COGS và subscription.
+- Có logic trừ/hoàn kho mock riêng trong component.
+- State kho này chưa dùng chung model `Ingredient` của ứng dụng.
+
+## Logic chưa hoàn chỉnh
+
+### Pay-First
+
+Pay-First hiện chỉ thay đổi nội dung hiển thị. Order vẫn vào `pending` và Kitchen vẫn nhận ngay, chưa có `payment_status` hoặc bước xác nhận thanh toán.
+
+### Promotion
+
+Các điều kiện amount/quantity đã có. Chế độ `manual` và việc xác minh code khách nhập chưa được thực thi đầy đủ.
+
+### Loyalty/OTP
+
+- OTP chấp nhận bất kỳ chuỗi đủ bốn số.
+- Điểm được cộng trực tiếp ở client.
+- Tỷ lệ điểm ở một số flow đang hard-code.
+- Chưa có transaction ledger, idempotency, rate limit hoặc fraud detection.
+
+### NFC/QR
+
+- `tableSecret` được sinh local nhưng không có trong link và không được server xác minh.
+- Không có Web NFC API, NDEF read/write, `openTableSession` hoặc `session_token`.
+- Print QR mới là placeholder.
+
+### AI
+
+Package `@google/genai` chưa được sử dụng. Assistant hiện trả lời bằng rule/keyword và `setTimeout`.
+
+## Chưa triển khai
+
+- Firebase Auth và protected routes.
+- Firestore schema, realtime listener, indexes và Security Rules.
+- Cloud Functions/API.
+- Multi-tenancy và tenant isolation.
+- Server-side pricing và validation.
+- Payment gateway/webhook/refund.
+- Inventory transaction và Auto-86 production.
+- OTP provider, encryption/hashing số điện thoại.
+- Feature entitlement/billing production.
+- Service worker/offline strategy.
+- Automated unit, integration và E2E tests.
+- CI, monitoring và analytics production.

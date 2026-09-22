@@ -1,6 +1,17 @@
 # ScanGo Lite — Architecture
 
+<<<<<<< HEAD
 > Cập nhật: 2026-09-15. Trạng thái triển khai chi tiết xem tại [`../STATUS.md`](../STATUS.md).
+=======
+> Historical prototype architecture. `docs/SRS.md` and `docs/TECH_STACK.md` are authoritative.
+
+## Stack
+- React 19 + TypeScript + Vite
+- Tailwind CSS v4
+- `motion` (framer-motion) for animations
+- `lucide-react` for icons
+- `@google/genai` for AI assistant (OwnerView)
+>>>>>>> a79a18245a4502697374756514c2f5171b49e107
 
 ## Kiến trúc hiện tại
 

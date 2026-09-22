@@ -1,6 +1,13 @@
 # ScanGo Lite — Product Context
 
+<<<<<<< HEAD
 > Cập nhật: 2026-09-15. Trạng thái kỹ thuật hiện tại xem tại [`../STATUS.md`](../STATUS.md).
+=======
+> Historical prototype context. `docs/SRS.md` and `docs/TECH_STACK.md` supersede conflicts.
+
+## Purpose
+Contactless QR ordering system for Vietnamese F&B. Customers scan QR at table → order via phone → kitchen receives real-time → staff serves → cashier closes. No POS hardware needed.
+>>>>>>> a79a18245a4502697374756514c2f5171b49e107
 
 ## Mục tiêu sản phẩm
 

@@ -1,5 +1,7 @@
 # **SCANGO LITE**
 
+> Historical concept document. `docs/SRS.md`, `docs/TECH_STACK.md`, and `docs/data-model.md` supersede conflicts.
+
 **Blueprint Sản Phẩm — Phần Mềm Order & Thanh Toán QR Cho Quán Ăn Quy Mô Nhỏ**  
  Gói khởi điểm 99.000đ/tháng — Tích hợp AI hỗ trợ vận hành — Nền tảng Firebase  
  Phiên bản Blueprint 2.0 — Tháng 6, 2026
@@ -169,4 +171,3 @@ Với việc bổ sung actor Khách hàng (mục 2.4), ScanGo Lite có sẵn h�
 | **Pro (199.000đ)** | Thêm: nhiều mức ưu đãi tùy chỉnh, gợi ý ưu đãi tự động (rule-based mở rộng), AI Chat phân tích khách hàng thân thiết, xuất danh sách khách để chạy khuyến mãi ngoài hệ thống (Zalo OA, SMS). |
 
 **Lý do đặt Loyalty cơ bản ở gói Lite chứ không phải Free:** đây là tính năng giữ chân khách trả tiền trực tiếp ra lợi nhuận cho quán, phù hợp làm lý do nâng cấp từ Free lên Lite, đồng thời không đòi hỏi hạ tầng phần cứng mới — chỉ là một collection Firestore và một Cloud Function, giữ đúng định vị "Zero-Hardware" của toàn bộ sản phẩm.
-

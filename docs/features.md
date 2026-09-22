@@ -1,6 +1,13 @@
 # ScanGo Lite — Feature Status
 
+<<<<<<< HEAD
 > Cập nhật: 2026-09-15. `Implemented` bên dưới nghĩa là đã chạy trong frontend mockup; không đồng nghĩa đã sẵn sàng production.
+=======
+> Historical frontend inventory. `docs/SRS.md` defines approved production behavior and replaces simulations.
+
+## Order Lifecycle
+`pending → cooking → ready → served → paid`
+>>>>>>> a79a18245a4502697374756514c2f5171b49e107
 
 ## Tổng quan
 

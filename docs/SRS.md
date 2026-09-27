@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document ID | SRS-SCANGO-001 |
-| Version | 1.0 |
-| Date | 2026-09-12 |
+| Version | 1.1 |
+| Date | 2026-09-27 |
 | Status | Approved foundation |
 | Companion to | `TECH_STACK.md`, `RULES.md`, `RULES_FIREBASE.md`, `docs/adr/` |
 | Source template | `~/.config/opencode/docs-template/SRS.template.md` |
@@ -115,7 +115,7 @@ Use independent Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering
 ## 4. Functional Requirements
 
 ### 4.1 Auth, tenant, and access
-- **REQ-AUTH-001 (P0) MUST** authenticate Owner by phone OTP. **Acceptance:** Given a registered phone, when Owner verifies a valid OTP, then the system starts an authenticated session.
+- **REQ-AUTH-001 (P0) MUST** register and authenticate Owner by email and password. **Acceptance:** Given a new email and password, when Owner registers, then the system creates the Owner profile and first Tenant; given valid credentials, when Owner signs in, then the system starts an authenticated session.
 - **REQ-TEN-001 (P0) MUST** let one user belong to multiple tenants and select `activeTenantId`. **Acceptance:** Given two memberships, when the user switches tenant, then data and permissions change without cross-tenant leakage.
 - **REQ-AUTH-002 (P0) MUST** authenticate Staff with a tenant-scoped PIN policy from configuration. **Acceptance:** Given the default six-digit policy, when five invalid attempts occur, then access locks for 15 minutes and an audit event exists.
 - **REQ-ACL-001 (P0) MUST** enforce role defaults and Owner-reduced permissions on the server. **Acceptance:** Given a Staff permission is absent, when Staff calls that operation, then the server denies it despite any UI state.
@@ -183,7 +183,7 @@ Use independent Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering
 
 | Entity or path | Purpose |
 |---|---|
-| `users/{uid}` | User profile, locale, and `activeTenantId` |
+| `users/{uid}` | User email, profile, locale, and `activeTenantId` |
 | `tenants/{tenantId}` | Tenant identity and default settings |
 | `tenants/{tenantId}/members/{uid}` | Roles, reduced permissions, active state, and Staff PIN metadata |
 | `tenants/{tenantId}/menuItems/{itemId}` | Menu, modifiers, price, cost price, and stock |
@@ -207,7 +207,7 @@ Use independent Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering
 Every tenant document carries or inherits `tenantId`. Cloud Functions use transactions for order, inventory, Loyalty, and payment invariants.
 
 ## 7. External Interfaces
-- Firebase Auth phone OTP for Owner.
+- Firebase Auth email/password for Owner (ADR 0007).
 - Firebase callable or HTTP Cloud Functions for all writes.
 - Firestore listeners for authorized real-time reads.
 - Firebase Storage for menu images.
@@ -280,7 +280,7 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 
 | REQ ID | Status | Code location or TODO reason |
 |---|---|---|
-| REQ-AUTH-001 | PARTIAL | Phone OTP sign-in in `src/pages/LoginPage.tsx`; Staff sessions and route guards are TODO. |
+| REQ-AUTH-001 | PARTIAL | Email/password register and sign-in in `src/pages/RegisterPage.tsx` and `src/pages/LoginPage.tsx`; server `callableAuthRegisterOwner`; Staff sessions and route guards are TODO. |
 | REQ-TEN-001 | PARTIAL | Memberships and active-Tenant switch via `callableTenant*` functions and `src/data/adapters/tenant.adapter.ts`; full read boundary is TODO. |
 | REQ-AUTH-002 | PARTIAL | PIN UI exists in Staff views; secure server policy is TODO. |
 | REQ-ACL-001 | PARTIAL | Role UI exists in `src/components/StaffView.tsx`; server enforcement is TODO. |

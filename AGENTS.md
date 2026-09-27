@@ -32,6 +32,7 @@
 - [ADR 0004: Payment and order history](docs/adr/0004-protect-payment-and-order-history.md)
 - [ADR 0005: Rebuildable daily stats](docs/adr/0005-use-rebuildable-daily-stats.md)
 - [ADR 0006: Real Firestore and deferred Emulator tests](docs/adr/0006-use-real-firestore-and-defer-emulator-tests.md)
+- [ADR 0007: Email/password Owner auth](docs/adr/0007-switch-owner-auth-to-email-password.md)
 - [Firestore research](research/firestore-foundation.md)
 
 ## Agent constraints

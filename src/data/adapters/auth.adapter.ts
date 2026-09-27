@@ -1,15 +1,17 @@
 import {
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
+  signInWithEmailAndPassword,
   signOut,
-  type ConfirmationResult,
+  updateProfile,
   type User,
 } from 'firebase/auth';
-import { getFirebaseAuth } from '../../services/firebase/client';
-
-let pendingConfirmation: ConfirmationResult | null = null;
-let recaptchaVerifier: RecaptchaVerifier | null = null;
+import { httpsCallable } from 'firebase/functions';
+import type { BootstrapTenantResult } from '@contracts/identity.contract';
+import {
+  getFirebaseAuth,
+  getFirebaseFunctions,
+} from '../../services/firebase/client';
 
 function requireAuth() {
   const auth = getFirebaseAuth();
@@ -32,32 +34,49 @@ export function subscribeToIdentity(
   return onAuthStateChanged(auth, listener);
 }
 
-export async function startPhoneSignIn(
-  phoneNumber: string,
-  container: HTMLElement,
-): Promise<void> {
+export async function registerWithEmail(
+  email: string,
+  password: string,
+  displayName: string,
+): Promise<User> {
   const auth = requireAuth();
-  if (import.meta.env.DEV) {
-    auth.settings.appVerificationDisabledForTesting = true;
-  }
-  recaptchaVerifier?.clear();
-  recaptchaVerifier = new RecaptchaVerifier(auth, container, {
-    size: 'invisible',
-  });
-  pendingConfirmation = await signInWithPhoneNumber(
+  const credential = await createUserWithEmailAndPassword(
     auth,
-    phoneNumber,
-    recaptchaVerifier,
+    email,
+    password,
   );
+  const name = displayName.trim();
+  if (name) {
+    await updateProfile(credential.user, { displayName: name });
+  }
+  return credential.user;
 }
 
-export async function confirmPhoneCode(code: string): Promise<User> {
-  if (!pendingConfirmation) {
-    throw new Error('Chưa có yêu cầu OTP. Hãy gửi lại mã.');
-  }
-  const credential = await pendingConfirmation.confirm(code);
-  pendingConfirmation = null;
+export async function signInWithEmail(
+  email: string,
+  password: string,
+): Promise<User> {
+  const auth = requireAuth();
+  const credential = await signInWithEmailAndPassword(auth, email, password);
   return credential.user;
+}
+
+export async function registerOwner(
+  shopName: string,
+  displayName: string | null,
+): Promise<BootstrapTenantResult> {
+  const functions = getFirebaseFunctions();
+  if (!functions) {
+    throw new Error(
+      'Firebase chưa được cấu hình. Thêm VITE_FIREBASE_* vào .env.local.',
+    );
+  }
+  const callable = httpsCallable<
+    { shopName: string; displayName: string | null },
+    BootstrapTenantResult
+  >(functions, 'callableAuthRegisterOwner');
+  const result = await callable({ shopName, displayName });
+  return result.data;
 }
 
 export async function signOutCurrentUser(): Promise<void> {

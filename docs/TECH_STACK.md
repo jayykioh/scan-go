@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document ID | TECH-SCANGO-001 |
-| Version | 1.1 |
-| Date | 2026-09-12 |
+| Version | 1.2 |
+| Date | 2026-09-27 |
 | Companion to | `SRS.md` §3 |
 | Status | Approved foundation |
 | Source template | `~/.config/opencode/docs-template/TECH_STACK.template.md` |
@@ -27,7 +27,7 @@
 | Primary DB | Firebase Firestore Native mode | DECIDED | REQ-TEN-001, REQ-ORD-003, NFR-RT-001 |
 | Cache | No server cache in v1; Firestore web persistence for cached menu reads | DECIDED | REQ-ORD-004, NFR-CFG-001 |
 | Object storage | Firebase Storage | DECIDED | REQ-CAT-001, NFR-SEC-001 |
-| Auth | Firebase Auth phone OTP; server-issued Staff sessions | DECIDED | REQ-AUTH-001, REQ-AUTH-002 |
+| Auth | Firebase Auth email/password for Owner (ADR 0007); server-issued Staff sessions | DECIDED | REQ-AUTH-001, REQ-AUTH-002 |
 | Payment | Dynamic VietQR plus manual Cashier confirmation; replaceable automatic adapter | DECIDED | REQ-CAS-001, REQ-PAY-002 |
 | AI | Gemini through a server-side read-only adapter | DECIDED | REQ-AI-001, NFR-PRIV-001 |
 | Runtime config | Versioned typed `config.ts`, Firestore ADMIN defaults, allowed tenant overrides | DECIDED | REQ-CFG-001, NFR-CFG-001 |
@@ -115,3 +115,4 @@ Only `docs/RULES_FIREBASE.md` is active for the database-specific rules.
 |---|---|---|
 | 1.0 | 2026-09-12 | Initial approved foundation from frontend evidence and Founder decisions. |
 | 1.1 | 2026-09-12 | Added detailed module boundaries, public projections, and daily stats. |
+| 1.2 | 2026-09-27 | ADR 0007: switched Owner auth from phone OTP to email/password. |

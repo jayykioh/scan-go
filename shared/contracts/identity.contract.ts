@@ -15,6 +15,7 @@ export const membershipTypeSchema = z.enum(['owner', 'staff']);
 export const firebaseIdentitySchema = z.object({
   schemaVersion: z.literal(IDENTITY_CONTRACT_VERSION),
   uid: z.string().min(1),
+  email: z.string().nullable(),
   phoneNumber: z.string().nullable(),
   displayName: z.string().nullable(),
   locale: localeSchema,
@@ -59,6 +60,15 @@ export const bootstrapTenantResultSchema = z.object({
 });
 
 export type BootstrapTenantResult = z.infer<typeof bootstrapTenantResultSchema>;
+
+export const ownerRegistrationInputSchema = z.object({
+  shopName: z.string().trim().min(1).max(120),
+  displayName: z.string().trim().min(1).max(80).nullable().optional(),
+});
+
+export type OwnerRegistrationInput = z.infer<
+  typeof ownerRegistrationInputSchema
+>;
 
 export const listMembershipsResultSchema = z.object({
   identity: firebaseIdentitySchema,

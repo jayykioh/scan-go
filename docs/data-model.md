@@ -23,6 +23,8 @@
 ### `users/{uid}` — Tenant
 | Field | Type | Rule |
 |---|---|---|
+| `email` | string | Firebase Auth email; Owner identity |
+| `displayName` | string or null | User display name |
 | `locale` | `vi | en` | User preference |
 | `activeTenantId` | string or null | Navigation only |
 | `createdAt`, `updatedAt` | timestamp | Server values |

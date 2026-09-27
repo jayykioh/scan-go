@@ -1,3 +1,5 @@
+export { callableAuthRegisterOwner } from './modules/auth/index.js';
+
 export {
   callableTenantBootstrap,
   callableTenantCreate,

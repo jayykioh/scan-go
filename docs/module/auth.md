@@ -5,7 +5,8 @@
 - Does not own: Tenant membership permissions or user profile settings
 
 ## Commands
-- Start and verify Owner phone OTP.
+- Register an Owner with email and password.
+- Sign in an Owner with email and password.
 - Verify a tenant-scoped Staff PIN through a server command.
 - End or revoke a Staff session.
 
@@ -14,6 +15,7 @@
 - Current Staff session status.
 
 ## Rules
+- Owner uses Firebase Auth email/password. Staff uses a tenant-scoped PIN.
 - Never store plaintext PIN values.
 - Use configurable PIN length, attempts, and lock time.
 - Bind Staff sessions to tenant, device, and `sessionVersion` for eight hours.
@@ -21,6 +23,6 @@
 - Emit authentication and lockout audit events.
 
 ## Contracts
-- Emits `OwnerAuthenticated`, `StaffSessionStarted`, `StaffPinLocked`, and `SessionEnded`.
-- Calls Tenant to verify active membership.
+- Emits `OwnerRegistered`, `StaffSessionStarted`, `StaffPinLocked`, and `SessionEnded`.
+- Calls Tenant to create the first membership and verify active membership.
 - Uses Config for policy values.

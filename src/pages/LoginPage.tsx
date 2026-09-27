@@ -1,59 +1,34 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Phone } from 'lucide-react';
+import { ArrowRight, Mail } from 'lucide-react';
 import {
-  confirmPhoneCode,
   isFirebaseConfigured,
-  startPhoneSignIn,
+  signInWithEmail,
 } from '../data/adapters/auth.adapter';
 import { bootstrapTenant } from '../data/adapters/tenant.adapter';
 import { getBackendMode } from '../services/firebase/client';
 import { useToast } from '../contexts/ToastContext';
 
-function toE164(input: string): string {
-  const value = input.replace(/[^\d+]/g, '');
-  if (value.startsWith('+')) return value;
-  if (value.startsWith('0')) return `+84${value.slice(1)}`;
-  return `+${value}`;
-}
-
 export default function LoginPage() {
   const navigate = useNavigate();
   const toast = useToast();
-  const recaptchaRef = useRef<HTMLDivElement>(null);
   const [configured] = useState(() => isFirebaseConfigured());
-  const [step, setStep] = useState<'phone' | 'code'>('phone');
-  const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSendCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!recaptchaRef.current) return;
-    setLoading(true);
-    try {
-      await startPhoneSignIn(toE164(phone), recaptchaRef.current);
-      setStep('code');
-      toast.info('Đã gửi mã OTP. Kiểm tra tin nhắn.');
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Không gửi được OTP.',
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await confirmPhoneCode(code.trim());
+      await signInWithEmail(email.trim(), password);
       await bootstrapTenant();
       toast.success('Đăng nhập thành công.');
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Mã OTP không đúng.');
+      toast.error(
+        error instanceof Error ? error.message : 'Đăng nhập không thành công.',
+      );
     } finally {
       setLoading(false);
     }
@@ -87,81 +62,57 @@ export default function LoginPage() {
         </div>
       )}
 
-      {step === 'phone' ? (
-        <form onSubmit={handleSendCode} className="space-y-6">
-          <div className="space-y-2">
-            <label
-              htmlFor="phone"
-              className="font-mono text-[10px] font-bold uppercase text-zinc-900 tracking-widest flex justify-between"
-            >
-              <span>Số điện thoại</span>
-              <span className="text-zinc-400 font-normal">Bắt buộc</span>
-            </label>
-            <input
-              id="phone"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="0901234567"
-              required
-              disabled={!configured || loading}
-              className="w-full px-4 py-3 bg-white border-hard focus:outline-none focus:ring-0 focus:border-orange-600 transition-colors rounded-none font-mono text-sm placeholder:text-zinc-300 shadow-sm disabled:opacity-50"
-            />
-          </div>
-
-          <div ref={recaptchaRef} />
-
-          <button
-            type="submit"
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <label
+            htmlFor="email"
+            className="font-mono text-[10px] font-bold uppercase text-zinc-900 tracking-widest flex justify-between"
+          >
+            <span>Email</span>
+            <span className="text-zinc-400 font-normal">Bắt buộc</span>
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="nam@scango.vn"
+            required
+            autoComplete="email"
             disabled={!configured || loading}
-            className="w-full bg-zinc-950 text-white font-bold py-4 mt-8 border-hard shadow-hard hover:-translate-y-1 hover:shadow-[4px_6px_0px_0px_#27272a] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all cursor-pointer flex items-center justify-center gap-2 group uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Phone className="w-4 h-4" />
-            {loading ? 'Đang gửi...' : 'Gửi mã OTP'}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={handleVerifyCode} className="space-y-6">
-          <div className="space-y-2">
-            <label
-              htmlFor="code"
-              className="font-mono text-[10px] font-bold uppercase text-zinc-900 tracking-widest flex justify-between"
-            >
-              <span>Mã OTP</span>
-              <span className="text-zinc-400 font-normal">
-                Gửi tới {toE164(phone)}
-              </span>
-            </label>
-            <input
-              id="code"
-              inputMode="numeric"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="123456"
-              required
-              autoFocus
-              className="w-full px-4 py-3 bg-white border-hard focus:outline-none focus:ring-0 focus:border-orange-600 transition-colors rounded-none font-mono text-sm tracking-[0.5em] placeholder:text-zinc-300 shadow-sm"
-            />
-          </div>
+            className="w-full px-4 py-3 bg-white border-hard focus:outline-none focus:ring-0 focus:border-orange-600 transition-colors rounded-none font-mono text-sm placeholder:text-zinc-300 shadow-sm disabled:opacity-50"
+          />
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-zinc-950 text-white font-bold py-4 mt-8 border-hard shadow-hard hover:-translate-y-1 hover:shadow-[4px_6px_0px_0px_#27272a] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all cursor-pointer flex items-center justify-center gap-2 group uppercase tracking-widest text-xs disabled:opacity-50"
+        <div className="space-y-2">
+          <label
+            htmlFor="password"
+            className="font-mono text-[10px] font-bold uppercase text-zinc-900 tracking-widest"
           >
-            Truy cập hệ thống
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
+            Mật khẩu
+          </label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            required
+            autoComplete="current-password"
+            disabled={!configured || loading}
+            className="w-full px-4 py-3 bg-white border-hard focus:outline-none focus:ring-0 focus:border-orange-600 transition-colors rounded-none font-mono text-sm placeholder:text-zinc-300 shadow-sm disabled:opacity-50"
+          />
+        </div>
 
-          <button
-            type="button"
-            onClick={() => setStep('phone')}
-            className="w-full font-mono text-[10px] text-zinc-500 hover:text-orange-600 uppercase tracking-widest cursor-pointer"
-          >
-            Đổi số điện thoại
-          </button>
-        </form>
-      )}
+        <button
+          type="submit"
+          disabled={!configured || loading}
+          className="w-full bg-zinc-950 text-white font-bold py-4 mt-8 border-hard shadow-hard hover:-translate-y-1 hover:shadow-[4px_6px_0px_0px_#27272a] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all cursor-pointer flex items-center justify-center gap-2 group uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Mail className="w-4 h-4" />
+          {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+        </button>
+      </form>
 
       <div className="mt-12 pt-6 border-t border-hard">
         <p className="font-mono text-xs text-zinc-500">

@@ -21,8 +21,12 @@ Các tỷ lệ trên là đánh giá kỹ thuật để lập kế hoạch, khô
 
 - `npm run typecheck`: passed.
 - `npm run build`: passed.
-- Automated tests: chưa có.
-- ESLint/static lint riêng: chưa có; script `lint` hiện chỉ chạy TypeScript.
+- `npm run lint`: passed (ESLint flat config, web + shared + functions).
+- `npm run test`: Vitest runner configured; chưa có test.
+- Firebase backend: project `scango-8f0e9`, deny-by-default Firestore and Storage rules.
+- Tenant callables deployed: `callableTenantBootstrap`, `callableTenantListMemberships`, `callableTenantSelectActive`.
+- Web login uses Firebase phone OTP; dashboard shows memberships and active-Tenant switch.
+- Emulator Rules tests: deferred under ADR 0006.
 
 ## Completed for frontend demo
 
@@ -57,9 +61,9 @@ Các tỷ lệ trên là đánh giá kỹ thuật để lập kế hoạch, khô
 
 ## Not implemented
 
-- Firebase project/config and Emulator Suite.
-- Firestore collections, indexes and Security Rules.
-- Cloud Functions/API.
+- Firebase Emulator Suite and automated Rules tests (deferred under ADR 0006).
+- Firestore collections and indexes; only deny-by-default Security Rules exist.
+- Cloud Functions/API (Node 22 workspace built, no handlers yet).
 - Multi-tenant data isolation.
 - Protected dashboard routes and staff authorization.
 - Table sessions and expiring session tokens.
@@ -70,7 +74,7 @@ Các tỷ lệ trên là đánh giá kỹ thuật để lập kế hoạch, khô
 - OTP delivery/verification and loyalty transaction ledger.
 - Plan limits and subscription billing.
 - Unit, integration and E2E tests.
-- CI, monitoring, analytics and backup strategy.
+- Monitoring, analytics and backup strategy. CI exists in `.github/workflows/ci.yml`.
 
 ## Known inconsistencies and risks
 

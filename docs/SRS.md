@@ -251,6 +251,7 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 ## 12. Verification and Acceptance
 - Each requirement needs automated or documented Given/When/Then evidence.
 - Firestore Emulator tests must cover role, permission, tenant, and public token boundaries.
+- ADR 0006 defers Firestore Emulator tests until before the first tenant data exists.
 - Contract tests must cover each independent module interface.
 - End-to-end tests must cover Pay-First and Pay-Later order lifecycles.
 - Payment and inventory tests must prove idempotency and exact reversal.
@@ -279,8 +280,8 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 
 | REQ ID | Status | Code location or TODO reason |
 |---|---|---|
-| REQ-AUTH-001 | PARTIAL | UI exists in `src/pages/auth/`; Firebase OTP is TODO. |
-| REQ-TEN-001 | PARTIAL | Tenant state exists in `src/layouts/SimulatorLayout.tsx`; memberships are TODO. |
+| REQ-AUTH-001 | PARTIAL | Phone OTP sign-in in `src/pages/LoginPage.tsx`; Staff sessions and route guards are TODO. |
+| REQ-TEN-001 | PARTIAL | Memberships and active-Tenant switch via `callableTenant*` functions and `src/data/adapters/tenant.adapter.ts`; full read boundary is TODO. |
 | REQ-AUTH-002 | PARTIAL | PIN UI exists in Staff views; secure server policy is TODO. |
 | REQ-ACL-001 | PARTIAL | Role UI exists in `src/components/StaffView.tsx`; server enforcement is TODO. |
 | REQ-ADM-001 | TODO | ADMIN product view does not exist. |

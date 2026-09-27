@@ -13,7 +13,7 @@ ScanGo là bản MVP mô phỏng quy trình gọi món bằng QR cho quán ăn n
 
 ## Chạy dự án
 
-Yêu cầu Node.js 20 trở lên.
+Yêu cầu Node.js 22 trở lên. Repo dùng npm workspaces, gồm app web và workspace `functions`.
 
 ```bash
 npm install
@@ -22,10 +22,47 @@ npm run dev
 
 Ứng dụng mặc định chạy tại `http://localhost:3000`.
 
+## Cấu hình Firebase
+
+Firebase project: `scango-8f0e9`. Sao chép `.env.example` sang `.env.local` và điền sáu giá trị `VITE_FIREBASE_*` (Firebase Console → Project settings → Your apps → Web app). `.env.local` không được commit.
+
+Khi chưa có `.env.local`, app vẫn build bình thường; Firebase chỉ không khởi tạo.
+
+Phát hành deny-by-default Security Rules:
+
+```bash
+npm run deploy:rules
+```
+
+## Chạy Functions cục bộ (Emulator)
+
+Chạy Cloud Functions trên máy. Firebase Auth và Firestore vẫn dùng project thật.
+
+```bash
+npm run emulators
+```
+
+Sau đó bật cờ trong `.env.local` và khởi động lại Vite:
+
+```text
+VITE_USE_FUNCTIONS_EMULATOR=true
+```
+
+Login page hiển thị badge `Local emulator` khi bật. Đăng nhập vẫn qua Firebase Auth thật.
+
+Bật cờ mà chưa chạy emulator sẽ khiến UI báo lỗi kết nối. Tắt cờ để dùng Functions đã deploy.
+
+Cảnh báo: Functions emulator đọc/ghi Firestore thật bằng Application Default Credentials.
+
 ## Kiểm tra trước khi phát hành
 
 ```bash
+npm run lint
+npm run lint:functions
 npm run typecheck
+npm run typecheck:functions
+npm run test
+npm run build:functions
 npm run build
 npm run preview
 ```

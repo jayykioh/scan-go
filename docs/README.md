@@ -36,6 +36,7 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[ADR 0003](adr/0003-use-layered-configuration.md)** | Layered configuration | Configuration changes |
 | **[ADR 0004](adr/0004-protect-payment-and-order-history.md)** | Payment and order history | Financial record changes |
 | **[ADR 0005](adr/0005-use-rebuildable-daily-stats.md)** | Rebuildable daily stats | Reporting storage changes |
+| **[ADR 0006](adr/0006-use-real-firestore-and-defer-emulator-tests.md)** | Real Firestore and deferred Emulator tests | Bootstrap and test setup |
 | **[USP.md](USP.md)** | Unique Selling Proposition | Writing marketing copy, sales pitches, positioning |
 | **[SWOT.md](SWOT.md)** | Strategic analysis | Quarterly reviews, investor updates, risk assessment |
 | **[PESTEL.md](PESTEL.md)** | Macro-environment analysis | Quarterly strategy reviews, investor discussions, regulatory tracking |

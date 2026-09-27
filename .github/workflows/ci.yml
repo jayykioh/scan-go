@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint web and shared
+        run: npm run lint
+
+      - name: Lint functions
+        run: npm run lint:functions
+
+      - name: Typecheck web and shared
+        run: npm run typecheck
+
+      - name: Typecheck functions
+        run: npm run typecheck:functions
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build functions
+        run: npm run build:functions
+
+      - name: Build web
+        run: npm run build

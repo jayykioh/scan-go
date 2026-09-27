@@ -5,9 +5,10 @@ Week 1 delivery tasks: `docs/plan/week-1-sprint.md`.
 
 | REQ/NFR | Ticket identity and developer plan | Status |
 |---|---|---|
+| CON-002, CON-006, CON-007, NFR-SEC-001, NFR-CFG-001, NFR-MOD-001, NFR-REL-001 | W1-01 — Developer 1 | Bootstrap complete |
 | REQ-CFG-001, NFR-CFG-001 | P0-001 — Developer 1 | Planned |
-| REQ-AUTH-001 | P0-002A — Developer 1 | Planned |
-| REQ-TEN-001 | P0-002B, P0-003 — Developer 1 | Planned |
+| REQ-AUTH-001 | P0-002A — Developer 1 | First slice deployed |
+| REQ-TEN-001 | P0-002B, P0-003 — Developer 1 | First slice deployed |
 | REQ-AUTH-002, REQ-ACL-001 | P0-004A, P0-004B — Developer 1 | Planned |
 | REQ-CAT-001, REQ-CAT-002 | P0-005 — Developer 2 | Planned |
 | REQ-TBL-001 | P0-006 — Developer 2 | Planned |

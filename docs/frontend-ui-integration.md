@@ -13,7 +13,7 @@
 | Dashboard shell and navigation | PARTIAL | `DashboardLayout`, `RootLayout`, `AuthLayout` | REQ-TEN-001, REQ-I18N-001 | authenticated active-Tenant context; locale state; route guards |
 | Owner menu | PARTIAL | `/dashboard/menu`; `MenuPage`, `OwnerView` | REQ-CAT-001, REQ-CAT-002 | Catalog create/update/archive/template commands; private menu query; public projection listener |
 | Tables and QR Table link | PARTIAL | `/dashboard/tables`; `TablesPage`, `OwnerView` | REQ-TBL-001, NFR-SEC-002 | Table create/update/archive/regenerate commands; tenant table query; public-token resolver |
-| Owner settings | PARTIAL | `/dashboard/settings`; `SettingsPage` | REQ-CFG-001, REQ-ONB-001 | resolved Config query; allowed Tenant-settings command; Tenant query |
+| Owner settings | PARTIAL | `/dashboard/settings`; `SettingsPage` | REQ-CFG-001, REQ-ONB-001 | direct authorized read of `platform/config` and tenant `configOverrides`; resolved Config with source; `callableConfigUpdateTenant` for allowed tenant settings; Tenant query |
 | Staff administration | PARTIAL | `/dashboard/staff`; `StaffPage` | REQ-AUTH-002, REQ-ACL-001 | membership create/update/disable command; membership query; PIN set command |
 | Customer menu and cart | PARTIAL | `/menu/:tableId`; `PublicMenuPage`, `CustomerView` | REQ-ORD-001, REQ-ORD-004, NFR-UX-001 | public Table resolver; public menu query; cart validation and Order-create callable |
 | Customer Order tracking | PARTIAL | `CustomerView` | REQ-ORD-003, NFR-RT-001 | `publicOrderTracking/{trackingToken}` listener |
@@ -50,6 +50,7 @@ These views need adapter replacement, not a visual rebuild.
 
 Each entry requires both a UI deliverable and a backend deliverable.
 
+- **Config resolution:** wire `SettingsPage` to direct authorized reads of `platform/config` and tenant `configOverrides`; show resolved values with source; send allowed tenant settings through `callableConfigUpdateTenant`. ADMIN platform command stays P0-001.
 - **Firebase email/password and Tenant switch:** wire the register and login forms to Firebase Auth email/password (ADR 0007); UI shows memberships and active Tenant. Backend delivers `callableAuthRegisterOwner`, membership query, and Tenant command.
 - **Staff PIN policy:** replace plaintext and four-digit demo PIN flows. UI shows configurable lock state. Backend hashes PIN, enforces lockout, session version, and Rules.
 - **ADMIN:** build ADMIN route and screens. Backend delivers delegated server commands, claim verification, and automatic audit.

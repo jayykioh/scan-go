@@ -287,7 +287,7 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 | REQ-ADM-001 | TODO | ADMIN product view does not exist. |
 | REQ-ONB-001 | PARTIAL | Onboarding exists in `src/components/OwnerView.tsx`; checklist expansion is TODO. |
 | REQ-ONB-002 | TODO | Requires usability acceptance evidence. |
-| REQ-CFG-001 | TODO | Typed and runtime configuration layers do not exist. |
+| REQ-CFG-001 | PARTIAL | Three-layer resolution exists in `shared/config/resolve.ts`; `callableConfigUpdateTenant` writes allowed tenant overrides; direct authorized read of `platform/config` plus tenant `configOverrides`. ADMIN platform command and `ConfigurationChanged` event are TODO. |
 | REQ-CAT-001 | PARTIAL | `src/pages/dashboard/MenuPage.tsx` and `src/components/OwnerView.tsx`. |
 | REQ-CAT-002 | PARTIAL | Templates exist in `src/mockData.ts`; server tenant isolation is TODO. |
 | REQ-INV-001 | PARTIAL | Owner and Solo inventory UI exists; shared transactional persistence is TODO. |
@@ -322,7 +322,7 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 | NFR-DATA-001 | PARTIAL | VND UI exists; durable UTC and integer invariants need tests. |
 | NFR-RET-001 | TODO | Retention and archival jobs do not exist. |
 | NFR-REL-001 | TODO | Backup and restore configuration does not exist. |
-| NFR-CFG-001 | TODO | Central typed configuration does not exist. |
+| NFR-CFG-001 | PARTIAL | Typed `shared/config/defaults.ts` and the strict `configValuesSchema` in `shared/contracts/config.contract.ts` are in use; remaining modules are TODO. |
 | NFR-MOD-001 | PARTIAL | Views are separated; module contracts and tests do not exist. |
 | NFR-OBS-001 | TODO | Sentry and production logging are not configured. |
 

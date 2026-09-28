@@ -16,6 +16,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /platform/config {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     match /tenants/{tenantId} {
       allow read: if isMember(tenantId);
       allow write: if false;

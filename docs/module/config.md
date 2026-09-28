@@ -27,4 +27,5 @@
 
 ## Rules
 - Reject unknown keys, invalid values, and forbidden tenant overrides.
+- Tenant overrides are limited to `locale`, `timezone`, and `pinPolicy`.
 - Version every change and emit `ConfigurationChanged`.

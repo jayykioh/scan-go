@@ -3,12 +3,27 @@
 UI integration status and frontend contracts: `docs/frontend-ui-integration.md`.
 Week 1 delivery tasks: `docs/plan/week-1-sprint.md`.
 
+Status legend: `Done` = merged and verified; `First slice` = thin slice deployed, acceptance evidence pending; `Planned` = not started.
+
+## Done
+
+| REQ/NFR | Ticket identity and developer plan | Evidence |
+|---|---|---|
+| CON-002, CON-006, CON-007, NFR-SEC-001, NFR-CFG-001, NFR-MOD-001, NFR-REL-001 | W1-01 — Developer 1 | Firebase backend bootstrap and CI: `firebase.json`, `.firebaserc`, Functions Node 22 workspace, `firestore.rules`, `storage.rules`, `firestore.indexes.json`, `.github/workflows/ci.yml`. Emulator Rules tests are deferred by ADR 0006. |
+
+## First slice deployed (acceptance evidence pending)
+
+| REQ/NFR | Ticket identity and developer plan | Evidence and remaining gap |
+|---|---|---|
+| REQ-AUTH-001 | P0-002A — Developer 1 | Email/password register and sign-in deployed: `callableAuthRegisterOwner`, `LoginPage`, `RegisterPage`, auth adapter. Gap: Rules and Emulator tests, plus email-verification evidence. |
+| REQ-TEN-001 | P0-002B, P0-003 — Developer 1 | First Tenant, membership list, active-Tenant select and switch: three Tenant callables and `TenantSwitcher`. Gap: two-Tenant Emulator matrix and cross-Tenant deny evidence. |
+| REQ-AUTH-001, REQ-TEN-001, NFR-SEC-001 | W1-03 — Developer 1 | `shared/contracts/identity.contract.ts` frozen. Gap: `authorization` contract, fixtures, and Staff lockout doubles are one-line stubs. |
+| REQ-CFG-001, NFR-CFG-001, CON-006, CON-007 | W1-02 — Developer 1 | `ResolvedConfig` contract, shared three-layer resolver, fixtures, direct authorized read of `platform/config` and tenant `configOverrides`, and `callableConfigUpdateTenant` write path for `locale`, `timezone`, and `pinPolicy`. Gap: ADMIN platform command, `ConfigurationChanged` event, and Emulator Rules tests (ADR 0006). |
+
+## Planned
+
 | REQ/NFR | Ticket identity and developer plan | Status |
 |---|---|---|
-| CON-002, CON-006, CON-007, NFR-SEC-001, NFR-CFG-001, NFR-MOD-001, NFR-REL-001 | W1-01 — Developer 1 | Bootstrap complete |
-| REQ-CFG-001, NFR-CFG-001 | P0-001 — Developer 1 | Planned |
-| REQ-AUTH-001 | P0-002A — Developer 1 | Email/password register and sign-in deployed |
-| REQ-TEN-001 | P0-002B, P0-003 — Developer 1 | First slice deployed |
 | REQ-AUTH-002, REQ-ACL-001 | P0-004A, P0-004B — Developer 1 | Planned |
 | REQ-CAT-001, REQ-CAT-002 | P0-005 — Developer 2 | Planned |
 | REQ-TBL-001 | P0-006 — Developer 2 | Planned |
@@ -28,3 +43,7 @@ Week 1 delivery tasks: `docs/plan/week-1-sprint.md`.
 | NFR-PERF-001 | P0-L06 — Developer 3 | Planned |
 | REQ-INV-002, REQ-CAS-002 | P0-L07 — Developer 4 | Planned |
 | REQ-PAY-001 | P0-L08, P0-L09 — Developer 4 | Planned |
+
+## Evidence gap
+
+Most files under `shared/contracts`, `shared/fixtures`, and `functions/test/rules` are one-line stubs. Only `shared/contracts/identity.contract.ts` and `shared/contracts/config.contract.ts` have real content. No ticket has full acceptance evidence yet.

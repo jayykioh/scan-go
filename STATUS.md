@@ -55,6 +55,7 @@ Các tỷ lệ trên là đánh giá kỹ thuật để lập kế hoạch, khô
 | Cashier | Marks local order paid | Authorized/atomic server operation |
 | Loyalty | Client-side points | Ledger, OTP provider, idempotency, fraud protection |
 | Inventory | Partial local deduction | Shared model, transaction, Auto-86 |
+| Config | `SettingsPage` reads `platform/config` and tenant `configOverrides` directly and shows resolved values with source; `callableConfigUpdateTenant` writes allowed tenant overrides | ADMIN platform command, `ConfigurationChanged` event, Emulator Rules tests |
 | AI | Keyword/rule responses | Gemini/LLM integration and safe data context |
 | Subscription | Changes local flag | Billing and server-side entitlement |
 | PWA | Manifest | Service worker, caching and offline flow |

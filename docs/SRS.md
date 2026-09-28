@@ -293,14 +293,14 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 | REQ-INV-002 | PARTIAL | Solo restoration exists; server idempotency is TODO. |
 | REQ-TBL-001 | PARTIAL | `src/pages/dashboard/TablesPage.tsx`; secure real links are TODO. |
 | REQ-NFC-001 | PARTIAL | NFC simulation exists; real NFC acceptance is TODO. |
-| REQ-ORD-001 | PARTIAL | `src/components/CustomerView.tsx`; server prices are TODO. |
-| REQ-ORD-002 | PARTIAL | Payment modes exist; real server gates are TODO. |
-| REQ-ORD-003 | PARTIAL | Lifecycle UI exists; Firestore listeners are TODO. |
-| REQ-ORD-004 | TODO | Offline read and submission blocking need implementation. |
+| REQ-ORD-001 | PARTIAL | `src/components/CustomerView.tsx` now consumes the public Ordering adapter and validates integer VND against Catalog doubles; durable server prices remain TODO. |
+| REQ-ORD-002 | PARTIAL | Frozen Pay-First/Pay-Later snapshots enforce Kitchen visibility; durable payment composition remains TODO. |
+| REQ-ORD-003 | PARTIAL | Frozen status events, transition tests, and queue adapters exist; Firestore listeners remain TODO. |
+| REQ-ORD-004 | PARTIAL | Offline submit blocks before the command port and renders problem UI; cached production service-worker behavior remains TODO. |
 | REQ-PRO-001 | PARTIAL | Promotion calculation UI exists; server calculation is TODO. |
-| REQ-KDS-001 | PARTIAL | `src/components/KitchenView.tsx`; server transitions and visible stock control are TODO. |
-| REQ-NOT-001 | TODO | Production web audio and notification behavior do not exist. |
-| REQ-WAI-001 | PARTIAL | `src/components/StaffView.tsx`; server permission enforcement is TODO. |
+| REQ-KDS-001 | PARTIAL | Kitchen queue and validated transition-plan adapter exist; server transaction and visible stock control remain TODO. |
+| REQ-NOT-001 | PARTIAL | NotificationEvent/dedupe contract and ready fixture exist; production web audio remains TODO. |
+| REQ-WAI-001 | PARTIAL | Waiter ready queue and served-only transition boundary exist; server permission enforcement remains TODO. |
 | REQ-CAS-001 | PARTIAL | `src/components/CashierView.tsx`; real cash and VietQR records are TODO. |
 | REQ-CAS-002 | PARTIAL | Cancel UI exists; reason, inventory transaction, and audit are TODO. |
 | REQ-PAY-001 | PARTIAL | Solo reversal UI exists; immutable payment ledger is TODO. |
@@ -316,13 +316,13 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 | NFR-RT-001 | TODO | No Firestore synchronization exists. |
 | NFR-UX-001 | TODO | No usability timing evidence exists. |
 | NFR-SEC-001 | TODO | No Firebase rules or Cloud Functions exist. |
-| NFR-SEC-002 | TODO | App Check, rate limits, and secure table tokens do not exist. |
+| NFR-SEC-002 | PARTIAL | Revocable token and rate-limit ports are validated at the Ordering boundary; production App Check and durable limiter remain TODO. |
 | NFR-PRIV-001 | TODO | Server field-level permission filtering does not exist. |
-| NFR-DATA-001 | PARTIAL | VND UI exists; durable UTC and integer invariants need tests. |
+| NFR-DATA-001 | PARTIAL | Cart contract tests enforce safe integer VND and snapshots use UTC strings; durable persistence remains TODO. |
 | NFR-RET-001 | TODO | Retention and archival jobs do not exist. |
 | NFR-REL-001 | TODO | Backup and restore configuration does not exist. |
 | NFR-CFG-001 | TODO | Central typed configuration does not exist. |
-| NFR-MOD-001 | PARTIAL | Views are separated; module contracts and tests do not exist. |
+| NFR-MOD-001 | PARTIAL | Ordering/Fulfilment compile against published contracts, Catalog/Table doubles, and an Inventory plan double; remaining modules need the same gate. |
 | NFR-OBS-001 | TODO | Sentry and production logging are not configured. |
 
 ---

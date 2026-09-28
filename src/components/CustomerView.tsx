@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, Check, ChevronLeft, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Ticket, X } from 'lucide-react';
 import { INDUSTRY_TEMPLATES } from '../mockData';
 import { LoyaltyMember, MenuItem, Order, OrderItem, TableConfig, TenantConfig } from '../types';
+import type { OrderingAdapter } from '../data/adapters/ordering.adapter';
 
 interface CustomerProps {
   tenantConfig: TenantConfig;
@@ -15,6 +16,8 @@ interface CustomerProps {
   setSimulationTableId: (val: string) => void;
   tables: TableConfig[];
   directMenu?: boolean;
+  orderingAdapter?: OrderingAdapter;
+  tableToken?: string;
 }
 
 type CustomerStep = 'table_pick' | 'menu' | 'tracking';
@@ -38,6 +41,8 @@ export default function CustomerView({
   setSimulationTableId,
   tables,
   directMenu = false,
+  orderingAdapter,
+  tableToken = simulationTableId,
 }: CustomerProps) {
   const [step, setStep] = useState<CustomerStep>(directMenu ? 'menu' : 'table_pick');
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -54,6 +59,8 @@ export default function CustomerView({
   const [redeemedPoints, setRedeemedPoints] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const template = INDUSTRY_TEMPLATES[tenantConfig.industry] || INDUSTRY_TEMPLATES.quan_an;
   const tableName = tables.find(table => table.id === simulationTableId)?.name || `Bàn ${simulationTableId}`;
@@ -163,8 +170,52 @@ export default function CustomerView({
     setOtpError('');
   };
 
-  const submitOrder = () => {
+  const submitOrder = async () => {
     if (cart.length === 0) return;
+    setSubmitError('');
+    setIsSubmitting(true);
+    if (orderingAdapter) {
+      const result = await orderingAdapter.submitOrder({
+        idempotencyKey: `customer:${tableToken}:${Date.now()}`,
+        cart: {
+          tableToken,
+          paymentMode: tenantConfig.paymentMode,
+          lines: cart.map(item => ({
+            menuItemId: item.menuId,
+            quantity: item.quantity,
+            modifierIds: item.selectedModifiers ?? [],
+          })),
+        },
+      });
+      if (!result.accepted) {
+        setSubmitError(result.message);
+        setIsSubmitting(false);
+        return;
+      }
+      const snapshot = result.order;
+      const order: Order = {
+        id: snapshot.orderId,
+        tableId: snapshot.tableId,
+        items: snapshot.lines.map((line, index) => ({
+          id: `${line.menuItemId}-${index}`,
+          menuId: line.menuItemId,
+          name: line.name,
+          price: line.unitPriceVnd + line.modifierTotalVnd,
+          quantity: line.quantity,
+          selectedModifiers: [...line.modifierNames],
+        })),
+        total: snapshot.totalVnd,
+        status: snapshot.status === 'cancelled' ? 'pending' : snapshot.status,
+        timestamp: new Date(snapshot.createdAtUtc),
+        paymentMode: snapshot.paymentMode,
+      };
+      setOrders(prev => [...prev, order]);
+      setCart([]);
+      setShowCart(false);
+      setStep('tracking');
+      setIsSubmitting(false);
+      return;
+    }
     const order: Order = {
       id: `ord_${Date.now()}`,
       tableId: simulationTableId,
@@ -181,6 +232,7 @@ export default function CustomerView({
     setCart([]);
     setShowCart(false);
     setStep('tracking');
+    setIsSubmitting(false);
   };
 
   if (step === 'table_pick') {
@@ -347,7 +399,7 @@ export default function CustomerView({
           <ItemSheet item={activeItem} template={template} selectedModifiers={selectedModifiers} modifierPrice={modifierPrice} onToggleModifier={toggleModifier} onClose={() => setActiveItem(null)} onAdd={addActiveItemToCart} />
         )}
         {showCart && (
-          <CartSheet cart={cart} cartTotal={cartTotal} finalTotal={finalTotal} promoDiscount={promoDiscount} loyaltyDiscount={loyaltyDiscount} paymentMode={tenantConfig.paymentMode} onQty={updateCartQty} onClose={() => setShowCart(false)} onSubmit={submitOrder} />
+          <CartSheet cart={cart} cartTotal={cartTotal} finalTotal={finalTotal} promoDiscount={promoDiscount} loyaltyDiscount={loyaltyDiscount} paymentMode={tenantConfig.paymentMode} submitError={submitError} isSubmitting={isSubmitting} onQty={updateCartQty} onClose={() => setShowCart(false)} onSubmit={submitOrder} />
         )}
         {showLoyalty && (
           <LoyaltySheet profile={loyaltyProfile} phone={phoneNumber} name={customerName} otp={otpCode} otpError={otpError} redeemed={redeemedPoints} onPhone={setPhoneNumber} onName={setCustomerName} onOtp={(value: string) => { setOtpCode(value.replace(/\D/g, '')); setOtpError(''); }} onSave={saveLoyaltyProfile} onRedeem={redeemWithOtp} onClose={() => setShowLoyalty(false)} />
@@ -442,7 +494,7 @@ function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleM
   );
 }
 
-function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, loyaltyDiscount, paymentMode, onQty, onClose, onSubmit }: any) {
+function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, loyaltyDiscount, paymentMode, submitError, isSubmitting, onQty, onClose, onSubmit }: any) {
   return (
     <Sheet onClose={onClose}>
       <div className="space-y-4">
@@ -473,7 +525,8 @@ function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, loyaltyDiscount
           <div className="flex justify-between border-t border-white/10 pt-3 text-lg font-black"><span>Tổng</span><span>{money(finalTotal)}</span></div>
         </div>
         <p className="flex items-start gap-2 text-xs text-zinc-500"><AlertCircle className="h-4 w-4 shrink-0 text-zinc-400" /> {paymentMode === 'Pay-First' ? 'Thanh toán tại quầy để bếp nhận đơn.' : 'Bếp nhận đơn ngay, thanh toán sau bữa ăn.'}</p>
-        <button type="button" onClick={onSubmit} className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black shadow-xl">Gửi đơn</button>
+        {submitError && <div role="alert" className="rounded-[20px] bg-red-50 border border-red-200 px-4 py-3 text-sm font-bold text-red-700">{submitError}</div>}
+        <button type="button" onClick={onSubmit} disabled={isSubmitting} className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black shadow-xl disabled:opacity-50">{isSubmitting ? 'Đang kiểm tra…' : 'Gửi đơn'}</button>
       </div>
     </Sheet>
   );

@@ -11,11 +11,11 @@ Week 1 delivery tasks: `docs/plan/week-1-sprint.md`.
 | REQ-AUTH-002, REQ-ACL-001 | P0-004A, P0-004B — Developer 1 | Planned |
 | REQ-CAT-001, REQ-CAT-002 | P0-005 — Developer 2 | Planned |
 | REQ-TBL-001 | P0-006 — Developer 2 | Planned |
-| REQ-ORD-001, REQ-ORD-004 | P0-007A, P0-007B — Developer 3 | Planned |
-| REQ-INV-001, REQ-KDS-001 | P0-008A, P0-008B — Developers 4, 3 | Planned |
+| REQ-ORD-001, REQ-ORD-004 | P0-007A, P0-007B — Developer 3 | Implemented contract/adapter slice; browser evidence pending manual recording |
+| REQ-INV-001, REQ-KDS-001 | P0-008A, P0-008B — Developers 4, 3 | Fulfilment mutation-plan boundary implemented; transaction composition pending Dev 4 |
 | REQ-CAS-001 | P0-009A, P0-009B — Developer 4 | Planned |
-| REQ-WAI-001, REQ-NOT-001, REQ-ONB-001, REQ-ONB-002 | P0-010A, P0-010B — Developers 3, 1 | Planned |
-| REQ-ORD-002, REQ-ORD-003 | P0-007A, P0-008B, P0-009A — Developers 3, 4 | Planned |
+| REQ-WAI-001, REQ-NOT-001, REQ-ONB-001, REQ-ONB-002 | P0-010A, P0-010B — Developers 3, 1 | Waiter queue and notification contracts implemented; production effects pending |
+| REQ-ORD-002, REQ-ORD-003 | P0-007A, P0-008B, P0-009A — Developers 3, 4 | Pay-mode/status contracts and fixtures implemented; durable Firestore composition pending |
 | NFR-SEC-001, NFR-MOD-001 | P0-001 through P0-010 — all developers | Planned verification gate |
 | NFR-SEC-002 | P0-006, P0-007A — Developers 2, 3 | Planned |
 | NFR-DATA-001 | P0-002B, P0-005, P0-007A, P0-008A, P0-009A | Planned |

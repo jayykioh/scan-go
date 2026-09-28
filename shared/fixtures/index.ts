@@ -1,1 +1,5 @@
-export {}
+export * from './catalog.fixture'
+export * from './fulfilment.fixture'
+export * from './inventory.fixture'
+export * from './order.fixture'
+export * from './table.fixture'

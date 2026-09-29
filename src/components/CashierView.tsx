@@ -74,7 +74,12 @@ export default function CashierView({
   };
 
   const handleCancelOrder = (orderId: string) => {
-    setOrders(prev => prev.filter(o => o.id !== orderId));
+    const reason = window.prompt('Lý do hủy đơn (bắt buộc):');
+    if (!reason?.trim()) return;
+    // Simulation state only. Production cancellation is server-only through orderingCancel.
+    setOrders(prev => prev.map(order => order.id === orderId
+      ? { ...order, status: 'cancelled', cancellationReason: reason.trim() }
+      : order));
   };
 
   // Login Screen
@@ -128,7 +133,7 @@ export default function CashierView({
   }
 
   // Active unsettled orders logic
-  const activeUnpaidOrders = orders.filter(o => o.status !== 'paid');
+  const activeUnpaidOrders = orders.filter(o => o.status !== 'paid' && o.status !== 'cancelled');
 
   return (
     <div className="flex-grow flex flex-col bg-white font-sans text-[#2D2B30] h-full" id="cashier-main">

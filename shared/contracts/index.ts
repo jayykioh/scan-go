@@ -1,4 +1,5 @@
 export * from './catalog.contract'
+export * from './correction.contract'
 export * from './fulfilment.contract'
 export * from './inventory.contract'
 export * from './notification.contract'

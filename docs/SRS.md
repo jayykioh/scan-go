@@ -289,20 +289,20 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 | REQ-CFG-001 | TODO | Typed and runtime configuration layers do not exist. |
 | REQ-CAT-001 | PARTIAL | `src/pages/dashboard/MenuPage.tsx` and `src/components/OwnerView.tsx`. |
 | REQ-CAT-002 | PARTIAL | Templates exist in `src/mockData.ts`; server tenant isolation is TODO. |
-| REQ-INV-001 | PARTIAL | Owner and Solo inventory UI exists; shared transactional persistence is TODO. |
-| REQ-INV-002 | PARTIAL | Solo restoration exists; server idempotency is TODO. |
+| REQ-INV-001 | PARTIAL | `functions/src/integrations/cooking.ts` atomically applies an InventoryMutationPlan with the Order cooking transition; Owner recipe management remains TODO. |
+| REQ-INV-002 | PARTIAL | `functions/src/integrations/cancellation.ts` restores referenced deductions once with idempotency and audit; production Cashier callable wiring remains deployment-pending. |
 | REQ-TBL-001 | PARTIAL | `src/pages/dashboard/TablesPage.tsx`; secure real links are TODO. |
 | REQ-NFC-001 | PARTIAL | NFC simulation exists; real NFC acceptance is TODO. |
-| REQ-ORD-001 | PARTIAL | `src/components/CustomerView.tsx` now consumes the public Ordering adapter and validates integer VND against Catalog doubles; durable server prices remain TODO. |
-| REQ-ORD-002 | PARTIAL | Frozen Pay-First/Pay-Later snapshots enforce Kitchen visibility; durable payment composition remains TODO. |
-| REQ-ORD-003 | PARTIAL | Frozen status events, transition tests, and queue adapters exist; Firestore listeners remain TODO. |
+| REQ-ORD-001 | PARTIAL | `createOrder` callable transaction revalidates active table link and public prices with integer VND snapshots; Firebase client callable adapter remains TODO. |
+| REQ-ORD-002 | PARTIAL | `createOrder` produces pending Pay-Later and hides unconfirmed Pay-First from Kitchen; durable payment composition remains TODO. |
+| REQ-ORD-003 | PARTIAL | CustomerView has a public-tracking subscription boundary; concrete Firebase SDK listener/configuration remains TODO. |
 | REQ-ORD-004 | PARTIAL | Offline submit blocks before the command port and renders problem UI; cached production service-worker behavior remains TODO. |
 | REQ-PRO-001 | PARTIAL | Promotion calculation UI exists; server calculation is TODO. |
-| REQ-KDS-001 | PARTIAL | Kitchen queue and validated transition-plan adapter exist; server transaction and visible stock control remain TODO. |
+| REQ-KDS-001 | PARTIAL | `fulfilment-start-cooking` callable uses one transaction for Order cooking status and stock deduction; deployed real-time timing proof remains TODO. |
 | REQ-NOT-001 | PARTIAL | NotificationEvent/dedupe contract and ready fixture exist; production web audio remains TODO. |
 | REQ-WAI-001 | PARTIAL | Waiter ready queue and served-only transition boundary exist; server permission enforcement remains TODO. |
 | REQ-CAS-001 | PARTIAL | `src/components/CashierView.tsx`; real cash and VietQR records are TODO. |
-| REQ-CAS-002 | PARTIAL | Cancel UI exists; reason, inventory transaction, and audit are TODO. |
+| REQ-CAS-002 | PARTIAL | Cashier simulation collects a cancellation reason; `ordering-cancel` callable restores stock and writes audit data atomically. |
 | REQ-PAY-001 | PARTIAL | Solo reversal UI exists; immutable payment ledger is TODO. |
 | REQ-SOLO-001 | PARTIAL | `src/components/SoloOperatorView.tsx`; shared module state is TODO. |
 | REQ-LOY-001 | PARTIAL | Loyalty UI exists; real phone verification and idempotency are TODO. |
@@ -316,7 +316,7 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 | NFR-RT-001 | TODO | No Firestore synchronization exists. |
 | NFR-UX-001 | TODO | No usability timing evidence exists. |
 | NFR-SEC-001 | TODO | No Firebase rules or Cloud Functions exist. |
-| NFR-SEC-002 | PARTIAL | Revocable token and rate-limit ports are validated at the Ordering boundary; production App Check and durable limiter remain TODO. |
+| NFR-SEC-002 | PARTIAL | `createOrder` callable enforces App Check, revalidates revocable table links, uses a transactionally updated rate bucket, and deduplicates idempotency keys. |
 | NFR-PRIV-001 | TODO | Server field-level permission filtering does not exist. |
 | NFR-DATA-001 | PARTIAL | Cart contract tests enforce safe integer VND and snapshots use UTC strings; durable persistence remains TODO. |
 | NFR-RET-001 | TODO | Retention and archival jobs do not exist. |

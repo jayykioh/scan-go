@@ -56,7 +56,7 @@ export interface OrderItem {
   selectedModifiers?: string[];
 }
 
-export type OrderStatus = 'pending' | 'cooking' | 'ready' | 'served' | 'paid';
+export type OrderStatus = 'pending' | 'cooking' | 'ready' | 'served' | 'paid' | 'cancelled';
 
 export interface Order {
   id: string;
@@ -72,6 +72,8 @@ export interface Order {
   nfcSecureToken?: string;
   splitCount?: number; // For splitting bills
   appliedDiscountCode?: string; // Track if manual discount code was successfully validated & applied
+  trackingToken?: string;
+  cancellationReason?: string;
 }
 
 export interface LoyaltyMember {

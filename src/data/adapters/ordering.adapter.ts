@@ -3,6 +3,7 @@ import type {
   CartValidation,
   CartValidationRequest,
   OrderSnapshot,
+  OrderStatus,
   SubmitOrderRequest,
   SubmitOrderResult,
 } from '../../../shared/contracts/order.contract'
@@ -21,6 +22,7 @@ export interface OrderingAdapter {
   loadPublicMenu(tableToken: string): Promise<PublicMenuResult | null>
   validateCart(request: CartValidationRequest): Promise<CartValidation>
   submitOrder(request: SubmitOrderRequest): Promise<SubmitOrderResult>
+  subscribePublicTracking?(trackingToken: string, onUpdate: (update: { status: OrderStatus; updatedAtUtc: string }) => void): () => void
 }
 
 export interface OrderingAdapterDependencies {
@@ -29,6 +31,7 @@ export interface OrderingAdapterDependencies {
   commands: OrderCommandPort
   isOnline?: () => boolean
   rateLimit?: { allow(tableToken: string): Promise<boolean> }
+  tracking?: { subscribe(trackingToken: string, onUpdate: (update: { status: OrderStatus; updatedAtUtc: string }) => void): () => void }
 }
 
 const invalid = (code: Extract<CartValidation, { valid: false }>['code'], message: string): CartValidation => ({
@@ -109,5 +112,6 @@ export function createOrderingAdapter(dependencies: OrderingAdapterDependencies)
       const order = await dependencies.commands.submit(request, validation)
       return { accepted: true, order }
     },
+    subscribePublicTracking: dependencies.tracking?.subscribe.bind(dependencies.tracking),
   }
 }

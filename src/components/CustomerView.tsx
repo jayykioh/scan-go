@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, Check, ChevronLeft, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Ticket, X } from 'lucide-react';
 import { INDUSTRY_TEMPLATES } from '../mockData';
@@ -61,10 +61,20 @@ export default function CustomerView({
   const [otpError, setOtpError] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTrackingToken, setActiveTrackingToken] = useState<string | null>(null);
 
   const template = INDUSTRY_TEMPLATES[tenantConfig.industry] || INDUSTRY_TEMPLATES.quan_an;
   const tableName = tables.find(table => table.id === simulationTableId)?.name || `Bàn ${simulationTableId}`;
-  const activeCustomerOrders = orders.filter(order => order.tableId === simulationTableId && order.status !== 'paid');
+  const activeCustomerOrders = orders.filter(order => order.tableId === simulationTableId && order.status !== 'paid' && order.status !== 'cancelled');
+
+  useEffect(() => {
+    if (!activeTrackingToken || !orderingAdapter?.subscribePublicTracking) return;
+    return orderingAdapter.subscribePublicTracking(activeTrackingToken, update => {
+      setOrders(previous => previous.map(order => order.trackingToken === activeTrackingToken
+        ? { ...order, status: update.status }
+        : order));
+    });
+  }, [activeTrackingToken, orderingAdapter, setOrders]);
   const availableTypes = ['Tất cả', ...Array.from(new Set(menuItems.map(inferItemType)))];
 
   const filteredItems = menuItems.filter(item => {
@@ -205,14 +215,16 @@ export default function CustomerView({
           selectedModifiers: [...line.modifierNames],
         })),
         total: snapshot.totalVnd,
-        status: snapshot.status === 'cancelled' ? 'pending' : snapshot.status,
+        status: snapshot.status,
         timestamp: new Date(snapshot.createdAtUtc),
         paymentMode: snapshot.paymentMode,
+        trackingToken: snapshot.trackingToken,
       };
       setOrders(prev => [...prev, order]);
       setCart([]);
       setShowCart(false);
       setStep('tracking');
+      setActiveTrackingToken(snapshot.trackingToken);
       setIsSubmitting(false);
       return;
     }

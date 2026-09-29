@@ -9,7 +9,7 @@ service cloud.firestore {
 
     // Public projections contain no private tenant or Customer fields.
     match /publicTableLinks/{token} {
-      allow get: if resource.data.active == true;
+      allow get: if resource.data.isActive == true;
       allow list, create, update, delete: if false;
     }
 

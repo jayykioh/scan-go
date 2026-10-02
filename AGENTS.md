@@ -20,7 +20,7 @@
 - [Initial P0 ticket plan](docs/plan/initial-p0-ticket-plan.md)
 - [Week 1 sprint plan](docs/plan/week-1-sprint.md)
 - [P0 parallel skeleton](docs/plan/p0-parallel-skeleton.md)
-- [Four-developer P0 UI and backend assignment](docs/plan/p0-five-person-assignment.md)
+- [Five-developer P0 UI, backend, and QA assignment](docs/plan/p0-team-assignment.md)
 - [Developer 1 P0 plan: Config, Auth, Tenant](docs/plan/p0-developer-1.md)
 - [Developer 2 P0 plan: Catalog, Table Access, ADMIN](docs/plan/p0-developer-2.md)
 - [Developer 3 P0 plan: Ordering, Fulfilment, i18n](docs/plan/p0-developer-3.md)
@@ -31,7 +31,6 @@
 - [ADR 0003: Layered configuration](docs/adr/0003-use-layered-configuration.md)
 - [ADR 0004: Payment and order history](docs/adr/0004-protect-payment-and-order-history.md)
 - [ADR 0005: Rebuildable daily stats](docs/adr/0005-use-rebuildable-daily-stats.md)
-- [Firestore research](research/firestore-foundation.md)
 
 ## Agent constraints
 - Do not implement code without an approved REQ ID.

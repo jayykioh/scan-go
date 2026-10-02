@@ -39,6 +39,7 @@ import { assertAppCheck } from '../../shared/appCheck.js';
 import { assertRateLimit } from '../../shared/rateLimit.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
 import { stableRequestHash } from '../../shared/idempotency.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   resolvePublicOrderRateLimit,
 } from '../table-access/service.js';
@@ -73,7 +74,7 @@ import {
   buildOrderNotificationEvent,
 } from '../fulfilment/notification.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 
 /** Unpaid and Kitchen queues stay bounded (docs/RULES_FIREBASE.md §6). */
 export const ORDER_LIST_LIMIT = 50;

@@ -19,6 +19,7 @@ import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { assertRateLimit } from '../../shared/rateLimit.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   decideCustomerPhoneAccess,
   mapAuthorizationMembership,
@@ -68,7 +69,7 @@ import {
   isAdminToken,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 const LOYALTY_LIST_LIMIT = 100;
 
 /**

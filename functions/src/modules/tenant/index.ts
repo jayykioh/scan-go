@@ -17,6 +17,7 @@ import {
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { writeAuditEvent, writeAuditEventInTransaction } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   LIST_MEMBERSHIPS_LIMIT,
   TENANT_ONBOARDING_DENIED_MESSAGE,
@@ -47,7 +48,7 @@ import {
   resolveCustomerPhoneQueryLimit,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 
 export const callableTenantBootstrap = onCall(
   CALL_OPTIONS,

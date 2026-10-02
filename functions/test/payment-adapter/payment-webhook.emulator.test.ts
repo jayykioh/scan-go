@@ -34,6 +34,7 @@ import {
   type PaymentProviderPayload,
 } from '../../../shared/contracts/payment.contract.js';
 import { buildProviderSignature } from '../../src/modules/payment/provider.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
 const TENANT_A = 'tenant-webhook-alpha';
@@ -42,7 +43,7 @@ const EMULATOR_SECRET = 'scango-emulator-signing-secret';
 
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
-const WEBHOOK_URL = `http://${FUNCTIONS_HOST}:${FUNCTIONS_PORT}/${PROJECT_ID}/us-central1/paymentWebhookV1`;
+const WEBHOOK_URL = `http://${FUNCTIONS_HOST}:${FUNCTIONS_PORT}/${PROJECT_ID}/${FUNCTIONS_REGION}/paymentWebhookV1`;
 
 let adminApp: AdminApp;
 let db: Firestore;

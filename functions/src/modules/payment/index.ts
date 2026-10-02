@@ -55,6 +55,7 @@ import {
   computeEarnedPoints,
   loyaltyEarnTransactionId,
 } from '../../../../shared/contracts/loyalty.contract.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 
 // Module public API: Config's scheduled retention job composes the archive plan
 // through Payment (NFR-RET-001).
@@ -90,7 +91,7 @@ import {
   type PaymentIdempotencyRecord,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 
 function paymentCollectionPath(tenantId: string): string {
   return `tenants/${tenantId}/payments`;
@@ -984,7 +985,7 @@ export const callablePaymentAutoConfirm = onCall(
  * signature and reuses the same idempotent settlement path as the callable.
  */
 export const paymentWebhookV1 = onRequest(
-  { region: 'us-central1' },
+  { region: FUNCTIONS_REGION },
   async (request, response) => {
     if (request.method !== 'POST') {
       response.status(405).json({ error: 'method-not-allowed' });

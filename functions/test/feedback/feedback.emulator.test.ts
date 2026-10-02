@@ -44,6 +44,7 @@ import type {
   FeedbackSubmitInput,
   FeedbackSubmitResult,
 } from '../../../shared/contracts/feedback.contract.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
 const TENANT_A = 'tenant-feedback-alpha';
@@ -53,7 +54,7 @@ const ORDER_B = 'order-feedback-b';
 const TRACKING_A = 'tracking-feedback-a';
 const TRACKING_B = 'tracking-feedback-b';
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 

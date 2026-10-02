@@ -55,6 +55,7 @@ import type {
   AiAskInput,
   AiAskResult,
 } from '../../../shared/contracts/ai.contract.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 import { reserveAiBudget } from '../../src/modules/ai/service.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
@@ -63,7 +64,7 @@ const PASSWORD = 'password123';
 const TENANT_A = 'tenant-ai-budget-alpha';
 const TENANT_B = 'tenant-ai-budget-bravo';
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';

@@ -27,6 +27,7 @@ import {
 } from '../../../../shared/contracts/reporting.contract.js';
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   aggregateTotals,
   assertReportingMember,
@@ -46,9 +47,9 @@ import {
   type ReportingPaymentSource,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 const SCHEDULE_OPTIONS = {
-  region: 'us-central1',
+  region: FUNCTIONS_REGION,
   timeZone: 'Asia/Ho_Chi_Minh',
 } as const;
 

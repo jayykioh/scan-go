@@ -9,6 +9,7 @@ import {
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   assertPlanChangeAuthorized,
   nowIso,
@@ -20,7 +21,7 @@ import {
 } from './service.js';
 import { HttpsError } from 'firebase-functions/v2/https';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 
 /** Active member query: the current plan and its resolved entitlements. */
 export const callableSubscriptionGet = onCall(

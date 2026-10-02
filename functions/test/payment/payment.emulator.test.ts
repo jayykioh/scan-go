@@ -66,6 +66,7 @@ import type {
 import type {
   OrderListResult,
 } from '../../../shared/contracts/order.contract.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
 const PASSWORD = 'password123';
@@ -79,7 +80,7 @@ const TRACKING_PAY_LATER = 'track-pay-later-001';
 const TRACKING_PAY_FIRST = 'track-pay-first-001';
 const TRACKING_MISMATCH = 'track-pay-later-002';
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';

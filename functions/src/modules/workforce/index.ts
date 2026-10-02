@@ -14,6 +14,7 @@ import {
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   WORKFORCE_ATTENDANCE_NOT_FOUND_MESSAGE,
   WORKFORCE_INVALID_MESSAGE,
@@ -41,7 +42,7 @@ import {
   toShift,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 const MAX_SHIFTS_PER_DAY = 100;
 const MAX_ATTENDANCE_RECORDS = 200;
 

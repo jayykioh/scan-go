@@ -6,6 +6,7 @@ import RootLayout from './layouts/RootLayout';
 import AuthLayout from './layouts/AuthLayout';
 import SimulatorLayout from './layouts/SimulatorLayout';
 import DashboardLayout from './layouts/DashboardLayout';
+import AiChatWidget from './components/AiChatWidget';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const IntroducePage = lazy(() => import('./pages/IntroducePage'));
@@ -161,6 +162,7 @@ export default function App() {
             <Suspense fallback={<FallbackLoader />}>
               <RouterProvider router={router} />
             </Suspense>
+            <AiChatWidget />
           </motion.div>
         )}
       </AnimatePresence>

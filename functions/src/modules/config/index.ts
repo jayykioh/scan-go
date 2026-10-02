@@ -13,6 +13,7 @@ import {
   writeAuditEventInTransaction,
   writePlatformAuditEventInTransaction,
 } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import { requirePlatformAdmin } from '../admin/index.js';
 import {
   assertActiveMember,
@@ -33,7 +34,7 @@ import {
   toTenantVisibleResolvedConfig,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 
 /**
  * Owner command: merge allowed tenant overrides, increment the config version,
@@ -234,7 +235,7 @@ export const callableConfigGetResolved = onCall(
 );
 
 const SCHEDULE_OPTIONS = {
-  region: 'us-central1',
+  region: FUNCTIONS_REGION,
   timeZone: 'Asia/Ho_Chi_Minh',
 } as const;
 

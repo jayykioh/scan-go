@@ -28,6 +28,7 @@ import {
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   applyOrderStatusMutationPlan,
   buildOrderStatusMutationPlan,
@@ -61,7 +62,7 @@ import {
   type FulfilmentIdempotencyRecord,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 
 interface KitchenCommandArgs {
   tenantId: string;

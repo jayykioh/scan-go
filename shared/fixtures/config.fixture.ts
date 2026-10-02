@@ -101,7 +101,7 @@ export function tenantVisibleResolvedConfigFixture(): TenantVisibleResolvedConfi
         sessionHours: 8,
       },
       ai: {
-        provider: 'rule-based',
+        provider: 'gemini',
         monthlyBudgetVnd: 500000,
       },
     },

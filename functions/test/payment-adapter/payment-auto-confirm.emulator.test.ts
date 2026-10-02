@@ -45,6 +45,7 @@ import {
   type PaymentAutoConfirmInput,
   type PaymentAutoConfirmResult,
 } from '../../../shared/contracts/payment.contract.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 import { buildProviderSignature } from '../../src/modules/payment/provider.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
@@ -52,7 +53,7 @@ const TENANT_A = 'tenant-alpha';
 const ORDER_ID = 'order-auto-001';
 const EMULATOR_SECRET = 'scango-emulator-signing-secret';
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 

@@ -17,6 +17,8 @@ import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { maskPersonalData } from '../../shared/pii.js';
 import { writeAuditEvent } from '../../shared/audit.js';
+import { geminiApiKeySecret } from '../../shared/secrets.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import { dayKeyFromIso, nowIso } from '../reporting/service.js';
 import {
   readConfigLayers,
@@ -54,7 +56,14 @@ import {
 } from './feedback-grouping.js';
 import { runWeeklyAnalysis } from './weekly.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = {
+  region: FUNCTIONS_REGION,
+  cors: true,
+  // Bind the provider keys from Secret Manager so a configured key reaches
+  // `process.env` at runtime. An unbound secret is never injected
+  // (REQ-AI-004, ADR 0008). The value is never logged or returned.
+  secrets: [geminiApiKeySecret],
+};
 
 function requireUid(uid: string | undefined): string {
   if (!uid) {
@@ -347,9 +356,10 @@ export const callableAiGroupFeedback = onCall(
  */
 export const scheduledAiWeeklyAnalysis = onSchedule(
   {
-    region: 'us-central1',
+    region: FUNCTIONS_REGION,
     timeZone: AI_DEFAULT_TIMEZONE,
     schedule: 'every monday 03:00',
+    secrets: [geminiApiKeySecret],
   },
   async () => {
     const db = getDb();

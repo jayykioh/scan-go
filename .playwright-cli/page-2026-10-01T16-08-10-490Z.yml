@@ -1,0 +1,52 @@
+- generic [ref=f26e20]:
+  - banner [ref=f26e21]:
+    - link [ref=f26e22] [cursor=pointer]:
+      - /url: /simulator
+    - generic [ref=f26e25]:
+      - generic [ref=f26e26]:
+        - generic [ref=f26e27]: Test Environment
+        - generic [ref=f26e28]: Bún Phở Kinh Kỳ
+      - button "Đơn ảo" [ref=f26e30] [cursor=pointer]
+      - button "Xóa Data" [ref=f26e32] [cursor=pointer]
+  - main [ref=f26e36]:
+    - generic [ref=f26e38]:
+      - combobox [ref=f26e41] [cursor=pointer]:
+        - option "Solo Operator" [selected]
+        - option "Owner (Quản lý)"
+        - option "Thu Ngân"
+        - option "KDS (Bếp)"
+        - option "Khách hàng"
+        - option "Nhân viên"
+      - generic [ref=f26e44]:
+        - generic [ref=f26e45]:
+          - generic [ref=f26e46]: 23:08
+          - generic [ref=f26e51]: 5G
+        - generic [ref=f26e58]:
+          - generic [ref=f26e59]:
+            - generic [ref=f26e60]:
+              - generic [ref=f26e61]:
+                - generic [ref=f26e62]: "HẠNG GÓI: — UNLOCKED"
+                - heading "Bún Phở Kinh Kỳ" [level=1] [ref=f26e68]
+              - button "Trả Sau" [ref=f26e69] [cursor=pointer]
+            - generic [ref=f26e73]:
+              - generic [ref=f26e74]:
+                - generic [ref=f26e75]: TIỀN HÔM NAY
+                - generic [ref=f26e76]: 0đ
+              - generic [ref=f26e77]:
+                - generic [ref=f26e78]: HÓA ĐƠN
+                - generic [ref=f26e79]: 0 đã thu
+              - generic [ref=f26e80]:
+                - generic [ref=f26e81]: CHỜ PHỤC VỤ
+                - generic [ref=f26e82]: 0 đơn
+          - generic [ref=f26e146]:
+            - generic [ref=f26e150]:
+              - heading "Chức năng Định lượng Vật tư & Tính năng Cảnh báo tự động thuộc gói PRO!" [level=3] [ref=f26e151]
+              - paragraph [ref=f26e152]: "Nâng tầm quản trị quán ăn sòng phẳng hoàn hảo: tự động trừ số lượng thịt tái dải, bánh phở ra mộc và tính ra COGS/giá vốn lãi thô cực kỳ chặt chẽ!"
+            - button "🚀 KÍCH HOẠT NHANH GÓI PRO MIỄN PHÍ" [ref=f26e153] [cursor=pointer]
+          - generic [ref=f26e113]:
+            - button "Home & Đơn" [ref=f26e114] [cursor=pointer]
+            - button "Đóng/Mở Kho" [ref=f26e121] [cursor=pointer]
+            - button "Định Lượng" [active] [ref=f26e127] [cursor=pointer]
+            - button "Hạng Gói & AI" [ref=f26e133] [cursor=pointer]
+    - button [ref=f26e141] [cursor=pointer]:
+      - generic [ref=f26e144]: ThêmMàn Hình

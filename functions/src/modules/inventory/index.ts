@@ -29,6 +29,7 @@ import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
 import { stableRequestHash } from '../../shared/idempotency.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   applyIngredientUpdate,
   applyRecipeUpdate,
@@ -60,7 +61,7 @@ import {
   type InventoryIdempotencyRecord,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 const INGREDIENT_CHANGED_ACTION = 'IngredientChanged';
 const STOCK_ADJUSTED_ACTION = 'StockAdjusted';
 const RECIPE_CHANGED_ACTION = 'RecipeChanged';

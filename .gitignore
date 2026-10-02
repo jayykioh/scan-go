@@ -10,5 +10,9 @@ firebase-debug.log
 .env*
 !.env.example
 
+# Local secret values for the Functions emulator. Never commit.
+.secret.local
+**/.secret.local
+
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/

@@ -7,7 +7,9 @@ import {
   type Functions,
 } from 'firebase/functions';
 
-export const FUNCTIONS_REGION = 'us-central1';
+import { FUNCTIONS_REGION } from '@shared/config/region';
+
+export { FUNCTIONS_REGION };
 
 export const FUNCTIONS_EMULATOR_HOST = 'localhost';
 export const FUNCTIONS_EMULATOR_PORT = 5001;

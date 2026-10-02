@@ -48,7 +48,7 @@ Only `docs/RULES_FIREBASE.md` is active for the database-specific rules.
 - Use web audio after user interaction and provide a persistent mute setting.
 
 ## 4. API and Compute
-- Use Cloud Functions 2nd gen in `us-central1` initially.
+- Use Cloud Functions 2nd gen in `asia-southeast1` (Singapore), the closest region to Vietnam (ADR 0011).
 - Use platform defaults for memory, timeout, and concurrency until measured evidence supports changes.
 - Keep runtime options in deployment configuration. Do not expose them as tenant settings.
 - Validate auth, App Check, tenant, role, permissions, payload, transitions, and idempotency for every write.

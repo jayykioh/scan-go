@@ -18,6 +18,7 @@ import {
   expect,
   it,
 } from 'vitest';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 import {
   deleteApp as deleteAdminApp,
   getApps as getAdminApps,
@@ -58,7 +59,7 @@ const TENANT_A = 'tenant-campaign-alpha';
 const OWNER_UID = 'uid-owner-campaign';
 const STAFF_UID = 'uid-staff-campaign';
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';

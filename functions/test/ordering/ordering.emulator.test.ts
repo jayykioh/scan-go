@@ -51,6 +51,7 @@ import type {
   OrderSubmitResult,
   OrderTrackingResult,
 } from '../../../shared/contracts/order.contract.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
 const TENANT_A = 'tenant-alpha';
@@ -60,7 +61,7 @@ const TABLE_ID = 'table-01';
 const MENU_ITEM_ID = 'item-pho-bo-001';
 const MENU_ITEM_ID_DRINK = 'item-ca-phe-001';
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 

@@ -18,6 +18,7 @@ import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { assertRateLimit } from '../../shared/rateLimit.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   buildAiUsageRecord,
   monthKeyFromDayKey,
@@ -58,7 +59,7 @@ import {
   resolvePromotionCart,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 const PROMOTION_LIST_LIMIT = 100;
 
 function promotionCollection(tenantId: string): string {

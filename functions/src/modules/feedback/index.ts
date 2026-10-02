@@ -8,6 +8,7 @@ import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { assertRateLimit } from '../../shared/rateLimit.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import { nowIso } from '../reporting/service.js';
 import { resolvePublicOrderRateLimit } from '../table-access/service.js';
 import {
@@ -30,7 +31,7 @@ import {
   toFeedbackTicket,
 } from './ticket.service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 
 /**
  * Public Customer command: submit a review or issue. The server derives the

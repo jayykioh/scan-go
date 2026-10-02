@@ -1,0 +1,100 @@
+- generic [ref=f1e20]:
+  - banner [ref=f1e21]:
+    - link [ref=f1e22] [cursor=pointer]:
+      - /url: /simulator
+    - generic [ref=f1e25]:
+      - generic [ref=f1e26]:
+        - generic [ref=f1e27]: Test Environment
+        - generic [ref=f1e28]: Bún Phở Kinh Kỳ
+      - button "Đơn ảo" [ref=f1e30] [cursor=pointer]
+      - button "Xóa Data" [ref=f1e32] [cursor=pointer]
+  - main [ref=f1e36]:
+    - generic [ref=f1e38]:
+      - combobox [ref=f1e41] [cursor=pointer]:
+        - option "Solo Operator"
+        - option "Owner (Quản lý)"
+        - option "Thu Ngân"
+        - option "KDS (Bếp)"
+        - option "Khách hàng" [selected]
+        - option "Nhân viên"
+      - generic [ref=f1e44]:
+        - generic [ref=f1e45]:
+          - generic [ref=f1e46]: 18:20
+          - generic [ref=f1e51]: 5G
+        - generic [ref=f1e59]:
+          - generic [ref=f1e60]:
+            - generic [ref=f1e91]:
+              - generic [ref=f1e92]:
+                - generic [ref=f1e93]:
+                  - paragraph [ref=f1e94]: Bàn 02
+                  - heading "Bún Phở Kinh Kỳ" [level=1] [ref=f1e95]
+                - button "Hội viên" [ref=f1e96]
+              - textbox "Tìm món, đồ uống..." [ref=f1e101]
+            - generic [ref=f1e102]:
+              - generic [ref=f1e103]:
+                - generic [ref=f1e106]:
+                  - paragraph [ref=f1e107]: Menu hôm nay
+                  - heading "Gọi món nhanh, bếp nhận ngay." [level=2] [ref=f1e108]
+                - generic [ref=f1e112]:
+                  - generic [ref=f1e113]: 6 món
+                  - generic [ref=f1e114]: Trả sau
+              - generic [ref=f1e119]:
+                - paragraph [ref=f1e120]: Ưu đãi MUANHIEU15K
+                - paragraph [ref=f1e121]: Giảm 15.000đ khi đủ điều kiện
+              - generic [ref=f1e123]:
+                - generic [ref=f1e129]:
+                  - paragraph [ref=f1e130]: Khách hàng thân thiết
+                  - paragraph [ref=f1e131]: Đăng nhập để nhận ưu đãi
+                - button "Đăng nhập" [ref=f1e132]
+              - generic [ref=f1e133]:
+                - button "Tất cả" [ref=f1e134]
+                - button "Đồ ăn" [ref=f1e135]
+                - button "Đồ uống" [ref=f1e136]
+              - generic [ref=f1e137]:
+                - button [ref=f1e138]:
+                  - img "Phở Bò Tái Lăn Kinh Kỳ" [ref=f1e139]
+                  - generic [ref=f1e140]:
+                    - generic [ref=f1e142]:
+                      - paragraph [ref=f1e143]: Phở Bò Tái Lăn Kinh Kỳ
+                      - paragraph [ref=f1e144]: Thịt bò xào tái chín thơm mùi tỏi gừng, nước dùng đậm béo chuẩn vị truyền thống Hà Nội.
+                    - paragraph [ref=f1e147]: 65.000đ
+                - button [ref=f1e148]:
+                  - img "Phở Gà Thảo Mộc Sợi Nhỏ" [ref=f1e149]
+                  - generic [ref=f1e150]:
+                    - generic [ref=f1e152]:
+                      - paragraph [ref=f1e153]: Phở Gà Thảo Mộc Sợi Nhỏ
+                      - paragraph [ref=f1e154]: Lũ gà ta chạy đồi dai ngon ngọt thịt, ninh cùng thảo quả đem lại vị thanh tao dồi dào sức khỏe.
+                    - paragraph [ref=f1e157]: 55.000đ
+                - button [ref=f1e158]:
+                  - img "Bún Chả Tre Thạch Thất" [ref=f1e159]
+                  - generic [ref=f1e160]:
+                    - generic [ref=f1e162]:
+                      - paragraph [ref=f1e163]: Bún Chả Tre Thạch Thất
+                      - paragraph [ref=f1e164]: Nướng than hoa đượm vị mật mía hương sả, ăn kèm nước mắm ấm nóng sực mùi đu đủ giòn sần sật.
+                    - paragraph [ref=f1e167]: 50.000đ
+                - button [ref=f1e168]:
+                  - img "Nem Rán Tôm Lụa (4 chiếc)" [ref=f1e169]
+                  - generic [ref=f1e170]:
+                    - generic [ref=f1e172]:
+                      - paragraph [ref=f1e173]: Nem Rán Tôm Lụa (4 chiếc)
+                      - paragraph [ref=f1e174]: Vỏ bánh tráng giòn rụm bên ngoài, nhân tôm xay nhuyễn cùng mộc nhĩ nấm hương béo bùi.
+                    - paragraph [ref=f1e177]: 35.000đ
+                - button [ref=f1e178]:
+                  - img "Quẩy Khô Siêu Giòn" [ref=f1e179]
+                  - generic [ref=f1e180]:
+                    - generic [ref=f1e182]:
+                      - paragraph [ref=f1e183]: Quẩy Khô Siêu Giòn
+                      - paragraph [ref=f1e184]: Chiên vàng giòn đúng điệu ăn kèm phở.
+                    - paragraph [ref=f1e187]: 10.000đ
+                - button [ref=f1e188]:
+                  - img "Trà Sâm Dứa Hương Lài" [ref=f1e189]
+                  - generic [ref=f1e190]:
+                    - generic [ref=f1e192]:
+                      - paragraph [ref=f1e193]: Trà Sâm Dứa Hương Lài
+                      - paragraph [ref=f1e194]: Nước đá lạnh mát thơm mùi đặc trưng lá dứa.
+                    - paragraph [ref=f1e197]: 5.000đ
+          - button "1 món 65.000đ" [ref=f1e227]:
+            - generic [ref=f1e228]: 1 món
+            - generic [ref=f1e232]: 65.000đ
+    - button [ref=f1e87] [cursor=pointer]:
+      - generic [ref=f1e90]: ThêmMàn Hình

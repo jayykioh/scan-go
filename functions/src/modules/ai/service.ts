@@ -140,10 +140,13 @@ export const AI_OWNER_DENIED_MESSAGE =
   'Chỉ chủ cửa hàng dùng được trợ lý AI.';
 export const AI_BUDGET_EXCEEDED_MESSAGE =
   'Cửa hàng đã đạt hạn mức chi phí AI trong tháng.';
-export const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash';
-/** Estimated VND per 1,000 tokens; used only for cost accounting. */
-export const GEMINI_INPUT_VND_PER_1K = 190;
-export const GEMINI_OUTPUT_VND_PER_1K = 760;
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite';
+/** Estimated VND per 1,000 tokens; used only for cost accounting.
+ *  `gemini-3.5-flash-lite` list price is $0.30 input / $2.50 output per 1M
+ *  tokens. At roughly 26,300 VND per USD this is about 7.9 / 65.8 VND per 1K.
+ *  The values keep a small buffer upward. */
+export const GEMINI_INPUT_VND_PER_1K = 9;
+export const GEMINI_OUTPUT_VND_PER_1K = 70;
 
 const SECRET_PATTERNS: RegExp[] = [
   /AIza[0-9A-Za-z_-]{20,}/,

@@ -43,7 +43,7 @@ export interface MenuItem {
   description: string;
   inStock: boolean;
   stockCount: number;
-  toppings?: { name: string; price: number }[];
+  toppings?: { name: string; price: number; optionId?: string }[];
   recipe?: RecipeItem[];
 }
 
@@ -54,6 +54,7 @@ export interface OrderItem {
   price: number;
   quantity: number;
   selectedModifiers?: string[];
+  selectedOptionIds?: string[];
 }
 
 export type OrderStatus = 'pending' | 'cooking' | 'ready' | 'served' | 'paid';

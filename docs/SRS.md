@@ -365,7 +365,7 @@ Open questions must be answered before the related extension enters a release ph
 | REQ-INV-002 | Done | P0-L07: unpaid cancellation restores inventory through one idempotent server transaction with audit. Emulator evidence pass. |
 | REQ-TBL-001 | Done | P0-006: Table Access callables (create/rename/archive/regenerate) with App Check and Zod, opaque random token, atomic old-link revocation, minimal public resolver, QR payload rotation. Emulator and Rules evidence pass. |
 | REQ-NFC-001 | PARTIAL | M3: server-verified NFC provision, revoke, and resolve with opaque tokens and Rules. The physical NDEF device write/read step remains a client task. |
-| REQ-ORD-001 | Done | P0-007: server validates the active Table link and current `publicMenuItems`, and computes integer VND totals from modifiers. Emulator evidence pass. |
+| REQ-ORD-001 | Done | P0-007: server validates the active Table link and current `publicMenuItems`, and computes integer VND totals from modifiers. Customer cart now sends selected option IDs to server pricing. Emulator evidence pass. |
 | REQ-ORD-002 | Done | P0-007 and P0-009: Pay-Later creates `pending`; Pay-First stays hidden from Kitchen until confirmed Payment. Emulator evidence pass. |
 | REQ-ORD-003 | Done | P0-007, P0-008, P0-009, P0-010: immutable Order, status events, same-transaction tracking projection, and bounded realtime updates. Emulator evidence pass. |
 | REQ-ORD-004 | Done | P0-007: offline submission blocks with a problem UI and creates no Order. Adapter and UI evidence pass. |

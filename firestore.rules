@@ -2,31 +2,284 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isTenantMember(tenantId) {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid));
+    function signedIn() {
+      return request.auth != null;
     }
 
-    // Public projections contain no private tenant or Customer fields.
-    match /publicTableLinks/{token} {
-      allow get: if resource.data.active == true;
-      allow list, create, update, delete: if false;
+    // ADMIN is a server-verified platform claim, not a tenant membership.
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
     }
 
-    match /tenants/{tenantId}/publicMenuItems/{itemId} {
-      allow read: if resource.data.tenantId == tenantId && resource.data.available == true;
+    function memberPath(tenantId) {
+      return /databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid);
+    }
+
+    function isMember(tenantId) {
+      return signedIn() && exists(memberPath(tenantId));
+    }
+
+    function isActiveMember(tenantId) {
+      return isMember(tenantId) && get(memberPath(tenantId)).data.isActive != false;
+    }
+
+    function isActiveOwner(tenantId) {
+      return isActiveMember(tenantId) && get(memberPath(tenantId)).data.membershipType == 'owner';
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
       allow write: if false;
     }
 
+    // Product defaults are ADMIN-only on the client. Tenant members receive the
+    // resolved configuration through the Config query callable.
+    match /platform/config {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Platform change audit is server-written only.
+    match /platform/config/audit/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /tenants/{tenantId} {
+      allow read: if isActiveMember(tenantId) || isAdmin();
+      allow write: if false;
+
+      match /members/{memberUid} {
+        // A membership is private to its user. Cross-user reads are denied;
+        // ADMIN remains server-verified.
+        allow read: if isAdmin() || (signedIn() && request.auth.uid == memberUid && isActiveMember(tenantId));
+        allow write: if false;
+      }
+
+      // Authentication and lockout audit events are server-written only.
+      match /audit/{eventId} {
+        allow read, write: if false;
+      }
+
+      // Catalog private source: active members and ADMIN read; server writes.
+      match /menuItems/{itemId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Catalog public projection: Customer reads the public-safe copy only.
+      match /publicMenuItems/{itemId} {
+        allow read: if true;
+        allow write: if false;
+      }
+
+      // Inventory source: active members and ADMIN read; server writes only.
+      match /ingredients/{ingredientId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Recipe source: active members and ADMIN read; server writes only.
+      match /recipes/{recipeId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Stock-movement ledger is append-only and server-written.
+      match /stockMovements/{movementId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Table Access private source: active members and ADMIN read; server writes.
+      match /tables/{tableId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Ordering source: server writes only; Customers never read this tenant
+      // collection directly (docs/RULES_FIREBASE.md §3).
+      match /orders/{orderId} {
+        allow read: if false;
+        allow write: if false;
+
+        match /statusEvents/{eventId} {
+          allow read, write: if false;
+        }
+      }
+
+      // Payment records are immutable and server-written only. Active tenant
+      // members and ADMIN read; cross-tenant reads stay denied (REQ-CAS-001,
+      // NFR-SEC-001).
+      match /payments/{paymentId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Archived paid Orders are the recoverable retention copy. They stay
+      // server-written only and tenant-scoped (NFR-RET-001, NFR-REL-001).
+      match /archivedOrders/{orderId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Archived confirmed Payments are the recoverable retention copy. They
+      // stay server-written only and tenant-scoped (NFR-RET-001, NFR-REL-001).
+      match /archivedPayments/{paymentId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Normalized provider evidence carries no secret material and is
+      // server-written only and tenant-scoped (P0-L08, REQ-PAY-001).
+      match /paymentAdapterEvidence/{evidenceId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Fulfilment notification effects are server-written only. Active tenant
+      // members and ADMIN read; cross-tenant reads stay denied (REQ-NOT-001,
+      // NFR-SEC-001).
+      match /notifications/{eventId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Reporting daily materialized stats are derived and server-written only.
+      // Active tenant members and ADMIN read; cross-tenant reads stay denied and
+      // every direct write is denied (REQ-RPT-001, REQ-RPT-002, ADR 0005,
+      // NFR-SEC-001).
+      match /dailyStats/{dayKey} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+
+        match /items/{itemId} {
+          allow read: if isActiveMember(tenantId) || isAdmin();
+          allow write: if false;
+        }
+
+        match /tables/{tableId} {
+          allow read: if isActiveMember(tenantId) || isAdmin();
+          allow write: if false;
+        }
+      }
+
+      // AI usage accounting is server-written only. Active tenant members and
+      // ADMIN read; cross-tenant reads stay denied (REQ-AI-004, REQ-AI-005,
+      // NFR-AI-002).
+      match /aiUsage/{usageId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // AI budget reservations are the server-authoritative atomic ledger. No
+      // client may read or write them (REQ-AI-005, NFR-AI-002).
+      match /aiBudget/{monthKey} {
+        allow read, write: if false;
+      }
+
+      // AI weekly Insights are derived and server-written only. Active tenant
+      // members and ADMIN read; cross-tenant reads stay denied and every direct
+      // write is denied (REQ-AI-002, NFR-SEC-001).
+      match /aiInsights/{insightId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Feedback is tenant-scoped and server-written only. Customer submits
+      // through the Feedback callable, so raw text stays permission-controlled
+      // and no direct client write is possible (REQ-FDB-001, NFR-PRIV-002).
+      match /feedback/{feedbackId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Feedback tickets are server-written only. Active tenant members and
+      // ADMIN read; cross-tenant reads stay denied (REQ-FDB-003).
+      match /feedbackTickets/{ticketId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Workforce Shifts are server-written only. Active tenant members and
+      // ADMIN read; cross-tenant reads stay denied (REQ-HRM-001).
+      match /shifts/{shiftId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Attendance records are server-written only. A Staff member reads only
+      // their own records; an active Owner or ADMIN reads the tenant's records.
+      // Cross-tenant reads stay denied (REQ-HRM-002, REQ-HRM-003, NFR-PRIV-001).
+      match /attendance/{recordId} {
+        allow read: if isAdmin() || isActiveOwner(tenantId) || (isActiveMember(tenantId) && resource.data.staffUid == request.auth.uid);
+        allow write: if false;
+      }
+
+      // Stock counts are server-written only. Active tenant members and ADMIN
+      // read; cross-tenant reads stay denied (REQ-INV-003, REQ-INV-004).
+      match /stockCounts/{countId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Campaign suggestions are server-written only. Active tenant members and
+      // ADMIN read; cross-tenant reads stay denied (REQ-PRO-001, NFR-SEC-003).
+      match /campaignSuggestions/{suggestionId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Promotion definitions are server-written only. Active tenant members
+      // and ADMIN read; cross-tenant reads stay denied (REQ-PRO-001).
+      match /promotions/{promotionId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Loyalty members are the Customer-phone source, so direct reads stay
+      // denied for every client, including ADMIN. Members reach this data only
+      // through the server callable that filters the phone field by permission
+      // (REQ-LOY-001, NFR-PRIV-001).
+      match /loyaltyMembers/{memberId} {
+        allow read, write: if false;
+      }
+
+      // Loyalty point ledger is append-only, carries no phone, and is
+      // server-written only.
+      match /loyaltyTransactions/{transactionId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Loyalty configuration is server-written only.
+      match /loyaltyConfig/{configId} {
+        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Idempotency records are server-written only.
+      match /idempotency/{key} {
+        allow read, write: if false;
+      }
+    }
+
+    // Customer tracking reads are scoped to one opaque token document only.
     match /publicOrderTracking/{trackingToken} {
       allow get: if true;
-      allow list, create, update, delete: if false;
+      allow list, write: if false;
     }
 
-    // Authorized staff may read queues; all business writes go through Cloud Functions.
-    match /tenants/{tenantId}/orders/{orderId} {
-      allow read: if isTenantMember(tenantId);
-      allow write: if false;
+    // Table links are readable only at the opaque token path, never listable.
+    match /publicTableLinks/{token} {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
+    // NFC session links are readable only at the opaque token path, never
+    // listable, so a tag token cannot be enumerated (REQ-NFC-001, NFR-SEC-002).
+    match /publicNfcLinks/{token} {
+      allow get: if true;
+      allow list, write: if false;
     }
 
     match /{document=**} {

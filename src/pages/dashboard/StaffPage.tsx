@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Plus, Pencil, Trash2, X, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
-import { usePersistentState } from '../../hooks/usePersistentState';
 import { createPortal } from 'react-dom';
 import { StaffAccount } from '../../types';
 import { MOCK_STAFF_ACCOUNTS } from '../../mockData';
@@ -22,50 +21,14 @@ const roleLabel = (staff: StaffAccount) => {
   return roles.join(', ') || 'Chưa cấp quyền';
 };
 
-const deserializeStaff = (value: string): StaffAccount[] => {
-  const parsed = JSON.parse(value) as unknown[];
-  const migrated = parsed
-    .map((entry: any): StaffAccount | null => {
-      if (entry?.roles && typeof entry.pin === 'string') {
-        return {
-          id: String(entry.id),
-          name: String(entry.name || 'Nhân viên'),
-          pin: entry.pin,
-          roles: {
-            isKitchen: Boolean(entry.roles.isKitchen),
-            isWaiter: Boolean(entry.roles.isWaiter),
-            isCashier: Boolean(entry.roles.isCashier),
-          },
-          isActive: entry.isActive !== false,
-        };
-      }
-
-      if (entry?.role) {
-        const role = String(entry.role).toLowerCase();
-        return {
-          id: String(entry.id || `staff_${Date.now()}`),
-          name: String(entry.name || 'Nhân viên'),
-          pin: '0000',
-          roles: {
-            isKitchen: role.includes('bếp') || role.includes('đầu'),
-            isWaiter: role.includes('phục'),
-            isCashier: role.includes('thu') || role.includes('quản'),
-          },
-          isActive: entry.status !== 'Nghỉ phép',
-        };
-      }
-
-      return null;
-    })
-    .filter((entry): entry is StaffAccount => entry !== null);
-
-  return migrated.length > 0 ? migrated : MOCK_STAFF_ACCOUNTS;
-};
-
 export default function StaffPage() {
-  const [staffList, setStaffList] = usePersistentState<StaffAccount[]>('scango:staff:v1', MOCK_STAFF_ACCOUNTS, {
-    deserialize: deserializeStaff,
-  });
+  /**
+   * DEMO PLACEHOLDER. M1 has no staff membership command or staff list query,
+   * so this page keeps an in-memory sample list only. The server owns PIN
+   * hashing, lockout, and membership (P0-004). No business state is persisted
+   * to localStorage (NFR-PRIV-001, docs/RULES_FIREBASE.md §1).
+   */
+  const [staffList, setStaffList] = useState<StaffAccount[]>(MOCK_STAFF_ACCOUNTS);
   const [editingStaff, setEditingStaff] = useState<StaffAccount | null>(null);
   const [deletingStaff, setDeletingStaff] = useState<StaffAccount | null>(null);
   const toast = useToast();
@@ -136,8 +99,8 @@ export default function StaffPage() {
         <div className="flex items-center gap-3">
           <ShieldCheck className="w-5 h-5 text-emerald-600" />
           <div>
-            <p className="text-sm font-bold text-zinc-900">PIN demo đang hoạt động</p>
-            <p className="text-xs text-zinc-500">Mặc định: Thu ngân `1111`, Bếp `2222`, Phục vụ/Thu ngân `3333`.</p>
+            <p className="text-sm font-bold text-zinc-900">Danh sách nhân sự demo (P1)</p>
+            <p className="text-xs text-zinc-500">M1 chưa có lệnh tạo/sửa nhân sự. PIN do máy chủ xác minh ở màn hình Nhân viên.</p>
           </div>
         </div>
         <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">{staffList.filter(staff => staff.isActive).length}/{staffList.length} active</span>
@@ -165,7 +128,7 @@ export default function StaffPage() {
                   <p className="font-bold text-zinc-900 uppercase tracking-tight">{staff.name}</p>
                   <p className="font-mono text-[10px] text-zinc-400 mt-1">#{staff.id.slice(-8)}</p>
                 </td>
-                <td className="p-4 font-mono text-xs font-bold text-zinc-600 border-b border-hard">{staff.pin}</td>
+                <td className="p-4 font-mono text-xs font-bold text-zinc-600 border-b border-hard">{staff.pin ? '••••' : '—'}</td>
                 <td className="p-4 font-mono text-xs text-zinc-600 border-b border-hard uppercase">{roleLabel(staff)}</td>
                 <td className="p-4 border-b border-hard">
                   <button

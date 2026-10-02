@@ -3,21 +3,32 @@ import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, Check, ChevronLeft, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Ticket, X } from 'lucide-react';
 import { INDUSTRY_TEMPLATES } from '../mockData';
 import { LoyaltyMember, MenuItem, Order, OrderItem, TableConfig, TenantConfig } from '../types';
-import type { OrderingAdapter } from '../data/adapters/ordering.adapter';
+import type { PublicOrderTracking } from '@contracts/order.contract';
+import type { I18nMessageKey } from '@contracts/i18n.contract';
+import { resolveInterfaceLocale, translate } from '../data/adapters/i18n.adapter';
 
 interface CustomerProps {
   tenantConfig: TenantConfig;
   menuItems: MenuItem[];
   orders: Order[];
-  setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
   loyaltyMembers: LoyaltyMember[];
   setLoyaltyMembers: React.Dispatch<React.SetStateAction<LoyaltyMember[]>>;
   simulationTableId: string;
   setSimulationTableId: (val: string) => void;
   tables: TableConfig[];
   directMenu?: boolean;
-  orderingAdapter?: OrderingAdapter;
-  tableToken?: string;
+  /**
+   * Server submission path. Orders are created only through the Ordering
+   * callable; there is no browser fallback (REQ-ORD-004, NFR-SEC-002). The
+   * demo simulator passes no handler and the submit control stays disabled.
+   */
+  onSubmitOrder?: (cart: OrderItem[], paymentMode: 'Pay-First' | 'Pay-Later') => Promise<void>;
+  /** Browser connection state. Defaults to online for the demo simulator. */
+  isOnline?: boolean;
+  /** Adapter error surfaced from the menu or tracking listener. */
+  menuError?: string | null;
+  /** Server public tracking projection for the submitted Order. */
+  tracking?: PublicOrderTracking | null;
 }
 
 type CustomerStep = 'table_pick' | 'menu' | 'tracking';
@@ -34,16 +45,20 @@ export default function CustomerView({
   tenantConfig,
   menuItems,
   orders,
-  setOrders,
   loyaltyMembers,
   setLoyaltyMembers,
   simulationTableId,
   setSimulationTableId,
   tables,
   directMenu = false,
-  orderingAdapter,
-  tableToken = simulationTableId,
+  onSubmitOrder,
+  isOnline = true,
+  menuError = null,
 }: CustomerProps) {
+  // The Customer surface opens in the saved or browser locale. Owner menu
+  // content is never passed through `t` (REQ-I18N-001).
+  const [locale] = useState(() => resolveInterfaceLocale());
+  const t = (key: I18nMessageKey) => translate(locale, key);
   const [step, setStep] = useState<CustomerStep>(directMenu ? 'menu' : 'table_pick');
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [activeItem, setActiveItem] = useState<MenuItem | null>(null);
@@ -59,11 +74,12 @@ export default function CustomerView({
   const [redeemedPoints, setRedeemedPoints] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
-  const [submitError, setSubmitError] = useState('');
+  const [connectionProblem, setConnectionProblem] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const template = INDUSTRY_TEMPLATES[tenantConfig.industry] || INDUSTRY_TEMPLATES.quan_an;
-  const tableName = tables.find(table => table.id === simulationTableId)?.name || `Bàn ${simulationTableId}`;
+  const tableName = tables.find(table => table.id === simulationTableId)?.name || `${t('customer.table.badge')} ${simulationTableId}`;
   const activeCustomerOrders = orders.filter(order => order.tableId === simulationTableId && order.status !== 'paid');
   const availableTypes = ['Tất cả', ...Array.from(new Set(menuItems.map(inferItemType)))];
 
@@ -140,7 +156,7 @@ export default function CustomerView({
     } else {
       const created: LoyaltyMember = {
         phone: phoneNumber.trim(),
-        name: customerName.trim() || 'Khách mới',
+        name: customerName.trim() || t('customer.loyalty.newMember'),
         points: 15,
         totalSpent: 0,
         visits: 1,
@@ -156,11 +172,11 @@ export default function CustomerView({
     e.preventDefault();
     if (!loyaltyProfile) return;
     if (loyaltyProfile.points < 30) {
-      setOtpError('Bạn cần 30 điểm để đổi ưu đãi.');
+      setOtpError(t('customer.loyalty.pointsNeeded'));
       return;
     }
     if (otpCode.length < 4) {
-      setOtpError('Nhập OTP 4 số.');
+      setOtpError(t('customer.loyalty.otpRequired'));
       return;
     }
     const updated = { ...loyaltyProfile, points: Math.max(0, loyaltyProfile.points - 30), isVerified: true };
@@ -171,68 +187,36 @@ export default function CustomerView({
   };
 
   const submitOrder = async () => {
-    if (cart.length === 0) return;
-    setSubmitError('');
+    if (cart.length === 0 || isSubmitting) return;
+
+    // Offline block: no Order is created and the UI shows a problem (REQ-ORD-004).
+    if (!isOnline) {
+      setConnectionProblem(t('customer.offline.submitMessage'));
+      return;
+    }
+
+    setConnectionProblem(null);
+    setSubmitError(null);
+
+    if (!onSubmitOrder) {
+      // No server submission path is wired here. The browser never creates an
+      // Order locally (docs/RULES_FIREBASE.md §1).
+      setSubmitError(t('customer.submit.linkOnly'));
+      return;
+    }
+
     setIsSubmitting(true);
-    if (orderingAdapter) {
-      const result = await orderingAdapter.submitOrder({
-        idempotencyKey: `customer:${tableToken}:${Date.now()}`,
-        cart: {
-          tableToken,
-          paymentMode: tenantConfig.paymentMode,
-          lines: cart.map(item => ({
-            menuItemId: item.menuId,
-            quantity: item.quantity,
-            modifierIds: item.selectedModifiers ?? [],
-          })),
-        },
-      });
-      if (!result.accepted) {
-        setSubmitError(result.message);
-        setIsSubmitting(false);
-        return;
-      }
-      const snapshot = result.order;
-      const order: Order = {
-        id: snapshot.orderId,
-        tableId: snapshot.tableId,
-        items: snapshot.lines.map((line, index) => ({
-          id: `${line.menuItemId}-${index}`,
-          menuId: line.menuItemId,
-          name: line.name,
-          price: line.unitPriceVnd + line.modifierTotalVnd,
-          quantity: line.quantity,
-          selectedModifiers: [...line.modifierNames],
-        })),
-        total: snapshot.totalVnd,
-        status: snapshot.status === 'cancelled' ? 'pending' : snapshot.status,
-        timestamp: new Date(snapshot.createdAtUtc),
-        paymentMode: snapshot.paymentMode,
-      };
-      setOrders(prev => [...prev, order]);
-      setCart([]);
-      setShowCart(false);
-      setStep('tracking');
+    try {
+      await onSubmitOrder(cart, tenantConfig.paymentMode);
+    } catch (error) {
+      setSubmitError((error as Error)?.message || t('customer.submit.failed'));
       setIsSubmitting(false);
       return;
     }
-    const order: Order = {
-      id: `ord_${Date.now()}`,
-      tableId: simulationTableId,
-      items: cart,
-      total: finalTotal,
-      status: 'pending',
-      timestamp: new Date(),
-      customerPhone: loyaltyProfile?.phone || phoneNumber || undefined,
-      isLoyaltyApplied: redeemedPoints,
-      paymentMode: tenantConfig.paymentMode,
-      appliedDiscountCode: promoConditionMet ? tenantConfig.discountCode : undefined,
-    };
-    setOrders(prev => [...prev, order]);
+    setIsSubmitting(false);
     setCart([]);
     setShowCart(false);
     setStep('tracking');
-    setIsSubmitting(false);
   };
 
   if (step === 'table_pick') {
@@ -240,10 +224,10 @@ export default function CustomerView({
       <div className="h-full bg-[#f7f7f8] text-zinc-950 flex flex-col p-5">
         <div className="pt-8 pb-6">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-emerald-700 shadow-sm">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" /> ScanGo ready
+            <span className="h-2 w-2 rounded-full bg-emerald-500" /> {t('customer.table.ready')}
           </div>
-          <h1 className="mt-5 text-[34px] leading-[0.95] font-black tracking-[-0.05em]">Chọn bàn để mở menu.</h1>
-          <p className="mt-3 text-sm text-zinc-500">Mô phỏng QR/NFC. Link public sẽ mở thẳng menu theo bàn.</p>
+          <h1 className="mt-5 text-[34px] leading-[0.95] font-black tracking-[-0.05em]">{t('customer.table.pickTitle')}</h1>
+          <p className="mt-3 text-sm text-zinc-500">{t('customer.table.pickHint')}</p>
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-2 pb-4">
@@ -255,7 +239,7 @@ export default function CustomerView({
               className="w-full rounded-[24px] bg-white p-4 text-left shadow-sm border border-zinc-100 flex items-center justify-between active:scale-[0.99] transition-transform"
             >
               <span className="font-bold text-zinc-950">{table.name}</span>
-              <span className="rounded-full bg-zinc-950 px-3 py-1 text-[11px] font-bold text-white">Mở menu</span>
+              <span className="rounded-full bg-zinc-950 px-3 py-1 text-[11px] font-bold text-white">{t('customer.table.openShort')}</span>
             </button>
           ))}
         </div>
@@ -277,13 +261,13 @@ export default function CustomerView({
                   <h1 className="text-[22px] font-black tracking-[-0.04em] truncate">{tenantConfig.shopName}</h1>
                 </div>
                 <button type="button" onClick={() => setShowLoyalty(true)} className="shrink-0 rounded-full bg-white px-3 py-2 text-[11px] font-bold text-zinc-800 shadow-sm border border-zinc-100">
-                  {loyaltyProfile ? `${loyaltyProfile.points} điểm` : 'Hội viên'}
+                  {loyaltyProfile ? `${loyaltyProfile.points} ${t('customer.loyalty.points')}` : t('customer.member.short')}
                 </button>
               </div>
 
               <div className="mt-3 flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm border border-zinc-100">
                 <Search className="h-4 w-4 text-zinc-400" />
-                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Tìm món, đồ uống..." className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-zinc-400" />
+                <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('customer.search.placeholder')} className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-zinc-400" />
               </div>
             </section>
 
@@ -292,14 +276,14 @@ export default function CustomerView({
                 <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-orange-500/40 blur-2xl" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[11px] font-bold text-orange-200 uppercase tracking-[0.18em]">Menu hôm nay</p>
-                    <h2 className="mt-1 text-[27px] leading-none font-black tracking-[-0.05em]">Gọi món nhanh, bếp nhận ngay.</h2>
+                    <p className="text-[11px] font-bold text-orange-200 uppercase tracking-[0.18em]">{t('customer.menu.today')}</p>
+                    <h2 className="mt-1 text-[27px] leading-none font-black tracking-[-0.05em]">{t('customer.menu.headlineToday')}</h2>
                   </div>
                   <Sparkles className="h-6 w-6 text-orange-300 shrink-0" />
                 </div>
                 <div className="relative mt-4 flex gap-2 text-[11px] font-bold">
-                  <span className="rounded-full bg-white/12 px-3 py-1">{filteredItems.length} món</span>
-                  <span className="rounded-full bg-white/12 px-3 py-1">{tenantConfig.paymentMode === 'Pay-First' ? 'Trả trước' : 'Trả sau'}</span>
+                  <span className="rounded-full bg-white/12 px-3 py-1">{filteredItems.length} {t('customer.menu.itemCount')}</span>
+                  <span className="rounded-full bg-white/12 px-3 py-1">{tenantConfig.paymentMode === 'Pay-First' ? t('customer.menu.payFirst') : t('customer.menu.payLater')}</span>
                 </div>
               </div>
 
@@ -307,8 +291,8 @@ export default function CustomerView({
                 <div className="rounded-[24px] bg-white p-4 shadow-sm border border-zinc-100 flex items-center gap-3">
                   <div className="h-10 w-10 rounded-2xl bg-orange-100 flex items-center justify-center"><Ticket className="h-5 w-5 text-orange-600" /></div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-black text-zinc-950">Ưu đãi {tenantConfig.discountCode}</p>
-                    <p className="text-xs text-zinc-500 truncate">Giảm {money(tenantConfig.discountAmount || 0)} khi đủ điều kiện</p>
+                    <p className="text-sm font-black text-zinc-950">{t('customer.promo.codePrefix')} {tenantConfig.discountCode}</p>
+                    <p className="text-xs text-zinc-500 truncate">{t('customer.promo.condition').replace('{amount}', money(tenantConfig.discountAmount || 0))}</p>
                   </div>
                   {promoConditionMet && <Check className="h-5 w-5 text-emerald-600" />}
                 </div>
@@ -321,23 +305,23 @@ export default function CustomerView({
                       <Gift className="h-5 w-5 text-emerald-600" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-black text-zinc-950">Khách hàng thân thiết</p>
+                      <p className="text-sm font-black text-zinc-950">{t('customer.loyalty.title')}</p>
                       <p className="text-xs text-zinc-500 truncate">
-                        {loyaltyProfile ? `${loyaltyProfile.points} điểm tích lũy` : 'Đăng nhập để nhận ưu đãi'}
+                        {loyaltyProfile ? `${loyaltyProfile.points} ${t('customer.loyalty.pointsAccumulated')}` : t('customer.loyalty.loginPromptShort')}
                       </p>
                     </div>
                     <button 
                       onClick={() => setShowLoyalty(true)}
                       className="shrink-0 rounded-full bg-zinc-950 text-white px-3 py-1.5 text-[11px] font-bold"
                     >
-                      {loyaltyProfile ? 'Đổi quà' : 'Đăng nhập'}
+                      {loyaltyProfile ? t('customer.loyalty.redeemGift') : t('customer.loyalty.login')}
                     </button>
                   </div>
                   {loyaltyProfile && (
                     <div className="pt-2 border-t border-zinc-100">
                       <div className="flex justify-between text-[11px] font-bold text-zinc-500 mb-1.5">
-                        <span>Hạng Bạc</span>
-                        <span>{loyaltyProfile.points}/30 điểm để nhận 20k</span>
+                        <span>{t('customer.loyalty.silverTier')}</span>
+                        <span>{t('customer.loyalty.progressHint').replace('{points}', String(loyaltyProfile.points))}</span>
                       </div>
                       <div className="w-full bg-zinc-100 rounded-full h-1.5 overflow-hidden">
                         <div 
@@ -358,7 +342,7 @@ export default function CustomerView({
                     onClick={() => setSelectedType(type)}
                     className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${selectedType === type ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-600 border border-zinc-100'}`}
                   >
-                    {type}
+                    {type === 'Tất cả' ? t('customer.filter.all') : type}
                   </button>
                 ))}
               </div>
@@ -371,8 +355,8 @@ export default function CustomerView({
 
               {filteredItems.length === 0 && (
                 <div className="rounded-[28px] bg-white p-8 text-center border border-zinc-100">
-                  <p className="font-black text-zinc-900">Chưa có món phù hợp</p>
-                  <p className="mt-1 text-sm text-zinc-500">Thử đổi bộ lọc hoặc tìm từ khóa khác.</p>
+                  <p className="font-black text-zinc-900">{t('customer.empty.noMatchTitle')}</p>
+                  <p className="mt-1 text-sm text-zinc-500">{t('customer.empty.noMatchHint')}</p>
                 </div>
               )}
             </section>
@@ -380,26 +364,40 @@ export default function CustomerView({
         )}
       </div>
 
+      {connectionProblem && step === 'menu' && (
+        <div role="alert" className="absolute bottom-40 left-4 right-4 z-50 rounded-[20px] bg-red-600 px-4 py-3 text-white shadow-xl flex items-start gap-2">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          <p className="text-xs font-bold leading-relaxed">{connectionProblem}</p>
+        </div>
+      )}
+
+      {menuError && step === 'menu' && !connectionProblem && (
+        <div role="alert" className="absolute bottom-40 left-4 right-4 z-50 rounded-[20px] bg-amber-600 px-4 py-3 text-white shadow-xl flex items-start gap-2">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          <p className="text-xs font-bold leading-relaxed">{menuError}</p>
+        </div>
+      )}
+
       {activeCustomerOrders.length > 0 && step === 'menu' && (
         <button type="button" onClick={() => setStep('tracking')} className="absolute bottom-24 left-4 right-4 z-30 rounded-full bg-white/95 px-4 py-3 text-sm font-black text-zinc-950 shadow-lg border border-zinc-100 flex items-center justify-between backdrop-blur">
-          <span className="flex items-center gap-2"><Clock className="h-4 w-4 text-emerald-600" /> Theo dõi đơn</span>
+          <span className="flex items-center gap-2"><Clock className="h-4 w-4 text-emerald-600" /> {t('customer.tracking.button')}</span>
           <span className="text-zinc-400">{activeCustomerOrders.length}</span>
         </button>
       )}
 
       {cart.length > 0 && step === 'menu' && (
         <button type="button" onClick={() => setShowCart(true)} className="absolute bottom-4 left-4 right-4 z-40 rounded-[24px] bg-zinc-950 px-4 py-3.5 text-white shadow-2xl flex items-center justify-between active:scale-[0.99] transition-transform">
-          <span className="flex items-center gap-3 font-black"><ShoppingBag className="h-5 w-5" /> {totalQuantity} món</span>
+          <span className="flex items-center gap-3 font-black"><ShoppingBag className="h-5 w-5" /> {totalQuantity} {t('customer.menu.itemCount')}</span>
           <span className="font-black">{money(finalTotal)}</span>
         </button>
       )}
 
       <AnimatePresence>
         {activeItem && (
-          <ItemSheet item={activeItem} template={template} selectedModifiers={selectedModifiers} modifierPrice={modifierPrice} onToggleModifier={toggleModifier} onClose={() => setActiveItem(null)} onAdd={addActiveItemToCart} />
+          <ItemSheet locale={locale} item={activeItem} template={template} selectedModifiers={selectedModifiers} modifierPrice={modifierPrice} onToggleModifier={toggleModifier} onClose={() => setActiveItem(null)} onAdd={addActiveItemToCart} />
         )}
         {showCart && (
-          <CartSheet cart={cart} cartTotal={cartTotal} finalTotal={finalTotal} promoDiscount={promoDiscount} loyaltyDiscount={loyaltyDiscount} paymentMode={tenantConfig.paymentMode} submitError={submitError} isSubmitting={isSubmitting} onQty={updateCartQty} onClose={() => setShowCart(false)} onSubmit={submitOrder} />
+          <CartSheet locale={locale} cart={cart} cartTotal={cartTotal} finalTotal={finalTotal} promoDiscount={promoDiscount} loyaltyDiscount={loyaltyDiscount} paymentMode={tenantConfig.paymentMode} onQty={updateCartQty} onClose={() => setShowCart(false)} onSubmit={submitOrder} isOnline={isOnline} isSubmitting={isSubmitting} errorMessage={connectionProblem || submitError} />
         )}
         {showLoyalty && (
           <LoyaltySheet profile={loyaltyProfile} phone={phoneNumber} name={customerName} otp={otpCode} otpError={otpError} redeemed={redeemedPoints} onPhone={setPhoneNumber} onName={setCustomerName} onOtp={(value: string) => { setOtpCode(value.replace(/\D/g, '')); setOtpError(''); }} onSave={saveLoyaltyProfile} onRedeem={redeemWithOtp} onClose={() => setShowLoyalty(false)} />
@@ -443,9 +441,10 @@ function MenuCard({ item, compact, onOpen }: { item: MenuItem; compact: boolean;
 }
 
 function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  const closeLabel = translate(resolveInterfaceLocale(), 'common.close');
   return (
     <motion.div className="absolute inset-0 z-50 flex flex-col justify-end bg-black/35 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <button type="button" className="flex-1" onClick={onClose} aria-label="Đóng" />
+      <button type="button" className="flex-1" onClick={onClose} aria-label={closeLabel} />
       <motion.div initial={{ y: 40 }} animate={{ y: 0 }} exit={{ y: 40 }} className="max-h-[88%] overflow-y-auto rounded-t-[34px] bg-white p-4 shadow-2xl">
         {children}
       </motion.div>
@@ -453,7 +452,8 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
   );
 }
 
-function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleModifier, onClose, onAdd }: any) {
+function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleModifier, onClose, onAdd, locale = 'vi' }: any) {
+  const t = (key: I18nMessageKey) => translate(locale, key);
   const groups = [...template.modifier_groups, ...(item.toppings?.length ? [{ name: 'Topping', required: false, options: item.toppings }] : [])];
   return (
     <Sheet onClose={onClose}>
@@ -471,14 +471,14 @@ function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleM
           <div key={group.name} className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-sm font-black text-zinc-950">{group.name}</p>
-              <span className="text-[11px] font-bold text-zinc-400">{group.required ? 'Bắt buộc' : 'Tùy chọn'}</span>
+              <span className="text-[11px] font-bold text-zinc-400">{group.required ? t('customer.item.required') : t('customer.item.optional')}</span>
             </div>
             {group.options.map((option: any) => {
               const checked = selectedModifiers.includes(option.name);
               return (
                 <button key={option.name} type="button" onClick={() => onToggleModifier(option.name, option.price)} className={`w-full rounded-[20px] px-4 py-3 flex items-center justify-between border ${checked ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-zinc-50 text-zinc-900 border-zinc-100'}`}>
                   <span className="text-sm font-bold">{option.name}</span>
-                  <span className="text-sm font-black">{option.price ? `+${money(option.price)}` : 'Free'}</span>
+                  <span className="text-sm font-black">{option.price ? `+${money(option.price)}` : t('customer.item.free')}</span>
                 </button>
               );
             })}
@@ -486,7 +486,7 @@ function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleM
         ))}
 
         <button type="button" onClick={onAdd} className="sticky bottom-0 w-full rounded-[24px] bg-zinc-950 px-4 py-4 text-white font-black flex items-center justify-between shadow-xl">
-          <span>Thêm vào giỏ</span>
+          <span>{t('customer.item.addToCart')}</span>
           <span>{money(item.price + modifierPrice)}</span>
         </button>
       </div>
@@ -494,12 +494,13 @@ function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleM
   );
 }
 
-function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, loyaltyDiscount, paymentMode, submitError, isSubmitting, onQty, onClose, onSubmit }: any) {
+function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, loyaltyDiscount, paymentMode, onQty, onClose, onSubmit, isOnline = true, isSubmitting = false, errorMessage = null, locale = 'vi' }: any) {
+  const t = (key: I18nMessageKey) => translate(locale, key);
   return (
     <Sheet onClose={onClose}>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-[28px] font-black tracking-[-0.05em]">Giỏ hàng</h2>
+          <h2 className="text-[28px] font-black tracking-[-0.05em]">{t('customer.cart.title')}</h2>
           <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100"><X className="h-5 w-5" /></button>
         </div>
         <div className="space-y-2">
@@ -507,7 +508,7 @@ function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, loyaltyDiscount
             <div key={item.id} className="rounded-[24px] bg-zinc-50 p-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="font-black text-sm text-zinc-950 line-clamp-1">{item.name}</p>
-                <p className="text-xs text-zinc-500 line-clamp-1">{item.selectedModifiers?.join(', ') || 'Mặc định'}</p>
+                <p className="text-xs text-zinc-500 line-clamp-1">{item.selectedModifiers?.join(', ') || t('customer.cart.default')}</p>
                 <p className="mt-1 text-sm font-black">{money(item.price)}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -519,25 +520,31 @@ function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, loyaltyDiscount
           ))}
         </div>
         <div className="rounded-[26px] bg-zinc-950 text-white p-4 space-y-2">
-          <div className="flex justify-between text-sm text-zinc-300"><span>Tạm tính</span><span>{money(cartTotal)}</span></div>
-          {promoDiscount > 0 && <div className="flex justify-between text-sm text-emerald-300"><span>Ưu đãi</span><span>-{money(promoDiscount)}</span></div>}
-          {loyaltyDiscount > 0 && <div className="flex justify-between text-sm text-emerald-300"><span>Đổi điểm</span><span>-{money(loyaltyDiscount)}</span></div>}
-          <div className="flex justify-between border-t border-white/10 pt-3 text-lg font-black"><span>Tổng</span><span>{money(finalTotal)}</span></div>
+          <div className="flex justify-between text-sm text-zinc-300"><span>{t('customer.cart.subtotal')}</span><span>{money(cartTotal)}</span></div>
+          {promoDiscount > 0 && <div className="flex justify-between text-sm text-emerald-300"><span>{t('customer.cart.promo')}</span><span>-{money(promoDiscount)}</span></div>}
+          {loyaltyDiscount > 0 && <div className="flex justify-between text-sm text-emerald-300"><span>{t('customer.cart.redeemPoints')}</span><span>-{money(loyaltyDiscount)}</span></div>}
+          <div className="flex justify-between border-t border-white/10 pt-3 text-lg font-black"><span>{t('customer.cart.totalShort')}</span><span>{money(finalTotal)}</span></div>
         </div>
-        <p className="flex items-start gap-2 text-xs text-zinc-500"><AlertCircle className="h-4 w-4 shrink-0 text-zinc-400" /> {paymentMode === 'Pay-First' ? 'Thanh toán tại quầy để bếp nhận đơn.' : 'Bếp nhận đơn ngay, thanh toán sau bữa ăn.'}</p>
-        {submitError && <div role="alert" className="rounded-[20px] bg-red-50 border border-red-200 px-4 py-3 text-sm font-bold text-red-700">{submitError}</div>}
-        <button type="button" onClick={onSubmit} disabled={isSubmitting} className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black shadow-xl disabled:opacity-50">{isSubmitting ? 'Đang kiểm tra…' : 'Gửi đơn'}</button>
+        <p className="flex items-start gap-2 text-xs text-zinc-500"><AlertCircle className="h-4 w-4 shrink-0 text-zinc-400" /> {paymentMode === 'Pay-First' ? t('customer.cart.payFirstCounter') : t('customer.cart.payLaterAfterMeal')}</p>
+        {errorMessage && (
+          <p role="alert" className="rounded-[18px] bg-red-50 px-4 py-3 text-xs font-bold text-red-700">{errorMessage}</p>
+        )}
+        <button type="button" onClick={onSubmit} disabled={isSubmitting} className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black shadow-xl disabled:opacity-50">{isSubmitting ? t('customer.cart.submitting') : isOnline ? t('customer.cart.submit') : t('common.offline')}</button>
       </div>
     </Sheet>
   );
 }
 
 function LoyaltySheet({ profile, phone, name, otp, otpError, redeemed, onPhone, onName, onOtp, onSave, onRedeem, onClose }: any) {
+  const t = (key: I18nMessageKey) => translate(resolveInterfaceLocale(), key);
   return (
     <Sheet onClose={onClose}>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-[28px] font-black tracking-[-0.05em]">Hội viên</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-[28px] font-black tracking-[-0.05em]">{t('customer.member.short')}</h2>
+            <span className="text-[9px] font-bold uppercase text-zinc-400">{t('customer.loyalty.sheet.demo')}</span>
+          </div>
           <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100"><X className="h-5 w-5" /></button>
         </div>
         {profile ? (
@@ -545,17 +552,17 @@ function LoyaltySheet({ profile, phone, name, otp, otpError, redeemed, onPhone, 
             <div className="rounded-[28px] bg-gradient-to-br from-zinc-950 to-zinc-800 p-5 text-white">
               <Gift className="h-6 w-6 text-orange-300" />
               <p className="mt-5 text-sm text-zinc-300">{profile.name}</p>
-              <p className="text-[36px] font-black tracking-[-0.06em]">{profile.points} điểm</p>
+              <p className="text-[36px] font-black tracking-[-0.06em]">{profile.points} {t('customer.loyalty.points')}</p>
             </div>
-            <input value={otp} onChange={e => onOtp(e.target.value)} inputMode="numeric" maxLength={4} placeholder="OTP 8888" className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 text-center font-black tracking-[0.3em] outline-none border border-zinc-100" />
+            <input value={otp} onChange={e => onOtp(e.target.value)} inputMode="numeric" maxLength={4} placeholder={t('customer.loyalty.sheet.otpPlaceholder')} className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 text-center font-black tracking-[0.3em] outline-none border border-zinc-100" />
             {otpError && <p className="text-xs font-bold text-red-600">{otpError}</p>}
-            <button type="submit" disabled={redeemed} className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black disabled:opacity-50">{redeemed ? 'Đã đổi ưu đãi' : 'Đổi 30 điểm giảm 20K'}</button>
+            <button type="submit" disabled={redeemed} className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black disabled:opacity-50">{redeemed ? t('customer.loyalty.sheet.redeemedOffer') : t('customer.loyalty.sheet.redeemOffer')}</button>
           </form>
         ) : (
           <form onSubmit={onSave} className="space-y-3">
-            <input value={phone} onChange={e => onPhone(e.target.value.replace(/\D/g, ''))} inputMode="tel" placeholder="Số điện thoại" className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 font-bold outline-none border border-zinc-100" />
-            <input value={name} onChange={e => onName(e.target.value)} placeholder="Tên của bạn (tuỳ chọn)" className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 font-bold outline-none border border-zinc-100" />
-            <button type="submit" className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black">Lưu hội viên</button>
+            <input value={phone} onChange={e => onPhone(e.target.value.replace(/\D/g, ''))} inputMode="tel" placeholder={t('customer.loyalty.sheet.phone')} className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 font-bold outline-none border border-zinc-100" />
+            <input value={name} onChange={e => onName(e.target.value)} placeholder={t('customer.loyalty.sheet.namePlaceholder')} className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 font-bold outline-none border border-zinc-100" />
+            <button type="submit" className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black">{t('customer.loyalty.sheet.saveMember')}</button>
           </form>
         )}
       </div>
@@ -564,18 +571,19 @@ function LoyaltySheet({ profile, phone, name, otp, otpError, redeemed, onPhone, 
 }
 
 function TrackingScreen({ orders, tableName, onBack }: { orders: Order[]; tableName: string; onBack: () => void }) {
+  const t = (key: I18nMessageKey) => translate(resolveInterfaceLocale(), key);
   return (
     <div className="min-h-full p-4 space-y-4">
-      <button type="button" onClick={onBack} className="mt-2 flex items-center gap-1 text-sm font-black text-zinc-500"><ChevronLeft className="h-4 w-4" /> Menu</button>
+      <button type="button" onClick={onBack} className="mt-2 flex items-center gap-1 text-sm font-black text-zinc-500"><ChevronLeft className="h-4 w-4" /> {t('customer.tracking.menu')}</button>
       <div className="rounded-[32px] bg-zinc-950 text-white p-5">
         <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.16em]">{tableName}</p>
-        <h1 className="mt-2 text-[31px] leading-none font-black tracking-[-0.06em]">Đơn của bạn</h1>
+        <h1 className="mt-2 text-[31px] leading-none font-black tracking-[-0.06em]">{t('customer.tracking.titleShort')}</h1>
       </div>
       {orders.length === 0 ? (
         <div className="rounded-[28px] bg-white p-8 text-center border border-zinc-100">
           <Check className="mx-auto h-10 w-10 text-emerald-600" />
-          <p className="mt-3 font-black text-zinc-950">Bữa ăn đã hoàn tất</p>
-          <p className="mt-1 text-sm text-zinc-500">Bạn có thể quay lại menu để gọi thêm.</p>
+          <p className="mt-3 font-black text-zinc-950">{t('customer.tracking.doneTitleShort')}</p>
+          <p className="mt-1 text-sm text-zinc-500">{t('customer.tracking.doneHintShort')}</p>
         </div>
       ) : orders.map(order => (
         <div key={order.id} className="rounded-[28px] bg-white p-4 shadow-sm border border-zinc-100 space-y-4">
@@ -588,10 +596,10 @@ function TrackingScreen({ orders, tableName, onBack }: { orders: Order[]; tableN
           </div>
           <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-black">
             {[
-              ['pending', 'Nhận'],
-              ['cooking', 'Nấu'],
-              ['ready', 'Xong'],
-              ['served', 'Phục vụ'],
+              ['pending', t('customer.status.pendingShort')],
+              ['cooking', t('customer.status.cookingShort')],
+              ['ready', t('customer.status.readyShort')],
+              ['served', t('customer.status.servedShort')],
             ].map(([status, label], index) => {
               const activeIndex = ['pending', 'cooking', 'ready', 'served'].indexOf(order.status);
               const active = index <= Math.max(activeIndex, 0);

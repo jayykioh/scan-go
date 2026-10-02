@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { captureMonitoringError } from '../services/monitoring';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -17,6 +18,8 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    // No-op without a configured DSN; secret-like values are scrubbed.
+    captureMonitoringError(error, { componentStack: info.componentStack });
     if (import.meta.env.DEV) {
       console.error('ScanGo render error', error, info.componentStack);
     }

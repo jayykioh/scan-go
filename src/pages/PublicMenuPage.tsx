@@ -1,150 +1,208 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import CustomerView from '../components/CustomerView';
-import { usePersistentState } from '../hooks/usePersistentState';
-import { LoyaltyMember, MenuItem, Order, TableConfig, TenantConfig } from '../types';
-import { MOCK_LOYALTY_MEMBERS, MOCK_MENU_ITEMS } from '../mockData';
-import { createOrderingAdapter } from '../data/adapters/ordering.adapter';
-import type { PublicMenuItem } from '../../shared/contracts/catalog.contract';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import {
+  createOrderIdempotencyKey,
+  submitOrder,
+  subscribeOrderTracking,
+} from '../data/adapters/ordering.adapter';
+import { subscribePublicMenu } from '../data/adapters/catalog.adapter';
+import { buildQrPayload, resolvePublicTable } from '../data/adapters/table.adapter';
+import { toPublicMenuItem, toTrackingOrder } from '../data/adapters/view-mappers';
+import { resolveInterfaceLocale, translate } from '../data/adapters/i18n.adapter';
+import type { TableLinkContext } from '@contracts/table.contract';
+import type { I18nMessageKey } from '@contracts/i18n.contract';
+import type { PublicOrderTracking } from '@contracts/order.contract';
+import { MenuItem, OrderItem, TableConfig, TenantConfig } from '../types';
+
+const IDEMPOTENCY_STORAGE_PREFIX = 'scango:order:idempotency:v1:';
+
+export interface CustomerOrderResult {
+  trackingToken: string;
+  tracking: PublicOrderTracking;
+}
+
+/**
+ * Adapter errors can be raw callable codes. Map a low-level error to a
+ * user-facing message so the UI never shows an internal code (NFR-UX-001).
+ */
+function friendlyError(error: unknown, fallback: string): string {
+  const raw =
+    error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  const looksInternal =
+    raw.length === 0 ||
+    /^(internal|unknown|unavailable|permission-denied|firebaseerror)/i.test(raw);
+  return looksInternal ? fallback : raw;
+}
+
+/** One idempotency key per table link, reused across retries (REQ-ORD-004). */
+function readIdempotencyKey(token: string): string {
+  const storageKey = `${IDEMPOTENCY_STORAGE_PREFIX}${token}`;
+  try {
+    const existing = window.sessionStorage.getItem(storageKey);
+    if (existing) return existing;
+    const created = createOrderIdempotencyKey();
+    window.sessionStorage.setItem(storageKey, created);
+    return created;
+  } catch {
+    return createOrderIdempotencyKey();
+  }
+}
 
 const defaultTenant: TenantConfig = {
-  shopName: 'Bún Phở Kinh Kỳ',
+  shopName: 'ScanGo',
   industry: 'quan_an',
   pricingTier: 'Pro',
   paymentMode: 'Pay-Later',
-  loyaltyEnabled: true,
+  loyaltyEnabled: false,
   loyaltyRate: 1,
   onboardingStep: 4,
-  discountCode: 'MUANHIEU15K',
-  discountMinItems: 3,
-  discountMinAmount: 150000,
-  discountAmount: 15000,
-  discountEnabled: true,
-  discountTriggerType: 'auto',
-  discountConditionType: 'quantity',
-  discountTargetDishId: 'all',
 };
 
-const defaultTables: TableConfig[] = [
-  { id: '1', name: 'Bàn 01' },
-  { id: '2', name: 'Bàn 02' },
-  { id: '3', name: 'Bàn 03' },
-];
-
 export default function PublicMenuPage() {
-  const { tableId = '1' } = useParams<{ tableId: string }>();
-  const [tenantConfig] = usePersistentState<TenantConfig>('scango:tenant:v1', defaultTenant);
-  const [tables] = usePersistentState<TableConfig[]>('scango:tables:v1', defaultTables);
-  const [menuItems] = usePersistentState<MenuItem[]>('scango:menu:v1', MOCK_MENU_ITEMS.quan_an);
-  const [orders, setOrders] = usePersistentState<Order[]>('scango:orders:v1', [], {
-    deserialize: (value: string) => (JSON.parse(value) as Order[]).map(order => ({ ...order, timestamp: new Date(String(order.timestamp)) })),
-  });
-  const [loyaltyMembers, setLoyaltyMembers] = usePersistentState<LoyaltyMember[]>('scango:loyalty:v1', MOCK_LOYALTY_MEMBERS);
+  const { tableId = '' } = useParams<{ tableId: string }>();
+  const [locale] = useState(() => resolveInterfaceLocale());
+  const t = (key: I18nMessageKey) => translate(locale, key);
+  const [linkContext, setLinkContext] = useState<TableLinkContext | null>(null);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuError, setMenuError] = useState<string | null>(null);
+  const [tracking, setTracking] = useState<PublicOrderTracking | null>(null);
+  const [trackingToken, setTrackingToken] = useState<string | null>(null);
+  const isOnline = useOnlineStatus();
 
-  const resolvedTableId = useMemo(() => {
-    if (tables.some(table => table.id === tableId)) return tableId;
-    return tables[0]?.id || tableId;
-  }, [tableId, tables]);
-  const [activeTableId, setActiveTableId] = useState(resolvedTableId);
-  const [publicItems, setPublicItems] = useState<ReadonlyArray<PublicMenuItem>>([]);
-  const [publicTableValid, setPublicTableValid] = useState<boolean | null>(null);
-
-  const orderingAdapter = useMemo(() => createOrderingAdapter({
-    tables: {
-      async resolveTableLink(token) {
-        const table = tables.find(candidate => candidate.id === token);
-        return table ? { token, tenantId: 'tenant-demo', tableId: table.id, tableName: table.name, active: true } : null;
-      },
-    },
-    catalog: {
-      async listPublicMenuItems(tenantId) {
-        return menuItems.map(item => ({
-          id: item.id,
-          tenantId,
-          name: item.name,
-          description: item.description,
-          category: item.category,
-          imageUrl: item.image,
-          unitPriceVnd: item.price,
-          available: item.inStock,
-          modifiers: (item.toppings ?? []).map(modifier => ({ id: modifier.name, name: modifier.name, priceDeltaVnd: modifier.price })),
-        }));
-      },
-    },
-    commands: {
-      async submit(request, validation) {
-        const now = new Date().toISOString();
-        const table = tables.find(candidate => candidate.id === validation.tableId)!;
-        return {
-          orderId: `ord_${Date.now()}`,
-          tenantId: validation.tenantId,
-          tableId: validation.tableId,
-          tableName: table.name,
-          paymentMode: validation.paymentMode,
-          paymentConfirmed: false,
-          visibleToKitchen: validation.paymentMode === 'Pay-Later',
-          status: 'pending',
-          lines: validation.lines,
-          totalVnd: validation.totalVnd,
-          trackingToken: `tracking:${request.idempotencyKey}`,
-          createdAtUtc: now,
-          updatedAtUtc: now,
-        };
-      },
-    },
-    isOnline: () => navigator.onLine,
-    rateLimit: { async allow() { return true; } },
-  }), [menuItems, tables]);
-
+  // Resolve the opaque Table link token through the server resolver. The
+  // resolver applies App Check and rate limits and returns only table context
+  // (REQ-TBL-001, NFR-SEC-002).
   useEffect(() => {
-    let active = true;
-    orderingAdapter.loadPublicMenu(tableId).then(result => {
-      if (!active) return;
-      setPublicTableValid(Boolean(result));
-      setPublicItems(result?.items ?? []);
-    });
-    return () => { active = false; };
-  }, [orderingAdapter, tableId]);
+    let cancelled = false;
+    setLinkContext(null);
+    setResolveError(null);
+    if (!tableId) {
+      setResolveError(t('publicMenu.invalidLink'));
+      return;
+    }
+    void resolvePublicTable(tableId)
+      .then((context) => {
+        if (cancelled) return;
+        if (!context.isActive) {
+          setResolveError(t('publicMenu.revokedLink'));
+          return;
+        }
+        setLinkContext(context);
+      })
+      .catch((error: Error) => {
+        if (!cancelled) {
+          setResolveError(friendlyError(error, t('publicMenu.openLinkFailed')));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tableId]);
 
-  const adapterMenuItems: MenuItem[] = publicItems.map(item => ({
-    id: item.id,
-    name: item.name,
-    price: item.unitPriceVnd,
-    costPrice: 0,
-    category: item.category,
-    image: item.imageUrl,
-    description: item.description,
-    inStock: item.available,
-    stockCount: item.available ? 1 : 0,
-    toppings: item.modifiers.map(modifier => ({ name: modifier.name, price: modifier.priceDeltaVnd })),
-  }));
+  // Subscribe to the real public menu projection once the tenant is known.
+  useEffect(() => {
+    if (!linkContext) return;
+    const unsubscribe = subscribePublicMenu(
+      linkContext.tenantId,
+      (items) => setMenuItems(items.map(toPublicMenuItem)),
+      { onError: (error) => setMenuError(friendlyError(error, t('publicMenu.menuLoadFailed'))) },
+    );
+    return () => unsubscribe();
+  }, [linkContext]);
+
+  // Subscribe to the public tracking projection for the submitted Order. The
+  // listener stays bounded to one token and is disposed on exit (REQ-ORD-003).
+  useEffect(() => {
+    if (!trackingToken) return;
+    const unsubscribe = subscribeOrderTracking(
+      trackingToken,
+      (next) => {
+        if (next) setTracking(next);
+      },
+      (error) => setMenuError(friendlyError(error, t('publicMenu.trackFailed'))),
+    );
+    return () => unsubscribe();
+  }, [trackingToken]);
+
+  const tables = useMemo<TableConfig[]>(() => {
+    if (!linkContext) return [];
+    return [
+      {
+        id: linkContext.token,
+        name: linkContext.tableName,
+        qrPayload: buildQrPayload(window.location.origin, linkContext.token),
+      },
+    ];
+  }, [linkContext]);
+
+  const tenantConfig = useMemo<TenantConfig>(
+    () => ({ ...defaultTenant, shopName: linkContext?.tableName ?? defaultTenant.shopName }),
+    [linkContext],
+  );
+
+  const [activeTableId, setActiveTableId] = useState(tableId);
+  useEffect(() => setActiveTableId(tableId), [tableId]);
+
+  const handleSubmitOrder = useCallback(
+    async (cart: OrderItem[], paymentMode: 'Pay-First' | 'Pay-Later') => {
+      if (!linkContext) {
+        throw new Error(t('publicMenu.tableUnknown'));
+      }
+      let result;
+      try {
+        result = await submitOrder({
+          token: linkContext.token,
+          paymentMode: paymentMode === 'Pay-First' ? 'payFirst' : 'payLater',
+          idempotencyKey: readIdempotencyKey(linkContext.token),
+          lines: cart.map((item) => ({
+            menuItemId: item.menuId,
+            quantity: item.quantity,
+            selectedOptionIds: [],
+          })),
+        });
+      } catch (error) {
+        throw new Error(
+          friendlyError(error, t('customer.submit.failed')),
+          { cause: error },
+        );
+      }
+      setTracking(result.tracking);
+      setTrackingToken(result.tracking.trackingToken);
+    },
+    [linkContext],
+  );
+
+  const customerOrders = tracking ? [toTrackingOrder(tracking)] : [];
 
   return (
     <main className="min-h-dvh bg-[#eef0f4] text-zinc-950 flex justify-center sm:py-6">
       <div className="w-full max-w-[430px] min-h-dvh sm:min-h-[860px] sm:rounded-[44px] overflow-hidden bg-white shadow-2xl border border-white/80">
-        {publicTableValid === null ? (
-          <div className="min-h-dvh flex items-center justify-center text-sm font-bold text-zinc-500">Đang tải menu…</div>
-        ) : publicTableValid ? (
+        {resolveError ? (
+          <div role="alert" className="flex h-full items-center justify-center p-8 text-center">
+            <div>
+              <p className="text-lg font-black text-zinc-900">{t('publicMenu.cannotOpen')}</p>
+              <p className="mt-2 text-sm text-zinc-500">{resolveError}</p>
+            </div>
+          </div>
+        ) : (
           <CustomerView
             tenantConfig={tenantConfig}
-            menuItems={adapterMenuItems}
-            orders={orders}
-            setOrders={setOrders}
-            loyaltyMembers={loyaltyMembers}
-            setLoyaltyMembers={setLoyaltyMembers}
+            menuItems={menuItems}
+            orders={customerOrders}
+            loyaltyMembers={[]}
+            setLoyaltyMembers={() => {}}
             simulationTableId={activeTableId}
             setSimulationTableId={setActiveTableId}
             tables={tables}
             directMenu
-            orderingAdapter={orderingAdapter}
-            tableToken={tableId}
+            isOnline={isOnline}
+            onSubmitOrder={handleSubmitOrder}
+            menuError={menuError}
+            tracking={tracking}
           />
-        ) : (
-          <div className="min-h-dvh flex flex-col items-center justify-center p-8 text-center bg-zinc-50">
-            <h1 className="text-3xl font-black tracking-[-0.05em] text-zinc-950">Không tìm thấy bàn</h1>
-            <p className="mt-3 text-sm text-zinc-500">Link menu này không còn khả dụng. Vui lòng quét lại QR tại bàn.</p>
-            <Link to="/" className="mt-6 rounded-full bg-zinc-950 px-5 py-3 text-sm font-black text-white">Về trang chủ</Link>
-          </div>
         )}
       </div>
     </main>

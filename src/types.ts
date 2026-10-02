@@ -69,6 +69,8 @@ export interface Order {
   isLoyaltyApplied?: boolean;
   paymentMode: 'Pay-First' | 'Pay-Later';
   paymentMethod?: 'Cash' | 'QR_Transfer';
+  /** Server payment-confirmation timestamp; Pay-First Orders need it for Kitchen. */
+  paidAt?: string;
   nfcSecureToken?: string;
   splitCount?: number; // For splitting bills
   appliedDiscountCode?: string; // Track if manual discount code was successfully validated & applied

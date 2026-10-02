@@ -23,6 +23,8 @@
 ### `users/{uid}` — Tenant
 | Field | Type | Rule |
 |---|---|---|
+| `email` | string | Firebase Auth email; Owner identity |
+| `displayName` | string or null | User display name |
 | `locale` | `vi | en` | User preference |
 | `activeTenantId` | string or null | Navigation only |
 | `createdAt`, `updatedAt` | timestamp | Server values |
@@ -107,7 +109,10 @@ Kilogram and litre are input conveniences. The server converts them to gram and 
 Stores `menuItemId`, ingredient IDs, base-unit quantities, calculated Cost, Cost version, and archive metadata.
 
 ### `tenants/{tenantId}/stockMovements/{movementId}` — Inventory ledger
-Stores ingredient, signed base-unit quantity, reason, order reference, actor, idempotency key, and server timestamp. It supports exact deduction, restoration, and reconciliation.
+Stores ingredient, signed base-unit quantity, reason, order reference, actor, idempotency key, and server timestamp. It supports exact deduction, restoration, and reconciliation. Recorded stock-in, waste, and manual adjustments are movements with a reason.
+
+### `tenants/{tenantId}/stockCounts/{countId}` — Inventory count
+Stores ingredient, counted base-unit quantity, expected quantity from stock-in, deduction, and restoration, computed variance, reason, actor, and server timestamp. It supports loss review without changing paid records.
 
 ## 5. Table Access and Ordering
 
@@ -177,7 +182,25 @@ Daily stats update in the same authoritative command transaction where practical
 The initiating command composes mutation plans from each owning module before one atomic commit. A module never writes another module's document directly.
 
 ### `tenants/{tenantId}/audit/{eventId}` — ADMIN and module audit
-Append-only actor, actor type, role, action, target, request ID, optional reason, metadata, and server timestamp. ADMIN actions require no approval prompt but always create an application audit event.
+Append-only actor, actor type, role, action, target, request ID, optional reason, metadata, and server timestamp. Audit stores create, update, and delete events only. ADMIN changes require no approval prompt but always create an application audit event; ADMIN reads are not audited (ADR 0010).
+
+### `tenants/{tenantId}/aiInsights/{insightId}` — AI
+Stores department, priority, period start and end, source references, confidence, missing-data notes, status (`new`, `acknowledged`, `done`), and timestamps. It never stores raw model text.
+
+### `tenants/{tenantId}/aiUsage/{usageId}` — AI and Config
+Stores provider, model, token counts, estimated cost, budget reference, call purpose, and server timestamp. It supports per-tenant budget enforcement and provider evaluation.
+
+### `tenants/{tenantId}/feedback/{feedbackId}` — Feedback
+Stores rating or issue text, optional Order reference, verification state, masked analysis input, topic tags, actor, and timestamps. Raw text is permission-controlled.
+
+### `tenants/{tenantId}/feedbackTickets/{ticketId}` — Feedback
+Stores state (`received`, `in_progress`, `resolved`), owner, priority, linked feedback IDs, and an append-only history of state, actor, time, and reason.
+
+### `tenants/{tenantId}/shifts/{shiftId}` — Workforce
+Stores Staff member, date, start and end time, role, and audit metadata. Times store as UTC and render in tenant time. Two overlapping Shifts for one Staff are rejected.
+
+### `tenants/{tenantId}/attendance/{recordId}` — Workforce
+Stores Staff member, clock in and clock out, source, correction state (`none`, `pending`, `approved`), requested values, approver, and history. It never stores payroll values.
 
 ## 8. Required indexes
 | Collection | Composite order or filter |
@@ -191,6 +214,13 @@ Append-only actor, actor type, role, action, target, request ID, optional reason
 | `loyaltyMembers` | normalized phone equality |
 | `promotions` | `isActive`, `startsAt`, `endsAt` |
 | `dailyStats` | document ID `yyyymmdd` range for week and month reads |
+| `aiInsights` | `status`, `periodStart desc` |
+| `aiUsage` | `tenantId`, `createdAt desc` |
+| `feedback` | `createdAt desc`, `verificationState` |
+| `feedbackTickets` | `state`, `updatedAt desc` |
+| `shifts` | `staffUid`, `date` |
+| `attendance` | `staffUid`, `clockInAt desc` |
+| `stockCounts` | `ingredientId`, `createdAt desc` |
 
 All queries remain tenant-scoped. Public listeners read only one table link, one tracking token, or bounded public menu items.
 
@@ -201,11 +231,15 @@ All queries remain tenant-scoped. Public listeners read only one table link, one
 - Payment confirmation writes immutable Payment, marks Order paid, updates Loyalty, and updates financial daily stats once.
 - Reversal or refund writes a compensating Payment and adjusts Loyalty and daily stats once.
 - Table token regeneration creates the new token and revokes the old token atomically.
+- AI analysis writes `aiInsights` and `aiUsage` without changing any business state.
+- Attendance correction approval records the new state and its history in one transaction.
+- Stock count computes variance from recorded movements and never rewrites paid records.
 
 ## 10. Retention and migration
 - Configuration defaults to five years for eligible product data.
 - Paid orders and payment records move to archive storage instead of automatic deletion.
 - Daily backups retain 30 days by default.
+- AI usage, Insight, feedback, and attendance records are eligible product data. Raw model responses are not stored.
 - Production starts with new authenticated tenant data.
 - Demo localStorage data is not imported.
 - Legacy `Enterprise`, plaintext PIN, conflicting Ingredient shapes, and simulated tokens are not migrated.

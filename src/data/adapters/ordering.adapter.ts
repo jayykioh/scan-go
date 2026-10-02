@@ -1,113 +1,177 @@
-import type { PublicMenuItem, PublicMenuQuery } from '../../../shared/contracts/catalog.contract'
-import type {
-  CartValidation,
-  CartValidationRequest,
-  OrderSnapshot,
-  SubmitOrderRequest,
-  SubmitOrderResult,
-} from '../../../shared/contracts/order.contract'
-import type { PublicTableQuery, TableLinkContext } from '../../../shared/contracts/table.contract'
+import { doc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import {
+  orderCancellationResultSchema,
+  orderSnapshotSchema,
+  orderSubmitResultSchema,
+  orderTrackingResultSchema,
+  publicOrderTrackingSchema,
+  type OrderCancelInput,
+  type OrderCancellationResult,
+  type OrderCartLineInput,
+  type OrderPaymentMode,
+  type OrderSnapshot,
+  type OrderSubmitResult,
+  type OrderTrackingResult,
+  type PublicOrderTracking,
+} from '@contracts/order.contract';
+import {
+  getFirebaseFirestore,
+  getFirebaseFunctions,
+} from '../../services/firebase/client';
+import { createIdempotencyKey } from './idempotency';
 
-export interface PublicMenuResult {
-  table: TableLinkContext
-  items: ReadonlyArray<PublicMenuItem>
+/** Customer tracking listeners are always bounded to one token document. */
+export const ORDER_TRACKING_LISTENER_LIMIT = 1;
+
+/**
+ * Retry-safe key for one Customer Order submit. The key is generated once per
+ * Table link and reused across retries so the server deduplicates (REQ-ORD-004).
+ */
+export function createOrderIdempotencyKey(): string {
+  return createIdempotencyKey('ord');
 }
 
-export interface OrderCommandPort {
-  submit(request: SubmitOrderRequest, validation: Extract<CartValidation, { valid: true }>): Promise<OrderSnapshot>
+export interface OfflineDecision {
+  online: boolean;
+  blocked: boolean;
+  message: string | null;
 }
 
-export interface OrderingAdapter {
-  loadPublicMenu(tableToken: string): Promise<PublicMenuResult | null>
-  validateCart(request: CartValidationRequest): Promise<CartValidation>
-  submitOrder(request: SubmitOrderRequest): Promise<SubmitOrderResult>
-}
+export const OFFLINE_SUBMIT_MESSAGE =
+  'Không có kết nối mạng. Đơn chưa được gửi. Bạn vẫn xem được thực đơn đã lưu.';
 
-export interface OrderingAdapterDependencies {
-  tables: PublicTableQuery
-  catalog: PublicMenuQuery
-  commands: OrderCommandPort
-  isOnline?: () => boolean
-  rateLimit?: { allow(tableToken: string): Promise<boolean> }
-}
-
-const invalid = (code: Extract<CartValidation, { valid: false }>['code'], message: string): CartValidation => ({
-  valid: false,
-  code,
-  message,
-})
-
-const isIntegerVnd = (value: number) => Number.isSafeInteger(value) && value >= 0
-
-export function createOrderingAdapter(dependencies: OrderingAdapterDependencies): OrderingAdapter {
-  const loadPublicMenu = async (tableToken: string): Promise<PublicMenuResult | null> => {
-    const table = await dependencies.tables.resolveTableLink(tableToken)
-    if (!table?.active) return null
-    const items = await dependencies.catalog.listPublicMenuItems(table.tenantId)
-    return { table, items }
-  }
-
-  const validateCart = async (request: CartValidationRequest): Promise<CartValidation> => {
-    if (request.lines.length === 0) return invalid('EMPTY_CART', 'Giỏ hàng đang trống.')
-    if (!(await (dependencies.rateLimit?.allow(request.tableToken) ?? Promise.resolve(true)))) {
-      return invalid('RATE_LIMITED', 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.')
-    }
-
-    const publicMenu = await loadPublicMenu(request.tableToken)
-    if (!publicMenu) return invalid('INVALID_TABLE_TOKEN', 'Link bàn không hợp lệ hoặc đã bị thu hồi.')
-
-    const validatedLines = []
-    for (const line of request.lines) {
-      if (!Number.isSafeInteger(line.quantity) || line.quantity <= 0) {
-        return invalid('INVALID_QUANTITY', 'Số lượng món phải là số nguyên dương.')
-      }
-      const item = publicMenu.items.find(candidate => candidate.id === line.menuItemId)
-      if (!item?.available) return invalid('ITEM_UNAVAILABLE', 'Một món trong giỏ hiện không còn phục vụ.')
-      if (!isIntegerVnd(item.unitPriceVnd)) return invalid('INVALID_VND_AMOUNT', 'Giá món phải là số nguyên VND.')
-
-      const selectedModifiers = line.modifierIds.map(modifierId => item.modifiers.find(modifier => modifier.id === modifierId))
-      if (selectedModifiers.some(modifier => !modifier)) {
-        return invalid('ITEM_UNAVAILABLE', 'Một lựa chọn món không còn khả dụng.')
-      }
-      const modifierTotalVnd = selectedModifiers.reduce((sum, modifier) => sum + (modifier?.priceDeltaVnd ?? 0), 0)
-      const lineTotalVnd = (item.unitPriceVnd + modifierTotalVnd) * line.quantity
-      if (![modifierTotalVnd, lineTotalVnd].every(isIntegerVnd)) {
-        return invalid('INVALID_VND_AMOUNT', 'Tổng tiền phải là số nguyên VND.')
-      }
-      validatedLines.push({
-        menuItemId: item.id,
-        name: item.name,
-        quantity: line.quantity,
-        unitPriceVnd: item.unitPriceVnd,
-        modifierNames: selectedModifiers.map(modifier => modifier!.name),
-        modifierTotalVnd,
-        lineTotalVnd,
-      })
-    }
-
-    const totalVnd = validatedLines.reduce((sum, line) => sum + line.lineTotalVnd, 0)
-    if (!isIntegerVnd(totalVnd)) return invalid('INVALID_VND_AMOUNT', 'Tổng tiền phải là số nguyên VND.')
-    return {
-      valid: true,
-      tenantId: publicMenu.table.tenantId,
-      tableId: publicMenu.table.tableId,
-      paymentMode: request.paymentMode,
-      lines: validatedLines,
-      totalVnd,
-    }
-  }
-
+/**
+ * Customer submission is blocked when the browser reports no connection
+ * (REQ-ORD-004). Cached menu viewing stays available because it is read-only.
+ */
+export function evaluateOfflineSubmission(isOnline: boolean): OfflineDecision {
   return {
-    loadPublicMenu,
-    validateCart,
-    async submitOrder(request) {
-      if (!(dependencies.isOnline?.() ?? true)) {
-        return { accepted: false, reason: 'OFFLINE', message: 'Mất kết nối. Đơn chưa được gửi, vui lòng thử lại khi có mạng.' }
-      }
-      const validation = await validateCart(request.cart)
-      if (!validation.valid) return { accepted: false, reason: validation.code, message: validation.message }
-      const order = await dependencies.commands.submit(request, validation)
-      return { accepted: true, order }
-    },
+    online: isOnline,
+    blocked: !isOnline,
+    message: isOnline ? null : OFFLINE_SUBMIT_MESSAGE,
+  };
+}
+
+/** Browser connectivity reader; falls back to online when undefined. */
+export function isBrowserOnline(): boolean {
+  if (typeof navigator === 'undefined' || typeof navigator.onLine !== 'boolean') {
+    return true;
   }
+  return navigator.onLine;
+}
+
+export interface SubmitOrderRequest {
+  token: string;
+  paymentMode: OrderPaymentMode;
+  idempotencyKey: string;
+  lines: OrderCartLineInput[];
+}
+
+/**
+ * Create one Order through the server callable. The client never writes a
+ * business collection directly (docs/RULES_FIREBASE.md §1).
+ */
+export async function submitOrder(
+  request: SubmitOrderRequest,
+): Promise<OrderSubmitResult> {
+  const functions = getFirebaseFunctions();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<SubmitOrderRequest, OrderSubmitResult>(
+    functions,
+    'callableOrderSubmit',
+  );
+  const result = await callable(request);
+  return orderSubmitResultSchema.parse(result.data);
+}
+
+/**
+ * Cancel one unpaid Order through the server callable. The server stops
+ * fulfilment, restores Inventory, and writes the audit event (REQ-CAS-002).
+ */
+export async function cancelUnpaidOrder(
+  request: OrderCancelInput,
+): Promise<OrderCancellationResult> {
+  const functions = getFirebaseFunctions();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<OrderCancelInput, OrderCancellationResult>(
+    functions,
+    'callableOrderCancelUnpaid',
+  );
+  const result = await callable(request);
+  return orderCancellationResultSchema.parse(result.data);
+}
+
+/** Read one tracking projection by its opaque token. */
+export async function getOrderTracking(
+  trackingToken: string,
+): Promise<PublicOrderTracking | null> {
+  const functions = getFirebaseFunctions();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<
+    { trackingToken: string },
+    OrderTrackingResult
+  >(functions, 'callableOrderGetTracking');
+  const result = orderTrackingResultSchema.parse(
+    (await callable({ trackingToken })).data,
+  );
+  return result.tracking;
+}
+
+/** Map a stored public tracking document to the frozen contract. */
+export function mapStoredTracking(
+  trackingToken: string,
+  data: Record<string, unknown>,
+): PublicOrderTracking {
+  return publicOrderTrackingSchema.parse({
+    schemaVersion: data.schemaVersion ?? 1,
+    trackingToken,
+    tenantId: data.tenantId,
+    orderId: data.orderId,
+    tableName: data.tableName,
+    itemSummary: data.itemSummary,
+    totalVnd: data.totalVnd,
+    status: data.status,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+  });
+}
+
+/** Map a stored Orders request into the frozen Order snapshot contract. */
+export function mapStoredOrder(
+  orderId: string,
+  data: Record<string, unknown>,
+): OrderSnapshot {
+  return orderSnapshotSchema.parse({ ...data, orderId });
+}
+
+/** Bounded listener for one Customer tracking document; unsubscribe on exit. */
+export function subscribeOrderTracking(
+  trackingToken: string,
+  onChange: (tracking: PublicOrderTracking | null) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const db = getFirebaseFirestore();
+  if (!db) {
+    onChange(null);
+    return () => undefined;
+  }
+
+  return onSnapshot(
+    doc(db, 'publicOrderTracking', trackingToken),
+    (snap) => {
+      onChange(
+        snap.exists()
+          ? mapStoredTracking(trackingToken, snap.data())
+          : null,
+      );
+    },
+    (error) => onError?.(error),
+  );
 }

@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document ID | TECH-SCANGO-001 |
-| Version | 1.1 |
-| Date | 2026-09-12 |
+| Version | 1.2 |
+| Date | 2026-09-27 |
 | Companion to | `SRS.md` §3 |
 | Status | Approved foundation |
 | Source template | `~/.config/opencode/docs-template/TECH_STACK.template.md` |
@@ -27,9 +27,9 @@
 | Primary DB | Firebase Firestore Native mode | DECIDED | REQ-TEN-001, REQ-ORD-003, NFR-RT-001 |
 | Cache | No server cache in v1; Firestore web persistence for cached menu reads | DECIDED | REQ-ORD-004, NFR-CFG-001 |
 | Object storage | Firebase Storage | DECIDED | REQ-CAT-001, NFR-SEC-001 |
-| Auth | Firebase Auth phone OTP; server-issued Staff sessions | DECIDED | REQ-AUTH-001, REQ-AUTH-002 |
+| Auth | Firebase Auth email/password for Owner (ADR 0007); server-issued Staff sessions | DECIDED | REQ-AUTH-001, REQ-AUTH-002 |
 | Payment | Dynamic VietQR plus manual Cashier confirmation; replaceable automatic adapter | DECIDED | REQ-CAS-001, REQ-PAY-002 |
-| AI | Gemini through a server-side read-only adapter | DECIDED | REQ-AI-001, NFR-PRIV-001 |
+| AI | One replaceable provider adapter; Gemini default, TypeSafe Jev evaluation candidate (ADR 0008) | DECIDED | REQ-AI-001, REQ-AI-004, NFR-AI-001, NFR-AI-002 |
 | Runtime config | Versioned typed `config.ts`, Firestore ADMIN defaults, allowed tenant overrides | DECIDED | REQ-CFG-001, NFR-CFG-001 |
 | Observability | Firebase logging; Sentry for P1 web errors | DECIDED | NFR-OBS-001 |
 | Analytics | Firebase Analytics with privacy review before production | DECIDED | NFR-PRIV-001 |
@@ -94,14 +94,18 @@ Only `docs/RULES_FIREBASE.md` is active for the database-specific rules.
 - Default backup schedule is daily with 30-day retention.
 - ADMIN settings may override product defaults through Firestore.
 - Allowed tenant settings override ADMIN product defaults.
-- Scheduled Cloud Functions handle retention, archival, and report maintenance.
+- Scheduled Cloud Functions handle retention, archival, weekly analysis, and report maintenance.
+- AI calls go through one provider adapter, record provider, model, tokens, and cost in `aiUsage`, and obey a per-tenant budget from configuration.
+- Keep arithmetic, money, Cost, and date comparison in deterministic code, not in an AI call.
 - Payment callbacks use idempotency keys and transaction-backed posting.
 
 ## 7. Open Decisions
 
 | State | Decision |
 |---|---|
-| Q-n = 0 OPEN | The Founder approved all foundation choices on 2026-09-12. |
+| Q-3 RESOLVED 2026-09-30 | Keep Gemini as the default AI provider and evaluate TypeSafe Jev behind the adapter (ADR 0008). |
+| Q-4 OPEN | TypeSafe contract terms, Vietnamese quality, and zero-retention availability. Owner: Founder. |
+| Foundation | The Founder approved all foundation choices on 2026-09-12. |
 
 ## 8. Version Pinning
 - Keep exact versions in `package-lock.json`.
@@ -115,3 +119,5 @@ Only `docs/RULES_FIREBASE.md` is active for the database-specific rules.
 |---|---|---|
 | 1.0 | 2026-09-12 | Initial approved foundation from frontend evidence and Founder decisions. |
 | 1.1 | 2026-09-12 | Added detailed module boundaries, public projections, and daily stats. |
+| 1.2 | 2026-09-27 | ADR 0007: switched Owner auth from phone OTP to email/password. |
+| 1.3 | 2026-09-30 | ADR 0008: replaceable AI provider adapter, Gemini default, TypeSafe Jev evaluation candidate. |

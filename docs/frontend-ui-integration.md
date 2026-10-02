@@ -8,12 +8,12 @@
 |---|---|---|---|---|
 | Landing and introduction | DONE | `/`, `/introduce`; `LandingPage`, `IntroducePage` | None | None |
 | Simulator launcher | DONE | `/simulator`; `SimulatorIndex` | None | None |
-| Owner phone sign-in and first Tenant | PARTIAL | `/login`, `/register`; `LoginPage`, `RegisterPage` | REQ-AUTH-001, REQ-TEN-001 | Firebase Auth OTP; `tenant-create`; current identity and membership query |
+| Owner email sign-in and first Tenant | PARTIAL | `/login`, `/register`; `LoginPage`, `RegisterPage` | REQ-AUTH-001, REQ-TEN-001 | Firebase Auth email/password; `callableAuthRegisterOwner`; `callableTenantBootstrap`; current identity and membership query |
 | Tenant switch and Staff access | PARTIAL | `SimulatorLayout`, `StaffPage`, `StaffView` | REQ-TEN-001, REQ-AUTH-002, REQ-ACL-001 | membership query; `tenant-select-active`; Staff PIN command; authorization decision |
 | Dashboard shell and navigation | PARTIAL | `DashboardLayout`, `RootLayout`, `AuthLayout` | REQ-TEN-001, REQ-I18N-001 | authenticated active-Tenant context; locale state; route guards |
 | Owner menu | PARTIAL | `/dashboard/menu`; `MenuPage`, `OwnerView` | REQ-CAT-001, REQ-CAT-002 | Catalog create/update/archive/template commands; private menu query; public projection listener |
 | Tables and QR Table link | PARTIAL | `/dashboard/tables`; `TablesPage`, `OwnerView` | REQ-TBL-001, NFR-SEC-002 | Table create/update/archive/regenerate commands; tenant table query; public-token resolver |
-| Owner settings | PARTIAL | `/dashboard/settings`; `SettingsPage` | REQ-CFG-001, REQ-ONB-001 | resolved Config query; allowed Tenant-settings command; Tenant query |
+| Owner settings | PARTIAL | `/dashboard/settings`; `SettingsPage` | REQ-CFG-001, REQ-ONB-001 | direct authorized read of `platform/config` and tenant `configOverrides`; resolved Config with source; `callableConfigUpdateTenant` for allowed tenant settings; Tenant query |
 | Staff administration | PARTIAL | `/dashboard/staff`; `StaffPage` | REQ-AUTH-002, REQ-ACL-001 | membership create/update/disable command; membership query; PIN set command |
 | Customer menu and cart | PARTIAL | `/menu/:tableId`; `PublicMenuPage`, `CustomerView` | REQ-ORD-001, REQ-ORD-004, NFR-UX-001 | public Table resolver; public menu query; cart validation and Order-create callable |
 | Customer Order tracking | PARTIAL | `CustomerView` | REQ-ORD-003, NFR-RT-001 | `publicOrderTracking/{trackingToken}` listener |
@@ -50,7 +50,8 @@ These views need adapter replacement, not a visual rebuild.
 
 Each entry requires both a UI deliverable and a backend deliverable.
 
-- **Firebase phone OTP and Tenant switch:** replace email/password mock forms; UI shows OTP, memberships, and active Tenant. Backend delivers Firebase Auth integration, membership query, and Tenant command.
+- **Config resolution:** wire `SettingsPage` to direct authorized reads of `platform/config` and tenant `configOverrides`; show resolved values with source; send allowed tenant settings through `callableConfigUpdateTenant`. ADMIN platform command stays P0-001.
+- **Firebase email/password and Tenant switch:** wire the register and login forms to Firebase Auth email/password (ADR 0007); UI shows memberships and active Tenant. Backend delivers `callableAuthRegisterOwner`, membership query, and Tenant command.
 - **Staff PIN policy:** replace plaintext and four-digit demo PIN flows. UI shows configurable lock state. Backend hashes PIN, enforces lockout, session version, and Rules.
 - **ADMIN:** build ADMIN route and screens. Backend delivers delegated server commands, claim verification, and automatic audit.
 - **i18n:** build locale provider, switch, and `vi`/`en` labels. Backend persists authenticated user locale.
@@ -63,7 +64,7 @@ Each entry requires both a UI deliverable and a backend deliverable.
 | Inconsistency | Checked-in evidence | Required correction |
 |---|---|---|
 | Router versus no router | `App.tsx` uses React Router; `docs/architecture.md` says no router. | Treat React Router as current implementation; mark architecture text historical. |
-| Gemini claim versus rule-based AI | SRS/TECH_STACK require server Gemini adapter; `OwnerView` and `SoloOperatorView` use local rule text. | Keep UI as mockup; implement server AI only in P1. |
+| Provider claim versus rule-based AI | SRS/TECH_STACK require one server AI provider adapter (Gemini default, ADR 0008); `OwnerView` and `SoloOperatorView` use local rule text. | Keep UI as mockup; implement server AI only in P1. |
 | Next.js blueprint versus React/Vite | TECH_STACK selects React/Vite; old blueprint references can conflict. | Keep React 19, Vite, React Router, and `vercel.json` SPA rewrite. |
 | Free/Lite/Pro versus Lite/Pro/Enterprise | SRS/data model use `free|lite|pro`; `types.ts` and SubscriptionPage use Lite/Pro/Enterprise. | Use approved Free/Lite/Pro only; Enterprise remains out of scope. |
 | Plaintext Staff PIN | `types.ts`, `mockData.ts`, StaffPage, and SimulatorLayout store/display PIN. | Remove browser PIN persistence; keep only server `staffPinHash`. |
@@ -76,7 +77,7 @@ Each entry requires both a UI deliverable and a backend deliverable.
 | Module | Commands | Queries | Firestore paths | Rules needed by UI |
 |---|---|---|---|---|
 | Config | update allowed Tenant setting; ADMIN product setting | resolved Config with source | `platform/config`, Tenant overrides | deny client writes; authorized config reads |
-| Auth/Tenant | bootstrap Tenant; select active Tenant; verify Staff PIN; change membership | identity, memberships, authorization decision, checklist | `users`, `tenants`, `members`, `audit` | membership-scoped reads; no client business writes |
+| Auth/Tenant | register Owner; bootstrap Tenant; select active Tenant; verify Staff PIN; change membership | identity, memberships, authorization decision, checklist | `users`, `tenants`, `members`, `audit` | membership-scoped reads; no client business writes |
 | Catalog | create, update, archive, template, availability | private menu; public menu | `menuItems`, `publicMenuItems`, Storage metadata | Owner member reads; public projection reads only |
 | Table Access | create, rename, archive, regenerate | tenant tables; public Table resolver | `tables`, `publicTableLinks` | member Table reads; token-only public read |
 | Ordering | validate cart; create Order; transition request; cancel unpaid | authorized Order queues; public tracking | `orders`, status events, idempotency, public tracking | bounded member reads; tracking-token read; no writes |

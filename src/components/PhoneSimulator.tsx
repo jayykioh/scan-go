@@ -22,8 +22,8 @@ export default function PhoneSimulator({
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      let hours = now.getHours().toString().padStart(2, '0');
-      let minutes = now.getMinutes().toString().padStart(2, '0');
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
       setTime(`${hours}:${minutes}`);
     };
     updateTime();

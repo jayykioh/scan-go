@@ -1,6 +1,41 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TenantConfig, TableConfig, Order, MenuItem, LoyaltyMember } from '../types';
+import { useActiveTenantId } from '../hooks/useActiveTenantId';
+import {
+  runSoloAvailability,
+  runSoloOrderAction,
+  runSoloOrderCancel,
+  runSoloOrderRevert,
+  soloOrderPorts,
+} from '../data/adapters/solo.adapter';
+import { listUnpaidOrders } from '../data/adapters/payment.adapter';
+import { subscribeTenantTables } from '../data/adapters/table.adapter';
+import { subscribeOwnerMenu } from '../data/adapters/catalog.adapter';
+import {
+  createIngredient,
+  subscribeIngredients,
+  subscribeRecipes,
+  updateRecipe,
+  type RecipeUpdateFields,
+} from '../data/adapters/inventory.adapter';
+import {
+  listLoyaltyMembers,
+  registerLoyaltyMember,
+} from '../data/adapters/loyalty.adapter';
+import {
+  changeSubscriptionPlan,
+  getSubscription,
+} from '../data/adapters/subscription.adapter';
+import { formatPlanLabel } from '../data/adapters/subscription-view';
+import type { Ingredient as ContractIngredient, Recipe } from '@contracts/inventory.contract';
+import type { SubscriptionState } from '@contracts/subscription.contract';
+import {
+  toOwnerMenuItem,
+  toTableConfig,
+  toViewLoyaltyMember,
+  toViewOrder,
+} from '../data/adapters/view-mappers';
 import { 
   Sparkles, 
   TrendingUp, 
@@ -43,20 +78,13 @@ interface SoloProps {
   setOnboardCompleted: (val: boolean) => void;
 }
 
-interface Ingredient {
-  id: string;
-  name: string;
-  unit: string;
-  costPerUnit: number; // in VND
-  stockAmount: number; // in grams, ml, or units
-}
-
 interface RecipeItem {
   ingredientId: string;
   quantity: number; // quantity of ingredient used for this dish
 }
 
 interface DishRecipe {
+  recipeId: string;
   menuId: string;
   recipes: RecipeItem[];
 }
@@ -74,6 +102,18 @@ export default function SoloOperatorView({
   onboardCompleted,
   setOnboardCompleted,
 }: SoloProps) {
+  // Solo reads and writes through the same shared server modules as the
+  // dedicated views. The view owns only UI state; business state comes from
+  // the server (REQ-SOLO-001, docs/RULES_FIREBASE.md §1).
+  const activeTenantId = useActiveTenantId();
+  const [serverTables, setServerTables] = useState<TableConfig[]>([]);
+  const [soloError, setSoloError] = useState<string | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionState | null>(null);
+  const [serverIngredients, setServerIngredients] = useState<ContractIngredient[]>([]);
+  const [dishRecipes, setDishRecipes] = useState<DishRecipe[]>([]);
+  const [serverLoyaltyMembers, setServerLoyaltyMembers] = useState<LoyaltyMember[]>([]);
+  const [serverMenuItems, setServerMenuItems] = useState<MenuItem[]>([]);
+
   // Navigation tabs simplified and organized exactly as requested for 40-50yo users:
   // Tab 1: "home" - Đơn hàng & Lịch sử revert, doanh thu hôm nay
   // Tab 2: "pantry" - Bật tắt món, Kho nguyên liệu, thêm nguyên liệu mới
@@ -123,62 +163,128 @@ export default function SoloOperatorView({
   // Notifications
   const [showSimNotification, setShowSimNotification] = useState<string | null>(null);
   const [aiTipRefreshes, setAiTipRefreshes] = useState(0);
-  
-  // Raw Ingredients Inventory state
-  const [ingredients, setIngredients] = useState<Ingredient[]>([
-    { id: 'ing1', name: 'Thịt bò tươi phi lê', unit: 'g', costPerUnit: 250, stockAmount: 5000 }, // 5.0kg
-    { id: 'ing2', name: 'Bánh phở tươi dẻo', unit: 'g', costPerUnit: 22, stockAmount: 10000 },  // 10.0kg
-    { id: 'ing3', name: 'Phở gà ta đồi thả vườn', unit: 'g', costPerUnit: 120, stockAmount: 3500 }, // 3.5kg
-    { id: 'ing4', name: 'Bún tươi Kinh Bắc', unit: 'g', costPerUnit: 18, stockAmount: 8500 },    // 8.5kg
-    { id: 'ing5', name: 'Thịt chả xiên mật mía', unit: 'xiên', costPerUnit: 8000, stockAmount: 12 }, // 12 xiên (low stock alert!)
-    { id: 'ing6', name: 'Tôm nõn hấp', unit: 'g', costPerUnit: 180, stockAmount: 1200 },        // 1.2kg
-    { id: 'ing7', name: 'Quẩy giòn giòn', unit: 'cái', costPerUnit: 1500, stockAmount: 6 },     // 6 cái (low stock!)
-    { id: 'ing8', name: 'Lá dứa lạt tự nhiên', unit: 'g', costPerUnit: 108, stockAmount: 2500 },   // 2.5kg
-  ]);
 
-  // Dish Recipe Recipes matching MOCK_MENU_ITEMS
-  const [dishRecipes, setDishRecipes] = useState<DishRecipe[]>([
-    {
-      menuId: 'qa1', // Phở Bò Tái Lăn Kinh Kỳ
-      recipes: [
-        { ingredientId: 'ing1', quantity: 90 },  // 90g * 250 = 22,500đ
-        { ingredientId: 'ing2', quantity: 150 }, // 150g * 22 = 3,300đ
-        { ingredientId: 'ing7', quantity: 1 }    // 1 cái * 1500 = 1,500đ
-      ]
-    },
-    {
-      menuId: 'qa2', // Phở Gà Thảo Mộc Sợi Nhỏ
-      recipes: [
-        { ingredientId: 'ing3', quantity: 120 }, // 120g * 120 = 14,400đ
-        { ingredientId: 'ing2', quantity: 150 }, // 150g * 22 = 3,300đ
-      ]
-    },
-    {
-      menuId: 'qa3', // Bún Chả Tre Thạch Thất
-      recipes: [
-        { ingredientId: 'ing4', quantity: 160 }, // 160g * 18 = 2,880đ
-        { ingredientId: 'ing5', quantity: 3 },   // 3 xiên * 8000 = 24,000đ
-      ]
-    },
-    {
-      menuId: 'qa4', // Nem Rán Tôm Lụa (4 chiếc)
-      recipes: [
-        { ingredientId: 'ing6', quantity: 80 },  // 80g * 180 = 14,400đ
-      ]
-    },
-    {
-      menuId: 'qa5', // Quẩy Khô Siêu Giòn
-      recipes: [
-        { ingredientId: 'ing7', quantity: 1 }    // 1 cái = 1,500đ
-      ]
-    },
-    {
-      menuId: 'qa6', // Trà Sâm Dứa Hương Lài
-      recipes: [
-        { ingredientId: 'ing8', quantity: 25 }   // 25g * 108 = 2,700đ
-      ]
+  // Solo reads the same Ordering/Fulfilment/Payment queues as the dedicated
+  // views (REQ-SOLO-001). The server remains the source of truth; when no
+  // Tenant is active Solo shows an empty queue, never seeded business data.
+  const [serverOrders, setServerOrders] = useState<Order[]>([]);
+
+  const refreshSoloOrders = useCallback(async () => {
+    if (!activeTenantId) {
+      setServerOrders([]);
+      return;
     }
-  ]);
+    try {
+      const unpaid = await listUnpaidOrders(activeTenantId);
+      setServerOrders(unpaid.map(toViewOrder));
+      setSoloError(null);
+    } catch (error) {
+      setServerOrders([]);
+      setSoloError(
+        error instanceof Error ? error.message : 'Không tải được đơn hàng.',
+      );
+    }
+  }, [activeTenantId]);
+
+  // Solo keeps the server queue in sync; every listener is disposed on unmount.
+  useEffect(() => {
+    if (!activeTenantId) {
+      setServerOrders([]);
+      return;
+    }
+    void refreshSoloOrders();
+    const unsubscribeTables = subscribeTenantTables(
+      (rows) => setServerTables(rows.map(toTableConfig)),
+      (error) => setSoloError(error.message),
+    );
+    return () => unsubscribeTables();
+  }, [activeTenantId, refreshSoloOrders]);
+
+  // Inventory: server ingredient and recipe projections.
+  useEffect(() => {
+    if (!activeTenantId) return;
+    const unsubscribeMenu = subscribeOwnerMenu(
+      (items) => setServerMenuItems(items.map(toOwnerMenuItem)),
+      (error) => setSoloError(error.message),
+    );
+    const unsubscribeIngredients = subscribeIngredients(
+      (rows) => setServerIngredients(rows),
+      (error) => setSoloError(error.message),
+    );
+    const unsubscribeRecipes = subscribeRecipes(
+      (rows) => {
+        setDishRecipes(
+          rows.map((recipe: Recipe) => ({
+            recipeId: recipe.recipeId,
+            menuId: recipe.menuItemId,
+            recipes: recipe.lines.map((line) => ({
+              ingredientId: line.ingredientId,
+              quantity: line.quantityBaseUnits,
+            })),
+          })),
+        );
+      },
+      (error) => setSoloError(error.message),
+    );
+    return () => {
+      unsubscribeMenu();
+      unsubscribeIngredients();
+      unsubscribeRecipes();
+    };
+  }, [activeTenantId]);
+
+  // Loyalty members and the current plan come from the server.
+  useEffect(() => {
+    if (!activeTenantId) return;
+    let cancelled = false;
+    void listLoyaltyMembers()
+      .then((members) => {
+        if (!cancelled) setServerLoyaltyMembers(members.map(toViewLoyaltyMember));
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setSoloError(
+            error instanceof Error ? error.message : 'Không tải được hội viên.',
+          );
+        }
+      });
+    void getSubscription()
+      .then((state) => {
+        if (!cancelled) setSubscription(state);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setSoloError(
+            error instanceof Error ? error.message : 'Không tải được gói dịch vụ.',
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTenantId]);
+
+  // Prefer the server Table list when Solo runs against real modules.
+  const availableTables = serverTables.length > 0 ? serverTables : tables;
+  const loyaltyMembersView = serverLoyaltyMembers;
+  const currentPlan = subscription ? formatPlanLabel(subscription.plan) : null;
+  // Free maps to the Solo `Lite` capability layer; `Pro` keeps the full layer.
+  const soloPlan = currentPlan === 'Pro' ? 'Pro' : 'Lite';
+
+  // The server private-menu projection replaces the simulator list whenever the
+  // listener has data; otherwise the simulator keeps its seeded view list.
+  const menuItemsView = serverMenuItems.length > 0 ? serverMenuItems : menuItems;
+
+  // Display mapping for the stock board. The stored base unit stays `g`/`ml`/
+  // `unit`; the view keeps its short labels and integer base-unit quantities.
+  const ingredients = serverIngredients.map((ingredient) => ({
+    id: ingredient.ingredientId,
+    name: ingredient.name,
+    unit: ingredient.baseUnit === 'unit' ? 'cái' : ingredient.baseUnit,
+    costPerUnit: ingredient.unitCostVnd,
+    stockAmount: ingredient.stockQuantity,
+  }));
+
 
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
   
@@ -196,235 +302,138 @@ export default function SoloOperatorView({
     }, 4500);
   };
 
-  // Switch App Pricing Plan Tier
-  const handleUpgradeTier = (tier: 'Lite' | 'Pro' | 'Enterprise') => {
-    setTenantConfig(prev => ({
-      ...prev,
-      pricingTier: tier,
-      loyaltyEnabled: tier !== 'Lite'
-    }));
-    triggerPulseText(`⚡ ĐÃ ĐỔI APP SANG GÓI: [ hạng ${tier.toUpperCase()} ]\n${
-      tier === 'Lite' ? '• Giới hạn chức năng cơ bản' :
-      tier === 'Pro' ? '• Mở khóa Tích điểm Khách hàng!' :
-      '• Toàn năng: Tích điểm + Định lượng giá vốn vật tư!'
-    }`);
+  // Switch App Pricing Plan Tier through the Subscription server command.
+  const handleUpgradeTier = async (tier: 'Lite' | 'Pro' | 'Enterprise') => {
+    if (tier === 'Enterprise') {
+      setSoloError('Vui lòng liên hệ để nhận tư vấn gói Enterprise.');
+      return;
+    }
+    try {
+      const state = await changeSubscriptionPlan(tier === 'Pro' ? 'pro' : 'lite');
+      if (!state) {
+        setSoloError('Không thay đổi được gói dịch vụ.');
+        return;
+      }
+      setSubscription(state);
+      setSoloError(null);
+      triggerPulseText(`⚡ ĐÃ ĐỔI APP SANG GÓI: [ hạng ${tier.toUpperCase()} ]\n${
+        tier === 'Lite' ? '• Giới hạn chức năng cơ bản' :
+        '• Mở khóa Tích điểm Khách hàng và định lượng giá vốn!'
+      }`);
+    } catch (error) {
+      setSoloError(
+        error instanceof Error ? error.message : 'Không thay đổi được gói dịch vụ.',
+      );
+    }
   };
 
-  // Toggle Shop payment Mode in Solo view
+  // Toggle Shop payment Mode in Solo view. This stays a local UI preference;
+  // the server owns the Order payment mode at submission time.
   const togglePaymentModeInSolo = () => {
     const nextMode = tenantConfig.paymentMode === 'Pay-First' ? 'Pay-Later' : 'Pay-First';
     setTenantConfig(prev => ({ ...prev, paymentMode: nextMode }));
     triggerPulseText(`⚙️ Đã chuyển chế độ thanh toán thành: ${nextMode === 'Pay-First' ? 'QR Trả Trước (Pay-First)' : '💵 Trả Sau (Pay-Later)'}`);
   };
 
-  // DEDUCT RAW INGREDIENTS WHEN PREPARING (PENDING -> COOKING)
-  const deductIngredientsForOrder = (order: Order) => {
-    const changes: string[] = [];
-    
-    setIngredients(prev => {
-      let isChanged = false;
-      const updated = prev.map(ing => {
-        let deductAmount = 0;
-        
-        order.items.forEach(orderItem => {
-          const recipe = dishRecipes.find(r => r.menuId === orderItem.menuId);
-          if (recipe) {
-            const ingredientItem = recipe.recipes.find(ri => ri.ingredientId === ing.id);
-            if (ingredientItem) {
-              deductAmount += ingredientItem.quantity * orderItem.quantity;
-            }
-          }
-        });
+  // Settle or Advance order states through the shared module commands.
+  const handleAdvanceStatus = async (orderId: string, currentStatus: string) => {
+    const targetOrder = serverOrders.find(o => o.id === orderId);
+    if (!targetOrder) return;
 
-        if (deductAmount > 0) {
-          isChanged = true;
-          const currentStock = ing.stockAmount;
-          const nextStock = Math.max(0, currentStock - deductAmount);
-          
-          const formatUnit = (val: number) => {
-            if (ing.unit === 'g' || ing.unit === 'ml') {
-              return `${(val / 1000).toFixed(2)}kg`;
-            }
-            return `${val} ${ing.unit}`;
-          };
-
-          changes.push(`${ing.name}: ${formatUnit(currentStock)} ➔ ${formatUnit(nextStock)}`);
-          return { ...ing, stockAmount: nextStock };
-        }
-        return ing;
+    try {
+      const outcome = await runSoloOrderAction(soloOrderPorts, {
+        orderId,
+        status: currentStatus,
+        amountVnd: targetOrder.total,
       });
-      return isChanged ? updated : prev;
-    });
-
-    if (changes.length > 0) {
-      triggerPulseText(`📦 Trừ kho vật liệu cho Bàn ${order.tableId}:\n${changes.join(', ')}`);
+      if (outcome?.command === 'confirmPayment') {
+        triggerPulseText(
+          `💵 Thu tiền Bàn ${targetOrder.tableId} thành công: +${targetOrder.total.toLocaleString()}đ`,
+        );
+      }
+      await refreshSoloOrders();
+    } catch (error) {
+      setSoloError(
+        error instanceof Error ? error.message : 'Không cập nhật được đơn.',
+      );
     }
   };
 
-  // RE-ADD RAW INGREDIENTS WHEN CANCELLING AN ORDER
-  const returnIngredientsForOrder = (order: Order) => {
-    const changes: string[] = [];
-    setIngredients(prev => {
-      let isChanged = false;
-      const updated = prev.map(ing => {
-        let restoreAmount = 0;
-        order.items.forEach(orderItem => {
-          const recipe = dishRecipes.find(r => r.menuId === orderItem.menuId);
-          if (recipe) {
-            const ingredientItem = recipe.recipes.find(ri => ri.ingredientId === ing.id);
-            if (ingredientItem) {
-              restoreAmount += ingredientItem.quantity * orderItem.quantity;
-            }
-          }
-        });
-
-        if (restoreAmount > 0) {
-          isChanged = true;
-          const currentStock = ing.stockAmount;
-          const nextStock = currentStock + restoreAmount;
-          const formatUnit = (val: number) => {
-            if (ing.unit === 'g' || ing.unit === 'ml') {
-              return `${(val / 1000).toFixed(2)}kg`;
-            }
-            return `${val} ${ing.unit}`;
-          };
-          changes.push(`${ing.name} hoàn lại ${formatUnit(restoreAmount)}`);
-          return { ...ing, stockAmount: nextStock };
-        }
-        return ing;
-      });
-      return isChanged ? updated : prev;
-    });
-
-    if (changes.length > 0) {
-      triggerPulseText(`🔄 Khôi phục kho cho đơn hủy bớt:\n${changes.join(', ')}`);
+  // Revert one paid Order through the shared compensating Payment correction.
+  const handleRevertOrderAction = async (orderId: string) => {
+    const targetOrder = serverOrders.find(o => o.id === orderId);
+    if (!targetOrder) return;
+    try {
+      await runSoloOrderRevert(
+        soloOrderPorts,
+        orderId,
+        'Solo hoàn tác hóa đơn',
+      );
+      setRevertingOrderId(null);
+      triggerPulseText(`🔄 Đã hoán tác (Revert) hóa đơn Bàn ${targetOrder.tableId}!`);
+      await refreshSoloOrders();
+    } catch (error) {
+      setSoloError(
+        error instanceof Error ? error.message : 'Không hoàn tác được đơn.',
+      );
     }
   };
 
-  // Settle or Advance order states
-  const handleAdvanceStatus = (orderId: string, currentStatus: string) => {
-    const targetOrder = orders.find(o => o.id === orderId);
+  const handleCancelOrderAction = async (orderId: string) => {
+    const targetOrder = serverOrders.find(o => o.id === orderId);
     if (!targetOrder) return;
 
-    let nextStatus: 'cooking' | 'ready' | 'paid' = 'cooking';
-    if (currentStatus === 'pending') {
-      nextStatus = 'cooking';
-      // Only deduct if Pro package selected (Portioning Engine)
-      if (tenantConfig.pricingTier === 'Pro') {
-        deductIngredientsForOrder(targetOrder);
-      }
-    } else if (currentStatus === 'cooking') {
-      nextStatus = 'ready';
-      triggerPulseText(`🔔 Bếp nấu xong Bàn ${targetOrder.tableId}. Hãy bưng ra phục vụ!`);
-    } else if (currentStatus === 'ready') {
-      nextStatus = 'paid';
-      
-      // Update customer loyalty points securely (If integrated - Lite/Pro required)
-      if (tenantConfig.pricingTier !== 'Lite' && targetOrder.customerPhone) {
-        const pointsToAward = Math.floor(targetOrder.total / 10000);
-        setLoyaltyMembers(prev => prev.map(member => {
-          if (member.phone === targetOrder.customerPhone) {
-            const updated = {
-              ...member,
-              points: member.points + pointsToAward,
-              totalSpent: member.totalSpent + targetOrder.total,
-              visits: member.visits + 1
-            };
-            triggerPulseText(`🌟 Khách ${member.name} (+${pointsToAward}đ) tích lũy thành công! Tổng: ${updated.points} điểm`);
-            return updated;
-          }
-          return member;
-        }));
-      } else {
-        triggerPulseText(`💵 Thu tiền Bàn ${targetOrder.tableId} thành công: +${(targetOrder.total).toLocaleString()}đ`);
-      }
+    try {
+      await runSoloOrderCancel(
+        soloOrderPorts,
+        orderId,
+        'Solo hủy đơn chưa thanh toán',
+      );
+      setCancellingOrderId(null);
+      triggerPulseText(`❌ Đã huỷ hóa đơn Bàn ${targetOrder.tableId}`);
+      await refreshSoloOrders();
+    } catch (error) {
+      setSoloError(
+        error instanceof Error ? error.message : 'Không huỷ được đơn.',
+      );
     }
-
-    setOrders(prev => prev.map(o => {
-      if (o.id === orderId) {
-        return { ...o, status: nextStatus };
-      }
-      return o;
-    }));
   };
 
-  // REVERT PAID ORDER WITH SECURE LOYALTY REVERSAL
-  const handleRevertOrderAction = (orderId: string) => {
-    const targetOrder = orders.find(o => o.id === orderId);
-    if (!targetOrder) return;
-
-    // Reverse Loyalty score if applicable
-    if (tenantConfig.pricingTier !== 'Lite' && targetOrder.customerPhone) {
-      const pointsDeducted = Math.floor(targetOrder.total / 10000);
-      setLoyaltyMembers(prev => prev.map(member => {
-        if (member.phone === targetOrder.customerPhone) {
-          return {
-            ...member,
-            points: Math.max(0, member.points - pointsDeducted),
-            totalSpent: Math.max(0, member.totalSpent - targetOrder.total),
-            visits: Math.max(0, member.visits - 1)
-          };
-        }
-        return member;
-      }));
-    }
-
-    setOrders(prev => prev.map(o => {
-      if (o.id === orderId) {
-        return { ...o, status: 'ready' }; // return to preparing/ready table state
-      }
-      return o;
-    }));
-
-    setRevertingOrderId(null);
-    triggerPulseText(`🔄 Đã hoán tác (Revert) thành công hóa đơn Bàn ${targetOrder.tableId} về hàng chờ phục vụ!`);
-  };
-
-  const handleCancelOrderAction = (orderId: string) => {
-    const targetOrder = orders.find(o => o.id === orderId);
-    if (!targetOrder) return;
-
-    if (tenantConfig.pricingTier === 'Pro' && (targetOrder.status === 'cooking' || targetOrder.status === 'ready')) {
-      returnIngredientsForOrder(targetOrder);
-    }
-    setOrders(prev => prev.filter(o => o.id !== orderId));
-    setCancellingOrderId(null);
-    triggerPulseText(`❌ Đã huỷ và dọn dẹp hóa đơn Bàn ${targetOrder.tableId}`);
-  };
-
-  // Calculate COGS values for each dish
+  // Calculate COGS values for each dish from the server recipe lines.
   const calculateDishCost = (menuId: string): number => {
     const findRecipe = dishRecipes.find(r => r.menuId === menuId);
     if (!findRecipe) return 0;
     return findRecipe.recipes.reduce((sum, item) => {
-      const ingredient = ingredients.find(i => i.id === item.ingredientId);
+      const ingredient = serverIngredients.find(i => i.ingredientId === item.ingredientId);
       if (!ingredient) return sum;
-      return sum + (item.quantity * ingredient.costPerUnit);
+      return sum + (item.quantity * ingredient.unitCostVnd);
     }, 0);
   };
 
-  // Toggle Item Out of Stock quickly (Hide/Show on QR)
-  const toggleItemStock = (itemId: string) => {
-    setMenuItems(prev => prev.map(item => {
-      if (item.id === itemId) {
-        const nextStock = !item.inStock;
-        return {
-          ...item,
-          inStock: nextStock,
-          stockCount: nextStock ? 50 : 0
-        };
-      }
-      return item;
-    }));
-    
-    const dish = menuItems.find(m => m.id === itemId);
+  // Toggle Item Out of Stock quickly (Hide/Show on QR) through Catalog.
+  const toggleItemStock = async (itemId: string) => {
+    const dish = menuItemsView.find(m => m.id === itemId);
+    const nextAvailable = dish ? !dish.inStock : true;
+
+    try {
+      await runSoloAvailability(soloOrderPorts, itemId, nextAvailable);
+      setSoloError(null);
+    } catch (error) {
+      setSoloError(
+        error instanceof Error
+          ? error.message
+          : 'Không đổi được tình trạng món.',
+      );
+      return;
+    }
+
     if (dish) {
       triggerPulseText(`${dish.name} ➔ ${!dish.inStock ? '🟢 ĐÃ MỞ BÁN' : '🚫 ĐÃ BÁO HẾT MÓN'}`);
     }
   };
 
-  // Add custom Raw Material form
-  const handleAddIngredientForm = (e: React.FormEvent) => {
+  // Add custom Raw Material form through the Inventory server command.
+  const handleAddIngredientForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickIngName.trim()) return;
 
@@ -432,131 +441,125 @@ export default function SoloOperatorView({
     const qtyNum = parseFloat(quickIngQty);
     if (isNaN(priceNum) || priceNum < 0 || isNaN(qtyNum) || qtyNum < 0) return;
 
-    const newId = `ing_${Date.now()}`;
-    const newIngredient: Ingredient = {
-      id: newId,
-      name: quickIngName.trim(),
-      unit: quickIngUnit,
-      costPerUnit: priceNum,
-      stockAmount: qtyNum
-    };
+    const unit = quickIngUnit === 'cái'
+      ? 'unit'
+      : quickIngUnit === 'ml'
+        ? 'ml'
+        : 'g';
+    const stockInputUnit = unit === 'unit' ? 'unit' : unit;
 
-    setIngredients(prev => [...prev, newIngredient]);
-    setQuickIngName('');
-    triggerPulseText(`🍎 Đã sắm thêm vật tư thô mới: ${newIngredient.name} (${newIngredient.stockAmount}${newIngredient.unit} • giá vốn ${newIngredient.costPerUnit}đ)`);
+    try {
+      await createIngredient({
+        name: quickIngName.trim(),
+        baseUnit: unit,
+        unitCostVnd: Math.trunc(priceNum),
+        lowStockThreshold: 0,
+        isActive: true,
+        stockInput: {
+          unit: stockInputUnit,
+          quantity: qtyNum > 0 ? qtyNum : 1,
+        },
+      });
+      setSoloError(null);
+      triggerPulseText(`🍎 Đã thêm vật tư thô mới: ${quickIngName.trim()}`);
+      setQuickIngName('');
+    } catch (error) {
+      setSoloError(
+        error instanceof Error ? error.message : 'Không thêm được nguyên liệu.',
+      );
+    }
   };
 
   const handleDeleteIngredientAction = (id: string) => {
-    const target = ingredients.find(i => i.id === id);
+    // Inventory archive is not exposed in Solo; the local dialog only closes.
+    const target = serverIngredients.find(i => i.ingredientId === id);
     if (target) {
-      setIngredients(prev => prev.filter(i => i.id !== id));
-      setDishRecipes(prev => prev.map(dr => ({
-        ...dr,
-        recipes: dr.recipes.filter(r => r.ingredientId !== id)
-      })));
-      triggerPulseText(`Đã dọn dẹp nguyên liệu thô: ${target.name}`);
+      triggerPulseText(`Nguyên liệu ${target.name} chưa thể xoá từ màn hình Solo.`);
     }
     setDeletingIngId(null);
   };
 
-  // Update recipe ingredient value
-  const handleUpdateRecipeFormula = (menuId: string, ingredientId: string, qty: number) => {
-    setDishRecipes(prev => {
-      const existing = prev.find(r => r.menuId === menuId);
-      if (!existing) {
-        return [...prev, { menuId, recipes: [{ ingredientId, quantity: qty }] }];
-      }
+  // Update recipe ingredient value through the Inventory server command.
+  const handleUpdateRecipeFormula = async (
+    menuId: string,
+    ingredientId: string,
+    qty: number,
+  ) => {
+    const existing = dishRecipes.find(r => r.menuId === menuId);
+    if (!existing) return;
 
-      const hasIng = existing.recipes.some(r => r.ingredientId === ingredientId);
-      let updatedRecipes = [];
-
-      if (qty <= 0) {
-        updatedRecipes = existing.recipes.filter(r => r.ingredientId !== ingredientId);
-      } else if (hasIng) {
-        updatedRecipes = existing.recipes.map(r => 
-          r.ingredientId === ingredientId ? { ...r, quantity: qty } : r
-        );
-      } else {
-        updatedRecipes = [...existing.recipes, { ingredientId, quantity: qty }];
-      }
-
-      return prev.map(dr => 
-        dr.menuId === menuId ? { ...dr, recipes: updatedRecipes } : dr
+    const nextLines = existing.recipes
+      .filter(r => r.ingredientId !== ingredientId || qty > 0)
+      .map(r =>
+        r.ingredientId === ingredientId ? { ...r, quantity: qty } : r,
       );
-    });
+    if (!existing.recipes.some(r => r.ingredientId === ingredientId) && qty > 0) {
+      nextLines.push({ ingredientId, quantity: qty });
+    }
+    if (nextLines.length === 0) return;
+
+    try {
+      const fields: RecipeUpdateFields = {
+        menuItemId: menuId,
+        lines: nextLines.map(line => ({
+          ingredientId: line.ingredientId,
+          quantityBaseUnits: Math.max(1, Math.trunc(line.quantity)),
+        })),
+      };
+      await updateRecipe(existing.recipeId, fields);
+      setSoloError(null);
+    } catch (error) {
+      setSoloError(
+        error instanceof Error ? error.message : 'Không cập nhật được công thức.',
+      );
+    }
   };
 
-  // Add loyalty member inside Solo view
-  const handleCreateMember = (e: React.FormEvent) => {
+  // Add loyalty member inside Solo view through the Loyalty server command.
+  const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMemberPhone.trim() || newMemberPhone.trim().length < 8) {
       setLoyaltyMessage('Số điện thoại không hợp lệ (nhập ít nhất 8 số).');
       return;
     }
-    const alreadyExists = loyaltyMembers.some(m => m.phone === newMemberPhone.trim());
-    if (alreadyExists) {
-      setLoyaltyMessage('Số điện thoại này đã đăng ký trước đó!');
-      return;
+
+    const nameToRegister = newMemberName.trim() || null;
+    try {
+      const result = await registerLoyaltyMember(
+        newMemberPhone.trim(),
+        nameToRegister,
+      );
+      setNewMemberPhone('');
+      setNewMemberName('');
+      setSoloError(null);
+      setLoyaltyMessage(
+        `🎉 Đăng ký thành công hội viên ${result.member.displayName ?? 'Khách Thân Thiết'}!`,
+      );
+    } catch (error) {
+      setLoyaltyMessage(
+        error instanceof Error ? error.message : 'Không đăng ký được hội viên.',
+      );
     }
-
-    const nameToRegister = newMemberName.trim() || 'Khách Thân Thiết';
-    const newMemberOnboard: LoyaltyMember = {
-      phone: newMemberPhone.trim(),
-      name: nameToRegister,
-      points: 20, // 20 welcome points
-      totalSpent: 0,
-      visits: 1,
-      isVerified: true
-    };
-
-    setLoyaltyMembers(prev => [...prev, newMemberOnboard]);
-    setNewMemberPhone('');
-    setNewMemberName('');
-    setLoyaltyMessage(`🎉 Đăng ký thành công hội viên ${nameToRegister}! Đã tặng 20 điểm chào mừng.`);
     setTimeout(() => setLoyaltyMessage(null), 4000);
   };
 
-  // Simulation table placer
+
+  // Solo never fabricates a business Order. A real Order comes from the public
+  // QR flow, so the button points the operator at the Customer simulator.
   const handleSoloSimulateOrder = () => {
-    const tableId = String(Math.floor(Math.random() * 6) + 1);
-    const activeMenu = menuItems.filter(m => m.inStock);
-    if (activeMenu.length === 0) {
-      triggerPulseText(`⚠️ Quán đang tạm ngắt bán mọi món, vui lòng mở món trước khi đặt.`);
-      return;
-    }
-    const randomItem = activeMenu[Math.floor(Math.random() * activeMenu.length)];
-
-    const uniqueOrderId = `solo_sim_${Date.now()}`;
-    // Assign a random member if registered, or default to generic phone
-    const assignedPhone = loyaltyMembers.length > 0 && Math.random() > 0.4
-      ? loyaltyMembers[Math.floor(Math.random() * loyaltyMembers.length)].phone
-      : '0987654321';
-
-    const newOrder: Order = {
-      id: uniqueOrderId,
-      tableId: tableId,
-      items: [
-        { id: `it_${Date.now()}`, menuId: randomItem.id, name: randomItem.name, price: randomItem.price, quantity: 1, selectedModifiers: [] }
-      ],
-      total: randomItem.price,
-      status: 'pending', 
-      timestamp: new Date(),
-      customerPhone: assignedPhone,
-      paymentMode: tenantConfig.paymentMode,
-    };
-
-    setOrders(prev => [newOrder, ...prev]);
-    triggerPulseText(`🔔 Bàn ${tableId} vừa quét mã QR chọn món: ${randomItem.name}. Vui lòng xử lý!`);
+    triggerPulseText(
+      '⚠️ Đơn chỉ được tạo từ luồng QR của khách hàng. Mở màn hình Khách hàng trong Simulator để thử.',
+    );
   };
 
   const getTableName = (tableId: string) => {
-    const tbl = tables.find(t => t.id === tableId);
+    const tbl = availableTables.find(t => t.id === tableId);
     return tbl ? tbl.name : `Bàn ${tableId.padStart(2, '0')}`;
   };
 
   // Helper arrays for tabs
-  const paidOrders = orders.filter(o => o.status === 'paid');
-  const activeOrders = orders.filter(o => o.status !== 'paid');
+  const paidOrders = serverOrders.filter(o => o.status === 'paid');
+  const activeOrders = serverOrders.filter(o => o.status !== 'paid');
   const totalPaidRevenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
 
   // Completed paid orders search filtering (Resolves completed order search bug)
@@ -569,7 +572,7 @@ export default function SoloOperatorView({
   });
 
   const dishSalesDict: Record<string, { name: string, qty: number, revenue: number, menuId: string }> = {};
-  orders.forEach(o => {
+  serverOrders.forEach(o => {
     o.items.forEach(it => {
       if (!dishSalesDict[it.menuId]) {
         dishSalesDict[it.menuId] = { name: it.name, qty: 0, revenue: 0, menuId: it.menuId };
@@ -582,37 +585,33 @@ export default function SoloOperatorView({
   });
 
   const rawTopRev = Object.values(dishSalesDict).sort((a,b) => b.revenue - a.revenue);
-  const topRevenueDishes = rawTopRev.length > 0 ? rawTopRev : [
-    { menuId: 'qa1', name: 'Phở Bò Tái Lăn Kinh Kỳ', qty: 9, revenue: 585000 },
-    { menuId: 'qa3', name: 'Bún Chả Tre Thạch Thất', qty: 5, revenue: 250000 },
-    { menuId: 'qa6', name: 'Trà Sâm Dứa Hương Lài', qty: 15, revenue: 75000 }
-  ];
+  const topRevenueDishes = rawTopRev;
 
-  const calculatedMargins = menuItems.map(item => {
+  const calculatedMargins = menuItemsView.map(item => {
     const cogs = calculateDishCost(item.id);
     const profit = item.price - cogs;
-    const pct = item.price > 0 ? (profit / item.price) * 105 : 0; 
+    const pct = item.price > 0 ? (profit / item.price) * 100 : 0;
     return {
       id: item.id,
       name: item.name,
       price: item.price,
       cogs: cogs,
       profit: profit,
-      percent: Math.min(98, Math.round(pct || 65))
+      percent: Math.max(0, Math.min(100, Math.round(pct)))
     };
   }).sort((a,b) => b.percent - a.percent);
 
-  const slowMovingDishes = menuItems.map(item => {
+  const slowMovingDishes = menuItemsView.map(item => {
     const matchedSales = dishSalesDict[item.id]?.qty || 0;
     return {
       id: item.id,
       name: item.name,
-      salesQty: matchedSales || (item.id === 'qa4' ? 1 : item.id === 'qa2' ? 2 : 0) 
+      salesQty: matchedSales
     };
   }).sort((a,b) => a.salesQty - b.salesQty);
 
   // Search filter for integrated loyalty panel
-  const filteredLoyaltyMembers = loyaltyMembers.filter(m => {
+  const filteredLoyaltyMembers = loyaltyMembersView.filter(m => {
     const s = searchLoyaltyQuery.toLowerCase().trim();
     return m.phone.includes(s) || (m.name ?? '').toLowerCase().includes(s);
   });
@@ -788,6 +787,13 @@ export default function SoloOperatorView({
         )}
       </AnimatePresence>
 
+      {/* Server command feedback */}
+      {soloError && (
+        <div role="alert" className="mx-3 mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-center text-xs font-semibold text-red-700">
+          {soloError}
+        </div>
+      )}
+
       {/* Hero Header Area with Quick Stats (Clear and bold for older eyes) */}
       <div className="bg-zinc-900 text-white p-4 pb-5 rounded-b-[24px] space-y-3 shadow-md border-b border-orange-500/15">
         <div className="flex justify-between items-center">
@@ -795,7 +801,7 @@ export default function SoloOperatorView({
             <div className="flex items-center gap-1.5">
               <span className="inline-flex w-2.5 h-2.5 rounded-full bg-orange-505 animate-pulse shrink-0"></span>
               <span className="text-[9.5px] font-black text-orange-400 flex items-center gap-1">
-                <Cpu className="w-3 h-3" /> HẠNG GÓI: {tenantConfig.pricingTier.toUpperCase()} UNLOCKED
+                <Cpu className="w-3 h-3" /> HẠNG GÓI: {(currentPlan ?? '—').toUpperCase()} UNLOCKED
               </span>
             </div>
             <h1 className="text-base font-black tracking-tight">{tenantConfig.shopName}</h1>
@@ -912,7 +918,7 @@ export default function SoloOperatorView({
                     </button>
                     <button 
                       type="button"
-                      onClick={() => handleCancelOrderAction(cancellingOrderId)}
+                      onClick={() => void handleCancelOrderAction(cancellingOrderId)}
                       className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[10.5px] font-extrabold shadow-sm cursor-pointer"
                     >
                       Xác nhận Huỷ
@@ -956,7 +962,7 @@ export default function SoloOperatorView({
 
                           <div className="text-right">
                             <span className="text-sm font-black text-zinc-900 block">{(order.total).toLocaleString()}đ</span>
-                            {tenantConfig.pricingTier !== 'Lite' && order.customerPhone && (
+                            {soloPlan !== 'Lite' && order.customerPhone && (
                               <span className="text-[8.5px] text-zinc-400 italic block">Mã hội viên: {order.customerPhone.slice(-4)}</span>
                             )}
                           </div>
@@ -995,7 +1001,7 @@ export default function SoloOperatorView({
                           
                           <button
                             type="button"
-                            onClick={() => handleAdvanceStatus(order.id, order.status)}
+                            onClick={() => void handleAdvanceStatus(order.id, order.status)}
                             className={`flex-1 text-white text-[10.5px] py-2 px-4 rounded-xl font-extrabold shadow-xs cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
                               order.status === 'pending' ? 'bg-orange-600 hover:bg-orange-700 animate-pulse' :
                               order.status === 'cooking' ? 'bg-amber-500 hover:bg-amber-600' :
@@ -1101,7 +1107,7 @@ export default function SoloOperatorView({
               </p>
 
               <div className="space-y-1.5 text-xs pt-1.5">
-                {menuItems.map((dish) => (
+                {menuItemsView.map((dish) => (
                   <div key={dish.id} className="flex justify-between items-center bg-zinc-50 p-2 rounded-xl border border-zinc-200">
                     <div className="space-y-0.5 truncate pr-2.5">
                       <p className="font-bold text-zinc-850 truncate text-sm ">{dish.name}</p>
@@ -1110,7 +1116,7 @@ export default function SoloOperatorView({
 
                     <button
                       type="button"
-                      onClick={() => toggleItemStock(dish.id)}
+                      onClick={() => void toggleItemStock(dish.id)}
                       className={`text-xs py-1 px-3 rounded-xl border font-extrabold tracking-wide transition-all select-none cursor-pointer ${
                         dish.inStock 
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
@@ -1265,7 +1271,7 @@ export default function SoloOperatorView({
           <div className="space-y-4 animate-fadeIn">
             
             {/* PRICING PLANS COMPATIBILITY LOCK ON PRO PORTIONING SYSTEM */}
-            {tenantConfig.pricingTier !== 'Pro' ? (
+            {soloPlan !== 'Pro' ? (
               <div className="bg-zinc-950 text-white rounded-2xl p-6 text-center space-y-4 border border-zinc-800 shadow-md">
                 <div className="w-12 h-12 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-700 flex items-center justify-center mx-auto">
                   <Shield className="w-6 h-6" />
@@ -1298,7 +1304,7 @@ export default function SoloOperatorView({
                   </p>
 
                   <div className="space-y-3 text-xs">
-                    {menuItems.map(item => {
+                    {menuItemsView.map(item => {
                       const dishRecipe = dishRecipes.find(r => r.menuId === item.id);
                       const isEditing = editingRecipeId === item.id;
                       const rawCost = calculateDishCost(item.id);
@@ -1467,7 +1473,7 @@ export default function SoloOperatorView({
                   type="button"
                   onClick={() => handleUpgradeTier('Lite')}
                   className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                    tenantConfig.pricingTier === 'Lite'
+                    currentPlan === 'Lite' || currentPlan === 'Free'
                       ? 'bg-zinc-900 text-white border-zinc-950 shadow-sm'
                       : 'bg-zinc-50 border-zinc-250 text-zinc-700 hover:bg-zinc-100'
                   }`}
@@ -1480,7 +1486,7 @@ export default function SoloOperatorView({
                   type="button"
                   onClick={() => handleUpgradeTier('Pro')}
                   className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                    tenantConfig.pricingTier === 'Pro'
+                    currentPlan === 'Pro'
                       ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm animate-pulse'
                       : 'bg-zinc-50 border-zinc-250 text-zinc-700 hover:bg-zinc-100'
                   }`}
@@ -1492,11 +1498,7 @@ export default function SoloOperatorView({
                 <button
                   type="button"
                   onClick={() => handleUpgradeTier('Enterprise')}
-                  className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                    tenantConfig.pricingTier === 'Enterprise'
-                      ? 'bg-orange-600 text-white border-orange-700 shadow-sm'
-                      : 'bg-zinc-50 border-zinc-250 text-zinc-700 hover:bg-zinc-100'
-                  }`}
+                  className="p-2.5 rounded-xl border transition-all cursor-pointer bg-zinc-50 border-zinc-250 text-zinc-700 hover:bg-zinc-100"
                 >
                   <span className="text-sm font-black block">ENTERPRISE</span>
                   <span className="text-[8px] text-orange-100 block mt-1">🔥 Portion + Cogs</span>
@@ -1511,7 +1513,7 @@ export default function SoloOperatorView({
                 <h3 className="text-xs font-black text-zinc-800">Đồng bộ tích điểm khách hàng (Loyalty)</h3>
               </div>
 
-              {tenantConfig.pricingTier === 'Lite' ? (
+              {soloPlan === 'Lite' ? (
                 <div className="py-6 text-center space-y-3.5">
                   <p className="text-xs text-zinc-450 leading-relaxed max-w-xs mx-auto font-sans">
                     Hệ thống tích thưởng hội viên hiện đang bị khóa ở bản Lite. Vui lòng nâng hạng gói lên PRO hoặc ENTERPRISE phía trên để tự động mở khóa tính năng này!
@@ -1607,9 +1609,9 @@ export default function SoloOperatorView({
                 {/* 1. Dynamic profitable dish */}
                 <div className="bg-white/5 rounded-xl p-3 border border-white/10 space-y-1">
                   <span className="text-[8.5px] font-extrabold text-orange-300 block">🎯 Món sinh lời tốt nhất quán (Lãi thô %)</span>
-                  <p className="font-extrabold text-white text-[11.5px]">{calculatedMargins[0]?.name || "Đang phân tích..."}</p>
+                  <p className="font-extrabold text-white text-[11.5px]">{calculatedMargins[0]?.name ?? 'Chưa có món'}</p>
                   <p className="text-zinc-300 text-xs ">
-                    Giá thô gốc chỉ tốn <strong className="text-white">{(calculatedMargins[0]?.cogs || 2700).toLocaleString('vi-VN')}đ</strong> (bán ra {(calculatedMargins[0]?.price || 15000).toLocaleString('vi-VN')}đ). Biên lãi gộp dồi dào đạt <strong className="text-emerald-400">{calculatedMargins[0]?.percent || 82}%</strong>. Anh chị nên ưu tiên đặt món này góc chính diện QR để kích cầu!
+                    Giá thô gốc chỉ tốn <strong className="text-white">{(calculatedMargins[0]?.cogs ?? 0).toLocaleString('vi-VN')}đ</strong> (bán ra {(calculatedMargins[0]?.price ?? 0).toLocaleString('vi-VN')}đ). Biên lãi gộp hiện tại <strong className="text-emerald-400">{calculatedMargins[0]?.percent ?? 0}%</strong>. Anh chị nên ưu tiên đặt món này góc chính diện QR để kích cầu!
                   </p>
                 </div>
 

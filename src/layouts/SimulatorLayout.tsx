@@ -3,6 +3,12 @@ import { Outlet, useOutletContext } from 'react-router-dom';
 import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount } from '../types';
 import { MOCK_LOYALTY_MEMBERS, MOCK_MENU_ITEMS, INDUSTRY_TEMPLATES, MOCK_STAFF_ACCOUNTS, MOCK_INGREDIENTS } from '../mockData';
 import { usePersistentState } from '../hooks/usePersistentState';
+import { useActiveTenantId } from '../hooks/useActiveTenantId';
+import {
+  fromPersistedStaffAccounts,
+  toPersistedStaffAccounts,
+  type StaffSessionView,
+} from '../data/adapters/auth.adapter';
 import { Ingredient } from '../types';
 
 export type SimulatorContextType = {
@@ -18,7 +24,7 @@ export type SimulatorContextType = {
   setIngredients: (val: any) => void;
   staffAccounts: StaffAccount[];
   setStaffAccounts: (val: any) => void;
-  currentStaff: StaffAccount | null;
+  currentStaff: StaffSessionView | null;
   setCurrentStaff: (val: any) => void;
   loyaltyMembers: LoyaltyMember[];
   setLoyaltyMembers: (val: any) => void;
@@ -32,6 +38,8 @@ export type SimulatorContextType = {
   setKitchenOnboarded: (val: any) => void;
   simulationTableId: string;
   setSimulationTableId: (val: string) => void;
+  /** Active Tenant id resolved from identity; null in the offline demo. */
+  activeTenantId: string | null;
   nfcTriggeredAlert: string | null;
   handleOwnerNfcAllocation: (tableId: string) => void;
   triggerAutoOrderSimulation: () => void;
@@ -116,53 +124,24 @@ export default function SimulatorLayout() {
     })),
   });
 
-  const [staffAccounts, setStaffAccounts] = usePersistentState<StaffAccount[]>('scango:staff:v1', MOCK_STAFF_ACCOUNTS, {
-    deserialize: (value: string) => {
-      const parsed = JSON.parse(value) as unknown[];
-      const migrated = parsed
-        .map((entry: any): StaffAccount | null => {
-          if (entry?.roles && typeof entry.pin === 'string') {
-            return {
-              id: String(entry.id),
-              name: String(entry.name || 'Nhân viên'),
-              pin: entry.pin,
-              roles: {
-                isKitchen: Boolean(entry.roles.isKitchen),
-                isWaiter: Boolean(entry.roles.isWaiter),
-                isCashier: Boolean(entry.roles.isCashier),
-              },
-              isActive: entry.isActive !== false,
-            };
-          }
-
-          if (entry?.role) {
-            const role = String(entry.role).toLowerCase();
-            return {
-              id: String(entry.id || Date.now()),
-              name: String(entry.name || 'Nhân viên'),
-              pin: '0000',
-              roles: {
-                isKitchen: role.includes('bếp') || role.includes('đầu'),
-                isWaiter: role.includes('phục'),
-                isCashier: role.includes('thu') || role.includes('quản'),
-              },
-              isActive: entry.status !== 'Nghỉ phép',
-            };
-          }
-
-          return null;
-        })
-        .filter((entry): entry is StaffAccount => entry !== null);
-
-      return migrated.length > 0 ? migrated : MOCK_STAFF_ACCOUNTS;
+  // Staff records never persist a plaintext PIN. The browser stores only the
+  // display name, role booleans, and active flag; the server owns the hash,
+  // lockout, and session (NFR-PRIV-001, REQ-AUTH-002).
+  const [staffAccounts, setStaffAccounts] = usePersistentState<StaffAccount[]>(
+    'scango:staff:v1',
+    MOCK_STAFF_ACCOUNTS,
+    {
+      deserialize: fromPersistedStaffAccounts,
+      serialize: (accounts) => JSON.stringify(toPersistedStaffAccounts(accounts)),
     },
-  });
-  const [currentStaff, setCurrentStaff] = useState<StaffAccount | null>(null);
+  );
+  const [currentStaff, setCurrentStaff] = useState<StaffSessionView | null>(null);
   const [loyaltyMembers, setLoyaltyMembers] = usePersistentState<LoyaltyMember[]>('scango:loyalty:v1', MOCK_LOYALTY_MEMBERS);
 
   // Customer dynamic simulator helper values
   const [simulationTableId, setSimulationTableId] = useState<string>('2');
   const [nfcTriggeredAlert, setNfcTriggeredAlert] = useState<string | null>(null);
+  const activeTenantId = useActiveTenantId();
 
   const previousIndustry = useRef(tenantConfig.industry);
 
@@ -288,6 +267,7 @@ export default function SimulatorLayout() {
     cashierOnboarded, setCashierOnboarded,
     kitchenOnboarded, setKitchenOnboarded,
     simulationTableId, setSimulationTableId,
+    activeTenantId,
     nfcTriggeredAlert,
     handleOwnerNfcAllocation,
     triggerAutoOrderSimulation,

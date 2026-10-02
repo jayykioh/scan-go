@@ -8,11 +8,14 @@
 | Pha | Phạm vi đã duyệt | Kết quả |
 |---|---|---|
 | M1 / P0 | Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering, Fulfilment, Payment, onboarding, ADMIN, i18n, bảo mật, hiệu năng, lưu giữ, sao lưu. | Customer đặt Order và Staff vận hành an toàn. |
-| M2 / P1 | Solo, Reporting, dailyStats, AI assistant, Sentry. | Owner dùng báo cáo và AI assistant. |
-| M3 / P2 | NFC, Promotion, Loyalty, Subscription, tự động xác nhận Payment. | Mở rộng cách dùng và kế hoạch. |
+| M2 / P1 | Solo, Reporting, dailyStats, AI assistant, phân tích tuần, hỏi đáp, feedback khách, Sentry. | Owner dùng báo cáo và AI assistant. |
+| M3 / P2 | NFC, Promotion, Loyalty, Subscription, tự động xác nhận Payment, feedback ticket, ca làm, chấm công, kiểm kê. | Mở rộng cách dùng và kế hoạch. |
 | Roadmap / P3 | Chỉ yêu cầu P3 hoặc sửa đổi SRS đã duyệt. | Không có REQ P3 đã duyệt để thực hiện. |
+| Deferred | Reservations (SRS §4.11, ADR 0009). | Không nằm trong M1–M3. |
 
-Không thuộc các pha: Enterprise, delivery, printers, tax invoices, payroll, ingredient purchasing, và native application.
+Không thuộc các pha: Enterprise, delivery, printers, tax invoices, payroll, ingredient purchasing, native application, và reservations.
+
+Chi tiết ticket M2/M3 mới: `docs/plan/insight-growth-plan.md`.
 
 ## Đồ thị phụ thuộc P0
 
@@ -54,14 +57,14 @@ backup/restore, performance, real-time p95, and Customer usability evidence.
 - **Tests:** Config unit/contract tests; Functions Emulator validation and authorization tests; Rules deny direct `platform/config` write.
 - **Bằng chứng hoàn thành:** ảnh hoặc video inspection; log Emulator xanh; traceability cập nhật cho năm ID.
 
-### P0-002 — Owner phone OTP và Tenant đầu tiên
-- **Mục tiêu:** Owner xác thực bằng phone OTP và có Tenant đầu tiên với user profile.
+### P0-002 — Owner email/password và Tenant đầu tiên
+- **Mục tiêu:** Owner xác thực bằng email/password và có Tenant đầu tiên với user profile.
 - **REQ/NFR:** REQ-AUTH-001, CON-001, CON-002, NFR-SEC-001, NFR-DATA-001, NFR-MOD-001.
-- **Chi tiết:** Dùng Firebase Auth phone OTP; sau xác thực, Tenant tạo profile `users/{uid}`, Tenant, và Owner membership qua server command; UI auth chuyển sang Tenant đầu tiên.
+- **Chi tiết:** Dùng Firebase Auth email/password (ADR 0007); sau xác thực, Tenant tạo profile `users/{uid}`, Tenant, và Owner membership qua server command; UI auth chuyển sang Tenant đầu tiên.
 - **Module sở hữu:** Auth sở hữu xác thực. Tenant sở hữu Tenant, profile, và membership.
 - **Khu vực:** `src/pages/auth/`; frontend auth/Tenant adapter; Firebase Functions Auth và Tenant services; `users`, `tenants`, `members`, audit; Rules/Emulator fixtures; module Auth/Tenant docs.
 - **Phụ thuộc:** P0-001. Chặn P0-003 đến P0-010.
-- **Kiểm tra chấp nhận:** Given registered phone, when Owner verifies valid OTP, then authenticated session bắt đầu. Given Tenant mới, when command hoàn tất, then mỗi business record có `tenantId` và Owner membership.
+- **Kiểm tra chấp nhận:** Given registered email và password, when Owner signs in, then authenticated session bắt đầu. Given Tenant mới, when command hoàn tất, then mỗi business record có `tenantId` và Owner membership.
 - **Tests:** Auth adapter tests; Functions Emulator command tests; Rules cross-user deny tests; timestamp and integer-field fixtures.
 - **Bằng chứng hoàn thành:** Firebase Auth Emulator flow; Tenant/membership fixture; traceability cập nhật.
 

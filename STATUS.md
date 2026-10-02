@@ -1,169 +1,72 @@
 # ScanGo — Current Project Status
 
-**Audit date:** 2026-09-15  
+**Audit date:** 2026-10-01  
 **Branch:** `release/mvp`  
-**Current architecture:** React 19 + TypeScript + Vite frontend mockup  
-**Target backend:** Firebase
+**Current architecture:** React 19 + TypeScript + Vite frontend on Firebase (Auth, Firestore, Cloud Functions, Storage)
 
 ## Executive summary
 
-UI/UX và frontend flow đã đủ tốt cho demo sản phẩm. Hầu hết màn hình và actor chính đã có, nhưng dữ liệu vẫn là `mockData`/`localStorage`. Dự án chưa phải MVP production vì chưa có database, backend, authentication, tenant security, realtime đa thiết bị, NFC session, payment hoặc OTP thật.
+M1/P0, M2/P1, and the M3/P2 baseline are implemented with a Firebase backend, tenant-scoped Security Rules, and server-only business writes. The initial React mockup is now wired to server callables and Firestore listeners.
 
-Đánh giá tương đối:
+Relative assessment:
 
-- Frontend/UI demo: **80–90%**.
-- Backend/database: **0–5%**.
-- Production-ready MVP theo technical blueprint: **25–35%**.
+- Frontend/UI: **90%**. Core flows are server-backed; a few demo fallbacks remain.
+- Backend/database: **85%**. Auth, Tenant, Config, Catalog, Table Access, Ordering, Inventory, Fulfilment, Payment, Reporting, Feedback, AI, Workforce, Promotion, Loyalty, and Subscription have callables, contract tests, emulator tests, and Rules.
+- Production-ready MVP: **70–80%**. Remaining gaps are device/provider integrations and acceptance artifacts.
 
-Các tỷ lệ trên là đánh giá kỹ thuật để lập kế hoạch, không phải metric tự động.
+These percentages are engineering estimates for planning, not automated metrics.
 
 ## Verification
 
-- `npm run typecheck`: passed.
-- `npm run build`: passed.
-- Automated tests: chưa có.
-- ESLint/static lint riêng: chưa có; script `lint` hiện chỉ chạy TypeScript.
+- `npm run test`: 36 files, 199 web/shared tests pass.
+- `npm --workspace functions run test`: 32 files, 342 tests pass.
+- `npm run test:rules`: 17 files, 100 Security Rules tests pass (Firestore and Storage emulators).
+- `npm run test:emulator`: 38 files, 224 Functions Emulator callable tests pass (Auth, Firestore, Functions emulators).
+- `npm run typecheck`, `npm run typecheck:functions`, `npm run lint`, `npm run lint:functions`, `npm run build`: pass.
+- Java is required for the Firestore emulator.
 
-## Completed for frontend demo
+## Implemented (M1, M2, M3 baseline)
 
-- Landing page, introduction, login và register UI.
-- React Router với dashboard, simulator và public menu routes.
-- Dashboard: overview, shop management, menu, tables, staff, settings, subscription.
-- Simulator cho Owner, Customer, Kitchen, Cashier, Waiter/Staff và Solo Operator.
-- Public menu theo route `/menu/:tableId`.
-- Customer flow: menu, category/search, modifiers, cart, promotion, loyalty mock, order tracking.
-- Order state mock: `pending → cooking → ready → served → paid`.
-- Menu/table/staff/ingredient CRUD lưu local.
-- Năm industry templates.
-- Revenue/COGS/profit dashboard mock.
-- PWA manifest và Vercel SPA rewrite.
-- State persistence và sync giữa các tab cùng browser bằng `localStorage`.
+- **Auth/Tenant:** Owner email/password, first and additional Tenant, membership list, active-Tenant switch, Staff PIN with lockout and sessionVersion, server ACL, privacy filtering, ADMIN delegation with audit.
+- **Config:** three-layer resolution, allowed-key filtering, versioning, ADMIN platform command, tenant-visible projection.
+- **Catalog/Table Access:** menu and template commands, public menu projection, Table create/rename/archive/regenerate, opaque revocable links, QR payload.
+- **Ordering/Fulfilment/Inventory/Payment:** server-priced Pay-Later and Pay-First Orders, immutable Orders, public tracking, Kitchen `pending -> cooking -> ready -> served`, one-transaction inventory deduction, dynamic VietQR, idempotent cash/VietQR settlement, reversal, refund, signed payment webhook.
+- **Reporting:** paid-order revenue, COGS, gross profit, and rebuildable dailyStats.
+- **AI:** provider adapter with usage and budget, grounded weekly insights, open Q&A, feedback grouping, campaign suggestions with Owner approval, and a TypeSafe Jev evaluation seam (ADR 0008).
+- **Feedback/Workforce:** feedback submit and verification, feedback ticket workflow, shift schedule, clock in/out with correction approval (no payroll), stock count and loss review.
+- **Promotion/Loyalty/Subscription:** deterministic promotion, append-only loyalty ledger, plan entitlements.
+- **Observability:** Sentry monitoring for the frontend and Cloud Functions.
+- **i18n:** typed `vi`/`en` catalog with server locale profile.
 
-## Partial or simulated features
+## Partial or pending
 
-| Feature | Current behavior | Missing for production |
+| Area | Current behavior | Missing |
 |---|---|---|
-| Authentication | Form/PIN UI | Firebase Auth, sessions, guards, RBAC |
-| Realtime | React state + storage event | Firestore realtime across devices |
-| QR | Public route by table ID | QR generation/printing, signed session |
-| NFC | Simulated tap/flags | NDEF read/write, secret verification, session token |
-| Pay-First | UI label/config | Payment state and kitchen gate |
-| Cashier | Marks local order paid | Authorized/atomic server operation |
-| Loyalty | Client-side points | Ledger, OTP provider, idempotency, fraud protection |
-| Inventory | Partial local deduction | Shared model, transaction, Auto-86 |
-| AI | Keyword/rule responses | Gemini/LLM integration and safe data context |
-| Subscription | Changes local flag | Billing and server-side entitlement |
-| PWA | Manifest | Service worker, caching and offline flow |
+| NFC | Server provision/revoke/resolve with opaque tokens | Physical NDEF device write/read |
+| Loyalty | Server-verified earn/redeem/reverse | SMS/Zalo code delivery provider |
+| Payment | Signed provider adapter and webhook | Production provider secret and live transport |
+| i18n | Typed catalog, Customer and Settings wired | A few OwnerView error strings |
+| Usability evidence | Automated timing harness and budget assertions | Separate timed usability study artifact |
+| PWA | Manifest | Service worker and offline caching |
+| AI live | Adapter and evaluation | Live provider secret; default stays deterministic |
 
-## Not implemented
+## Not implemented (out of scope)
 
-- Firebase project/config and Emulator Suite.
-- Firestore collections, indexes and Security Rules.
-- Cloud Functions/API.
-- Multi-tenant data isolation.
-- Protected dashboard routes and staff authorization.
-- Table sessions and expiring session tokens.
-- Server-side order pricing and modifier/promotion validation.
-- Validated order/order-item state machine.
-- Real payment confirmation, gateway callbacks or refunds.
-- Inventory transactions, Auto-86 and scheduled reports.
-- OTP delivery/verification and loyalty transaction ledger.
-- Plan limits and subscription billing.
-- Unit, integration and E2E tests.
-- CI, monitoring, analytics and backup strategy.
-
-## Known inconsistencies and risks
-
-1. `tableSecret` is generated locally but not included in or validated from the public URL.
-2. Regenerating a secret does not invalidate the old menu link.
-3. Kitchen/Cashier standalone PIN screens accept any sufficiently long PIN.
-4. Pay-First orders still enter Kitchen as `pending` before payment.
-5. Loyalty points and OTP can be manipulated entirely from the browser.
-6. Loyalty rate/welcome points differ between Customer, Cashier and Solo flows.
-7. Solo Operator owns a separate ingredient model/state from Owner/dashboard.
-8. Promotion `manual` mode is not fully enforced.
-9. Some overview metrics are hard-coded while others derive from local orders.
-10. Pricing names conflict between code and product blueprint.
-11. `OwnerView` and `SoloOperatorView` are large monolithic components that will be difficult to test safely.
+- Reservations (DEFERRED, ADR 0009), payroll, ingredient purchasing, delivery, printers, tax invoices, native applications, and enterprise features.
 
 ## Architecture decision
 
-Keep React/Vite. Do not migrate to Next.js solely to add backend functionality.
+Keep React/Vite and Firebase:
 
-Use:
-
-- React/Vite for the customer PWA and internal dashboards.
+- React/Vite for the customer PWA and dashboards.
 - Firebase Auth for internal actors.
 - Firestore for tenant-scoped realtime data.
 - Cloud Functions 2nd gen for trusted business logic.
-- Security Rules to block unauthorized/direct writes.
-- Cloud Scheduler for daily reports, expired sessions and fraud scans.
+- Security Rules to block unauthorized and direct writes.
+- Cloud Scheduler for daily stats, weekly analysis, retention, and expired sessions.
 
-## Recommended implementation roadmap
+## Next milestones
 
-### Phase 0 — align contracts and product decisions
-
-- Confirm `Free/Lite/Pro` versus `Lite/Pro/Enterprise`.
-- Confirm when inventory is deducted.
-- Choose NFC provisioning approach: Android Web NFC or external NFC Tools for MVP.
-- Choose OTP provider.
-- Define canonical order/payment/order-item state machines.
-- Split large components and create shared domain/service boundaries.
-
-### Phase 1 — Firebase foundation
-
-- Initialize Firebase and Emulator Suite.
-- Add Auth, tenant schema, custom claims/membership and route guards.
-- Add Firestore rules/indexes and seed one demo tenant.
-- Add shared validation types.
-
-### Phase 2 — production Pay-Later vertical slice
-
-- Implement `openTableSession` and `createOrder`.
-- Recalculate prices, modifiers and promotions on the server.
-- Connect Customer, Kitchen, Waiter and Cashier with Firestore realtime.
-- Enforce authorized forward-only state transitions.
-- Implement `confirmCashPayment`.
-
-### Phase 3 — Pay-First and NFC/QR
-
-- Separate `order_status` and `payment_status`.
-- Prevent unpaid Pay-First orders from reaching Kitchen.
-- Generate/print real QR codes.
-- Validate table secret, expire sessions and support secret rotation.
-- Implement NFC provisioning for the chosen platform strategy.
-
-### Phase 4 — inventory and reports
-
-- Unify ingredient/recipe model.
-- Implement transactional deduct/restore inventory and Auto-86.
-- Generate daily revenue/COGS/profit reports.
-
-### Phase 5 — loyalty and OTP
-
-- Add customers, loyalty config and append-only loyalty transactions.
-- Implement OTP request/confirm, rate limits and fraud flags.
-- Make earning/redemption/reversal idempotent.
-
-### Phase 6 — production hardening
-
-- Add unit, emulator integration and E2E tests.
-- Add CI, error monitoring, analytics and backups.
-- Add service worker/offline behavior and device testing.
-- Enforce plan limits and integrate billing only after tiers are finalized.
-
-## Immediate next milestone
-
-The next engineering milestone should be one real Pay-Later flow across separate devices:
-
-```text
-Authenticated owner creates table/menu
-→ customer opens a verified table session
-→ server creates a priced order
-→ kitchen receives it via Firestore realtime
-→ staff advances the order
-→ cashier confirms payment
-→ owner sees the resulting revenue
-```
-
-Do not begin loyalty, AI or payment-gateway work before tenant security and this vertical slice are stable.
+1. Complete device and provider integrations (NFC NDEF, loyalty code delivery, live payment provider).
+2. Add the timed usability study artifact and finish PWA offline caching.
+3. Run a production deployment rehearsal with a real Firestore project and secrets.

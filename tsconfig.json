@@ -21,9 +21,27 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@contracts/*": [
+        "./shared/contracts/*"
+      ],
+      "@shared/*": [
+        "./shared/*"
       ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "src",
+    "shared",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "functions",
+    "coverage"
+  ]
 }

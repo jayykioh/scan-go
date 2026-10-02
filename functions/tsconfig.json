@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": "..",
+    "outDir": "lib",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true,
+    "declaration": false,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "types": ["node"],
+    "paths": {
+      "@contracts/*": ["../shared/contracts/*"],
+      "@shared/*": ["../shared/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "../shared/**/*.ts"
+  ],
+  "exclude": [
+    "lib",
+    "node_modules",
+    "src/**/*.test.ts",
+    "../shared/**/*.test.ts"
+  ]
+}

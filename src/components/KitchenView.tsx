@@ -1,5 +1,26 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import type { Order as AppOrder } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import {
+  applyNotificationEvent,
+  initialNotificationState,
+  NOTIFICATION_SOUND_STORAGE_KEY,
+  notificationPreferenceSchema,
+  readSoundEnabled,
+  type NotificationEvent,
+  type NotificationState,
+} from '@contracts/notification.contract';
+import {
+  listKitchenOrders,
+  markReady,
+  playNotificationTone,
+  setKitchenItemAvailability,
+  startCooking,
+  subscribeKitchenAvailability,
+  subscribeTenantNotifications,
+} from '../data/adapters/fulfilment.adapter';
+import { toPublicMenuItem, toViewOrder } from '../data/adapters/view-mappers';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { TenantConfig, Order, MenuItem, TableConfig } from '../types';
 import { 
   Flame, 
@@ -7,35 +28,125 @@ import {
   CheckCircle, 
   AlertCircle, 
   X, 
-  UtensilsCrossed
+  UtensilsCrossed,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 
 interface KitchenProps {
   tenantConfig: TenantConfig;
-  orders: Order[];
-  setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
-  menuItems: MenuItem[];
   setMenuItems: React.Dispatch<React.SetStateAction<MenuItem[]>>;
   onboardCompleted: boolean;
   setOnboardCompleted: (val: boolean) => void;
   tables?: TableConfig[];
   embedded?: boolean;
+  /** Tenant scope for the Kitchen queue and notification listener. */
+  tenantId?: string;
+}
+
+/**
+ * A Pay-First Order is hidden from Kitchen until Payment records a confirmed
+ * settlement. Ordering stores the server-authoritative `paidAt`; the UI gate
+ * mirrors that rule and the server query remains authoritative (REQ-ORD-002).
+ */
+export function isKitchenQueueOrder(order: AppOrder): boolean {
+  if (order.status !== 'pending' && order.status !== 'cooking') {
+    return false;
+  }
+  if (order.paymentMode === 'Pay-First') {
+    return Boolean(order.paidAt);
+  }
+  return true;
 }
 
 export default function KitchenView({
   tenantConfig,
-  orders,
-  setOrders,
-  menuItems,
   setMenuItems,
   onboardCompleted,
   setOnboardCompleted,
   tables = [],
   embedded = false,
+  tenantId = 'demo-tenant',
 }: KitchenProps) {
   const [activeShift, setActiveShift] = useState(false);
   const [activePin, setActivePin] = useState('');
   const [pinError, setPinError] = useState('');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [availability, setAvailability] = useState<MenuItem[]>([]);
+  const [queueError, setQueueError] = useState<string | null>(null);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [notificationState, setNotificationState] = useState<NotificationState>(
+    initialNotificationState,
+  );
+  const [notificationToast, setNotificationToast] = useState<NotificationEvent | null>(null);
+  const [soundEnabled, setSoundEnabled] = usePersistentState<boolean>(
+    NOTIFICATION_SOUND_STORAGE_KEY,
+    true,
+    {
+      deserialize: (raw) => {
+        try {
+          return notificationPreferenceSchema.parse(JSON.parse(raw)).soundEnabled;
+        } catch {
+          return readSoundEnabled(undefined);
+        }
+      },
+      serialize: (value) => JSON.stringify({ soundEnabled: value }),
+    },
+  );
+
+  // Kitchen reads its bounded queue from the Fulfilment query. The server owns
+  // the Order transition and the Pay-First gate (REQ-KDS-001, REQ-ORD-002).
+  const refreshQueue = useCallback(async () => {
+    if (!tenantId) return;
+    try {
+      const result = await listKitchenOrders();
+      setOrders(result.orders.map(toViewOrder));
+      setQueueError(null);
+    } catch (error) {
+      setQueueError(
+        error instanceof Error ? error.message : 'Không tải được hàng đợi bếp.',
+      );
+    }
+  }, [tenantId]);
+
+  const handleNotificationEvents = useCallback(
+    (events: NotificationEvent[]) => {
+      const kitchenEvents = events.filter(event => event.channel === 'kitchen');
+      if (kitchenEvents.length === 0) return;
+      const latest = kitchenEvents[0];
+      setNotificationState(prev => {
+        const { state, effect } = applyNotificationEvent(prev, latest, soundEnabled);
+        if (effect.isVisible) {
+          setNotificationToast(latest);
+          playNotificationTone(effect.isAudible);
+          window.setTimeout(() => setNotificationToast(null), 4000);
+        }
+        return state;
+      });
+      // A bounded event signals a new Order; refresh the server queue.
+      void refreshQueue();
+    },
+    [soundEnabled, refreshQueue],
+  );
+
+  useEffect(() => {
+    void refreshQueue();
+    const unsubscribe = subscribeTenantNotifications(tenantId, handleNotificationEvents, (error) =>
+      setQueueError(error.message),
+    );
+    return () => unsubscribe();
+  }, [tenantId, handleNotificationEvents, refreshQueue]);
+
+  // Kitchen observes the public-safe menu projection to toggle availability.
+  useEffect(() => {
+    if (!tenantId) return;
+    const unsubscribe = subscribeKitchenAvailability(
+      tenantId,
+      (items) => setAvailability(items.map(toPublicMenuItem)),
+      (error) => setQueueError(error.message),
+    );
+    return () => unsubscribe();
+  }, [tenantId]);
 
   const handleKitchenSignIn = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,25 +159,50 @@ export default function KitchenView({
     setOnboardCompleted(true);
   };
 
-  const handleUpdateStatus = (id: string, nextStatus: 'cooking' | 'ready') => {
-    setOrders(prev => prev.map(order => {
-      if (order.id === id) {
-        return {
-          ...order,
-          status: nextStatus
-        };
+  // Kitchen transitions are server commands. The UI updates from the committed
+  // result and never mutates a local Order (REQ-KDS-001).
+  const handleUpdateStatus = async (id: string, nextStatus: 'cooking' | 'ready') => {
+    setPendingOrderId(id);
+    try {
+      const result =
+        nextStatus === 'cooking' ? await startCooking(id) : await markReady(id);
+      setOrders((prev) =>
+        prev.map((order) => (order.id === id ? toViewOrder(result.order) : order)),
+      );
+      setQueueError(null);
+      // A ready Order leaves the Kitchen queue; a cooking Order stays.
+      if (nextStatus === 'ready') {
+        void refreshQueue();
       }
-      return order;
-    }));
+    } catch (error) {
+      setQueueError(
+        error instanceof Error ? error.message : 'Không cập nhật được đơn.',
+      );
+    } finally {
+      setPendingOrderId(null);
+    }
   };
 
-  const handleKitchenDisableStock = (id: string) => {
-    setMenuItems(prev => prev.map(item => {
-      if (item.id === id) {
-        return { ...item, inStock: !item.inStock };
-      }
-      return item;
-    }));
+  const handleKitchenDisableStock = async (id: string) => {
+    const current = availability.find((item) => item.id === id);
+    if (!current) return;
+    try {
+      await setKitchenItemAvailability(id, !current.inStock);
+      setAvailability((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, inStock: !item.inStock } : item,
+        ),
+      );
+      setMenuItems((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, inStock: !item.inStock } : item,
+        ),
+      );
+    } catch (error) {
+      setQueueError(
+        error instanceof Error ? error.message : 'Không đổi được tình trạng món.',
+      );
+    }
   };
 
   // Sign in screen matching Apple security design
@@ -117,7 +253,7 @@ export default function KitchenView({
     );
   }
 
-  const kitchenQueue = orders.filter(o => o.status === 'pending' || o.status === 'cooking');
+  const kitchenQueue = orders.filter(isKitchenQueueOrder);
 
   return (
     <div className="flex-grow flex flex-col bg-white font-sans text-[#2D2B30] h-full" id="kitchen-main">
@@ -127,10 +263,43 @@ export default function KitchenView({
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
           <span className="text-sm font-bold text-[#2D2B30] ">KDS Nhà Bếp</span>
         </div>
-        <span className="text-sm bg-zinc-900 text-white font-semibold rounded-[21px] px-2.5 py-0.5 ">
-          {kitchenQueue.length} Đơn Chờ
-        </span>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setSoundEnabled(prev => !prev)}
+            className="text-[#808080] hover:text-zinc-900 transition-colors p-1.5 cursor-pointer"
+            title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
+            aria-label={soundEnabled ? 'Tắt âm thanh thông báo' : 'Bật âm thanh thông báo'}
+          >
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </button>
+          <span className="text-sm bg-zinc-900 text-white font-semibold rounded-[21px] px-2.5 py-0.5 ">
+            {kitchenQueue.length} Đơn Chờ
+          </span>
+        </div>
       </div>
+
+      <AnimatePresence>
+        {notificationToast && (
+          <motion.div
+            role="status"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="mx-3 mt-3 rounded-[21px] border border-amber-200 bg-amber-50 px-4 py-2.5 text-center"
+          >
+            <p className="text-xs font-semibold text-amber-800">
+              Đơn mới • Bàn {notificationToast.tableName}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {queueError && (
+        <p role="alert" className="mx-3 mt-3 rounded-[21px] border border-red-200 bg-red-50 px-4 py-2.5 text-center text-xs font-semibold text-red-700">
+          {queueError}
+        </p>
+      )}
 
       <div className="flex-grow overflow-y-auto p-[13px] space-y-[13px] bg-white">
         <div className="flex justify-between items-center text-xs font-bold text-[#808080] select-none">
@@ -201,8 +370,9 @@ export default function KitchenView({
                       {!isCooking ? (
                         <button 
                           type="button"
-                          onClick={() => handleUpdateStatus(order.id, 'cooking')}
-                          className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                          onClick={() => void handleUpdateStatus(order.id, 'cooking')}
+                          disabled={pendingOrderId === order.id}
+                          className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-50"
                         >
                           <Flame className="w-4 h-4" />
                           Bắt đầu nấu
@@ -210,8 +380,9 @@ export default function KitchenView({
                       ) : (
                         <button 
                           type="button"
-                          onClick={() => handleUpdateStatus(order.id, 'ready')}
-                          className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                          onClick={() => void handleUpdateStatus(order.id, 'ready')}
+                          disabled={pendingOrderId === order.id}
+                          className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-50"
                         >
                           <CheckCircle className="w-4 h-4" />
                           Xong
@@ -225,6 +396,32 @@ export default function KitchenView({
           </div>
         )}
 
+        {/* Availability board: Kitchen can stop one item through Catalog. */}
+        {availability.length > 0 && (
+          <div className="mt-[13px] space-y-[4px]">
+            <div className="flex justify-between items-center text-xs font-bold text-[#808080] select-none">
+              <span>Tình trạng món</span>
+              <span className="text-xs text-zinc-900 lowercase">catalog</span>
+            </div>
+            {availability.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => void handleKitchenDisableStock(item.id)}
+                className={`w-full rounded-[21px] border px-4 py-2.5 flex items-center justify-between text-sm transition-colors ${
+                  item.inStock
+                    ? 'border-[#B5C7D8] bg-white text-[#2D2B30]'
+                    : 'border-zinc-300 bg-[#F5F5F7] text-[#808080]'
+                }`}
+              >
+                <span className="font-semibold truncate">{item.name}</span>
+                <span className={`text-[10px] font-bold ${item.inStock ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {item.inStock ? 'ĐANG BÁN' : 'TẠM HẾT'}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
       </div>
     </div>

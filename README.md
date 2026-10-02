@@ -54,6 +54,32 @@ Bật cờ mà chưa chạy emulator sẽ khiến UI báo lỗi kết nối. T�
 
 Cảnh báo: Functions emulator đọc/ghi Firestore thật bằng Application Default Credentials.
 
+## Tạo tài khoản ADMIN
+
+ADMIN không tự đăng ký. Đó là một người dùng Firebase Auth có claim `admin: true`. Rules và Cloud Functions kiểm tra claim này.
+
+1. Tạo người dùng trong Firebase Console (Authentication → Users) hoặc đăng ký trong app để lấy UID.
+2. Cấp claim bằng script:
+
+```bash
+npm run admin:grant -- --email owner@shop.vn
+```
+
+Lệnh khác:
+
+```bash
+npm run admin:grant -- --uid <uid> --project scango-8f0e9
+npm run admin:grant -- --email owner@shop.vn --revoke
+```
+
+Bật cờ `--revoke` để thu hồi quyền. Dự án lấy từ `FIREBASE_PROJECT_ID`, mặc định `scango-8f0e9`. Với Auth emulator, đặt `FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099`.
+
+Lệnh dùng Application Default Credentials. Nếu chưa có, chạy `gcloud auth application-default login`. Script tự đặt quota project bằng project đích, nên ADC người dùng không cần cấu hình thêm.
+
+Lưu ý: tài khoản gọi lệnh cần quyền quản lý người dùng Firebase Auth trên project đó.
+
+Sau khi đổi claim, đăng xuất rồi đăng nhập lại, và mở `/dashboard/manage`.
+
 ## Kiểm tra trước khi phát hành
 
 ```bash

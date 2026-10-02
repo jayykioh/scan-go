@@ -64,7 +64,7 @@ Each entry requires both a UI deliverable and a backend deliverable.
 | Inconsistency | Checked-in evidence | Required correction |
 |---|---|---|
 | Router versus no router | `App.tsx` uses React Router; `docs/architecture.md` says no router. | Treat React Router as current implementation; mark architecture text historical. |
-| Gemini claim versus rule-based AI | SRS/TECH_STACK require server Gemini adapter; `OwnerView` and `SoloOperatorView` use local rule text. | Keep UI as mockup; implement server AI only in P1. |
+| Provider claim versus rule-based AI | SRS/TECH_STACK require one server AI provider adapter (Gemini default, ADR 0008); `OwnerView` and `SoloOperatorView` use local rule text. | Keep UI as mockup; implement server AI only in P1. |
 | Next.js blueprint versus React/Vite | TECH_STACK selects React/Vite; old blueprint references can conflict. | Keep React 19, Vite, React Router, and `vercel.json` SPA rewrite. |
 | Free/Lite/Pro versus Lite/Pro/Enterprise | SRS/data model use `free|lite|pro`; `types.ts` and SubscriptionPage use Lite/Pro/Enterprise. | Use approved Free/Lite/Pro only; Enterprise remains out of scope. |
 | Plaintext Staff PIN | `types.ts`, `mockData.ts`, StaffPage, and SimulatorLayout store/display PIN. | Remove browser PIN persistence; keep only server `staffPinHash`. |

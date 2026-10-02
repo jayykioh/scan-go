@@ -10,6 +10,7 @@
 
 ## Documentation index
 - [SRS](docs/SRS.md)
+- [Product objectives and proposed direction](docs/PRODUCT_OBJECTIVES.md)
 - [TECH_STACK](docs/TECH_STACK.md)
 - [Common rules](docs/RULES.md)
 - [Firebase rules](docs/RULES_FIREBASE.md)
@@ -25,7 +26,9 @@
 - [Developer 2 P0 plan: Catalog, Table Access, ADMIN](docs/plan/p0-developer-2.md)
 - [Developer 3 P0 plan: Ordering, Fulfilment, i18n](docs/plan/p0-developer-3.md)
 - [Developer 4 P0 plan: Inventory, Payment, durable work](docs/plan/p0-developer-4.md)
+- [Insight and growth plan: M2/M3 AI, feedback, workforce, inventory count](docs/plan/insight-growth-plan.md)
 - [Ticket traceability](docs/traceability.md)
+- [Dependency-ready P0 tickets](docs/tickets/p0/README.md)
 - [ADR 0001: Firestore and Cloud Functions](docs/adr/0001-use-firestore-and-cloud-functions.md)
 - [ADR 0002: Independent modules](docs/adr/0002-use-independent-product-modules.md)
 - [ADR 0003: Layered configuration](docs/adr/0003-use-layered-configuration.md)
@@ -33,6 +36,8 @@
 - [ADR 0005: Rebuildable daily stats](docs/adr/0005-use-rebuildable-daily-stats.md)
 - [ADR 0006: Real Firestore and deferred Emulator tests](docs/adr/0006-use-real-firestore-and-defer-emulator-tests.md)
 - [ADR 0007: Email/password Owner auth](docs/adr/0007-switch-owner-auth-to-email-password.md)
+- [ADR 0008: AI provider adapter and Jev evaluation](docs/adr/0008-ai-provider-adapter-and-jev-evaluation.md)
+- [ADR 0009: Defer reservations and separate payment state](docs/adr/0009-defer-reservations-and-separate-payment-state.md)
 - [Firestore research](research/firestore-foundation.md)
 
 ## Agent constraints

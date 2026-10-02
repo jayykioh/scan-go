@@ -5,7 +5,14 @@ This glossary follows `docs/context.md` and the approved SRS.
 | Term | Meaning |
 |---|---|
 | ADMIN | The ScanGo system owner with unrestricted platform and tenant access. |
-| AI assistant | A read-only assistant that explains Cost, gross profit, and stock warnings from tenant data. |
+| AI assistant | A read-only assistant that explains Cost, gross profit, stock, feedback, and priority findings from tenant data. |
+| AI provider adapter | The one replaceable interface the AI module calls. Default provider is Gemini; TypeSafe Jev is an evaluation candidate. |
+| Jev | TypeSafe AI's System One model. It returns typed decisions with confidence and does not generate prose. |
+| Insight | One weekly finding with department, priority, period, source data, confidence, and suggested action. |
+| Weekly analysis | A scheduled per-tenant AI run that ranks operational findings. |
+| Feedback ticket | A Customer review or issue tracked from `received` to `resolved`. |
+| Shift | A scheduled work period for one Staff member on one date. |
+| Stock count | A recorded physical quantity used to find variance and support loss review. |
 | Cashier | A Staff role that settles or cancels orders and handles Loyalty operations. |
 | Cost | Deterministic ingredient cost calculated from recipe quantities and ingredient unit values. |
 | Customer | A person who opens a table menu, submits an order, and tracks its status. |

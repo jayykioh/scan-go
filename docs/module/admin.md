@@ -16,7 +16,7 @@
 
 ## Rules
 - ADMIN receives unrestricted application access without approval prompts.
-- Every ADMIN application action creates an automatic audit event.
+- Every ADMIN change creates an automatic audit event. ADMIN reads are not audited (ADR 0010).
 - ADMIN identity uses a server-verified platform claim.
 - Runtime infrastructure settings remain deployment configuration.
 - Secrets never appear in ADMIN product settings.

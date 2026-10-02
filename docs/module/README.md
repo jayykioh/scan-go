@@ -16,7 +16,10 @@ Each module owns its writes and exposes explicit commands, queries, and events. 
 | Promotion | [promotion.md](promotion.md) | Promotion eligibility and selection |
 | Loyalty | [loyalty.md](loyalty.md) | Members and point ledger |
 | Reporting | [reporting.md](reporting.md) | Rebuildable daily stats |
-| AI | [ai.md](ai.md) | Read-only warnings and explanations |
+| AI | [ai.md](ai.md) | Provider adapter, weekly analysis, warnings, cost records |
+| Feedback | [feedback.md](feedback.md) | Reviews, issues, and Feedback tickets |
+| Workforce | [workforce.md](workforce.md) | Shifts and attendance |
+| Reservation | [reservation.md](reservation.md) | DEFERRED by ADR 0009; no data owner |
 | Subscription | [subscription.md](subscription.md) | Free, Lite, and Pro entitlements |
 | ADMIN | [admin.md](admin.md) | Platform operations and unrestricted access |
 
@@ -35,6 +38,8 @@ Shared data rules are in `docs/data-model.md`. Technology rules are in `docs/TEC
 | Reversal or refund | Full | Full | Optional permission | No | No | Full | No |
 | Loyalty | Full | Full | Yes | No | No | Full | Own verified profile |
 | Reports and AI | Full | Full | No | No | No | Full | No |
+| Customer feedback | Full | Full | No | No | No | Full | Own submission |
+| Shifts and attendance | Full | Full | No | Own clock only | Own clock only | Full | No |
 | Customer phone | Full | Configured | Configured | Configured | Configured | Configured | Own value |
 
 Owner may reduce Staff defaults. Owner may add only permissions marked optional for that role by ADMIN configuration.

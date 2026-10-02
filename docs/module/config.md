@@ -18,6 +18,7 @@
 - Backup: daily with 30-day retention.
 - Loyalty welcome points: zero.
 - Tenant timezone: `Asia/Ho_Chi_Minh`.
+- AI provider: deterministic adapter (`rule-based`) with a monthly budget of 500000 VND per tenant.
 
 ## Commands and queries
 - ADMIN updates product defaults.
@@ -27,5 +28,5 @@
 
 ## Rules
 - Reject unknown keys, invalid values, and forbidden tenant overrides.
-- Tenant overrides are limited to `locale`, `timezone`, and `pinPolicy`.
+- Tenant overrides are limited to `locale`, `timezone`, `pinPolicy`, and `ai`.
 - Version every change and emit `ConfigurationChanged`.

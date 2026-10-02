@@ -1,74 +1,108 @@
-import React, { useState } from 'react';
-import { usePersistentState } from '../../hooks/usePersistentState';
+import React, { useEffect, useState } from 'react';
 import { TableConfig } from '../../types';
 import { Plus, Trash2, Printer, CheckCircle, SmartphoneNfc, XCircle, Copy, ExternalLink, RefreshCw, Edit2 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { createPortal } from 'react-dom';
 import GuideModal from '../../components/GuideModal';
+import {
+  archiveTenantTable,
+  createTenantTable,
+  regenerateTableToken,
+  renameTenantTable,
+  subscribeTenantTables,
+  type TenantTable,
+} from '../../data/adapters/table.adapter';
+import { useActiveTenantId } from '../../hooks/useActiveTenantId';
 
 export default function TablesPage() {
-  const [tables, setTables] = usePersistentState<TableConfig[]>('scango:tables:v1', []);
+  const [rows, setRows] = useState<TenantTable[]>([]);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<TableConfig | null>(null);
-  const [deletingTable, setDeletingTable] = useState<TableConfig | null>(null);
-  
+  const [deletingTable, setDeletingTable] = useState<TenantTable | null>(null);
+  const activeTenantId = useActiveTenantId();
+
   const toast = useToast();
 
-  const menuPath = (id: string) => `/menu/${encodeURIComponent(id)}`;
-  const menuUrl = (id: string) => `${window.location.origin}${menuPath(id)}`;
+  // Tenant tables come from the bounded Table Access listener. The opaque token
+  // is the only public path segment; the server issues and rotates it
+  // (REQ-TBL-001, NFR-SEC-002).
+  useEffect(() => {
+    const unsubscribe = subscribeTenantTables(
+      (tables) => setRows(tables),
+      (error) => setDataError(error.message),
+    );
+    return () => unsubscribe();
+  }, []);
 
-  const createTablePayload = (id: string, secret = `sec_${Date.now().toString(36)}`) => ({
-    tableSecret: secret,
-    qrPayload: menuPath(id),
-    nfcWritten: true,
-  });
+  const menuPath = (token: string | null) => `/menu/${encodeURIComponent(token ?? '')}`;
+  const menuUrl = (token: string | null) => `${window.location.origin}${menuPath(token)}`;
+
+  const requireTenant = (): string => {
+    if (!activeTenantId) {
+      throw new Error('Chưa chọn cửa hàng.');
+    }
+    return activeTenantId;
+  };
 
   const handleOpenAdd = () => {
-    const id = `table_${Date.now()}`;
-    setEditingTable({ id, name: '', ...createTablePayload(id) });
+    setEditingTable({ id: '', name: '' });
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (table: TableConfig) => {
-    setEditingTable({ ...table, ...(!table.tableSecret ? createTablePayload(table.id) : {}) });
+  const handleOpenEdit = (table: TenantTable) => {
+    setEditingTable({ id: table.tableId, name: table.name, qrPayload: table.qrPayload ?? undefined });
     setIsModalOpen(true);
   };
 
   const handleSaveTable = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTable?.name.trim()) return;
-    
-    const normalized: TableConfig = {
-      ...editingTable,
-      name: editingTable.name.trim(),
-      ...(!editingTable.tableSecret ? createTablePayload(editingTable.id) : {}),
-    };
-    const exists = tables.some(table => table.id === normalized.id);
-    setTables(prev => exists
-      ? prev.map(table => table.id === normalized.id ? normalized : table)
-      : [...prev, normalized]
-    );
-    setEditingTable(null);
-    setIsModalOpen(false);
-    toast.success(exists ? `Đã cập nhật ${normalized.name}` : `Đã thêm ${normalized.name}`);
+    const isNew = !rows.some((table) => table.tableId === editingTable.id);
+    void (async () => {
+      try {
+        if (isNew) {
+          await createTenantTable(requireTenant(), editingTable.name.trim());
+          toast.success(`Đã thêm ${editingTable.name.trim()}`);
+        } else {
+          await renameTenantTable(requireTenant(), editingTable.id, editingTable.name.trim());
+          toast.success(`Đã cập nhật ${editingTable.name.trim()}`);
+        }
+        setEditingTable(null);
+        setIsModalOpen(false);
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không lưu được bàn.');
+      }
+    })();
   };
 
   const handleDeleteTable = () => {
     if (!deletingTable) return;
-    if (tables.length <= 1) {
+    if (rows.length <= 1) {
       toast.error('Cần giữ lại ít nhất một bàn để simulator hoạt động');
       setDeletingTable(null);
       return;
     }
-    setTables(prev => prev.filter(t => t.id !== deletingTable.id));
-    toast.success(`Đã xóa ${deletingTable.name}`);
-    setDeletingTable(null);
+    void (async () => {
+      try {
+        await archiveTenantTable(requireTenant(), deletingTable.tableId, null);
+        toast.success(`Đã lưu trữ ${deletingTable.name}`);
+        setDeletingTable(null);
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không lưu trữ được bàn.');
+      }
+    })();
   };
 
-  const handleRegenerateSecret = (table: TableConfig) => {
-    const payload = createTablePayload(table.id, `sec_${Date.now().toString(36)}`);
-    setTables(prev => prev.map(t => t.id === table.id ? { ...t, ...payload } : t));
-    toast.success(`Đã cấp lại QR/NFC cho ${table.name}`);
+  const handleRegenerateSecret = (table: TenantTable) => {
+    void (async () => {
+      try {
+        await regenerateTableToken(requireTenant(), table.tableId);
+        toast.success(`Đã cấp lại QR/NFC cho ${table.name}`);
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không cấp lại được mã.');
+      }
+    })();
   };
 
   const handlePrintQR = (name: string) => {
@@ -76,8 +110,8 @@ export default function TablesPage() {
     // In a real app, this would open a print dialog or generate a PDF.
   };
 
-  const handleCopyLink = async (table: TableConfig) => {
-    const url = menuUrl(table.id);
+  const handleCopyLink = async (table: TenantTable) => {
+    const url = menuUrl(table.activeToken);
     try {
       await navigator.clipboard.writeText(url);
       toast.success(`Đã copy link menu ${table.name}`);
@@ -110,18 +144,25 @@ export default function TablesPage() {
         </button>
       </div>
 
+      {dataError && (
+        <p role="alert" className="mb-6 border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+          {dataError}
+        </p>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {tables.map(table => (
-          <div key={table.id} className="bg-white border-hard shadow-[4px_4px_0_0_#e4e4e7] flex flex-col hover:-translate-y-1 transition-transform group">
+        {rows.map(table => (
+          <div key={table.tableId} className="bg-white border-hard shadow-[4px_4px_0_0_#e4e4e7] flex flex-col hover:-translate-y-1 transition-transform group">
             <div className="p-5 border-b border-zinc-100 flex justify-between items-start">
               <div>
                 <h3 className="font-bold text-xl text-zinc-900">{table.name}</h3>
-                <span className="text-[10px] text-zinc-400 font-mono mt-1 block">ID: {table.id}</span>
+                <span className="text-[10px] text-zinc-400 font-mono mt-1 block">ID: {table.tableId}</span>
               </div>
               <button 
                 onClick={() => setDeletingTable(table)}
                 className="text-zinc-300 hover:text-red-500 transition-colors"
-                title="Xóa bàn"
+                title="Lưu trữ bàn"
+                aria-label={`Lưu trữ ${table.name}`}
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -134,7 +175,7 @@ export default function TablesPage() {
               <div className="flex items-center gap-2 text-xs font-bold text-zinc-500">
                 <SmartphoneNfc className="w-4 h-4" /> <span>Hỗ trợ Tap-to-Order</span>
               </div>
-              <code className="block text-[10px] text-zinc-500 bg-white border border-zinc-200 p-2 break-all">{menuUrl(table.id)}</code>
+              <code className="block text-[10px] text-zinc-500 bg-white border border-zinc-200 p-2 break-all">{menuUrl(table.activeToken)}</code>
             </div>
 
             <div className="p-4 border-t border-zinc-200 grid grid-cols-1 gap-2">
@@ -158,7 +199,7 @@ export default function TablesPage() {
                   <Copy className="w-4 h-4" /> Copy
                 </button>
                 <a 
-                  href={menuPath(table.id)}
+                  href={menuPath(table.activeToken)}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border border-emerald-200 shadow-sm"
@@ -176,7 +217,7 @@ export default function TablesPage() {
           </div>
         ))}
         
-        {tables.length === 0 && (
+        {rows.length === 0 && (
           <div className="col-span-full py-20 flex flex-col items-center justify-center text-zinc-500 border-2 border-dashed border-zinc-200 bg-zinc-50">
             <div className="w-16 h-16 mb-4 bg-zinc-200 rounded-full flex items-center justify-center">
               <Plus className="w-8 h-8 text-zinc-400" />
@@ -191,7 +232,7 @@ export default function TablesPage() {
         <div className="fixed inset-0 z-[100] flex justify-center items-start pt-20 bg-zinc-950/40 backdrop-blur-sm">
           <div className="bg-white border-hard shadow-hard w-full max-w-sm animate-fadeIn">
             <div className="p-6 border-b border-hard flex justify-between items-center bg-zinc-50">
-              <h3 className="text-lg font-bold uppercase tracking-tight">{tables.some(t => t.id === editingTable.id) ? 'Sửa bàn' : 'Thêm bàn mới'}</h3>
+              <h3 className="text-lg font-bold uppercase tracking-tight">{rows.some(t => t.tableId === editingTable.id) ? 'Sửa bàn' : 'Thêm bàn mới'}</h3>
               <button onClick={() => { setIsModalOpen(false); setEditingTable(null); }} className="text-zinc-400 hover:text-zinc-900">
                 <XCircle className="w-6 h-6" />
               </button>
@@ -209,14 +250,10 @@ export default function TablesPage() {
                 />
               </div>
 
-              <label className="flex items-center gap-3 p-4 border-hard cursor-pointer hover:bg-zinc-50">
-                <input type="checkbox" checked={editingTable.nfcWritten !== false} onChange={(e) => setEditingTable({ ...editingTable, nfcWritten: e.target.checked })} className="accent-orange-600" />
-                <span className="font-bold text-xs uppercase tracking-widest">NFC đã nạp URL</span>
-              </label>
-
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">QR payload</label>
-                <input type="text" value={editingTable.qrPayload || ''} onChange={(e) => setEditingTable({ ...editingTable, qrPayload: e.target.value })} className="w-full px-4 py-3 border-hard focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono text-xs" />
+                <input type="text" value={editingTable.qrPayload || ''} readOnly className="w-full px-4 py-3 border-hard focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono text-xs bg-zinc-50" />
+                <p className="mt-2 text-[11px] text-zinc-500">Mã QR do máy chủ cấp; cấp lại mã để đổi liên kết.</p>
               </div>
 
               <button 

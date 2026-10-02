@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import {
   isFirebaseConfigured,
-  signInWithEmail,
+  mapAuthError,
+  signInOwnerAndRestoreTenant,
 } from '../data/adapters/auth.adapter';
-import { bootstrapTenant } from '../data/adapters/tenant.adapter';
 import { getBackendMode } from '../services/firebase/client';
 import { useToast } from '../contexts/ToastContext';
 
@@ -21,14 +21,11 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await signInWithEmail(email.trim(), password);
-      await bootstrapTenant();
+      await signInOwnerAndRestoreTenant(email.trim(), password);
       toast.success('Đăng nhập thành công.');
       navigate('/dashboard');
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Đăng nhập không thành công.',
-      );
+      toast.error(mapAuthError(error));
     } finally {
       setLoading(false);
     }

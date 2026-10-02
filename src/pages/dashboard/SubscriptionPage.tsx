@@ -1,23 +1,83 @@
-import React from 'react';
-import { usePersistentState } from '../../hooks/usePersistentState';
+import React, { useEffect, useState } from 'react';
 import { useToast } from '../../contexts/ToastContext';
 import { Check, Zap, Star, Shield, ArrowRight, CreditCard } from 'lucide-react';
-import { TenantConfig } from '../../types';
+import type { SubscriptionState } from '@contracts/subscription.contract';
+import { changeSubscriptionPlan, getSubscription } from '../../data/adapters/subscription.adapter';
+import {
+  allowsFeature,
+  formatPlanLabel,
+  formatPlanLimit,
+} from '../../data/adapters/subscription-view';
+import { useActiveTenantId } from '../../hooks/useActiveTenantId';
 
 export default function SubscriptionPage() {
-  // Sync with tenant config so that Settings and Subscription use the same source of truth
-  const [tenantConfig, setTenantConfig] = usePersistentState<TenantConfig>('scango:tenant:v1', {} as TenantConfig);
-  const currentPlan = tenantConfig.pricingTier || 'Lite';
+  const tenantId = useActiveTenantId();
+  const [subscription, setSubscription] = useState<SubscriptionState | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
-  const handleUpgrade = (tier: 'Lite' | 'Pro' | 'Enterprise') => {
-    if (tier === currentPlan) return;
+  useEffect(() => {
+    if (!tenantId) {
+      setSubscription(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    void getSubscription()
+      .then((state) => {
+        if (!cancelled) setSubscription(state);
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) {
+          setSubscription(null);
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : 'Không tải được gói dịch vụ.',
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantId]);
+
+  const currentPlan = subscription ? formatPlanLabel(subscription.plan) : '—';
+  const entitlements = subscription?.entitlements ?? null;
+  const loyaltyEnabled = entitlements
+    ? allowsFeature(entitlements, 'loyalty')
+    : false;
+  const nfcEnabled = entitlements
+    ? allowsFeature(entitlements, 'nfc')
+    : false;
+
+  const handleUpgrade = async (tier: 'Lite' | 'Pro' | 'Enterprise') => {
+    if (!subscription || tier === currentPlan) return;
     if (tier === 'Enterprise') {
       alert('Vui lòng liên hệ 1900 xxxx để nhận tư vấn gói Enterprise.');
       return;
     }
-    setTenantConfig(prev => ({ ...prev, pricingTier: tier }));
-    toast.success(`Đã thay đổi sang gói ${tier}!`);
+    // The server owns plan and entitlements. A failure leaves the shown plan
+    // unchanged and surfaces the error (REQ-SUB-001).
+    try {
+      const state = await changeSubscriptionPlan(tier === 'Pro' ? 'pro' : 'lite');
+      if (!state) {
+        setError('Không thay đổi được gói dịch vụ.');
+        return;
+      }
+      setSubscription(state);
+      setError(null);
+      toast.success(`Đã thay đổi sang gói ${tier}!`);
+    } catch (cause: unknown) {
+      setError(
+        cause instanceof Error ? cause.message : 'Không thay đổi được gói dịch vụ.',
+      );
+    }
   };
 
   return (
@@ -33,6 +93,26 @@ export default function SubscriptionPage() {
           </p>
         </div>
       </div>
+
+      {error && (
+        <div
+          role="alert"
+          className="mb-6 flex items-center gap-2 border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold uppercase tracking-widest text-red-700"
+        >
+          <Shield className="w-4 h-4 shrink-0" aria-hidden="true" />
+          {error}
+        </div>
+      )}
+      {!tenantId && (
+        <div className="mb-6 border border-zinc-200 bg-white px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-500">
+          Chưa chọn cửa hàng để xem gói dịch vụ.
+        </div>
+      )}
+      {tenantId && loading && (
+        <div className="mb-6 text-xs font-bold uppercase tracking-widest text-zinc-400">
+          Đang tải gói dịch vụ...
+        </div>
+      )}
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Lite Plan */}
@@ -50,7 +130,9 @@ export default function SubscriptionPage() {
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <Check className="w-5 h-5 text-emerald-500 shrink-0" />
-                <span className="text-sm font-medium">Tối đa 3 bàn / 15 đơn/ngày</span>
+                <span className="text-sm font-medium">
+                  {formatPlanLimit(entitlements?.maxTables ?? null, 'bàn')} / {formatPlanLimit(entitlements?.maxOrdersPerDay ?? null, 'đơn/ngày')}
+                </span>
               </li>
               <li className="flex items-start gap-3">
                 <Check className="w-5 h-5 text-emerald-500 shrink-0" />
@@ -60,13 +142,13 @@ export default function SubscriptionPage() {
                 <Check className="w-5 h-5 text-emerald-500 shrink-0" />
                 <span className="text-sm font-medium">Theo dõi trạng thái món real-time</span>
               </li>
-              <li className="flex items-start gap-3 opacity-40">
-                <Shield className="w-5 h-5 text-zinc-400 shrink-0" />
-                <span className="text-sm font-medium line-through">Chạm NFC Order & thanh toán</span>
+              <li className={`flex items-start gap-3 ${nfcEnabled ? '' : 'opacity-40'}`}>
+                <Shield className={`w-5 h-5 shrink-0 ${nfcEnabled ? 'text-emerald-500' : 'text-zinc-400'}`} />
+                <span className={`text-sm font-medium ${nfcEnabled ? '' : 'line-through'}`}>Chạm NFC Order & thanh toán</span>
               </li>
-              <li className="flex items-start gap-3 opacity-40">
-                <Zap className="w-5 h-5 text-zinc-400 shrink-0" />
-                <span className="text-sm font-medium line-through">AI phân tích lời/lỗ</span>
+              <li className={`flex items-start gap-3 ${loyaltyEnabled ? '' : 'opacity-40'}`}>
+                <Zap className={`w-5 h-5 shrink-0 ${loyaltyEnabled ? 'text-emerald-500' : 'text-zinc-400'}`} />
+                <span className={`text-sm font-medium ${loyaltyEnabled ? '' : 'line-through'}`}>AI phân tích lời/lỗ</span>
               </li>
             </ul>
           </div>
@@ -102,7 +184,9 @@ export default function SubscriptionPage() {
               </li>
               <li className="flex items-start gap-3">
                 <Check className="w-5 h-5 text-orange-500 shrink-0" />
-                <span className="text-sm font-bold">Không giới hạn bàn & đơn</span>
+                <span className="text-sm font-bold">
+                  {entitlements?.maxTables === null ? 'Không giới hạn bàn & đơn' : 'Giới hạn bàn & đơn theo gói'}
+                </span>
               </li>
               <li className="flex items-start gap-3">
                 <Check className="w-5 h-5 text-orange-500 shrink-0" />
@@ -129,8 +213,8 @@ export default function SubscriptionPage() {
           </div>
         </div>
 
-        {/* Enterprise Plan */}
-        <div className={`bg-zinc-900 border-hard shadow-[8px_8px_0_0_#000] flex flex-col text-white transition-all ${currentPlan === 'Enterprise' ? 'ring-4 ring-zinc-500 ring-offset-2 ring-offset-zinc-900' : 'hover:-translate-y-1'}`}>
+        {/* Enterprise Plan (contact only; not a server plan in v1) */}
+        <div className="bg-zinc-900 border-hard shadow-[8px_8px_0_0_#000] flex flex-col text-white transition-all hover:-translate-y-1">
           <div className="p-6 border-b border-zinc-800 bg-zinc-950">
             <h3 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-2">Enterprise <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" /></h3>
             <p className="text-zinc-400 text-sm mt-1">Trợ lý AI & Quản trị nâng cao</p>

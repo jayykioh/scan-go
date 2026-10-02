@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
-import { usePersistentState } from '../../hooks/usePersistentState';
+import React, { useEffect, useState } from 'react';
 import { MenuItem } from '../../types';
 import { Plus, Search, Edit2, Trash2, Image as ImageIcon, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { createPortal } from 'react-dom';
 import GuideModal from '../../components/GuideModal';
+import {
+  archiveMenuItem,
+  createMenuItem,
+  setMenuAvailability,
+  subscribeOwnerMenu,
+  updateMenuItem,
+} from '../../data/adapters/catalog.adapter';
+import { toOwnerMenuItem } from '../../data/adapters/view-mappers';
 
 const defaultCategories = ['Món chính', 'Đồ uống', 'Tráng miệng', 'Ăn vặt'];
 
 export default function MenuPage() {
-  const [menuItems, setMenuItems] = usePersistentState<MenuItem[]>('scango:menu:v1', []);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   
@@ -21,18 +29,28 @@ export default function MenuPage() {
   
   const toast = useToast();
 
+  // Private menu comes from the bounded Catalog listener; every write goes
+  // through a Catalog callable (REQ-CAT-001, docs/RULES_FIREBASE.md §1).
+  useEffect(() => {
+    const unsubscribe = subscribeOwnerMenu(
+      (items) => setMenuItems(items.map(toOwnerMenuItem)),
+      (error) => setDataError(error.message),
+    );
+    return () => unsubscribe();
+  }, []);
+
   const handleOpenModal = (item?: MenuItem) => {
     if (item) {
       setEditingItem(item);
     } else {
       setEditingItem({
-        id: `item_${Date.now()}`,
+        id: '',
         name: '',
         price: 0,
         costPrice: 0,
         category: defaultCategories[0],
         type: 'Đồ ăn',
-        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
+        image: '',
         description: '',
         inStock: true,
         stockCount: 999,
@@ -51,22 +69,64 @@ export default function MenuPage() {
   const handleSaveItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem) return;
-    
-    if (menuItems.some(i => i.id === editingItem.id)) {
-      setMenuItems(prev => prev.map(i => i.id === editingItem.id ? editingItem : i));
-      toast.success('Đã cập nhật món ăn');
-    } else {
-      setMenuItems(prev => [...prev, editingItem]);
-      toast.success('Đã thêm món mới');
-    }
-    handleCloseModal();
+
+    const fields = {
+      name: editingItem.name.trim(),
+      description: editingItem.description.trim() || null,
+      category: editingItem.category,
+      type: editingItem.type || 'Đồ ăn',
+      priceVnd: Math.max(0, Math.round(editingItem.price)),
+      costPriceVnd: Math.max(0, Math.round(editingItem.costPrice)),
+      imagePath: editingItem.image.trim() || null,
+      modifierGroups: (editingItem.toppings ?? []).length
+        ? [
+            {
+              groupId: `topping_${Date.now()}`,
+              name: 'Topping',
+              selectionType: 'multiple' as const,
+              isRequired: false,
+              minSelections: 0,
+              maxSelections: null,
+              options: (editingItem.toppings ?? []).map((topping, index) => ({
+                optionId: `topping_${index}_${Date.now()}`,
+                name: topping.name,
+                priceDeltaVnd: Math.max(0, Math.round(topping.price)),
+              })),
+            },
+          ]
+        : [],
+      recipeId: null,
+      isAvailable: editingItem.inStock,
+      stockCount: Math.max(0, Math.round(editingItem.stockCount)),
+    };
+
+    void (async () => {
+      try {
+        if (editingItem.id && menuItems.some(i => i.id === editingItem.id)) {
+          await updateMenuItem(editingItem.id, fields);
+          toast.success('Đã cập nhật món ăn');
+        } else {
+          await createMenuItem(fields);
+          toast.success('Đã thêm món mới');
+        }
+        handleCloseModal();
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không lưu được món.');
+      }
+    })();
   };
 
   const handleDeleteItem = () => {
     if (!deletingItem) return;
-    setMenuItems(prev => prev.filter(i => i.id !== deletingItem.id));
-    toast.success('Đã xóa món ăn');
-    setDeletingItem(null);
+    void (async () => {
+      try {
+        await archiveMenuItem(deletingItem.id, null);
+        toast.success('Đã lưu trữ món ăn');
+        setDeletingItem(null);
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không lưu trữ được món.');
+      }
+    })();
   };
 
   const handleAddTopping = () => {
@@ -80,15 +140,17 @@ export default function MenuPage() {
   };
 
   const toggleStock = (id: string) => {
-    setMenuItems(prev => prev.map(i => {
-      if (i.id === id) {
-        const newStock = !i.inStock;
-        if (newStock) toast.success(`Đã mở bán: ${i.name}`);
-        else toast.info(`Đã tạm ngưng: ${i.name}`);
-        return { ...i, inStock: newStock };
+    const current = menuItems.find(i => i.id === id);
+    if (!current) return;
+    void (async () => {
+      try {
+        await setMenuAvailability(id, !current.inStock);
+        if (!current.inStock) toast.success(`Đã mở bán: ${current.name}`);
+        else toast.info(`Đã tạm ngưng: ${current.name}`);
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không đổi được tình trạng món.');
       }
-      return i;
-    }));
+    })();
   };
 
   const categories = ['all', ...Array.from(new Set(menuItems.map(i => i.category)))];
@@ -122,6 +184,12 @@ export default function MenuPage() {
           <Plus className="w-5 h-5" /> Thêm Món
         </button>
       </div>
+
+      {dataError && (
+        <p role="alert" className="mb-6 border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+          {dataError}
+        </p>
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-col md:flex-row gap-4 mb-8">

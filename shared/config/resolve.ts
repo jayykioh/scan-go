@@ -4,6 +4,7 @@ import {
   tenantOverridableConfigKeys,
   type ConfigSource,
   type ResolvedConfig,
+  type TenantOverridableConfigKey,
 } from '../contracts/config.contract.js';
 import { CONFIG_DEFAULTS } from './defaults.js';
 import { AppError, ERROR_CODES } from '../errors.js';
@@ -12,6 +13,27 @@ export interface ResolveConfigInput {
   admin?: Record<string, unknown> | null;
   tenant?: Record<string, unknown> | null;
   allowedTenantOverrideKeys?: readonly string[] | null;
+}
+
+/**
+ * Resolve the effective allowed tenant override keys.
+ *
+ * - `null`/`undefined` means no ADMIN override is stored, so the approved
+ *   defaults apply.
+ * - An explicit list (including an empty one) is authoritative, but it is
+ *   intersected with the approved keys so a stray stored value can never
+ *   grant a forbidden tenant override.
+ */
+export function resolveAllowedTenantOverrideKeys(
+  requested: readonly string[] | null | undefined,
+): TenantOverridableConfigKey[] {
+  if (!Array.isArray(requested)) {
+    return [...tenantOverridableConfigKeys];
+  }
+  const approved = new Set<string>(tenantOverridableConfigKeys);
+  return requested.filter(
+    (key): key is TenantOverridableConfigKey => approved.has(key),
+  );
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -60,10 +82,9 @@ function mergeLayer(
 }
 
 export function resolveConfig(input: ResolveConfigInput = {}): ResolvedConfig {
-  const allowed =
-    input.allowedTenantOverrideKeys && input.allowedTenantOverrideKeys.length > 0
-      ? [...input.allowedTenantOverrideKeys]
-      : [...tenantOverridableConfigKeys];
+  const allowed = resolveAllowedTenantOverrideKeys(
+    input.allowedTenantOverrideKeys,
+  );
 
   const sources: Record<string, ConfigSource> = {};
   const base = CONFIG_DEFAULTS as unknown as Record<string, unknown>;
@@ -76,7 +97,7 @@ export function resolveConfig(input: ResolveConfigInput = {}): ResolvedConfig {
   }
 
   if (isPlainObject(input.tenant)) {
-    const allowedSet = new Set(allowed);
+    const allowedSet = new Set<string>(allowed);
     for (const key of Object.keys(input.tenant)) {
       if (!allowedSet.has(key)) {
         throw new AppError(

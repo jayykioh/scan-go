@@ -2,6 +2,22 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    // A Tenant member may write menu images; the file must be an image and
+    // bounded in size. Cost and recipe never live in Storage metadata.
+    function isActiveMember(tenantId) {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/tenants/$(tenantId)/members/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.isActive != false;
+    }
+
+    // Tenant-scoped menu image path (REQ-CAT-001, NFR-SEC-001).
+    match /tenants/{tenantId}/menuItems/{fileName} {
+      allow read: if true;
+      allow write: if isActiveMember(tenantId)
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

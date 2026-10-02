@@ -4,7 +4,10 @@ import {
   resolvedConfigSchema,
 } from '../contracts/config.contract.js';
 import { CONFIG_DEFAULTS } from './defaults.js';
-import { resolveConfig } from './resolve.js';
+import {
+  resolveAllowedTenantOverrideKeys,
+  resolveConfig,
+} from './resolve.js';
 import { AppError } from '../errors.js';
 import {
   adminConfigLayerFixture,
@@ -71,6 +74,59 @@ describe('resolveConfig', () => {
 
   it('rejects an unknown top-level key through the strict schema', () => {
     expect(() => resolveConfig({ admin: { feature: true } })).toThrow(AppError);
+  });
+
+  it('records a leaf source for every resolved value', () => {
+    const resolved = resolveConfig({
+      admin: { timezone: 'Asia/Bangkok' },
+      tenant: { pinPolicy: { length: 4 } },
+    });
+
+    expect(resolved.sources['pinPolicy.length']).toBe('tenant');
+    expect(resolved.sources['pinPolicy.maxFailedAttempts']).toBe('default');
+    expect(resolved.sources.timezone).toBe('admin');
+    expect(resolved.sources['backup.retentionDays']).toBe('default');
+    expect(resolved.sources['retention.years']).toBe('default');
+  });
+
+  it('treats an empty allowed-key list as no tenant overrides', () => {
+    expect(() =>
+      resolveConfig({
+        tenant: { locale: 'en' },
+        allowedTenantOverrideKeys: [],
+      }),
+    ).toThrow(AppError);
+  });
+
+  it('filters unapproved keys out of a stored allowed-key list', () => {
+    const resolved = resolveConfig({
+      tenant: { locale: 'en' },
+      allowedTenantOverrideKeys: ['locale', 'currency'],
+    });
+
+    expect(resolved.values.locale).toBe('en');
+    expect(resolved.allowedTenantOverrideKeys).toEqual(['locale']);
+  });
+});
+
+describe('resolveAllowedTenantOverrideKeys', () => {
+  it('falls back to the approved keys when no list is stored', () => {
+    expect(resolveAllowedTenantOverrideKeys(null)).toEqual([
+      'locale',
+      'timezone',
+      'pinPolicy',
+      'ai',
+    ]);
+  });
+
+  it('keeps an explicit empty list empty', () => {
+    expect(resolveAllowedTenantOverrideKeys([])).toEqual([]);
+  });
+
+  it('removes unapproved keys from a stored list', () => {
+    expect(
+      resolveAllowedTenantOverrideKeys(['locale', 'currency', 'backup']),
+    ).toEqual(['locale']);
   });
 });
 

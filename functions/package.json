@@ -13,6 +13,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:rules": "vitest run --config vitest.rules.config.mts",
+    "test:emulator": "vitest run --config vitest.emulator.config.mts",
+    "ai:evaluate": "tsx src/modules/ai/evaluation.cli.ts",
     "deploy": "npm run build && firebase deploy --only functions",
     "logs": "firebase functions:log"
   },

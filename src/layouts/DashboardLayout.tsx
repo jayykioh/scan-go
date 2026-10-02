@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   NavLink,
   Navigate,
@@ -23,9 +23,13 @@ import { getBackendMode } from '../services/firebase/client';
 import { signOutCurrentUser } from '../data/adapters/auth.adapter';
 import {
   bootstrapTenant,
+  createActiveTenantContext,
   createTenant,
   listMemberships,
   selectActiveTenant,
+  subscribeActiveTenantContext,
+  type ActiveTenantContext,
+  type ActiveTenantContextHandle,
 } from '../data/adapters/tenant.adapter';
 import TenantSwitcher from '../components/TenantSwitcher';
 
@@ -35,6 +39,37 @@ export default function DashboardLayout() {
   const [tenants, setTenants] = useState<TenantSummary[]>([]);
   const [tenantLoading, setTenantLoading] = useState(false);
   const [tenantError, setTenantError] = useState<string | null>(null);
+  const [activeContext, setActiveContext] =
+    useState<ActiveTenantContext | null>(null);
+  const activeContextRef = useRef<ActiveTenantContextHandle | null>(null);
+
+  // One bounded listener slot for the active Tenant. Selecting a Tenant
+  // replaces the context and disposes the prior listener.
+  useEffect(() => {
+    const handle = createActiveTenantContext(
+      subscribeActiveTenantContext,
+      setActiveContext,
+    );
+    activeContextRef.current = handle;
+    return () => {
+      handle.dispose();
+      activeContextRef.current = null;
+    };
+  }, []);
+
+  const activeTenantId =
+    tenants.find((tenant) => tenant.isActiveTenant)?.tenantId ?? null;
+
+  useEffect(() => {
+    const handle = activeContextRef.current;
+    if (!handle) return;
+    if (!activeTenantId) {
+      handle.dispose();
+      setActiveContext(null);
+      return;
+    }
+    handle.select(activeTenantId);
+  }, [activeTenantId]);
 
   useEffect(() => {
     if (!configured || !user) return;
@@ -219,6 +254,11 @@ export default function DashboardLayout() {
               onSelect={handleSelectTenant}
               onCreate={handleCreateTenant}
             />
+            {activeContext && (
+              <p className="font-mono text-[9px] text-zinc-600 uppercase tracking-widest truncate">
+                Bối cảnh: {activeContext.shopName}
+              </p>
+            )}
           </div>
         )}
 

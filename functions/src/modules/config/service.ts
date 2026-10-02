@@ -1,11 +1,19 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import type { Firestore } from 'firebase-admin/firestore';
 import {
+  platformConfigOverrideInputSchema,
   tenantConfigOverrideInputSchema,
+  tenantVisibleConfigSchema,
+  type ConfigSource,
+  type PlatformConfigOverrideInput,
   type ResolvedConfig,
   type TenantConfigOverrideInput,
+  type TenantVisibleResolvedConfig,
 } from '../../../../shared/contracts/config.contract.js';
-import { resolveConfig } from '../../../../shared/config/resolve.js';
+import {
+  resolveAllowedTenantOverrideKeys,
+  resolveConfig,
+} from '../../../../shared/config/resolve.js';
 import { AppError } from '../../../../shared/errors.js';
 
 export function nowIso(): string {
@@ -35,6 +43,31 @@ export function parseTenantOverrideInput(
   return parsed.data;
 }
 
+export function parsePlatformOverrideInput(
+  data: unknown,
+): PlatformConfigOverrideInput {
+  const parsed = platformConfigOverrideInputSchema.safeParse(data ?? {});
+  if (!parsed.success) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Cấu hình nền tảng không hợp lệ hoặc chứa trường bị cấm.',
+    );
+  }
+  return parsed.data;
+}
+
+export function isPlainObject(
+  value: unknown,
+): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function readPlainObject(
+  value: unknown,
+): Record<string, unknown> | null {
+  return isPlainObject(value) ? value : null;
+}
+
 export interface ConfigLayers {
   admin: Record<string, unknown> | null;
   tenant: Record<string, unknown> | null;
@@ -50,25 +83,27 @@ export async function readConfigLayers(
     db.doc(`tenants/${tenantId}`).get(),
   ]);
 
-  const adminRaw = platformSnap.exists ? platformSnap.get('values') : null;
-  const allowedRaw = platformSnap.exists
-    ? platformSnap.get('allowedTenantOverrideKeys')
-    : null;
-  const tenantRaw = tenantSnap.exists
-    ? tenantSnap.get('configOverrides')
-    : null;
+  return layersFromSnapshots(
+    platformSnap.exists ? platformSnap.data() : undefined,
+    tenantSnap.exists ? tenantSnap.get('configOverrides') : undefined,
+  );
+}
 
+export function layersFromSnapshots(
+  platformData: Record<string, unknown> | undefined,
+  tenantOverrides: unknown,
+): ConfigLayers {
+  const adminRaw = platformData ? platformData.values : null;
+  const allowedRaw = platformData
+    ? platformData.allowedTenantOverrideKeys
+    : null;
   return {
-    admin: isPlainObject(adminRaw) ? adminRaw : null,
-    tenant: isPlainObject(tenantRaw) ? tenantRaw : null,
+    admin: readPlainObject(adminRaw),
+    tenant: readPlainObject(tenantOverrides),
     allowedTenantOverrideKeys: Array.isArray(allowedRaw)
       ? allowedRaw.map(String)
       : null,
   };
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function mergeOverrideMaps(
@@ -91,16 +126,128 @@ export function mergeOverrideMaps(
 }
 
 export function resolveTenantConfig(layers: ConfigLayers): ResolvedConfig {
-  try {
-    return resolveConfig({
+  return resolveWithHttpsError(() =>
+    resolveConfig({
       admin: layers.admin,
       tenant: layers.tenant,
       allowedTenantOverrideKeys: layers.allowedTenantOverrideKeys,
-    });
+    }),
+  );
+}
+
+export function resolvePlatformConfig(
+  layers: Pick<ConfigLayers, 'admin' | 'allowedTenantOverrideKeys'>,
+): ResolvedConfig {
+  return resolveWithHttpsError(() =>
+    resolveConfig({
+      admin: layers.admin,
+      allowedTenantOverrideKeys: layers.allowedTenantOverrideKeys,
+    }),
+  );
+}
+
+const TENANT_VISIBLE_VALUE_KEYS = [
+  'locale',
+  'timezone',
+  'currency',
+  'ai',
+] as const;
+
+/**
+ * Strip platform-only leaves (`retention`, `backup`, `rateLimit`) and their
+ * sources before returning configuration to a tenant member.
+ */
+export function toTenantVisibleResolvedConfig(
+  resolved: ResolvedConfig,
+): TenantVisibleResolvedConfig {
+  const sources: Record<string, ConfigSource> = {};
+  for (const [key, source] of Object.entries(resolved.sources)) {
+    if (
+      (TENANT_VISIBLE_VALUE_KEYS as readonly string[]).includes(key) ||
+      key.startsWith('pinPolicy.') ||
+      key.startsWith('ai.')
+    ) {
+      sources[key] = source;
+    }
+  }
+
+  return tenantVisibleConfigSchema.parse({
+    schemaVersion: resolved.schemaVersion,
+    values: {
+      locale: resolved.values.locale,
+      timezone: resolved.values.timezone,
+      currency: resolved.values.currency,
+      pinPolicy: resolved.values.pinPolicy,
+      ai: resolved.values.ai,
+    },
+    sources,
+    allowedTenantOverrideKeys: resolved.allowedTenantOverrideKeys,
+  });
+}
+
+function resolveWithHttpsError(resolve: () => ResolvedConfig): ResolvedConfig {
+  try {
+    return resolve();
   } catch (error) {
     if (error instanceof AppError) {
       throw new HttpsError('invalid-argument', error.message);
     }
     throw error;
+  }
+}
+
+export function computeNextConfigVersion(current: unknown): number {
+  return typeof current === 'number' &&
+    Number.isInteger(current) &&
+    current >= 0
+    ? current + 1
+    : 1;
+}
+
+export function resolveAllowedKeys(
+  allowedKeys: readonly string[] | null | undefined,
+): string[] {
+  return [...resolveAllowedTenantOverrideKeys(allowedKeys)];
+}
+
+/**
+ * Reject a forbidden tenant override key before any write. `allowedKeys`
+ * comes from `platform/config`; `null` means the approved defaults apply.
+ */
+export function assertAllowedTenantOverrideKeys(
+  overrides: Record<string, unknown>,
+  allowedKeys: readonly string[] | null | undefined,
+): void {
+  const allowed = new Set(resolveAllowedKeys(allowedKeys));
+  for (const key of Object.keys(overrides)) {
+    if (!allowed.has(key)) {
+      throw new HttpsError(
+        'invalid-argument',
+        `Không được phép ghi đè cấu hình: ${key}`,
+      );
+    }
+  }
+}
+
+export function assertActiveMember(
+  memberData: Record<string, unknown> | undefined,
+): void {
+  if (!memberData || memberData.isActive === false) {
+    throw new HttpsError(
+      'permission-denied',
+      'Bạn không thuộc cửa hàng này.',
+    );
+  }
+}
+
+export function assertActiveOwnerMember(
+  memberData: Record<string, unknown> | undefined,
+): void {
+  assertActiveMember(memberData);
+  if (memberData?.membershipType !== 'owner') {
+    throw new HttpsError(
+      'permission-denied',
+      'Chỉ chủ cửa hàng đổi được cấu hình.',
+    );
   }
 }

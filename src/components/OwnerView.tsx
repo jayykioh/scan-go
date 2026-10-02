@@ -1,6 +1,42 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  onboardingStepIds,
+  type OnboardingChecklist,
+  type OnboardingStepId,
+} from '@contracts/onboarding.contract';
+import {
+  completeOnboardingStep,
+  getOnboardingChecklist,
+} from '../data/adapters/onboarding.adapter';
+import {
+  archiveMenuItem,
+  createMenuItem,
+  setMenuAvailability,
+  subscribeOwnerMenu,
+  updateMenuItem,
+  type CatalogItemCommandFields,
+} from '../data/adapters/catalog.adapter';
+import {
+  archiveTenantTable,
+  createTenantTable,
+  regenerateTableToken,
+  renameTenantTable,
+  subscribeTenantTables,
+} from '../data/adapters/table.adapter';
+import {
+  createIngredient,
+  subscribeIngredients,
+  updateIngredient,
+} from '../data/adapters/inventory.adapter';
+import {
+  toOwnerMenuItem,
+  toTableConfig,
+  toViewIngredient,
+} from '../data/adapters/view-mappers';
 import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount, Ingredient, RecipeItem } from '../types';
-import { INDUSTRY_TEMPLATES } from '../mockData';
+import { useActiveTenantId } from '../hooks/useActiveTenantId';
+import { resolveInterfaceLocale, translate } from '../data/adapters/i18n.adapter';
+import type { I18nMessageKey } from '@contracts/i18n.contract';
 import { 
   Building2, 
   Sparkles, 
@@ -34,11 +70,31 @@ import {
   CreditCard
 } from 'lucide-react';
 
+/** i18n keys for the approved onboarding steps (REQ-ONB-001, REQ-I18N-001). */
+const ONBOARDING_STEP_LABEL_KEYS: Record<OnboardingStepId, I18nMessageKey> = {
+  shopName: 'onboarding.step.shopName',
+  industry: 'onboarding.step.industry',
+  plan: 'onboarding.step.plan',
+  paymentMode: 'onboarding.step.paymentMode',
+  tables: 'onboarding.step.tables',
+  menu: 'onboarding.step.menu',
+};
+
+/** Fill `{placeholder}` slots in a translated template (owner AI copy). */
+function fillTemplate(
+  template: string,
+  vars: Record<string, string | number>,
+): string {
+  return Object.entries(vars).reduce(
+    (text, [name, value]) =>
+      text.split(`{${name}}`).join(String(value)),
+    template,
+  );
+}
+
 interface OwnerProps {
   tenantConfig: TenantConfig;
   setTenantConfig: React.Dispatch<React.SetStateAction<TenantConfig>>;
-  menuItems: MenuItem[];
-  setMenuItems: React.Dispatch<React.SetStateAction<MenuItem[]>>;
   orders: Order[];
   loyaltyMembers: LoyaltyMember[];
   onTriggerNfcTag: (tableId: string) => void;
@@ -46,19 +102,13 @@ interface OwnerProps {
   setOnboardCompleted: (val: boolean) => void;
   setViewMode: React.Dispatch<React.SetStateAction<'login' | 'grid' | 'owner' | 'cashier' | 'kitchen' | 'customer' | 'solo' | 'staff'>>;
   setSimulationTableId: (val: string) => void;
-  tables: TableConfig[];
-  setTables: React.Dispatch<React.SetStateAction<TableConfig[]>>;
   staffAccounts: StaffAccount[];
   setStaffAccounts: React.Dispatch<React.SetStateAction<StaffAccount[]>>;
-  ingredients?: Ingredient[];
-  setIngredients?: React.Dispatch<React.SetStateAction<Ingredient[]>>;
 }
 
 export default function OwnerView({
   tenantConfig,
   setTenantConfig,
-  menuItems,
-  setMenuItems,
   orders,
   loyaltyMembers,
   onTriggerNfcTag,
@@ -66,15 +116,78 @@ export default function OwnerView({
   setOnboardCompleted,
   setViewMode,
   setSimulationTableId,
-  tables,
-  setTables,
   staffAccounts,
   setStaffAccounts,
-  ingredients = [],
-  setIngredients = () => {},
 }: OwnerProps) {
+  const [locale] = useState(() => resolveInterfaceLocale());
+  const t = (key: I18nMessageKey) => translate(locale, key);
   const [activeTab, setActiveTab] = useState<'kpi' | 'menu' | 'nfc' | 'ai' | 'staff' | 'kho'>('kpi');
-  
+  const [onboardingChecklist, setOnboardingChecklist] = useState<OnboardingChecklist | null>(null);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [tables, setTables] = useState<TableConfig[]>([]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const activeTenantId = useActiveTenantId();
+
+  const activeTenantIdOrThrow = useCallback((): string => {
+    if (!activeTenantId) {
+      throw new Error('Chưa chọn cửa hàng.');
+    }
+    return activeTenantId;
+  }, [activeTenantId]);
+
+  // The server owns the onboarding checklist. Load it on mount and mark each
+  // step complete through the Tenant callable (REQ-ONB-001).
+  const refreshOnboarding = useCallback(async () => {
+    try {
+      setOnboardingChecklist(await getOnboardingChecklist());
+    } catch {
+      // A missing backend keeps the local UI usable.
+    }
+  }, []);
+
+  const markOnboardingStep = useCallback(
+    async (step: OnboardingStepId) => {
+      try {
+        setOnboardingChecklist(await completeOnboardingStep(step));
+      } catch {
+        // Ignore a transient server failure; the next action retries.
+      }
+    },
+    [],
+  );
+
+  // Owner business state comes from bounded realtime listeners. The browser
+  // never writes these collections directly (docs/RULES_FIREBASE.md §1).
+  useEffect(() => {
+    const unsubscribe = subscribeOwnerMenu(
+      (items) => setMenuItems(items.map(toOwnerMenuItem)),
+      (error) => setDataError(error.message),
+    );
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeTenantTables(
+      (rows) => setTables(rows.map(toTableConfig)),
+      (error) => setDataError(error.message),
+    );
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeIngredients(
+      (rows) => setIngredients(rows.map(toViewIngredient)),
+      (error) => setDataError(error.message),
+    );
+    return () => unsubscribe();
+  }, []);
+
+
+  useEffect(() => {
+    void refreshOnboarding();
+  }, [refreshOnboarding]);
+
   // Onboarding parameters
   const [tempShopName, setTempShopName] = useState('Phở Kinh Kỳ');
   const [tempIndustry, setTempIndustry] = useState<'quan_an' | 'quan_cafe' | 'nha_hang' | 'tiem_banh' | 'tra_sua'>('quan_an');
@@ -184,40 +297,61 @@ export default function OwnerView({
     e.preventDefault();
     if (!ingFormName.trim()) return;
 
-    if (showAddIngForm) {
-      setIngredients(prev => [...prev, {
-        id: 'ing_' + Date.now(),
-        name: ingFormName.trim(),
-        costPrice: Number(ingFormCost),
-        unit: ingFormUnit,
-        stock: Number(ingFormStock),
-      }]);
-      setShowAddIngForm(false);
-    } else if (editingIng) {
-      setIngredients(prev => prev.map(ing => 
-        ing.id === editingIng.id 
-          ? { ...ing, name: ingFormName.trim(), costPrice: Number(ingFormCost), unit: ingFormUnit, stock: Number(ingFormStock) }
-          : ing
-      ));
-      setEditingIng(null);
-    }
-    resetIngForm();
+    void (async () => {
+      try {
+        const unit = (['g', 'kg', 'ml', 'l', 'unit'].includes(ingFormUnit)
+          ? ingFormUnit
+          : 'unit') as 'g' | 'kg' | 'ml' | 'l' | 'unit';
+        const baseUnit = unit === 'kg' ? 'g' : unit === 'l' ? 'ml' : unit;
+        if (showAddIngForm) {
+          await createIngredient({
+            name: ingFormName.trim(),
+            baseUnit,
+            unitCostVnd: Math.max(0, Math.round(Number(ingFormCost) || 0)),
+            lowStockThreshold: 0,
+            isActive: true,
+            stockInput:
+              Number(ingFormStock) > 0
+                ? { unit, quantity: Number(ingFormStock) }
+                : null,
+          });
+          setShowAddIngForm(false);
+        } else if (editingIng) {
+          await updateIngredient(editingIng.id, {
+            name: ingFormName.trim(),
+            baseUnit,
+            unitCostVnd: Math.max(0, Math.round(Number(ingFormCost) || 0)),
+            lowStockThreshold: 0,
+            isActive: true,
+          });
+          setEditingIng(null);
+        }
+        resetIngForm();
+      } catch (error) {
+        setDataError(
+          error instanceof Error ? error.message : 'Không lưu được nguyên liệu.',
+        );
+      }
+    })();
   };
 
-  const handleDeleteIng = (id: string) => {
-    setIngredients(prev => prev.filter(i => i.id !== id));
+  const handleDeleteIng = (_id: string) => {
+    // Inventory archive is a P1 command; M1 keeps the visible list read-only.
+    setDataError('Lưu trữ nguyên liệu chưa hỗ trợ ở M1.');
   };
 
   const handleAddTableSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTableName.trim()) return;
-    const nextId = String(Date.now());
-    const addedTable: TableConfig = {
-      id: nextId,
-      name: newTableName.trim()
-    };
-    setTables(prev => [...prev, addedTable]);
-    setNewTableName('');
+    void (async () => {
+      try {
+        await createTenantTable(activeTenantIdOrThrow(), newTableName.trim());
+        setNewTableName('');
+        void markOnboardingStep('tables');
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không thêm được bàn.');
+      }
+    })();
   };
 
   const handleStartEditingTable = (id: string, name: string) => {
@@ -227,22 +361,34 @@ export default function OwnerView({
 
   const handleSaveTableName = (id: string) => {
     if (!editingTableOriginalName.trim()) return;
-    setTables(prev => prev.map(t => t.id === id ? { ...t, name: editingTableOriginalName.trim() } : t));
-    setEditingTableId(null);
-    setEditingTableOriginalName('');
+    void (async () => {
+      try {
+        await renameTenantTable(activeTenantIdOrThrow(), id, editingTableOriginalName.trim());
+        setEditingTableId(null);
+        setEditingTableOriginalName('');
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không sửa được bàn.');
+      }
+    })();
   };
 
   const handleDeleteTable = (id: string) => {
     if (tables.length <= 1) {
       return;
     }
-    setTables(prev => prev.filter(t => t.id !== id));
+    void (async () => {
+      try {
+        await archiveTenantTable(activeTenantIdOrThrow(), id, null);
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không lưu trữ được bàn.');
+      }
+    })();
   };
 
   // Chatbot parameters
   const [chatInput, setChatInput] = useState('');
   const [aiChatLogs, setAiChatLogs] = useState<Array<{ sender: 'user' | 'assistant'; text: string }>>([
-    { sender: 'assistant', text: 'Chào Chủ quán! Bộ não AI ScanGo đã sẵn sàng. Bạn muốn xem phân tích lời/lỗ hay tìm món bán chạy nhất hôm nay?' }
+    { sender: 'assistant', text: t('owner.ai.seed') }
   ]);
   const [isTyping, setIsTyping] = useState(false);
 
@@ -276,10 +422,10 @@ export default function OwnerView({
 
   // Unsplash Quick presets
   const PRESET_IMAGES = [
-    { label: '🍜 Món nước', url: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&q=80&w=600' },
-    { label: '☕ Cà phê', url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&q=80&w=600' },
-    { label: '🥐 Tiệm bánh', url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=600' },
-    { label: '🍹 Đồ uống', url: 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&q=80&w=600' },
+    { label: t('owner.preset.noodles'), url: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&q=80&w=600' },
+    { label: t('owner.preset.cafe'), url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&q=80&w=600' },
+    { label: t('owner.preset.bakery'), url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=600' },
+    { label: t('owner.preset.drink'), url: 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&q=80&w=600' },
   ];
 
   // Best seller metrics
@@ -345,24 +491,63 @@ export default function OwnerView({
         paymentMode: tempPayMode,
         loyaltyEnabled: tempTier !== 'Lite',
       });
+      // Step 1 captures shop name and industry; step 2 captures plan; step 3
+      // captures payment mode. Each maps to one approved checklist item.
+      void markOnboardingStep('shopName');
+      void markOnboardingStep('industry');
+      void markOnboardingStep('plan');
+      void markOnboardingStep('paymentMode');
       setOnboardStep(4);
     } else if (onboardStep === 4) {
       setOnboardCompleted(true);
     }
   };
 
+  // Map the Owner form onto the frozen Catalog command fields. Money stays
+  // integer VND and the server owns the public projection (REQ-CAT-001).
+  const catalogFieldsFromForm = (): CatalogItemCommandFields => ({
+    name: formName.trim(),
+    description: formDescription.trim() || null,
+    category: formCategory || 'Món nước',
+    type: formType || 'Đồ ăn',
+    priceVnd: Math.max(0, Math.round(Number(formPrice) || 0)),
+    costPriceVnd: Math.max(0, Math.round(Number(formCostPrice) || 0)),
+    imagePath: formImage.trim() || null,
+    modifierGroups:
+      formToppings.length > 0
+        ? [
+            {
+              groupId: `topping_${Date.now()}`,
+              name: 'Topping',
+              selectionType: 'multiple' as const,
+              isRequired: false,
+              minSelections: 0,
+              maxSelections: null,
+              options: formToppings.map((topping, index) => ({
+                optionId: `topping_${index}_${Date.now()}`,
+                name: topping.name,
+                priceDeltaVnd: Math.max(0, Math.round(topping.price)),
+              })),
+            },
+          ]
+        : [],
+    recipeId: null,
+    isAvailable: Number(formStockCount) > 0,
+    stockCount: Math.max(0, Math.round(Number(formStockCount) || 0)),
+  });
+
   const handleToggleStock = (id: string) => {
-    setMenuItems(prev => prev.map(item => {
-      if (item.id === id) {
-        const nextStock = !item.inStock;
-        return {
-          ...item,
-          inStock: nextStock,
-          stockCount: nextStock ? 50 : 0
-        };
+    const current = menuItems.find((item) => item.id === id);
+    if (!current) return;
+    void (async () => {
+      try {
+        await setMenuAvailability(id, !current.inStock);
+      } catch (error) {
+        setDataError(
+          error instanceof Error ? error.message : 'Không đổi được tình trạng món.',
+        );
       }
-      return item;
-    }));
+    })();
   };
 
   const resetForm = () => {
@@ -392,24 +577,16 @@ export default function OwnerView({
     e.preventDefault();
     if (!formName.trim()) return;
 
-    const newDish: MenuItem = {
-      id: 'custom_' + Date.now(),
-      name: formName.trim(),
-      price: Number(formPrice) || 30000,
-      costPrice: Number(formCostPrice) || 12000,
-      category: formCategory || 'Món nước',
-      type: formType || 'Đồ ăn',
-      description: formDescription.trim() || 'Món ăn do chủ quán bổ sung thơm ngon nóng hổi.',
-      image: formImage || 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&q=80&w=600',
-      inStock: Number(formStockCount) > 0,
-      stockCount: Number(formStockCount) || 50,
-      toppings: formToppings.length > 0 ? formToppings : undefined,
-      recipe: formRecipe.length > 0 ? formRecipe : undefined,
-    };
-
-    setMenuItems(prev => [newDish, ...prev]);
-    setShowAddForm(false);
-    resetForm();
+    void (async () => {
+      try {
+        await createMenuItem(catalogFieldsFromForm());
+        setShowAddForm(false);
+        resetForm();
+        void markOnboardingStep('menu');
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không thêm được món.');
+      }
+    })();
   };
 
   const handleStartEdit = (item: MenuItem) => {
@@ -435,28 +612,25 @@ export default function OwnerView({
     e.preventDefault();
     if (!editingItem || !formName.trim()) return;
 
-    setMenuItems(prev => prev.map(item => {
-      if (item.id === editingItem.id) {
-        return {
-          ...item,
-          name: formName.trim(),
-          price: Number(formPrice),
-          costPrice: Number(formCostPrice),
-          category: formCategory,
-          type: formType,
-          description: formDescription.trim(),
-          image: formImage || item.image,
-          stockCount: Number(formStockCount),
-          inStock: Number(formStockCount) > 0,
-          toppings: formToppings.length > 0 ? formToppings : undefined,
-          recipe: formRecipe.length > 0 ? formRecipe : undefined,
-        };
+    void (async () => {
+      try {
+        await updateMenuItem(editingItem.id, catalogFieldsFromForm());
+        setEditingItem(null);
+        resetForm();
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không sửa được món.');
       }
-      return item;
-    }));
+    })();
+  };
 
-    setEditingItem(null);
-    resetForm();
+  const handleArchiveDish = (id: string) => {
+    void (async () => {
+      try {
+        await archiveMenuItem(id, null);
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : 'Không lưu trữ được món.');
+      }
+    })();
   };
 
   const handleUpdatePromoSettings = () => {
@@ -481,15 +655,35 @@ export default function OwnerView({
       let answer = '';
       const qLower = question.toLowerCase();
       if (qLower.includes('lãi') || qLower.includes('lợi nhuận') || qLower.includes('doanh thu')) {
-        answer = `📊 Biên phân tích: Doanh thu thực là ${totalRevenue.toLocaleString()}đ, chi phí đầu vào ${totalCost.toLocaleString()}đ. Lợi nhuận gộp đạt ${netProfit.toLocaleString()}đ.\n🚀 Món ăn tối ưu chi phí hiệu quả nhất: ${topFavoriteDishes[0]?.name || 'Phở'} (Biên lời dồi dào, ổn định).`;
+        answer = fillTemplate(t('owner.ai.answerProfit'), {
+          revenue: totalRevenue.toLocaleString(),
+          cost: totalCost.toLocaleString(),
+          profit: netProfit.toLocaleString(),
+          topDish: topFavoriteDishes[0]?.name || 'Phở',
+        });
       } else if (qLower.includes('món ăn') || qLower.includes('bán chạy') || qLower.includes('yêu thích')) {
-        answer = `🌟 Top 3 món yêu thích trên hệ thống:\n1. ${topFavoriteDishes[0]?.name || 'Phở'} (${topFavoriteDishes[0]?.quantity || 0} lượt đặt)\n2. ${topFavoriteDishes[1]?.name || 'Đồ uống'} (${topFavoriteDishes[1]?.quantity || 0} lượt đặt)\n3. ${topFavoriteDishes[2]?.name || 'Món phụ'} (${topFavoriteDishes[2]?.quantity || 0} lượt đặt).\n💡 Khuyến nghị: Duy trì chuẩn bị nguyên liệu món đứng đầu vào khung giờ cao điểm!`;
+        answer = fillTemplate(t('owner.ai.answerTop'), {
+          first: topFavoriteDishes[0]?.name || 'Phở',
+          firstQty: topFavoriteDishes[0]?.quantity || 0,
+          second: topFavoriteDishes[1]?.name || 'Đồ uống',
+          secondQty: topFavoriteDishes[1]?.quantity || 0,
+          third: topFavoriteDishes[2]?.name || 'Món phụ',
+          thirdQty: topFavoriteDishes[2]?.quantity || 0,
+        });
       } else if (qLower.includes('giảm giá') || qLower.includes('khuyến mãi') || qLower.includes('ưu đãi')) {
-        answer = `🎟️ Chương trình khuyến mãi mã "${tenantConfig.discountCode || 'MUANHIEU15K'}" đang chạy ổn định. Giỏ hàng tối thiểu ${tenantConfig.discountMinItems} món và ${tenantConfig.discountMinAmount?.toLocaleString()}đ để giảm ${tenantConfig.discountAmount?.toLocaleString()}đ giúp tối ưu hóa giá trị đơn hàng khách đặt thêm!`;
+        answer = fillTemplate(t('owner.ai.answerPromo'), {
+          code: tenantConfig.discountCode || 'MUANHIEU15K',
+          minItems: tenantConfig.discountMinItems ?? 0,
+          minAmount: tenantConfig.discountMinAmount?.toLocaleString() ?? '0',
+          amount: tenantConfig.discountAmount?.toLocaleString() ?? '0',
+        });
       } else if (qLower.includes('vận hành') || qLower.includes('nfc') || qLower.includes('qr')) {
-        answer = `⚡ Tính năng dán góc bàn QR & NFC của ScanGo Lite xóa bỏ sai sót nhận đơn, tăng tốc phục vụ bàn lên 80% mà không tăng chi phí nhân lực.`;
+        answer = t('owner.ai.answerNfc');
       } else {
-        answer = `ScanGo AI báo cáo: Hệ thống vận hành trơn tru. Món được đặt nhiều nhất: "${topFavoriteDishes[0]?.name || 'Phở Bò'}". Bạn muốn điều chỉnh danh sách món ăn hay thay đổi mã ưu đãi "${promoCode}"?`;
+        answer = fillTemplate(t('owner.ai.answerDefault'), {
+          topDish: topFavoriteDishes[0]?.name || 'Phở Bò',
+          code: promoCode,
+        });
       }
       setAiChatLogs(prev => [...prev, { sender: 'assistant', text: answer }]);
       setIsTyping(false);
@@ -519,10 +713,10 @@ export default function OwnerView({
             <Building2 className="w-[24px] h-[24px] text-zinc-900" />
           </div>
           <h2 className="text-[24px] font-bold text-[#2D2B30] tracking-tight leading-tight">
-            Thiết lập quán
+            {t('owner.onboarding.title')}
           </h2>
           <p className="text-sm text-[#808080] mt-1 text-pretty font-medium">
-            Tối ưu hóa quy trình trong 15s.
+            {t('owner.onboarding.subtitle')}
           </p>
 
           <div className="flex gap-1.5 mt-[13px]">
@@ -540,23 +734,23 @@ export default function OwnerView({
         <div className="my-[13px] flex-grow flex flex-col justify-center bg-white border border-[#B5C7D8] rounded-[21px] p-[13px] shadow-sm">
           {onboardStep === 1 && (
             <div className="space-y-[13px]">
-              <span className="text-xs text-zinc-900 font-bold ">B1: Thông tin quán</span>
-              <h3 className="text-[16px] font-bold text-[#2D2B30]">Tên thương hiệu</h3>
+              <span className="text-xs text-zinc-900 font-bold ">{t('owner.onboarding.step1')}</span>
+              <h3 className="text-[16px] font-bold text-[#2D2B30]">{t('owner.onboarding.brandLabel')}</h3>
               
               <div className="space-y-[4px]">
-                <label className="block text-xs text-[#7E7E7E] font-semibold ">Tên thương hiệu</label>
+                <label className="block text-xs text-[#7E7E7E] font-semibold ">{t('owner.onboarding.brandLabel')}</label>
                 <input 
                   type="text" 
                   value={tempShopName} 
                   required
                   onChange={(e) => setTempShopName(e.target.value)}
                   className="w-full bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] px-[13px] py-2.5 text-[14px] text-[#2D2B30] focus:outline-2 focus:outline-zinc-900 focus:outline-offset-2 font-semibold shadow-inner"
-                  placeholder="E.g. Phở Kinh Kỳ"
+                  placeholder={t('owner.onboarding.brandPlaceholder')}
                 />
               </div>
 
               <div className="space-y-[4px]">
-                <label className="block text-xs text-[#7E7E7E] font-semibold mb-1.5">Mô hình phân loại</label>
+                <label className="block text-xs text-[#7E7E7E] font-semibold mb-1.5">{t('owner.onboarding.modelLabel')}</label>
                 <div className="grid grid-cols-2 gap-[13px]">
                   <button 
                     onClick={() => { setTempIndustry('quan_an'); setTempShopName('Phở Truyền Thuyết Kinh Kỳ'); }}
@@ -567,7 +761,7 @@ export default function OwnerView({
                     }`}
                   >
                     <UtensilsCrossed className="w-5 h-5" />
-                    <span className="text-xs font-semibold ">Quán ăn / Phở</span>
+                    <span className="text-xs font-semibold ">{t('owner.onboarding.modelRestaurant')}</span>
                   </button>
                   <button 
                     onClick={() => { setTempIndustry('quan_cafe'); setTempShopName('Cà Phê Rang Muối Cổ Đô'); }}
@@ -578,7 +772,7 @@ export default function OwnerView({
                     }`}
                   >
                     <Coffee className="w-5 h-5" />
-                    <span className="text-xs font-semibold ">Cà phê / Trà sữa</span>
+                    <span className="text-xs font-semibold ">{t('owner.onboarding.modelCafe')}</span>
                   </button>
                 </div>
               </div>
@@ -587,8 +781,8 @@ export default function OwnerView({
 
           {onboardStep === 2 && (
             <div className="space-y-[13px]">
-              <span className="text-xs text-zinc-900 font-bold ">B2: Gói tính năng</span>
-              <h3 className="text-[16px] font-bold text-[#2D2B30]">Chọn gói phù hợp</h3>
+              <span className="text-xs text-zinc-900 font-bold ">{t('owner.onboarding.step2')}</span>
+              <h3 className="text-[16px] font-bold text-[#2D2B30]">{t('owner.onboarding.choosePlan')}</h3>
               
               <div className="space-y-[4px]">
                 <button 
@@ -601,9 +795,9 @@ export default function OwnerView({
                     <div className="text-sm font-bold flex items-center gap-1">
                       <Sparkles className="w-3.5 h-3.5 text-amber-500" /> PRO AI
                     </div>
-                    <p className="text-xs text-[#707070]">Tối ưu lợi nhuận, KDS realtime.</p>
+                    <p className="text-xs text-[#707070]">{t('owner.onboarding.proDesc')}</p>
                   </div>
-                  <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-bold">MIỄN PHÍ</span>
+                  <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-bold">{t('owner.onboarding.free')}</span>
                 </button>
               </div>
             </div>
@@ -611,8 +805,8 @@ export default function OwnerView({
 
           {onboardStep === 3 && (
             <div className="space-y-[13px]">
-              <span className="text-xs text-zinc-900 font-bold ">B3: Thanh toán</span>
-              <h3 className="text-[16px] font-bold text-[#2D2B30]">Quy trình thu ngân</h3>
+              <span className="text-xs text-zinc-900 font-bold ">{t('owner.onboarding.step3')}</span>
+              <h3 className="text-[16px] font-bold text-[#2D2B30]">{t('owner.onboarding.cashierFlow')}</h3>
               
               <div className="grid grid-cols-2 gap-[13px]">
                 <button 
@@ -622,7 +816,7 @@ export default function OwnerView({
                   }`}
                 >
                   <Receipt className="w-5 h-5 text-zinc-900" />
-                  <div className="text-xs font-bold leading-tight">Trả sau<br/><span className="text-[8px] font-medium">(Ăn xong thanh toán)</span></div>
+                  <div className="text-xs font-bold leading-tight">{t('owner.onboarding.payLater')}<br/><span className="text-[8px] font-medium">{t('owner.onboarding.payLaterHint')}</span></div>
                 </button>
                 <button 
                   onClick={() => setTempPayMode('Pay-First')}
@@ -631,7 +825,7 @@ export default function OwnerView({
                   }`}
                 >
                   <CreditCard className="w-5 h-5 text-zinc-900" />
-                  <div className="text-xs font-bold leading-tight">Trả trước<br/><span className="text-[8px] font-medium">(Thanh toán tại quầy)</span></div>
+                  <div className="text-xs font-bold leading-tight">{t('owner.onboarding.payFirst')}<br/><span className="text-[8px] font-medium">{t('owner.onboarding.payFirstHint')}</span></div>
                 </button>
               </div>
             </div>
@@ -642,9 +836,9 @@ export default function OwnerView({
               <div className="w-[40px] h-[40px] rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-2">
                 <Check className="w-5 h-5 text-emerald-600" />
               </div>
-              <h3 className="text-[16px] font-bold text-[#2D2B30] text-center">Hoàn tất!</h3>
+              <h3 className="text-[16px] font-bold text-[#2D2B30] text-center">{t('owner.onboarding.doneTitle')}</h3>
               <p className="text-sm text-[#707070] text-center">
-                Workspace đã thiết lập xong. Bạn có thể sử dụng QR, KDS và AI ngay lập tức.
+                {t('owner.onboarding.doneBody')}
               </p>
             </div>
           )}
@@ -654,7 +848,7 @@ export default function OwnerView({
           onClick={nextStep}
           className="w-full bg-zinc-900 hover:bg-zinc-900/90 active:translate-y-0.5 text-white py-3.5 rounded-[21px] font-semibold text-[14px] flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
         >
-          {onboardStep === 4 ? 'Xác nhận Kích Hoạt!' : 'Tiếp Theo'}
+          {onboardStep === 4 ? t('owner.onboarding.activate') : t('owner.onboarding.next')}
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -666,23 +860,28 @@ export default function OwnerView({
     <div className="flex-grow flex flex-col bg-white font-sans text-[#2D2B30] h-full" id="owner-workspace">
       
       <div className="flex-grow overflow-y-auto p-[13px] space-y-[13px] bg-white">
+        {dataError && (
+          <p role="alert" className="rounded-[21px] border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-semibold text-red-700">
+            {dataError}
+          </p>
+        )}
         
         {/* Branch Info Ribbon */}
         <div className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8]/60 shadow-xs relative overflow-hidden select-none">
           <div className="flex justify-between items-start">
             <div className="space-y-[2px]">
-              <span className="text-[9px] font-bold text-[#808080] block">QUẢN LÝ LIVE PLATFORM</span>
+              <span className="text-[9px] font-bold text-[#808080] block">{t('owner.dashboard.livePlatform')}</span>
               <h3 className="text-[16px] font-bold text-[#2D2B30]">{tenantConfig.shopName}</h3>
-              <p className="text-sm text-[#454547] font-medium">Mô hình: {
-                tenantConfig.industry === 'quan_an' ? 'Quán ăn / Phở' : 
-                'Cà phê / Trà sữa'
+              <p className="text-sm text-[#454547] font-medium">{t('owner.dashboard.modelLabel')} {
+                tenantConfig.industry === 'quan_an' ? t('owner.onboarding.modelRestaurant') : 
+                t('owner.onboarding.modelCafe')
               }</p>
             </div>
             <div className="text-right flex flex-col items-end gap-1 select-none">
               <span className="inline-block text-xs font-bold text-zinc-900 bg-zinc-900/10 border border-zinc-900/20 px-2 py-0.5 rounded-[21px]">
-                Gói {tenantConfig.pricingTier.toUpperCase()}
+                {t('owner.dashboard.plan')} {tenantConfig.pricingTier.toUpperCase()}
               </span>
-              <p className="text-[9px] text-[#808080] font-semibold ">Workspace chủ</p>
+              <p className="text-[9px] text-[#808080] font-semibold ">{t('owner.dashboard.workspaceOwner')}</p>
             </div>
           </div>
 
@@ -691,9 +890,54 @@ export default function OwnerView({
               onClick={handleStartOnboarding}
               className="flex items-center gap-1 text-xs text-[#2D2B30] hover:bg-gray-100 bg-white px-2.5 py-1 rounded-[21px] border border-[#B5C7D8] font-semibold transition-all cursor-pointer focus:outline-2 focus:outline-zinc-900"
             >
-              <RefreshCw className="w-3 h-3 text-zinc-900" /> Cài đặt lại mô hình
+              <RefreshCw className="w-3 h-3 text-zinc-900" /> {t('owner.dashboard.resetModel')}
             </button>
           </div>
+
+          {/* Server-owned onboarding checklist (REQ-ONB-001) */}
+          {onboardingChecklist && (
+            <div className="mt-3 rounded-[21px] border border-[#B5C7D8] bg-white p-2.5" data-testid="onboarding-checklist">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-[#2D2B30] uppercase tracking-wider">
+                  {t('owner.dashboard.setup')}
+                </span>
+                <span className="text-[10px] font-bold text-[#155BD0]">
+                  {onboardingChecklist.completedCount}/{onboardingChecklist.totalCount}
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[#F5F5F7]">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-all"
+                  style={{ width: `${onboardingChecklist.completionPercent}%` }}
+                />
+              </div>
+              {onboardingChecklist.isComplete ? (
+                <p className="mt-2 text-[10px] font-semibold text-emerald-700">{t('owner.dashboard.setupComplete')}</p>
+              ) : (
+                <p className="mt-2 text-[10px] font-semibold text-[#707070]">
+                  {t('owner.dashboard.nextStep')}{' '}
+                  {t(ONBOARDING_STEP_LABEL_KEYS[onboardingChecklist.nextIncompleteStep ?? 'shopName'])}
+                </p>
+              )}
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {onboardingStepIds.map(stepId => {
+                  const step = onboardingChecklist.steps.find(s => s.step === stepId);
+                  return (
+                    <span
+                      key={stepId}
+                      className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold ${
+                        step?.isComplete
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          : 'border-[#B5C7D8] bg-[#F5F5F7] text-[#808080]'
+                      }`}
+                    >
+                      {step?.isComplete ? '✓ ' : ''}{t(ONBOARDING_STEP_LABEL_KEYS[stepId])}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Tab Selection Row adhering to minimalist Claude design */}
@@ -704,7 +948,7 @@ export default function OwnerView({
               activeTab === 'kpi' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
           >
-            Báo cáo
+            {t('owner.tab.report')}
           </button>
           <button 
             onClick={() => { setActiveTab('menu'); setShowAddStaff(false); setShowAddIngForm(false); setEditingIng(null); }}
@@ -712,7 +956,7 @@ export default function OwnerView({
               activeTab === 'menu' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
           >
-            Món ăn
+            {t('owner.tab.menu')}
           </button>
           <button 
             onClick={() => { setActiveTab('kho'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); }}
@@ -720,7 +964,7 @@ export default function OwnerView({
               activeTab === 'kho' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
           >
-            Kho / NVL
+            {t('owner.tab.inventory')}
           </button>
           <button 
             onClick={() => { setActiveTab('nfc'); setShowAddForm(false); setEditingItem(null); setShowAddStaff(false); setShowAddIngForm(false); setEditingIng(null); }}
@@ -728,7 +972,7 @@ export default function OwnerView({
               activeTab === 'nfc' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
           >
-            Bàn QR
+            {t('owner.tab.tables')}
           </button>
           <button 
             onClick={() => { setActiveTab('staff'); setShowAddForm(false); setEditingItem(null); setShowAddIngForm(false); setEditingIng(null); }}
@@ -736,7 +980,7 @@ export default function OwnerView({
               activeTab === 'staff' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
           >
-            Nhân viên
+            {t('owner.tab.staff')}
           </button>
 
           <button 
@@ -745,7 +989,7 @@ export default function OwnerView({
               activeTab === 'ai' ? 'bg-white text-[#2D2B30] font-bold border border-[#B5C7D8] shadow-sm' : 'text-[#808080] hover:text-[#2D2B30]'
             }`}
           >
-            Trợ lý AI
+            {t('owner.tab.ai')}
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-500" />
           </button>
         </div>
@@ -755,19 +999,19 @@ export default function OwnerView({
           <div className="space-y-[13px] animate-fadeIn">
             <div className="grid grid-cols-2 gap-[13px]">
               <div className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-xs">
-                <span className="text-xs text-[#808080] block font-bold ">Doanh Thu Thật</span>
+                <span className="text-xs text-[#808080] block font-bold ">{t('owner.kpi.revenue')}</span>
                 <span className="text-[21px] font-bold text-[#2D2B30] mt-0.5 block ">
                   {totalRevenue.toLocaleString()}đ
                 </span>
-                <span className="text-xs text-emerald-800 font-semibold block mt-0.5">✓ Real-time POS</span>
+                <span className="text-xs text-emerald-800 font-semibold block mt-0.5">{t('owner.kpi.realtimePos')}</span>
               </div>
 
               <div className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-xs">
-                <span className="text-xs text-[#808080] block font-bold ">Biên Lợi Nhuận</span>
+                <span className="text-xs text-[#808080] block font-bold ">{t('owner.kpi.profit')}</span>
                 <span className="text-[21px] font-bold text-zinc-900 mt-0.5 block ">
                   {netProfit.toLocaleString()}đ
                 </span>
-                <span className="text-xs text-[#808080] block mt-0.5 font-sans leading-none">Vốn NVL: {totalCost.toLocaleString()}đ</span>
+                <span className="text-xs text-[#808080] block mt-0.5 font-sans leading-none">{t('owner.kpi.costPrefix')} {totalCost.toLocaleString()}đ</span>
               </div>
             </div>
 
@@ -775,9 +1019,9 @@ export default function OwnerView({
             <div className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-xs space-y-[13px]">
               <div className="flex justify-between items-center border-b border-[#B5C7D8]/30 pb-2">
                 <span className="text-sm font-bold text-[#2D2B30] flex items-center gap-1.5">
-                  <Flame className="w-4 h-4 text-zinc-900" /> Món được đặt chọn phổ biến
+                  <Flame className="w-4 h-4 text-zinc-900" /> {t('owner.kpi.topDishes')}
                 </span>
-                <span className="text-xs bg-[#F5F5F7] border border-[#B5C7D8] text-[#454547] px-2 py-0.5 rounded-[21px] font-bold leading-none select-none">Live-chart</span>
+                <span className="text-xs bg-[#F5F5F7] border border-[#B5C7D8] text-[#454547] px-2 py-0.5 rounded-[21px] font-bold leading-none select-none">{t('owner.kpi.liveChart')}</span>
               </div>
 
               <div className="space-y-[13px] pt-1">
@@ -795,7 +1039,7 @@ export default function OwnerView({
                           <span className="font-semibold text-[#2D2B30] truncate">{dish.name}</span>
                           <span className="text-xs text-[#808080] flex-shrink-0">({dish.category})</span>
                         </div>
-                        <span className="font-semibold text-[#2D2B30] flex-shrink-0 ">{dish.quantity} lượt đặt</span>
+                        <span className="font-semibold text-[#2D2B30] flex-shrink-0 ">{dish.quantity} {t('owner.kpi.ordersSuffix')}</span>
                       </div>
                       
                       <div className="w-full bg-[#F5F5F7] rounded-full h-2 overflow-hidden border border-[#B5C7D8]/30">
@@ -815,21 +1059,21 @@ export default function OwnerView({
               <div className="bg-white p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-xs">
                 <div className="flex justify-between items-center border-b border-[#B5C7D8]/30 pb-2">
                   <span className="text-sm font-bold text-[#2D2B30] flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-zinc-900" /> Tích luỹ hội viên ({loyaltyMembers.length} người)
+                    <Users className="w-4 h-4 text-zinc-900" /> {t('owner.kpi.loyalty')} ({loyaltyMembers.length} {t('owner.kpi.peopleSuffix')})
                   </span>
-                  <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-semibold select-none">Tăng trưởng chốt đơn</span>
+                  <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-semibold select-none">{t('owner.kpi.growth')}</span>
                 </div>
                 
                 <div className="mt-2.5 space-y-1.5 max-h-[120px] overflow-y-auto">
                   {loyaltyMembers.map((member) => (
                     <div key={member.phone} className="flex justify-between text-sm bg-[#F5F5F7] p-2 rounded-[21px] border border-[#B5C7D8] tracking-tight">
                       <div>
-                        <div className="font-semibold text-[#2D2B30]">{member.name || 'Hội Viên Mới'}</div>
-                        <div className="text-[#808080] text-xs ">SĐT: {member.phone} • Ghé: {member.visits} lần</div>
+                        <div className="font-semibold text-[#2D2B30]">{member.name || t('owner.kpi.newMember')}</div>
+                        <div className="text-[#808080] text-xs ">{t('owner.kpi.phonePrefix')} {member.phone} • {t('owner.kpi.visitsPrefix')} {member.visits} {t('owner.kpi.timesSuffix')}</div>
                       </div>
                       <div className="text-right">
-                        <span className="font-bold text-zinc-900 ">{member.points} điểm tích</span>
-                        <div className="text-[#808080] text-xs font-light">{member.isVerified ? '✓ Đã verify OTP' : 'Tạm'}</div>
+                        <span className="font-bold text-zinc-900 ">{member.points} {t('owner.kpi.pointsSuffix')}</span>
+                        <div className="text-[#808080] text-xs font-light">{member.isVerified ? t('owner.kpi.verified') : t('owner.kpi.pending')}</div>
                       </div>
                     </div>
                   ))}
@@ -845,15 +1089,15 @@ export default function OwnerView({
             
             <div className="flex justify-between items-center select-none">
               <div>
-                <span className="text-sm font-bold text-[#2D2B30]">Danh Sách Thực Đơn</span>
-                <p className="text-xs text-[#808080] leading-none mt-0.5">Khóa món dán bàn chuẩn xác</p>
+                <span className="text-sm font-bold text-[#2D2B30]">{t('owner.menu.heading')}</span>
+                <p className="text-xs text-[#808080] leading-none mt-0.5">{t('owner.menu.headingHint')}</p>
               </div>
               
               <button 
                 onClick={handleStartAddForm}
                 className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm px-[13px] py-2 rounded-[21px] flex items-center gap-1 transition-all cursor-pointer font-semibold shadow-xs focus:outline-2 focus:outline-zinc-900"
               >
-                <Plus className="w-3.5 h-3.5" /> Thêm Món
+                <Plus className="w-3.5 h-3.5" /> {t('owner.menu.addDish')}
               </button>
             </div>
 
@@ -861,24 +1105,24 @@ export default function OwnerView({
             <div className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8] space-y-3 relative overflow-hidden text-[#2D2B30]">
               <div className="flex items-center gap-1.5 border-b border-[#B5C7D8]/60 pb-2">
                 <Gift className="w-4 h-4 text-zinc-900" />
-                <span className="text-sm font-bold text-[#2D2B30] ">MÃ KHUYẾN MÃI CHIẾN DỊCH</span>
-                <span className="text-xs bg-white border border-[#B5C7D8] text-zinc-900 px-2 py-0.5 rounded-[21px] font-bold ml-auto ">COUPON CODE</span>
+                <span className="text-sm font-bold text-[#2D2B30] ">{t('owner.menu.promoHeading')}</span>
+                <span className="text-xs bg-white border border-[#B5C7D8] text-zinc-900 px-2 py-0.5 rounded-[21px] font-bold ml-auto ">{t('owner.menu.couponCode')}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-[13px] text-sm ">
                 <div className="space-y-[4px]">
-                  <label className="block text-xs text-[#808080] font-bold select-none">Mã Khuyến Mãi</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.promoCode')}</label>
                   <input 
                     type="text" 
                     value={promoCode} 
                     onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                     className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-sm text-[#2D2B30] font-bold focus:outline-none focus:border-zinc-900"
-                    placeholder="E.g. GIAM15K"
+                    placeholder={t('owner.menu.promoCodePlaceholder')}
                   />
                 </div>
                 
                 <div className="space-y-[4px]">
-                  <label className="block text-xs text-[#808080] font-bold select-none">Mức Giảm Giá (đ)</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.discountAmount')}</label>
                   <input 
                     type="number" 
                     value={promoAmount} 
@@ -888,32 +1132,32 @@ export default function OwnerView({
                 </div>
 
                 <div className="space-y-[4px]">
-                  <label className="block text-xs text-[#808080] font-bold select-none">Cách Kích Hoạt</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.trigger')}</label>
                   <select
                     value={promoTriggerType}
                     onChange={(e) => setPromoTriggerType(e.target.value as 'auto' | 'manual')}
                     className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-xs font-semibold text-[#2D2B30] focus:outline-none"
                   >
-                    <option value="auto">⚡ Tự động áp dụng khi đủ kiện</option>
-                    <option value="manual">🔑 Khách tự nhập mã Coupon</option>
+                    <option value="auto">{t('owner.menu.triggerAuto')}</option>
+                    <option value="manual">{t('owner.menu.triggerManual')}</option>
                   </select>
                 </div>
 
                 <div className="space-y-[4px]">
-                  <label className="block text-xs text-[#808080] font-bold select-none">Tiêu Chí Khách Đạt</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.condition')}</label>
                   <select
                     value={promoConditionType}
                     onChange={(e) => setPromoConditionType(e.target.value as 'amount' | 'quantity' | 'both')}
                     className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-xs font-semibold text-[#2D2B30] focus:outline-none"
                   >
-                    <option value="amount">💰 Theo tổng số tiền tối thiểu</option>
-                    <option value="quantity">🛒 Theo số lượng món ăn</option>
-                    <option value="both">🚀 Đạt CẢ số lượng & số tiền</option>
+                    <option value="amount">{t('owner.menu.conditionAmount')}</option>
+                    <option value="quantity">{t('owner.menu.conditionQuantity')}</option>
+                    <option value="both">{t('owner.menu.conditionBoth')}</option>
                   </select>
                 </div>
 
                 <div className="space-y-[4px]">
-                  <label className="block text-xs text-[#808080] font-bold select-none">Số nước/món tối thiểu</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.minItems')}</label>
                   <input 
                     type="number" 
                     disabled={promoConditionType === 'amount'}
@@ -924,7 +1168,7 @@ export default function OwnerView({
                 </div>
 
                 <div className="space-y-[4px]">
-                  <label className="block text-xs text-[#808080] font-bold select-none">Tổng giá tối thiểu (đ)</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.minAmount')}</label>
                   <input 
                     type="number" 
                     disabled={promoConditionType === 'quantity'}
@@ -935,15 +1179,15 @@ export default function OwnerView({
                 </div>
 
                 <div className="space-y-[4px] col-span-2">
-                  <label className="block text-xs text-[#808080] font-bold select-none">Mức ăn áp dụng riêng biệt</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.targetDish')}</label>
                   <select
                     value={promoTargetDishId}
                     onChange={(e) => setPromoTargetDishId(e.target.value)}
                     className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-xs font-semibold text-[#2D2B30] focus:outline-none"
                   >
-                    <option value="all">🌐 Áp dụng cho toàn bộ giỏ hàng</option>
+                    <option value="all">{t('owner.menu.targetAll')}</option>
                     {menuItems.map(m => (
-                      <option key={m.id} value={m.id}>🎯 Chỉ áp dụng riêng món: {m.name} ({m.price.toLocaleString()}đ)</option>
+                      <option key={m.id} value={m.id}>{t('owner.menu.targetItem')} {m.name} ({m.price.toLocaleString()}đ)</option>
                     ))}
                   </select>
                 </div>
@@ -957,19 +1201,19 @@ export default function OwnerView({
                     onChange={(e) => setPromoEnabled(e.target.checked)}
                     className="rounded text-zinc-900 focus:ring-zinc-900 w-3.5 h-3.5"
                   />
-                  <span>Áp dụng chiến dịch</span>
+                  <span>{t('owner.menu.applyCampaign')}</span>
                 </label>
 
                 <button 
                   onClick={handleUpdatePromoSettings}
                   className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm font-semibold px-4 py-1.5 rounded-[21px] cursor-pointer shadow-xs focus:outline-2 focus:outline-zinc-900"
                 >
-                  Áp dụng thay đổi
+                  {t('owner.menu.applyChanges')}
                 </button>
               </div>
 
               <p className="text-xs text-[#707070] italic leading-relaxed bg-white p-2.5 rounded-[21px] border border-[#B5C7D8]">
-                👉 Chương trình kích hoạt: Mã <strong>{promoCode}</strong> giảm giá <strong>{promoAmount.toLocaleString()}đ</strong> {promoTriggerType === 'auto' ? 'ngay lập tức khi đủ điều kiện.' : 'khi khách nhập đúng mã.'} 
+                {t('owner.menu.campaignSummary').split('{code}')[0]}<strong>{promoCode}</strong>{t('owner.menu.campaignSummary').split('{code}')[1].split('{amount}')[0]}<strong>{promoAmount.toLocaleString()}đ</strong>{t('owner.menu.campaignSummary').split('{amount}')[1].split('{timing}')[0]}{promoTriggerType === 'auto' ? t('owner.menu.campaignAuto') : t('owner.menu.campaignManual')}
               </p>
             </div>
 
@@ -981,33 +1225,33 @@ export default function OwnerView({
               >
                 <div className="flex justify-between items-center border-b border-[#B5C7D8]/30 pb-2">
                   <span className="font-bold text-[#2D2B30] ">
-                    {showAddForm ? '➕ Thêm món mới vào kho' : '📝 Cập nhật món ăn'}
+                    {showAddForm ? t('owner.menu.addDishTitle') : t('owner.menu.editDishTitle')}
                   </span>
                   <button 
                     type="button" 
                     onClick={() => { setShowAddForm(false); setEditingItem(null); }}
                     className="text-[#808080] font-bold hover:text-red-500 font-sans"
                   >
-                    Hủy [X]
+                    {t('owner.menu.cancelTitle')}
                   </button>
                 </div>
 
                 <div className="space-y-[13px]">
                   <div className="space-y-[4px]">
-                    <label className="block text-xs text-[#808080] font-bold select-none">Tên sản phẩm *</label>
+                    <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.productName')}</label>
                     <input 
                       type="text" 
                       required
                       value={formName} 
                       onChange={(e) => setFormName(e.target.value)}
                       className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-sm "
-                      placeholder="E.g. Phở mọc chuẩn vị..."
+                      placeholder={t('owner.menu.productNamePlaceholder')}
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-[13px]">
                     <div className="space-y-[4px]">
-                      <label className="block text-xs text-[#808080] font-bold select-none">Giá bán khách hàng (đ)</label>
+                      <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.sellPrice')}</label>
                       <input 
                         type="number" 
                         required
@@ -1017,7 +1261,7 @@ export default function OwnerView({
                       />
                     </div>
                     <div className="space-y-[4px]">
-                      <label className="block text-xs text-[#808080] font-bold select-none">Giá vốn nguyên liệu * (đ)</label>
+                      <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.costPrice')}</label>
                       <input 
                         type="number" 
                         required
@@ -1030,32 +1274,32 @@ export default function OwnerView({
 
                   <div className="grid grid-cols-3 gap-[13px]">
                     <div className="space-y-[4px]">
-                      <label className="block text-xs text-[#808080] font-bold select-none">Mục hàng</label>
+                      <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.category')}</label>
                       <select 
                         value={formCategory}
                         onChange={(e) => setFormCategory(e.target.value)}
                         className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-1.5 py-1.5 font-semibold text-sm "
                       >
-                        <option value="Món nước">Món nước</option>
-                        <option value="Khô & Bún">Khô & Bún</option>
-                        <option value="Ăn kèm">Ăn kèm</option>
-                        <option value="Đồ uống">Đồ uống</option>
-                        <option value="Tráng miệng">Tráng miệng</option>
+                        <option value="Món nước">{t('owner.category.noodles')}</option>
+                        <option value="Khô & Bún">{t('owner.category.dry')}</option>
+                        <option value="Ăn kèm">{t('owner.category.side')}</option>
+                        <option value="Đồ uống">{t('owner.category.drink')}</option>
+                        <option value="Tráng miệng">{t('owner.category.dessert')}</option>
                       </select>
                     </div>
                     <div className="space-y-[4px]">
-                      <label className="block text-xs text-[#808080] font-bold select-none">Kiểu món</label>
+                      <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.type')}</label>
                       <input 
                         type="text"
                         required
                         value={formType}
                         onChange={(e) => setFormType(e.target.value)}
                         className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 font-semibold text-sm "
-                        placeholder="E.g. Đồ ăn, Đồ uống"
+                        placeholder={t('owner.menu.typePlaceholder')}
                       />
                     </div>
                     <div className="space-y-[4px]">
-                      <label className="block text-xs text-[#808080] font-bold select-none">Tồn ban đầu</label>
+                      <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.stock')}</label>
                       <input 
                         type="number" 
                         required
@@ -1067,23 +1311,23 @@ export default function OwnerView({
                   </div>
 
                   <div className="space-y-[4px]">
-                    <label className="block text-xs text-[#808080] font-bold select-none">Mô tả món</label>
+                    <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.description')}</label>
                     <textarea 
                       value={formDescription} 
                       onChange={(e) => setFormDescription(e.target.value)}
                       className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 h-12"
-                      placeholder="Món ăn chuẩn vị Hà Thành..."
+                      placeholder={t('owner.menu.descriptionPlaceholder')}
                     />
                   </div>
 
                   <div className="space-y-[4px]">
-                    <label className="block text-xs text-[#808080] font-bold select-none">Đường dẫn ảnh sản phẩm (URL)</label>
+                    <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.menu.imageUrl')}</label>
                     <input 
                       type="text" 
                       value={formImage} 
                       onChange={(e) => setFormImage(e.target.value)}
                       className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 text-sm "
-                      placeholder="Dán link ảnh Unsplash hoặc chọn preset..."
+                      placeholder={t('owner.menu.imagePlaceholder')}
                     />
                     
                     <div className="flex gap-1.5 pt-1 overflow-x-auto whitespace-nowrap scrollbar-none">
@@ -1103,7 +1347,7 @@ export default function OwnerView({
                   </div>
 
                   <div className="space-y-[4px]">
-                    <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Topping thêm cho món</label>
+                    <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">{t('owner.menu.toppings')}</label>
                     {formToppings.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-2">
                         {formToppings.map((t, i) => (
@@ -1115,22 +1359,22 @@ export default function OwnerView({
                       </div>
                     )}
                     <div className="flex gap-1.5">
-                      <input type="text" value={newToppingName} onChange={(e) => setNewToppingName(e.target.value)} placeholder="Tên topping" className="flex-1 bg-white border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 text-[11px] focus:outline-2 focus:outline-[#155BD0]" />
-                      <input type="number" min={0} value={newToppingPrice} onChange={(e) => setNewToppingPrice(Number(e.target.value))} placeholder="Giá" className="w-20 bg-white border border-[#B5C7D8] rounded-[21px] px-2 py-1.5 text-[11px] tabular-nums focus:outline-2 focus:outline-[#155BD0]" />
-                      <button type="button" onClick={() => { if (newToppingName.trim() && newToppingPrice >= 0) { setFormToppings(prev => [...prev, { name: newToppingName.trim(), price: newToppingPrice }]); setNewToppingName(''); setNewToppingPrice(0); } }} className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white text-[10px] font-bold px-3 rounded-[21px] cursor-pointer">+ Thêm</button>
+                      <input type="text" value={newToppingName} onChange={(e) => setNewToppingName(e.target.value)} placeholder={t('owner.menu.toppingName')} className="flex-1 bg-white border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 text-[11px] focus:outline-2 focus:outline-[#155BD0]" />
+                      <input type="number" min={0} value={newToppingPrice} onChange={(e) => setNewToppingPrice(Number(e.target.value))} placeholder={t('owner.menu.toppingPrice')} className="w-20 bg-white border border-[#B5C7D8] rounded-[21px] px-2 py-1.5 text-[11px] tabular-nums focus:outline-2 focus:outline-[#155BD0]" />
+                      <button type="button" onClick={() => { if (newToppingName.trim() && newToppingPrice >= 0) { setFormToppings(prev => [...prev, { name: newToppingName.trim(), price: newToppingPrice }]); setNewToppingName(''); setNewToppingPrice(0); } }} className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white text-[10px] font-bold px-3 rounded-[21px] cursor-pointer">{t('owner.menu.add')}</button>
                     </div>
                   </div>
 
                   {/* Recipe selection */}
                   <div className="space-y-[4px]">
-                    <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">Công thức (Trừ kho tự động)</label>
+                    <label className="block text-[10px] uppercase text-[#808080] font-bold select-none">{t('owner.menu.recipe')}</label>
                     {formRecipe.length > 0 && (
                       <div className="flex flex-col gap-1.5 mb-2">
                         {formRecipe.map((r, i) => {
                           const ing = ingredients.find(x => x.id === r.ingredientId);
                           return (
                             <div key={i} className="flex justify-between items-center bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 text-[11px] font-semibold">
-                              <span>{ing?.name || 'Nguyên liệu'} <span className="text-[#808080] font-normal">({r.quantity} {ing?.unit})</span></span>
+                              <span>{ing?.name || t('owner.menu.ingredient')} <span className="text-[#808080] font-normal">({r.quantity} {ing?.unit})</span></span>
                               <button type="button" onClick={() => setFormRecipe(prev => prev.filter((_, j) => j !== i))} className="text-red-500 hover:text-red-700 font-bold">&times;</button>
                             </div>
                           );
@@ -1139,13 +1383,13 @@ export default function OwnerView({
                     )}
                     <div className="flex gap-1.5">
                       <select value={newRecipeIngId} onChange={(e) => setNewRecipeIngId(e.target.value)} className="flex-1 bg-white border border-[#B5C7D8] rounded-[21px] px-2.5 py-1.5 text-[11px] font-semibold focus:outline-2 focus:outline-zinc-900">
-                        <option value="">Chọn nguyên liệu...</option>
+                        <option value="">{t('owner.menu.chooseIngredient')}</option>
                         {ingredients.map(ing => (
                           <option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>
                         ))}
                       </select>
                       <input type="number" min={0} step="0.01" value={newRecipeQty} onChange={(e) => setNewRecipeQty(Number(e.target.value))} placeholder="SL" className="w-16 bg-white border border-[#B5C7D8] rounded-[21px] px-2 py-1.5 text-[11px] tabular-nums focus:outline-2 focus:outline-zinc-900" />
-                      <button type="button" onClick={() => { if (newRecipeIngId && newRecipeQty > 0) { setFormRecipe(prev => [...prev, { ingredientId: newRecipeIngId, quantity: newRecipeQty }]); setNewRecipeIngId(''); setNewRecipeQty(0); } }} className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[10px] font-bold px-3 rounded-[21px] cursor-pointer">+ Thêm</button>
+                      <button type="button" onClick={() => { if (newRecipeIngId && newRecipeQty > 0) { setFormRecipe(prev => [...prev, { ingredientId: newRecipeIngId, quantity: newRecipeQty }]); setNewRecipeIngId(''); setNewRecipeQty(0); } }} className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-[10px] font-bold px-3 rounded-[21px] cursor-pointer">{t('owner.menu.add')}</button>
                     </div>
                   </div>
                 </div>
@@ -1155,14 +1399,14 @@ export default function OwnerView({
                     type="submit"
                     className="flex-1 bg-zinc-900 hover:bg-zinc-900/95 text-white font-semibold py-2.5 rounded-[21px]"
                   >
-                    {showAddForm ? 'XÁC NHẬN THÊM' : 'SỬA THAY ĐỔI'}
+                    {showAddForm ? t('owner.menu.confirmAdd') : t('owner.menu.confirmEdit')}
                   </button>
                   <button 
                     type="button"
                     onClick={() => { setShowAddForm(false); setEditingItem(null); }}
                     className="bg-transparent text-[#808080] px-4 hover:underline py-2 rounded-[21px] font-semibold"
                   >
-                    Bỏ qua
+                    {t('owner.menu.skip')}
                   </button>
                 </div>
               </form>
@@ -1196,9 +1440,7 @@ export default function OwnerView({
                         </button>
                         <button 
                           type="button"
-                          onClick={() => {
-                            setMenuItems(prev => prev.filter(m => m.id !== item.id));
-                          }}
+                          onClick={() => handleArchiveDish(item.id)}
                           className="p-1.5 text-zinc-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1208,8 +1450,8 @@ export default function OwnerView({
 
                     <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-zinc-100">
                       <div className="flex items-center gap-2 text-[9px] text-zinc-500 tracking-tight flex-wrap">
-                        <span>Gốc: {(item.costPrice || Math.round(item.price*0.4)).toLocaleString()}đ</span>
-                        <span>Kho: {item.stockCount}</span>
+                        <span>{t('owner.menu.costLabel')} {(item.costPrice || Math.round(item.price*0.4)).toLocaleString()}đ</span>
+                        <span>{t('owner.menu.stockLabel')} {item.stockCount}</span>
                       </div>
                       
                       <button 
@@ -1221,7 +1463,7 @@ export default function OwnerView({
                             : 'bg-zinc-200 text-zinc-600'
                         }`}
                       >
-                        {item.inStock ? 'ĐANG BÁN' : 'TẠM ẨN'}
+                        {item.inStock ? t('owner.menu.onSale') : t('owner.menu.hidden')}
                       </button>
                     </div>
                   </div>
@@ -1236,9 +1478,9 @@ export default function OwnerView({
           <div className="space-y-[13px] animate-fadeIn">
             <div className="flex justify-between items-center">
               <div className="space-y-[4px]">
-                <h4 className="text-sm font-bold text-[#2D2B30]">Quản lý Kho Nguyên Liệu</h4>
+                <h4 className="text-sm font-bold text-[#2D2B30]">{t('owner.inventory.heading')}</h4>
                 <p className="text-[11px] text-[#707070] font-medium leading-relaxed">
-                  Thiết lập nguyên liệu để trừ kho tự động khi bếp nấu xong.
+                  {t('owner.inventory.hint')}
                 </p>
               </div>
               {!showAddIngForm && (
@@ -1246,7 +1488,7 @@ export default function OwnerView({
                   onClick={handleStartAddIng}
                   className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm px-[13px] py-1.5 rounded-[21px] flex items-center gap-1 shadow-sm font-semibold transition-all cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Thêm Nguyên Liệu
+                  <Plus className="w-3.5 h-3.5" /> {t('owner.inventory.add')}
                 </button>
               )}
             </div>
@@ -1254,20 +1496,20 @@ export default function OwnerView({
             {(showAddIngForm || editingIng) && (
               <form onSubmit={handleIngSubmit} className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8] shadow-sm animate-fadeIn space-y-[13px]">
                 <div className="space-y-[4px]">
-                  <label className="block text-xs text-[#808080] font-bold select-none">Tên nguyên liệu</label>
+                  <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.inventory.name')}</label>
                   <input 
                     type="text" 
                     required
                     value={ingFormName} 
                     onChange={(e) => setIngFormName(e.target.value)}
                     className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-sm "
-                    placeholder="VD: Thịt bò bắp, Gạo tẻ..."
+                    placeholder={t('owner.inventory.namePlaceholder')}
                   />
                 </div>
 
                 <div className="grid grid-cols-3 gap-[13px]">
                   <div className="space-y-[4px]">
-                    <label className="block text-xs text-[#808080] font-bold select-none">Giá vốn (đ)</label>
+                    <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.inventory.cost')}</label>
                     <input 
                       type="number" 
                       required
@@ -1277,18 +1519,18 @@ export default function OwnerView({
                     />
                   </div>
                   <div className="space-y-[4px]">
-                    <label className="block text-xs text-[#808080] font-bold select-none">Đơn vị tính</label>
+                    <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.inventory.unit')}</label>
                     <input 
                       type="text" 
                       required
                       value={ingFormUnit} 
                       onChange={(e) => setIngFormUnit(e.target.value)}
                       className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-sm "
-                      placeholder="VD: kg, gam, lít..."
+                      placeholder={t('owner.inventory.unitPlaceholder')}
                     />
                   </div>
                   <div className="space-y-[4px]">
-                    <label className="block text-xs text-[#808080] font-bold select-none">Tồn kho hiện tại</label>
+                    <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.inventory.stock')}</label>
                     <input 
                       type="number" 
                       required
@@ -1304,14 +1546,14 @@ export default function OwnerView({
                     type="submit"
                     className="flex-1 bg-zinc-900 hover:bg-zinc-900/95 text-white font-semibold py-2.5 rounded-[21px]"
                   >
-                    {showAddIngForm ? 'LƯU NGUYÊN LIỆU' : 'CẬP NHẬT'}
+                    {showAddIngForm ? t('owner.inventory.save') : t('owner.inventory.update')}
                   </button>
                   <button 
                     type="button"
                     onClick={() => { setShowAddIngForm(false); setEditingIng(null); }}
                     className="bg-transparent text-[#808080] px-4 hover:underline py-2 rounded-[21px] font-semibold"
                   >
-                    Huỷ
+                    {t('owner.inventory.cancel')}
                   </button>
                 </div>
               </form>
@@ -1323,7 +1565,7 @@ export default function OwnerView({
                   <div>
                     <h4 className="text-sm font-bold text-[#2D2B30]">{ing.name}</h4>
                     <p className="text-[11px] font-medium text-[#808080] mt-0.5">
-                      Giá: {ing.costPrice.toLocaleString()}đ / {ing.unit} &bull; Tồn: <span className={ing.stock <= 0 ? "text-red-500 font-bold" : "text-emerald-600 font-bold"}>{ing.stock} {ing.unit}</span>
+                      {t('owner.inventory.costPrefix')} {ing.costPrice.toLocaleString()}đ / {ing.unit} &bull; {t('owner.inventory.stockPrefix')} <span className={ing.stock <= 0 ? "text-red-500 font-bold" : "text-emerald-600 font-bold"}>{ing.stock} {ing.unit}</span>
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -1344,7 +1586,7 @@ export default function OwnerView({
               ))}
               {ingredients.length === 0 && (
                 <div className="text-center py-6 text-[#808080] text-sm italic border-2 border-dashed border-[#B5C7D8]/50 rounded-[21px]">
-                  Chưa có nguyên liệu nào.
+                  {t('owner.inventory.empty')}
                 </div>
               )}
             </div>
@@ -1357,21 +1599,21 @@ export default function OwnerView({
         {activeTab === 'nfc' && (
           <div className="space-y-[13px] animate-fadeIn">
             <div className="space-y-[4px]">
-              <h4 className="text-sm font-bold text-[#2D2B30]">Quản Lý Bàn Ăn & QR Đặt Món</h4>
+              <h4 className="text-sm font-bold text-[#2D2B30]">{t('owner.tables.heading')}</h4>
               <p className="text-sm text-[#707070] leading-relaxed text-pretty">
-                Mỗi bàn ăn tự động phát hành 1 mã QR bảo mật. Hãy chạm giả lập NFC dán bàn hoặc quét QR bên dưới để phân luồng trực tiếp hóa đơn và đặt món cho tệp khách.
+                {t('owner.tables.hint')}
               </p>
             </div>
 
             <form onSubmit={handleAddTableSubmit} className="bg-[#F5F5F7] p-[13px] rounded-[21px] border border-[#B5C7D8] flex gap-[13px] items-end shadow-2xs">
               <div className="flex-1 space-y-[4px]">
-                <label className="block text-xs text-[#808080] font-bold select-none">Tên bàn ăn mới cần thêm</label>
+                <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.tables.newLabel')}</label>
                 <input 
                   type="text"
                   required
                   value={newTableName}
                   onChange={(e) => setNewTableName(e.target.value)}
-                  placeholder="Ví dụ: Bàn VIP 07, Bàn Sân Vườn 02..."
+                  placeholder={t('owner.tables.newPlaceholder')}
                   className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-[13px] py-1.5 text-sm text-[#2D2B30] font-semibold focus:outline-none focus:border-zinc-900 shadow-sm"
                 />
               </div>
@@ -1379,14 +1621,14 @@ export default function OwnerView({
                 type="submit"
                 className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm px-[13px] py-2.5 rounded-[21px] flex items-center gap-1 shadow-sm h-[38px] transition-all font-semibold cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" /> Thêm Bàn
+                <Plus className="w-3.5 h-3.5" /> {t('owner.tables.add')}
               </button>
             </form>
 
             <div className="bg-white border border-[#B5C7D8] rounded-[21px] p-[13px] space-y-[13px] shadow-xs">
               <div className="text-sm font-bold text-[#2D2B30] border-b border-[#B5C7D8]/30 pb-2 flex items-center justify-between select-none">
-                <span>BÀN ĐANG VẬN HÀNH ({tables.length})</span>
-                <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-bold">QR SG-LITE CHỐNG GIAN LẬN</span>
+                <span>{t('owner.tables.active')} ({tables.length})</span>
+                <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-250 px-2 py-0.5 rounded-[21px] font-bold">{t('owner.tables.antiFraud')}</span>
               </div>
               
               <div className="grid grid-cols-2 gap-[13px] max-h-[280px] overflow-y-auto pr-1">
@@ -1403,7 +1645,7 @@ export default function OwnerView({
                         type="button"
                         onClick={() => handleDeleteTable(table.id)}
                         className="absolute top-2 right-2 p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-full border border-red-100 transition-colors cursor-pointer"
-                        title="Xoá bàn"
+                        title={t('owner.tables.delete')}
                       >
                         <Trash className="w-3 h-3" />
                       </button>
@@ -1420,7 +1662,7 @@ export default function OwnerView({
                             value={editingTableOriginalName}
                             onChange={(e) => setEditingTableOriginalName(e.target.value)}
                             className="w-full bg-white border border-zinc-900 text-center text-sm font-bold py-1 px-1 rounded-[21px] focus:outline-none"
-                            placeholder="Tên bàn"
+                            placeholder={t('owner.tables.namePlaceholder')}
                           />
                           <div className="flex gap-1 justify-center">
                             <button 
@@ -1428,14 +1670,14 @@ export default function OwnerView({
                               onClick={() => handleSaveTableName(table.id)}
                               className="bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-[21px] flex items-center gap-0.5 cursor-pointer "
                             >
-                              <Check className="w-2.5 h-2.5" /> Lưu
+                              <Check className="w-2.5 h-2.5" /> {t('owner.tables.save')}
                             </button>
                             <button 
                               type="button"
                               onClick={() => setEditingTableId(null)}
                               className="bg-gray-100 text-[#2D2B30] text-[9px] font-bold px-2.5 py-0.5 rounded-[21px] cursor-pointer"
                             >
-                              Huỷ
+                              {t('owner.tables.cancel')}
                             </button>
                   </div>
                 </div>
@@ -1446,13 +1688,13 @@ export default function OwnerView({
                             <button 
                               type="button"
                               onClick={() => handleStartEditingTable(table.id, table.name)}
-                              title="Sửa tên bàn"
+                              title={t('owner.tables.rename')}
                               className="text-zinc-900 hover:text-[#0858DC] p-0.5 bg-gray-50 rounded cursor-pointer"
                             >
                               <Edit2 className="w-2.5 h-2.5" />
                             </button>
                           </div>
-                          <p className="text-[9px] text-[#808080] leading-none mt-1 select-none ">ID: {table.id}</p>
+                          <p className="text-[9px] text-[#808080] leading-none mt-1 select-none ">{t('owner.tables.idPrefix')} {table.id}</p>
                         </div>
                       )}
 
@@ -1462,7 +1704,7 @@ export default function OwnerView({
                           onClick={() => setSelectedQrTableId(tableIdStr)}
                           className="w-full bg-zinc-900 hover:bg-zinc-900/95 text-white text-[9px] py-1.5 rounded-[21px] font-semibold transition-colors cursor-pointer"
                         >
-                          Hiển Thị QR
+                          {t('owner.tables.showQr')}
                         </button>
 
                         <button 
@@ -1470,7 +1712,7 @@ export default function OwnerView({
                           onClick={() => onTriggerNfcTag(tableIdStr)}
                           className="w-full bg-gray-100 hover:bg-gray-200 text-[#2D2B30] border border-[#B5C7D8] text-[9px] py-1.5 rounded-[21px] font-semibold shadow-2xs cursor-pointer"
                         >
-                          Giả lập NFC Tap
+                          {t('owner.tables.nfc')}
                         </button>
                       </div>
                     </div>
@@ -1485,12 +1727,12 @@ export default function OwnerView({
                 <div className="bg-white p-[34px] rounded-[21px] border border-[#B5C7D8] max-w-xs w-full text-center space-y-[13px] shadow-2xl">
                   
                   <div className="flex justify-between items-center border-b border-[#B5C7D8]/30 pb-2.5 select-none">
-                    <span className="text-sm font-bold text-[#2D2B30]">Xác xuất QR gọi món</span>
+                    <span className="text-sm font-bold text-[#2D2B30]">{t('owner.tables.qrTitle')}</span>
                     <button 
                       onClick={() => setSelectedQrTableId(null)}
                       className="text-[#808080] font-bold hover:text-red-500 font-sans cursor-pointer"
                     >
-                      [X] Đóng
+                      {t('owner.tables.close')}
                     </button>
                   </div>
 
@@ -1512,15 +1754,15 @@ export default function OwnerView({
                     </div>
 
                     <span className="text-[14px] font-bold text-[#2D2B30] tracking-tight">
-                      {tables.find(t => t.id === selectedQrTableId)?.name || `Bàn ${selectedQrTableId}`}
+                      {tables.find(t => t.id === selectedQrTableId)?.name || `${t('customer.table.badge')} ${selectedQrTableId}`}
                     </span>
                     <p className="text-[9px] text-[#808080] font-semibold select-none leading-none">
-                      SCANGO LITE QR SERVICE ACTIVE
+                      {t('owner.tables.qrActive')}
                     </p>
                   </div>
 
                   <p className="text-sm text-[#707070] text-pretty leading-relaxed">
-                    Khách tại bàn <strong>"{tables.find(t => t.id === selectedQrTableId)?.name}"</strong> quét mã QR dán bàn để lập tức tự động đặt món không chờ phục vụ đưa giấy.
+                    {t('owner.tables.qrBody').split('{table}')[0]}<strong>"{tables.find(t => t.id === selectedQrTableId)?.name}"</strong>{t('owner.tables.qrBody').split('{table}')[1]}
                   </p>
 
                   <div className="space-y-[4px]">
@@ -1528,14 +1770,14 @@ export default function OwnerView({
                       onClick={() => handleSimulateQrScan(selectedQrTableId!)}
                       className="w-full bg-zinc-900 hover:bg-zinc-900/90 text-white py-2.5 rounded-[21px] text-sm font-bold shadow-sm cursor-pointer "
                     >
-                      📱 Giả Lập quét QR đặt món
+                      {t('owner.tables.simulateQr')}
                     </button>
 
                     <button
                       onClick={() => setSelectedQrTableId(null)}
                       className="w-full text-[#808080] hover:text-[#2D2B30] bg-transparent py-1 text-sm "
                     >
-                      Quay lại Dashboard
+                      {t('owner.tables.backDashboard')}
                     </button>
                   </div>
 
@@ -1552,9 +1794,9 @@ export default function OwnerView({
             <div className="bg-[#F5F5F7] p-2 border-b border-[#B5C7D8]/45 flex items-center justify-between select-none">
               <div className="flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span className="text-xs font-semibold text-[#2D2B30] ">Trợ lý AI ScanGo Co-pilot</span>
+                <span className="text-xs font-semibold text-[#2D2B30] ">{t('owner.ai.title')}</span>
               </div>
-              <span className="text-[9px] bg-slate-200 border border-slate-350 text-slate-800 px-1.5 py-0.5 rounded-[21px] font-semibold ">WORKSPACE</span>
+              <span className="text-[9px] bg-slate-200 border border-slate-350 text-slate-800 px-1.5 py-0.5 rounded-[21px] font-semibold ">{t('owner.ai.workspace')}</span>
             </div>
 
             <div className="flex-grow overflow-y-auto p-2 space-y-2 text-sm bg-[#F5F5F7]/30">
@@ -1572,7 +1814,7 @@ export default function OwnerView({
               ))}
               {isTyping && (
                 <div className="bg-transparent text-[#808080] p-2 leading-none text-xs animate-pulse">
-                  AI Co-pilot đang phân tích dữ liệu...
+                  {t('owner.ai.typing')}
                 </div>
               )}
             </div>
@@ -1580,22 +1822,22 @@ export default function OwnerView({
             {/* Quick Prompts buttons */}
             <div className="p-1 px-[13px] border-t border-[#B5C7D8]/30 flex gap-[4px] overflow-x-auto whitespace-nowrap bg-white select-none text-xs scrollbar-none">
               <button 
-                onClick={() => handleAiQuestion('Món ăn nào trong top yêu thích của quán?')}
+                onClick={() => handleAiQuestion(t('owner.ai.promptTop'))}
                 className="bg-[#F5F5F7] text-[#2D2B30] hover:bg-gray-200 px-3 py-1.5 rounded-[21px] border border-[#B5C7D8] font-semibold shadow-2xs flex-shrink-0"
               >
-                🔥 Sản phẩm nào bán chạy nhất?
+                {t('owner.ai.promptTop')}
               </button>
               <button 
-                onClick={() => handleAiQuestion('Phân tích lợi nhuận lãi lỗ hôm nay?')}
+                onClick={() => handleAiQuestion(t('owner.ai.promptProfit'))}
                 className="bg-[#F5F5F7] text-[#2D2B30] hover:bg-gray-200 px-3 py-1.5 rounded-[21px] border border-[#B5C7D8] font-semibold shadow-2xs flex-shrink-0"
               >
-                📊 Phân tích tiền lãi & chi phí?
+                {t('owner.ai.promptProfit')}
               </button>
               <button 
-                onClick={() => handleAiQuestion('Giải thích tối ưu mã khuyến mãi giảm giá?')}
+                onClick={() => handleAiQuestion(t('owner.ai.promptPromo'))}
                 className="bg-[#F5F5F7] text-[#2D2B30] hover:bg-gray-200 px-3 py-1.5 rounded-[21px] border border-[#B5C7D8] font-semibold shadow-2xs flex-shrink-0"
               >
-                🎟️ Đánh giá ưu đãi giảm giá?
+                {t('owner.ai.promptPromo')}
               </button>
             </div>
 
@@ -1605,14 +1847,14 @@ export default function OwnerView({
                 type="text" 
                 value={chatInput} 
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Tra xuất lãi lỗ, đề xuất kinh doanh..."
+                placeholder={t('owner.ai.placeholder')}
                 className="flex-grow bg-white border border-[#B5C7D8] rounded-[21px] px-[13px] py-1.5 text-sm text-[#2D2B30] font-sans focus:outline-none focus:border-zinc-900 shadow-sm font-medium"
               />
               <button 
                 type="submit"
                 className="bg-zinc-900 hover:bg-zinc-900/90 text-white text-sm px-4 rounded-[21px] font-bold shadow-sm cursor-pointer"
               >
-                Gửi
+                {t('owner.ai.send')}
               </button>
             </form>
           </div>
@@ -1623,13 +1865,13 @@ export default function OwnerView({
             <div className="flex items-center justify-between">
               <h3 className="text-[12px] font-bold flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#155BD0]" />
-                Tài khoản nhân viên
+                {t('owner.staff.heading')}
               </h3>
               <button
                 onClick={() => setShowAddStaff(!showAddStaff)}
                 className="bg-[#155BD0] hover:bg-[#155BD0]/90 text-white text-[10px] px-3 py-1.5 rounded-[21px] font-semibold transition-all cursor-pointer"
               >
-                + Thêm
+                {t('owner.staff.add')}
               </button>
             </div>
 
@@ -1638,13 +1880,13 @@ export default function OwnerView({
                 <input
                   value={newStaffName}
                   onChange={e => setNewStaffName(e.target.value)}
-                  placeholder="Tên nhân viên"
+                  placeholder={t('owner.staff.namePlaceholder')}
                   className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-2 text-[12px] text-[#2D2B30] focus:outline-2 focus:outline-[#155BD0]"
                 />
                 <input
                   value={newStaffPin}
                   onChange={e => setNewStaffPin(e.target.value)}
-                  placeholder="Mã PIN (3-6 số)"
+                  placeholder={t('owner.staff.pinPlaceholder')}
                   type="password"
                   inputMode="numeric"
                   maxLength={6}
@@ -1658,7 +1900,7 @@ export default function OwnerView({
                       onChange={e => setNewStaffRoles(p => ({ ...p, isKitchen: e.target.checked }))}
                       className="accent-[#155BD0]"
                     />
-                    Bếp
+                    {t('owner.staff.roleKitchen')}
                   </label>
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -1667,7 +1909,7 @@ export default function OwnerView({
                       onChange={e => setNewStaffRoles(p => ({ ...p, isWaiter: e.target.checked }))}
                       className="accent-[#155BD0]"
                     />
-                    Phục vụ
+                    {t('owner.staff.roleWaiter')}
                   </label>
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -1676,30 +1918,30 @@ export default function OwnerView({
                       onChange={e => setNewStaffRoles(p => ({ ...p, isCashier: e.target.checked }))}
                       className="accent-[#155BD0]"
                     />
-                    Thu ngân
+                    {t('owner.staff.roleCashier')}
                   </label>
                 </div>
                 <button
                   type="submit"
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] py-2 rounded-[21px] font-semibold transition-colors cursor-pointer"
                 >
-                  Lưu nhân viên
+                  {t('owner.staff.save')}
                 </button>
               </form>
             )}
 
             <div className="space-y-[4px]">
               {staffAccounts.length === 0 && (
-                <p className="text-[#8E8E93] text-xs text-center py-4">Chưa có nhân viên nào. Thêm nhân viên để bắt đầu.</p>
+                <p className="text-[#8E8E93] text-xs text-center py-4">{t('owner.staff.empty')}</p>
               )}
               {staffAccounts.map(account => (
                 <div key={account.id} className="flex items-center justify-between bg-white border border-[#B5C7D8] p-3 rounded-[21px] text-[12px]">
                   <div className="space-y-1">
                     <p className="font-semibold text-[#2D2B30]">{account.name}</p>
                     <div className="flex gap-1">
-                      {account.roles.isKitchen && <span className="bg-[#155BD0]/10 text-[#155BD0] text-[9px] px-2 py-0.5 rounded-full font-semibold">Bếp</span>}
-                      {account.roles.isWaiter && <span className="bg-emerald-600/10 text-emerald-700 text-[9px] px-2 py-0.5 rounded-full font-semibold">Phục vụ</span>}
-                      {account.roles.isCashier && <span className="bg-amber-600/10 text-amber-700 text-[9px] px-2 py-0.5 rounded-full font-semibold">Thu ngân</span>}
+                      {account.roles.isKitchen && <span className="bg-[#155BD0]/10 text-[#155BD0] text-[9px] px-2 py-0.5 rounded-full font-semibold">{t('owner.staff.roleKitchen')}</span>}
+                      {account.roles.isWaiter && <span className="bg-emerald-600/10 text-emerald-700 text-[9px] px-2 py-0.5 rounded-full font-semibold">{t('owner.staff.roleWaiter')}</span>}
+                      {account.roles.isCashier && <span className="bg-amber-600/10 text-amber-700 text-[9px] px-2 py-0.5 rounded-full font-semibold">{t('owner.staff.roleCashier')}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1711,7 +1953,7 @@ export default function OwnerView({
                           : 'bg-gray-100 text-[#8E8E93]'
                       }`}
                     >
-                      {account.isActive ? 'Hoạt động' : 'Tạm ngưng'}
+                      {account.isActive ? t('owner.staff.active') : t('owner.staff.inactive')}
                     </button>
                     <button
                       onClick={() => handleDeleteStaff(account.id)}

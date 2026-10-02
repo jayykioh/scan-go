@@ -1,20 +1,15 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import type {
-  ResolvedConfig,
   TenantConfigOverrideInput,
+  TenantVisibleResolvedConfig,
   UpdateTenantConfigResult,
 } from '@contracts/config.contract';
-import { resolveConfig } from '@shared/config/resolve';
 import {
   getFirebaseAuth,
   getFirebaseFirestore,
   getFirebaseFunctions,
 } from '../../services/firebase/client';
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 async function readActiveTenantId(
   db: NonNullable<ReturnType<typeof getFirebaseFirestore>>,
@@ -28,36 +23,30 @@ async function readActiveTenantId(
   return typeof activeTenantId === 'string' ? activeTenantId : null;
 }
 
-export async function getResolvedConfig(): Promise<ResolvedConfig | null> {
+/**
+ * `platform/config` is not readable by every signed-in user, so the resolved
+ * configuration with its leaf source map comes from the Config query
+ * callable. The callable authorizes the caller's tenant membership.
+ */
+export async function getResolvedConfig(): Promise<TenantVisibleResolvedConfig | null> {
+  const functions = getFirebaseFunctions();
   const db = getFirebaseFirestore();
   const uid = getFirebaseAuth()?.currentUser?.uid;
-  if (!db || !uid) {
+  if (!functions || !db || !uid) {
     return null;
   }
 
   const tenantId = await readActiveTenantId(db, uid);
+  if (!tenantId) {
+    return null;
+  }
 
-  const [platformSnap, tenantSnap] = await Promise.all([
-    getDoc(doc(db, 'platform', 'config')),
-    tenantId ? getDoc(doc(db, 'tenants', tenantId)) : Promise.resolve(null),
-  ]);
-
-  const admin = platformSnap.exists() ? platformSnap.get('values') : null;
-  const allowedRaw = platformSnap.exists()
-    ? platformSnap.get('allowedTenantOverrideKeys')
-    : null;
-  const tenant =
-    tenantSnap && tenantSnap.exists()
-      ? tenantSnap.get('configOverrides')
-      : null;
-
-  return resolveConfig({
-    admin: isPlainObject(admin) ? admin : null,
-    tenant: isPlainObject(tenant) ? tenant : null,
-    allowedTenantOverrideKeys: Array.isArray(allowedRaw)
-      ? allowedRaw.map(String)
-      : null,
-  });
+  const callable = httpsCallable<{ tenantId: string }, TenantVisibleResolvedConfig>(
+    functions,
+    'callableConfigGetResolved',
+  );
+  const result = await callable({ tenantId });
+  return result.data;
 }
 
 export async function updateTenantConfig(

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import {
   isFirebaseConfigured,
+  mapAuthError,
   registerOwner,
   registerWithEmail,
 } from '../data/adapters/auth.adapter';
@@ -27,9 +28,7 @@ export default function RegisterPage() {
       toast.success('Khởi tạo thành công.');
       navigate('/dashboard');
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Không thể khởi tạo.',
-      );
+      toast.error(mapAuthError(error));
     } finally {
       setLoading(false);
     }

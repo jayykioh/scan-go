@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TenantConfig, TableConfig, Order, LoyaltyMember } from '../types';
+import {
+  confirmPayment,
+  listUnpaidOrders,
+  subscribeOrderPayment,
+} from '../data/adapters/payment.adapter';
+import { cancelUnpaidOrder } from '../data/adapters/ordering.adapter';
+import { toViewOrder } from '../data/adapters/view-mappers';
 import { 
   CreditCard, 
   Table, 
@@ -14,25 +21,116 @@ import {
 interface CashierProps {
   tenantConfig: TenantConfig;
   tables: TableConfig[];
-  orders: Order[];
-  setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
   loyaltyMembers: LoyaltyMember[];
-  setLoyaltyMembers: React.Dispatch<React.SetStateAction<LoyaltyMember[]>>;
+  /** Tenant scope for the unpaid queue and settlement command. */
+  tenantId?: string;
   embedded?: boolean;
 }
+
+import {
+  createSettlementKeyFactory,
+  SettlementKeyStore,
+} from '../data/adapters/settlement-keys';
 
 export default function CashierView({
   tenantConfig,
   tables,
-  orders,
-  setOrders,
   loyaltyMembers,
-  setLoyaltyMembers,
+  tenantId,
   embedded = false,
 }: CashierProps) {
   const [cashierActiveShift, setCashierActiveShift] = useState(false);
   const [cashierPin, setCashierPin] = useState('');
   const [cashierPinError, setCashierPinError] = useState('');
+  const [settlementError, setSettlementError] = useState<string | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  // One idempotency key per Order, reused on retry until a confirmed result.
+  const settlementKeys = useRef(new SettlementKeyStore(createSettlementKeyFactory()));
+  // One idempotency key per Order for cancellation retries.
+  const cancelKeys = useRef(new Map<string, string>());
+
+  const refreshUnpaid = useCallback(async () => {
+    if (!tenantId) return;
+    try {
+      const unpaid = await listUnpaidOrders(tenantId);
+      setOrders(unpaid.map(toViewOrder));
+      setSettlementError(null);
+    } catch (error) {
+      setSettlementError(
+        error instanceof Error ? error.message : 'Không tải được danh sách nợ.',
+      );
+    }
+  }, [tenantId]);
+
+  useEffect(() => {
+    void refreshUnpaid();
+  }, [refreshUnpaid]);
+
+  // Confirm a settlement and refresh the queue from the committed result.
+  const handleSettleOrder = async (orderId: string, method: 'cash' | 'vietQr') => {
+    const activeOrderObj = orders.find(o => o.id === orderId);
+    if (!activeOrderObj || !tenantId) return;
+
+    setSettlementError(null);
+    setPendingOrderId(orderId);
+
+    const idempotencyKey = settlementKeys.current.keyFor(orderId);
+
+    try {
+      await confirmPayment({
+        tenantId,
+        orderId,
+        method,
+        amountVnd: activeOrderObj.total,
+        idempotencyKey,
+      });
+      // A confirmed result is final; drop the key and the settled Order.
+      settlementKeys.current.clear(orderId);
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+    } catch (error) {
+      setSettlementError(
+        error instanceof Error ? error.message : 'Không thể xác nhận thanh toán.',
+      );
+    } finally {
+      setPendingOrderId(null);
+    }
+  };
+
+  // Cancel one unpaid Order with a mandatory reason. The server restores the
+  // recorded Inventory deductions exactly once (REQ-CAS-002, REQ-INV-002).
+  const handleCancelOrder = async () => {
+    if (!cancelTargetId || !tenantId) return;
+    const reason = cancelReason.trim();
+    if (reason.length === 0) {
+      setCancelError('Vui lòng nhập lý do huỷ đơn.');
+      return;
+    }
+    setCancelError(null);
+    const key =
+      cancelKeys.current.get(cancelTargetId) ??
+      `idem-cancel-${cancelTargetId}-${crypto.randomUUID()}`;
+    cancelKeys.current.set(cancelTargetId, key);
+    try {
+      await cancelUnpaidOrder({
+        tenantId,
+        orderId: cancelTargetId,
+        reason,
+        idempotencyKey: key,
+      });
+      cancelKeys.current.delete(cancelTargetId);
+      setOrders(prev => prev.filter(o => o.id !== cancelTargetId));
+      setCancelTargetId(null);
+      setCancelReason('');
+    } catch (error) {
+      setCancelError(
+        error instanceof Error ? error.message : 'Không thể huỷ đơn hàng.',
+      );
+    }
+  };
 
   const handleCashierLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,38 +142,25 @@ export default function CashierView({
     }
   };
 
-  const handleSettleOrder = (orderId: string) => {
-    // Collect order phone to accumulate loyalty points
-    const activeOrderObj = orders.find(o => o.id === orderId);
-    
-    if (activeOrderObj && activeOrderObj.customerPhone) {
-      const spentAmount = activeOrderObj.total;
-      const additionalPoints = Math.floor(spentAmount / 10000); // 1 point per 10k spendings
-      
-      setLoyaltyMembers(prev => prev.map(member => {
-        if (member.phone === activeOrderObj.customerPhone) {
-          return {
-            ...member,
-            points: member.points + additionalPoints,
-            totalSpent: member.totalSpent + spentAmount,
-            visits: member.visits + 1
-          };
-        }
-        return member;
-      }));
-    }
+  // Observe the immutable Payment record for one Order while it is open.
+  const unpaidOrderIds = orders.map((order) => order.id).join('|');
+  useEffect(() => {
+    if (!tenantId || unpaidOrderIds.length === 0) return;
+    const unsubscribers = unpaidOrderIds.split('|').map((orderId) =>
+      subscribeOrderPayment(
+        tenantId,
+        orderId,
+        (payment) => {
+          if (payment) {
+            setOrders(prev => prev.filter(o => o.id !== orderId));
+          }
+        },
+        (error) => setSettlementError(error.message),
+      ),
+    );
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, [tenantId, unpaidOrderIds]);
 
-    setOrders(prev => prev.map(o => {
-      if (o.id === orderId) {
-        return { ...o, status: 'paid' };
-      }
-      return o;
-    }));
-  };
-
-  const handleCancelOrder = (orderId: string) => {
-    setOrders(prev => prev.filter(o => o.id !== orderId));
-  };
 
   // Login Screen
   if (!embedded && !cashierActiveShift) {
@@ -220,20 +305,35 @@ export default function CashierView({
                       <div className="flex gap-2">
                         <button 
                           type="button"
-                          onClick={() => handleCancelOrder(order.id)}
+                          onClick={() => {
+                            setCancelError(null);
+                            setCancelReason('');
+                            setCancelTargetId(order.id);
+                          }}
                           className="p-2 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
-                          title="Hủy hóa đơn"
+                          title="Huỷ đơn chưa thanh toán"
+                          aria-label="Huỷ đơn chưa thanh toán"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                         
                         <button 
                           type="button"
-                          onClick={() => handleSettleOrder(order.id)}
-                          className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                          onClick={() => void handleSettleOrder(order.id, 'cash')}
+                          disabled={pendingOrderId === order.id}
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
                         >
                           <CheckCircle className="w-4 h-4" />
                           Thu tiền
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => void handleSettleOrder(order.id, 'vietQr')}
+                          disabled={pendingOrderId === order.id}
+                          className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          VietQR
                         </button>
                       </div>
                     </div>
@@ -244,11 +344,57 @@ export default function CashierView({
           </div>
         )}
 
-        {/* Loyalty details list for cashier verification */}
-        <div className="bg-white border border-[#B5C7D8] p-[13px] rounded-[21px] shadow-sm text-[#2D2B30] space-y-[13px]">
+        {settlementError && (
+          <p role="alert" className="text-xs font-semibold text-red-600">
+            {settlementError}
+          </p>
+        )}
+
+        {cancelTargetId && (
+          <div
+            role="dialog"
+            aria-label="Huỷ đơn hàng"
+            className="rounded-[21px] border border-red-200 bg-red-50 p-[13px] space-y-2"
+          >
+            <p className="text-sm font-bold text-red-700">Lý do huỷ đơn</p>
+            <textarea
+              value={cancelReason}
+              onChange={(event) => setCancelReason(event.target.value)}
+              maxLength={500}
+              rows={2}
+              className="w-full rounded-xl border border-red-200 bg-white p-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-red-400"
+              placeholder="Ví dụ: khách đổi ý"
+            />
+            {cancelError && (
+              <p role="alert" className="text-xs font-semibold text-red-600">
+                {cancelError}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void handleCancelOrder()}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-xl"
+              >
+                Xác nhận huỷ
+              </button>
+              <button
+                type="button"
+                onClick={() => setCancelTargetId(null)}
+                className="bg-white border border-zinc-200 text-zinc-700 font-bold text-xs px-4 py-2 rounded-xl"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loyalty details list for cashier verification (P2 mock; no M1 contract) */}
+        <div className="bg-white border border-[#B5C7D8] p-[13px] rounded-[21px] shadow-sm text-[#2D2B30] space-y-[13px]" data-testid="loyalty-demo">
           <div className="text-sm font-bold text-[#2D2B30] flex items-center gap-[4px] select-none">
             <CheckCircle className="w-4 h-4 text-zinc-900" />
             Hội viên trung thành hệ thống
+            <span className="ml-auto text-[9px] font-bold text-[#808080] uppercase">Demo</span>
           </div>
           
           <div className="space-y-[4px]">

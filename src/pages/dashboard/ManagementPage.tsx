@@ -1,204 +1,327 @@
-import React from 'react';
-import { BadgeInfo, CalendarDays, CircleDollarSign, Store, TrendingUp, Users, Table2, ReceiptText } from 'lucide-react';
-import { usePersistentState } from '../../hooks/usePersistentState';
-import { Order, StaffAccount, TableConfig, TenantConfig } from '../../types';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  BadgeInfo,
+  Building2,
+  History,
+  Loader2,
+  Phone,
+  RefreshCw,
+  ShieldCheck,
+  Store,
+  Archive,
+  ArchiveRestore,
+} from 'lucide-react';
+import type {
+  AdminAuditListResult,
+  AdminCustomerPhoneListResult,
+  AdminTenantSummary,
+} from '@contracts/admin.contract';
+import type { AuditEvent } from '@contracts/audit.contract';
+import {
+  changeAdminTenant,
+  hasAdminClaim,
+  listAdminAudit,
+  listAdminCustomerPhones,
+  listAdminTenants,
+  openAdminTenant,
+  phoneDisplayValue,
+} from '../../data/adapters/admin.adapter';
 
-const defaultTenant: TenantConfig = {
-  shopName: 'Bún Phở Kinh Kỳ',
-  industry: 'quan_an',
-  pricingTier: 'Pro',
-  paymentMode: 'Pay-Later',
-  loyaltyEnabled: true,
-  loyaltyRate: 1,
-  onboardingStep: 4,
-  discountCode: 'MUANHIEU15K',
-  discountMinItems: 3,
-  discountMinAmount: 150000,
-  discountAmount: 15000,
-  discountEnabled: true,
-  discountTriggerType: 'auto',
-  discountConditionType: 'quantity',
-  discountTargetDishId: 'all',
-};
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'Thao tác ADMIN thất bại.';
+}
 
-const defaultTables: TableConfig[] = [
-  { id: '1', name: 'Bàn 01' },
-  { id: '2', name: 'Bàn 02' },
-  { id: '3', name: 'Bàn 03' },
-];
-
-const defaultStaff: StaffAccount[] = [];
-
-const money = (value: number) => value.toLocaleString('vi-VN') + 'đ';
-
-const asDate = (value: string | Date) => (value instanceof Date ? value : new Date(value));
-
+/**
+ * ADMIN console. The server verifies the platform claim on every call, and the
+ * audit panel shows the audit event each ADMIN change records. Reads write no
+ * audit (REQ-ADM-001, NFR-PRIV-001). This screen is UI-only gating; the server
+ * stays authoritative.
+ */
 export default function ManagementPage() {
-  const [tenantConfig] = usePersistentState<TenantConfig>('scango:tenant:v1', defaultTenant);
-  const [orders] = usePersistentState<Order[]>('scango:orders:v1', []);
-  const [tables] = usePersistentState<TableConfig[]>('scango:tables:v1', defaultTables);
-  const [staffAccounts] = usePersistentState<StaffAccount[]>('scango:staff:v1', defaultStaff);
+  const [checkingClaim, setCheckingClaim] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [tenants, setTenants] = useState<AdminTenantSummary[]>([]);
+  const [selected, setSelected] = useState<AdminTenantSummary | null>(null);
+  const [audit, setAudit] = useState<AuditEvent[]>([]);
+  const [phones, setPhones] = useState<AdminCustomerPhoneListResult | null>(
+    null,
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const paidOrders = orders.filter(order => order.status === 'paid');
-  const revenue = paidOrders.reduce((sum, order) => sum + order.total, 0);
-  const todayKey = new Date().toDateString();
-  const todayRevenue = paidOrders.reduce((sum, order) => {
-    return asDate(order.timestamp).toDateString() === todayKey ? sum + order.total : sum;
-  }, 0);
-  const unpaidOrders = orders.filter(order => order.status !== 'paid').length;
-  const averageTicket = paidOrders.length > 0 ? Math.round(revenue / paidOrders.length) : 0;
-  const activeTables = tables.length;
-  const activeStaff = staffAccounts.filter(staff => staff.isActive).length;
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const allowed = await hasAdminClaim();
+      if (cancelled) return;
+      setIsAdmin(allowed);
+      setCheckingClaim(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const revenueByTable = paidOrders.reduce<Record<string, number>>((acc, order) => {
-    acc[order.tableId] = (acc[order.tableId] || 0) + order.total;
-    return acc;
-  }, {});
+  const loadTenants = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await listAdminTenants();
+      setTenants(result.tenants);
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const topTables = Object.entries(revenueByTable)
-    .map(([tableId, total]) => ({
-      tableId,
-      total,
-      name: tables.find(table => table.id === tableId)?.name || `Bàn ${tableId}`,
-    }))
-    .sort((left, right) => right.total - left.total)
-    .slice(0, 3);
+  useEffect(() => {
+    if (isAdmin) {
+      void loadTenants();
+    }
+  }, [isAdmin, loadTenants]);
 
-  const shopFacts = [
-    { label: 'Tên quán', value: tenantConfig.shopName },
-    { label: 'Loại hình', value: tenantConfig.industry === 'quan_an' ? 'Quán ăn / Phở' : tenantConfig.industry === 'quan_cafe' ? 'Quán cà phê / trà sữa' : tenantConfig.industry === 'nha_hang' ? 'Nhà hàng / quán nhậu' : tenantConfig.industry },
-    { label: 'Gói dịch vụ', value: tenantConfig.pricingTier },
-    { label: 'Thanh toán', value: tenantConfig.paymentMode === 'Pay-First' ? 'Trả trước' : 'Trả sau' },
-    { label: 'Bật loyalty', value: tenantConfig.loyaltyEnabled ? `Có - ${tenantConfig.loyaltyRate} điểm / 10.000đ` : 'Không' },
-    { label: 'Trạng thái onboarding', value: tenantConfig.onboardingStep >= 4 ? 'Hoàn tất' : `Bước ${tenantConfig.onboardingStep}/4` },
-  ];
+  const openTenant = async (tenantId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const opened = await openAdminTenant(tenantId);
+      setSelected(opened.tenant);
+      const [auditResult, phoneResult] = await Promise.all([
+        listAdminAudit(tenantId),
+        listAdminCustomerPhones(tenantId),
+      ]);
+      setAudit(auditResult.events);
+      setPhones(phoneResult);
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const changeTenant = async (
+    tenant: AdminTenantSummary,
+    action: 'archive' | 'restore',
+  ) => {
+    const reason = window.prompt(
+      action === 'archive' ? 'Lý do lưu trữ' : 'Lý do khôi phục',
+      action === 'archive' ? 'ADMIN archive' : 'ADMIN restore',
+    );
+    if (!reason || !reason.trim()) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await changeAdminTenant(tenant.tenantId, action, reason.trim());
+      setSelected(result.tenant);
+      setTenants((current) =>
+        current.map((entry) =>
+          entry.tenantId === result.tenant.tenantId ? result.tenant : entry,
+        ),
+      );
+      const auditResult = await listAdminAudit(result.tenant.tenantId);
+      setAudit(auditResult.events);
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (checkingClaim) {
+    return (
+      <div className="p-12 flex items-center gap-3 text-zinc-500 font-mono text-xs uppercase tracking-widest">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        Đang kiểm tra quyền ADMIN
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="p-6 md:p-12 max-w-2xl mx-auto">
+        <div className="border-hard bg-white p-8 shadow-hard space-y-3">
+          <ShieldCheck className="w-8 h-8 text-red-600" />
+          <h1 className="text-2xl font-black uppercase tracking-tight text-zinc-950">
+            Khu vực ADMIN
+          </h1>
+          <p className="text-sm text-zinc-600">
+            Tài khoản này không có quyền ADMIN. Mọi truy cập đều bị máy chủ từ chối.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 md:p-12 w-full max-w-7xl mx-auto animate-fadeIn space-y-8">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
         <div className="space-y-3 max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-none border border-orange-200 bg-orange-50 px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-orange-700">
-            <CircleDollarSign className="w-3.5 h-3.5" />
-            Quản lý doanh thu & thông tin quán
+          <div className="inline-flex items-center gap-2 border border-orange-200 bg-orange-50 px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-orange-700">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            ADMIN có xác minh máy chủ
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold text-zinc-950 uppercase tracking-tighter leading-none">
-            Theo dõi tiền vào quán, cấu hình quán, và trạng thái vận hành.
+            Mở mọi cửa hàng, mọi thay đổi ADMIN đều được ghi audit.
           </h1>
           <p className="text-sm md:text-base text-zinc-500 max-w-xl">
-            Trang này gom các chỉ số quan trọng nhất cho chủ quán: doanh thu đã thu, đơn chờ xử lý, số bàn đang dùng, và cấu hình quán hiện tại.
+            Chỉ thay đổi ADMIN (lưu trữ, khôi phục) tạo sự kiện audit. Thao tác đọc
+            không ghi audit. ADMIN không ghi trực tiếp vào dữ liệu nghiệp vụ.
           </p>
         </div>
+        <button
+          onClick={() => void loadTenants()}
+          className="inline-flex items-center gap-2 border-hard bg-white px-4 py-3 font-mono text-xs font-bold uppercase tracking-widest shadow-hard hover:bg-zinc-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Tải lại
+        </button>
+      </header>
 
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="min-w-40 rounded-none border-hard bg-white p-4 shadow-hard">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">Doanh thu hôm nay</p>
-            <p className="mt-2 text-2xl font-black text-zinc-950">{money(todayRevenue)}</p>
-          </div>
-          <div className="min-w-40 rounded-none border-hard bg-zinc-950 p-4 shadow-hard text-white">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400">Tổng đã thu</p>
-            <p className="mt-2 text-2xl font-black text-orange-400">{money(revenue)}</p>
-          </div>
+      {error && (
+        <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
         </div>
-      </div>
+      )}
 
-      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {[
-          { label: 'Tổng doanh thu', value: money(revenue), icon: CircleDollarSign },
-          { label: 'Đơn chờ xử lý', value: unpaidOrders.toString(), icon: ReceiptText },
-          { label: 'Giá trị đơn trung bình', value: money(averageTicket), icon: TrendingUp },
-          { label: 'Bàn / Nhân sự active', value: `${activeTables} / ${activeStaff}`, icon: Users },
-        ].map(item => (
-          <article key={item.label} className="rounded-none border-hard bg-white p-5 shadow-hard flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-none bg-orange-50 text-orange-600 border border-orange-100">
-              <item.icon className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">{item.label}</p>
-              <p className="mt-2 text-2xl font-black text-zinc-950 leading-none">{item.value}</p>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
-        <article className="rounded-none border-hard bg-white p-6 md:p-8 shadow-hard space-y-6">
+      <section className="grid grid-cols-1 xl:grid-cols-[1fr_1fr] gap-6">
+        <article className="border-hard bg-white p-6 shadow-hard space-y-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-none bg-zinc-950 text-white">
-              <Store className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-black uppercase tracking-tight text-zinc-950">Thông tin quán</h2>
-              <p className="text-sm text-zinc-500">Thông tin vận hành đang được dùng trong simulator và dashboard.</p>
-            </div>
+            <Store className="w-5 h-5 text-orange-600" />
+            <h2 className="text-lg font-black uppercase tracking-tight text-zinc-950">
+              Cửa hàng ({tenants.length})
+            </h2>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {shopFacts.map(fact => (
-              <div key={fact.label} className="rounded-none border border-zinc-100 bg-zinc-50 p-4">
-                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">{fact.label}</p>
-                <p className="mt-2 text-sm font-bold text-zinc-950 leading-snug">{fact.value}</p>
+          <div className="space-y-3 max-h-[32rem] overflow-y-auto">
+            {tenants.length === 0 && (
+              <p className="text-sm text-zinc-500">Chưa có cửa hàng.</p>
+            )}
+            {tenants.map((tenant) => (
+              <div
+                key={tenant.tenantId}
+                className={`border p-4 space-y-2 ${
+                  selected?.tenantId === tenant.tenantId
+                    ? 'border-orange-400 bg-orange-50/50'
+                    : 'border-zinc-100 bg-zinc-50'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-zinc-950">
+                      {tenant.shopName}
+                    </p>
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+                      {tenant.tenantId} · {tenant.pricingTier} · {tenant.state}
+                    </p>
+                  </div>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+                    {tenant.memberCount} thành viên
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => void openTenant(tenant.tenantId)}
+                    className="inline-flex items-center gap-1 border border-zinc-300 bg-white px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-100"
+                  >
+                    <Building2 className="w-3.5 h-3.5" /> Mở
+                  </button>
+                  {tenant.state === 'archived' ? (
+                    <button
+                      onClick={() => void changeTenant(tenant, 'restore')}
+                      className="inline-flex items-center gap-1 border border-emerald-300 bg-emerald-50 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-emerald-700"
+                    >
+                      <ArchiveRestore className="w-3.5 h-3.5" /> Khôi phục
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => void changeTenant(tenant, 'archive')}
+                      className="inline-flex items-center gap-1 border border-red-300 bg-red-50 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-red-700"
+                    >
+                      <Archive className="w-3.5 h-3.5" /> Lưu trữ
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
-
-          <div className="rounded-none border border-orange-100 bg-orange-50/60 p-5">
-            <div className="flex items-center gap-2 text-orange-700 font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
-              <BadgeInfo className="w-4 h-4" />
-              Gợi ý nhanh
-            </div>
-            <p className="mt-3 text-sm text-zinc-700 leading-relaxed">
-              Nếu muốn theo dõi doanh thu chi tiết hơn, có thể nối thêm biểu đồ theo ngày, theo ca, hoặc tách doanh thu theo từng bàn ngay trong trang này.
-            </p>
-          </div>
         </article>
 
-        <article className="rounded-none border-hard bg-zinc-950 p-6 md:p-8 shadow-hard text-white space-y-6">
+        <article className="border-hard bg-zinc-950 p-6 shadow-hard text-white space-y-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-none bg-orange-600 text-white">
-              <CalendarDays className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-black uppercase tracking-tight text-white">Bảng theo dõi nhanh</h2>
-              <p className="text-sm text-zinc-400">Các bàn mang lại doanh thu cao nhất trong dữ liệu hiện tại.</p>
-            </div>
+            <History className="w-5 h-5 text-orange-400" />
+            <h2 className="text-lg font-black uppercase tracking-tight">
+              Audit gần đây
+            </h2>
           </div>
-
-          <div className="space-y-3">
-            {topTables.length === 0 ? (
-              <div className="rounded-none border border-white/10 bg-white/5 p-4 text-sm text-zinc-300">
-                Chưa có đơn đã thanh toán để thống kê theo bàn.
-              </div>
-            ) : (
-              topTables.map((table, index) => (
-                <div key={table.tableId} className="rounded-none border border-white/10 bg-white/5 p-4 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400">Top {index + 1}</p>
-                    <h3 className="mt-1 text-lg font-black text-white">{table.name}</h3>
-                  </div>
-                  <p className="text-lg font-black text-orange-400">{money(table.total)}</p>
+          {!selected ? (
+            <p className="text-sm text-zinc-400">
+              Mở một cửa hàng để xem audit và số điện thoại khách.
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-[32rem] overflow-y-auto">
+              {audit.length === 0 && (
+                <p className="text-sm text-zinc-400">Chưa có sự kiện audit.</p>
+              )}
+              {audit.map((event) => (
+                <div
+                  key={event.eventId}
+                  className="border border-white/10 bg-white/5 p-3"
+                >
+                  <p className="text-xs font-bold text-orange-400">
+                    {event.action}
+                  </p>
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+                    {event.actorType} · {event.role ?? '—'} · {event.createdAt}
+                  </p>
+                  {event.reason && (
+                    <p className="mt-1 text-xs text-zinc-300">
+                      Lý do: {event.reason}
+                    </p>
+                  )}
                 </div>
-              ))
-            )}
-          </div>
-
-          <div className="rounded-none border border-white/10 bg-white/5 p-5 space-y-3">
-            <div className="flex items-center gap-2 text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-zinc-400">
-              <Table2 className="w-4 h-4" />
-              Tình trạng quán
+              ))}
             </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-none bg-black/20 p-3">
-                <p className="text-zinc-400 text-[10px] font-mono font-bold uppercase tracking-widest">Số bàn</p>
-                <p className="mt-1 text-xl font-black">{tables.length}</p>
-              </div>
-              <div className="rounded-none bg-black/20 p-3">
-                <p className="text-zinc-400 text-[10px] font-mono font-bold uppercase tracking-widest">Đơn đã thu</p>
-                <p className="mt-1 text-xl font-black">{paidOrders.length}</p>
-              </div>
-            </div>
-          </div>
+          )}
         </article>
       </section>
+
+      {selected && (
+        <section className="border-hard bg-white p-6 shadow-hard space-y-4">
+          <div className="flex items-center gap-3">
+            <Phone className="w-5 h-5 text-orange-600" />
+            <h2 className="text-lg font-black uppercase tracking-tight text-zinc-950">
+              Số điện thoại khách (ADMIN)
+            </h2>
+          </div>
+          <p className="text-xs text-zinc-500 inline-flex items-center gap-2">
+            <BadgeInfo className="w-4 h-4" />
+            Truy cập ADMIN không hạn chế theo quyền hệ thống.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {(phones?.records ?? []).length === 0 && (
+              <p className="text-sm text-zinc-500">Không có bản ghi khách.</p>
+            )}
+            {(phones?.records ?? []).map((record) => (
+              <div
+                key={record.memberId}
+                className="border border-zinc-100 bg-zinc-50 p-3"
+              >
+                <p className="text-sm font-bold text-zinc-950">
+                  {record.displayName ?? record.memberId}
+                </p>
+                <p className="font-mono text-xs text-zinc-600">
+                  {phoneDisplayValue(record)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -24,6 +24,12 @@ export const CONFIG_DEFAULTS = {
   rateLimit: {
     publicOrderPerMinute: 30,
   },
+  // Deterministic provider is the safe default until a provider secret is
+  // configured; Gemini is selected through Config (ADR 0008).
+  ai: {
+    provider: 'rule-based',
+    monthlyBudgetVnd: 500000,
+  },
 } as const;
 
 export type ConfigDefaults = typeof CONFIG_DEFAULTS;

@@ -24,6 +24,8 @@ export const noodleIngredientFixture: Ingredient = {
   tenantId: TENANT_A_FIXTURE,
   name: 'Bánh phở',
   baseUnit: 'g',
+  purchaseUnit: 'kg',
+  purchasePriceVnd: 40000,
   unitCostVnd: 40,
   stockQuantity: 10000,
   lowStockThreshold: 500,
@@ -51,12 +53,14 @@ export const recipeFixture: Recipe = {
     {
       ingredientId: INGREDIENT_NOODLE_ID_FIXTURE,
       quantityBaseUnits: 200,
+      wasteBaseUnits: 0,
       unitCostVnd: 40,
       lineCostVnd: 8000,
     },
     {
       ingredientId: INGREDIENT_BEEF_ID_FIXTURE,
       quantityBaseUnits: 100,
+      wasteBaseUnits: 0,
       unitCostVnd: 300,
       lineCostVnd: 30000,
     },

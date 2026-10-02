@@ -142,6 +142,8 @@ export function toViewIngredient(ingredient: ContractIngredient): Ingredient {
     costPrice: ingredient.unitCostVnd,
     unit: ingredient.baseUnit,
     stock: ingredient.stockQuantity,
+    purchaseUnit: ingredient.purchaseUnit ?? undefined,
+    purchasePrice: ingredient.purchasePriceVnd ?? undefined,
   };
 }
 

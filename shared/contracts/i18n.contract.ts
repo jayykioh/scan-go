@@ -591,7 +591,7 @@ export const VI_I18N_MESSAGES: Record<I18nMessageKey, string> = {
   'owner.inventory.add': 'Thêm Nguyên Liệu',
   'owner.inventory.name': 'Tên nguyên liệu',
   'owner.inventory.namePlaceholder': 'VD: Thịt bò bắp, Gạo tẻ...',
-  'owner.inventory.cost': 'Giá vốn (đ)',
+  'owner.inventory.cost': 'Giá mua (đ)',
   'owner.inventory.unit': 'Đơn vị tính',
   'owner.inventory.unitPlaceholder': 'VD: kg, gam, lít...',
   'owner.inventory.stock': 'Tồn kho hiện tại',

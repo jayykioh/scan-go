@@ -28,7 +28,7 @@ import {
   getSubscription,
 } from '../data/adapters/subscription.adapter';
 import { formatPlanLabel } from '../data/adapters/subscription-view';
-import type { Ingredient as ContractIngredient, Recipe } from '@contracts/inventory.contract';
+import type { Ingredient as ContractIngredient, Recipe, UnitInput } from '@contracts/inventory.contract';
 import type { SubscriptionState } from '@contracts/subscription.contract';
 import {
   toOwnerMenuItem,
@@ -80,7 +80,8 @@ interface SoloProps {
 
 interface RecipeItem {
   ingredientId: string;
-  quantity: number; // quantity of ingredient used for this dish
+  quantity: number; // base-unit quantity of ingredient used for this dish
+  wasteQuantity?: number; // fixed base-unit waste for this dish
 }
 
 interface DishRecipe {
@@ -220,6 +221,7 @@ export default function SoloOperatorView({
             recipes: recipe.lines.map((line) => ({
               ingredientId: line.ingredientId,
               quantity: line.quantityBaseUnits,
+              wasteQuantity: line.wasteBaseUnits,
             })),
           })),
         );
@@ -277,13 +279,21 @@ export default function SoloOperatorView({
 
   // Display mapping for the stock board. The stored base unit stays `g`/`ml`/
   // `unit`; the view keeps its short labels and integer base-unit quantities.
-  const ingredients = serverIngredients.map((ingredient) => ({
-    id: ingredient.ingredientId,
-    name: ingredient.name,
-    unit: ingredient.baseUnit === 'unit' ? 'cái' : ingredient.baseUnit,
-    costPerUnit: ingredient.unitCostVnd,
-    stockAmount: ingredient.stockQuantity,
-  }));
+  const ingredients = serverIngredients.map((ingredient) => {
+    const purchaseUnit = ingredient.purchaseUnit ?? ingredient.baseUnit;
+    const factor = purchaseUnit === 'kg' || purchaseUnit === 'l' ? 1000 : 1;
+    return {
+      id: ingredient.ingredientId,
+      name: ingredient.name,
+      unit: ingredient.baseUnit === 'unit' ? 'cái' : ingredient.baseUnit,
+      baseUnit: ingredient.baseUnit,
+      purchaseUnit,
+      displayUnit: ingredient.baseUnit === 'unit' ? 'cái' : purchaseUnit,
+      factor,
+      costPerUnit: ingredient.unitCostVnd,
+      stockAmount: ingredient.stockQuantity,
+    };
+  });
 
 
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
@@ -406,7 +416,8 @@ export default function SoloOperatorView({
     return findRecipe.recipes.reduce((sum, item) => {
       const ingredient = serverIngredients.find(i => i.ingredientId === item.ingredientId);
       if (!ingredient) return sum;
-      return sum + (item.quantity * ingredient.unitCostVnd);
+      const totalBaseUnits = item.quantity + (item.wasteQuantity ?? 0);
+      return sum + (totalBaseUnits * ingredient.unitCostVnd);
     }, 0);
   };
 
@@ -441,22 +452,19 @@ export default function SoloOperatorView({
     const qtyNum = parseFloat(quickIngQty);
     if (isNaN(priceNum) || priceNum < 0 || isNaN(qtyNum) || qtyNum < 0) return;
 
-    const unit = quickIngUnit === 'cái'
-      ? 'unit'
-      : quickIngUnit === 'ml'
-        ? 'ml'
-        : 'g';
-    const stockInputUnit = unit === 'unit' ? 'unit' : unit;
+    const purchaseUnit = (
+      quickIngUnit === 'cái' || quickIngUnit === 'xiên' ? 'unit' : quickIngUnit
+    ) as UnitInput;
 
     try {
       await createIngredient({
         name: quickIngName.trim(),
-        baseUnit: unit,
-        unitCostVnd: Math.trunc(priceNum),
+        purchaseUnit,
+        purchasePriceVnd: Math.trunc(priceNum),
         lowStockThreshold: 0,
         isActive: true,
         stockInput: {
-          unit: stockInputUnit,
+          unit: purchaseUnit,
           quantity: qtyNum > 0 ? qtyNum : 1,
         },
       });
@@ -479,32 +487,45 @@ export default function SoloOperatorView({
     setDeletingIngId(null);
   };
 
-  // Update recipe ingredient value through the Inventory server command.
+  // Update a recipe line through the Inventory server command. Quantities stay
+  // in base units in state; the server receives the Owner purchase unit and the
+  // fixed waste, then converts and recomputes Cost (REQ-INV-006/007).
   const handleUpdateRecipeFormula = async (
     menuId: string,
     ingredientId: string,
-    qty: number,
+    quantityBaseUnits: number,
+    wasteBaseUnits: number,
   ) => {
     const existing = dishRecipes.find(r => r.menuId === menuId);
     if (!existing) return;
 
+    const baseQty = Math.max(0, Math.trunc(quantityBaseUnits));
+    const baseWaste = Math.max(0, Math.trunc(wasteBaseUnits));
     const nextLines = existing.recipes
-      .filter(r => r.ingredientId !== ingredientId || qty > 0)
+      .filter(r => r.ingredientId !== ingredientId || baseQty > 0)
       .map(r =>
-        r.ingredientId === ingredientId ? { ...r, quantity: qty } : r,
+        r.ingredientId === ingredientId
+          ? { ...r, quantity: baseQty, wasteQuantity: baseWaste }
+          : r,
       );
-    if (!existing.recipes.some(r => r.ingredientId === ingredientId) && qty > 0) {
-      nextLines.push({ ingredientId, quantity: qty });
+    if (!existing.recipes.some(r => r.ingredientId === ingredientId) && baseQty > 0) {
+      nextLines.push({ ingredientId, quantity: baseQty, wasteQuantity: baseWaste });
     }
     if (nextLines.length === 0) return;
 
     try {
       const fields: RecipeUpdateFields = {
         menuItemId: menuId,
-        lines: nextLines.map(line => ({
-          ingredientId: line.ingredientId,
-          quantityBaseUnits: Math.max(1, Math.trunc(line.quantity)),
-        })),
+        lines: nextLines.map(line => {
+          const meta = ingredients.find(i => i.id === line.ingredientId);
+          const factor = meta?.factor ?? 1;
+          return {
+            ingredientId: line.ingredientId,
+            quantity: line.quantity / factor,
+            unit: meta?.purchaseUnit ?? 'unit',
+            wasteQuantity: (line.wasteQuantity ?? 0) / factor,
+          };
+        }),
       };
       await updateRecipe(existing.recipeId, fields);
       setSoloError(null);
@@ -1190,7 +1211,7 @@ export default function SoloOperatorView({
                           <span className="text-[11.5px] font-black tracking-tight">{weightDisplay}</span>
                           {isLow && <span className="text-[8px] bg-amber-500 text-white font-black px-1 rounded block w-fit">⚠️ Dự báo hụt</span>}
                         </div>
-                        <span className="text-[9.5px] text-zinc-500">Giá: {ing.costPerUnit}đ/{ing.unit}</span>
+                        <span className="text-[9.5px] text-zinc-500">Giá: {(ing.costPerUnit * ing.factor).toLocaleString('vi-VN')}đ/{ing.displayUnit}</span>
                       </div>
                     </div>
                   );
@@ -1222,8 +1243,10 @@ export default function SoloOperatorView({
                         onChange={(e) => setQuickIngUnit(e.target.value)}
                         className="w-full bg-white border border-zinc-250 p-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-orange-500 text-xs"
                       >
+                        <option value="kg">kilogram (kg)</option>
                         <option value="g">gram (g)</option>
-                        <option value="ml">mililit (ml)</option>
+                        <option value="l">lít (l)</option>
+                        <option value="ml">mililít (ml)</option>
                         <option value="cái">cái / xiên</option>
                       </select>
                     </div>
@@ -1347,45 +1370,60 @@ export default function SoloOperatorView({
                               <div className="space-y-3">
                                 {ingredients.map(ing => {
                                   const recipeItem = dishRecipe?.recipes.find(r => r.ingredientId === ing.id);
-                                  const qty = recipeItem?.quantity || 0;
+                                  const qtyBase = recipeItem?.quantity || 0;
+                                  const wasteBase = recipeItem?.wasteQuantity || 0;
+                                  const factor = ing.factor;
+                                  const qtyDisplay = factor > 1
+                                    ? Number((qtyBase / factor).toFixed(3))
+                                    : qtyBase;
+                                  const wasteDisplay = factor > 1
+                                    ? Number((wasteBase / factor).toFixed(3))
+                                    : wasteBase;
+                                  const step = factor > 1
+                                    ? 0.1
+                                    : ing.baseUnit === 'unit'
+                                      ? 1
+                                      : 5;
 
                                   return (
-                                    <div key={ing.id} className="flex justify-between items-center text-[10.5px] border-b pb-2 last:border-b-0 last:pb-0">
-                                      <div className="w-1/3 truncate">
-                                        <p className="font-extrabold text-zinc-800 leading-tight truncate">{ing.name}</p>
-                                        <span className="text-[8px] text-zinc-400 block ">đơn vị: {ing.unit}</span>
+                                    <div key={ing.id} className="border-b pb-2 last:border-b-0 last:pb-0 space-y-1.5">
+                                      <div className="flex justify-between items-center text-[10.5px]">
+                                        <div className="truncate">
+                                          <p className="font-extrabold text-zinc-800 leading-tight truncate">{ing.name}</p>
+                                          <span className="text-[8px] text-zinc-400 block">đơn vị: {ing.displayUnit}</span>
+                                        </div>
+                                        <span className="font-black text-zinc-900 text-[11px]">{qtyDisplay} {ing.displayUnit}</span>
                                       </div>
 
-                                      <div className="flex-1 px-4 text-center space-y-1">
-                                        <span className="font-black text-zinc-900 text-sm block">{qty} {ing.unit}</span>
-                                        
-                                        <div className="flex items-center gap-2 select-none">
-                                          <button
-                                            type="button"
-                                            onClick={() => handleUpdateRecipeFormula(item.id, ing.id, Math.max(0, qty - (ing.unit === 'g' || ing.unit === 'ml' ? 10 : 1)))}
-                                            className="w-5 h-5 bg-zinc-100 border border-zinc-250 hover:bg-zinc-200 rounded font-bold flex items-center justify-center text-xs text-zinc-750 cursor-pointer"
-                                          >
-                                            -
-                                          </button>
-                                          
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <label className="space-y-0.5">
+                                          <span className="text-[8.5px] font-bold text-zinc-500 block">Định mức ({ing.displayUnit})</span>
                                           <input
-                                            type="range"
+                                            type="number"
                                             min="0"
-                                            max={ing.unit === 'g' || ing.unit === 'ml' ? "350" : "10"}
-                                            step={ing.unit === 'g' || ing.unit === 'ml' ? "5" : "1"}
-                                            className="w-full h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
-                                            value={qty}
-                                            onChange={(e) => handleUpdateRecipeFormula(item.id, ing.id, parseInt(e.target.value) || 0)}
+                                            step={step}
+                                            value={qtyDisplay}
+                                            onChange={(e) => {
+                                              const nextDisplay = Math.max(0, parseFloat(e.target.value) || 0);
+                                              handleUpdateRecipeFormula(item.id, ing.id, Math.round(nextDisplay * factor), wasteBase);
+                                            }}
+                                            className="w-full bg-zinc-50 border border-zinc-250 rounded-lg p-1.5 text-[11px] font-bold focus:outline-none focus:ring-1 focus:ring-orange-500"
                                           />
-
-                                          <button
-                                            type="button"
-                                            onClick={() => handleUpdateRecipeFormula(item.id, ing.id, qty + (ing.unit === 'g' || ing.unit === 'ml' ? 10 : 1))}
-                                            className="w-5 h-5 bg-zinc-100 border border-zinc-250 hover:bg-zinc-200 rounded font-bold flex items-center justify-center text-xs text-zinc-750 cursor-pointer"
-                                          >
-                                            +
-                                          </button>
-                                        </div>
+                                        </label>
+                                        <label className="space-y-0.5">
+                                          <span className="text-[8.5px] font-bold text-zinc-500 block">Hao hụt ({ing.displayUnit})</span>
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            step={step}
+                                            value={wasteDisplay}
+                                            onChange={(e) => {
+                                              const nextDisplay = Math.max(0, parseFloat(e.target.value) || 0);
+                                              handleUpdateRecipeFormula(item.id, ing.id, qtyBase, Math.round(nextDisplay * factor));
+                                            }}
+                                            className="w-full bg-zinc-50 border border-zinc-250 rounded-lg p-1.5 text-[11px] font-bold focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                          />
+                                        </label>
                                       </div>
                                     </div>
                                   );

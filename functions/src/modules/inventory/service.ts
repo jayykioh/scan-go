@@ -7,7 +7,9 @@ import type {
 import type { ZodType } from 'zod';
 import {
   INVENTORY_CONTRACT_VERSION,
+  baseUnitForUnit,
   convertToBaseUnits,
+  convertUnitCostToBase,
   ingredientArchiveInputSchema,
   ingredientCreateInputSchema,
   ingredientSchema,
@@ -21,6 +23,7 @@ import {
   recipeUpdateInputSchema,
   stockAdjustInputSchema,
   stockMovementSchema,
+  type BaseUnit,
   type Ingredient,
   type IngredientArchiveInput,
   type IngredientCreateInput,
@@ -34,6 +37,7 @@ import {
   type RecipeUpdateInput,
   type StockAdjustInput,
   type StockMovement,
+  type UnitInput,
 } from '../../../../shared/contracts/inventory.contract.js';
 
 export const INVENTORY_OWNER_DENIED_MESSAGE =
@@ -134,6 +138,8 @@ export function toIngredient(
     tenantId: data.tenantId,
     name: data.name,
     baseUnit: data.baseUnit,
+    purchaseUnit: data.purchaseUnit ?? null,
+    purchasePriceVnd: data.purchasePriceVnd ?? null,
     unitCostVnd: data.unitCostVnd,
     stockQuantity: data.stockQuantity ?? 0,
     lowStockThreshold: data.lowStockThreshold ?? 0,
@@ -151,7 +157,13 @@ export function toRecipe(recipeId: string, data: DocumentData): Recipe {
     recipeId,
     tenantId: data.tenantId,
     menuItemId: data.menuItemId,
-    lines: data.lines ?? [],
+    lines: (data.lines ?? []).map((line: DocumentData) => ({
+      ingredientId: line.ingredientId,
+      quantityBaseUnits: line.quantityBaseUnits,
+      wasteBaseUnits: line.wasteBaseUnits ?? 0,
+      unitCostVnd: line.unitCostVnd,
+      lineCostVnd: line.lineCostVnd,
+    })),
     costVnd: data.costVnd,
     costVersion: data.costVersion,
     archivedAt: data.archivedAt ?? null,
@@ -177,7 +189,7 @@ export function resolveInitialStockQuantity(
   } catch {
     throw new HttpsError('invalid-argument', INVENTORY_INVALID_MESSAGE);
   }
-  if (converted.baseUnit !== input.baseUnit) {
+  if (converted.baseUnit !== baseUnitForUnit(input.purchaseUnit)) {
     throw new HttpsError('invalid-argument', INVENTORY_UNIT_MISMATCH_MESSAGE);
   }
   return converted.quantity;
@@ -193,8 +205,10 @@ export function buildNewIngredient(
     ingredientId,
     tenantId: input.tenantId,
     name: input.name,
-    baseUnit: input.baseUnit,
-    unitCostVnd: input.unitCostVnd,
+    baseUnit: baseUnitForUnit(input.purchaseUnit),
+    purchaseUnit: input.purchaseUnit,
+    purchasePriceVnd: input.purchasePriceVnd,
+    unitCostVnd: convertUnitCostToBase(input.purchasePriceVnd, input.purchaseUnit),
     stockQuantity: resolveInitialStockQuantity(input),
     lowStockThreshold: input.lowStockThreshold,
     isActive: input.isActive,
@@ -212,8 +226,10 @@ export function applyIngredientUpdate(
   return ingredientSchema.parse({
     ...current,
     name: input.name,
-    baseUnit: input.baseUnit,
-    unitCostVnd: input.unitCostVnd,
+    baseUnit: baseUnitForUnit(input.purchaseUnit),
+    purchaseUnit: input.purchaseUnit,
+    purchasePriceVnd: input.purchasePriceVnd,
+    unitCostVnd: convertUnitCostToBase(input.purchasePriceVnd, input.purchaseUnit),
     lowStockThreshold: input.lowStockThreshold,
     isActive: input.isActive,
     archivedAt: current.archivedAt,
@@ -229,7 +245,28 @@ export function computeNextInventoryVersion(current: unknown): number {
     : 1;
 }
 
-/** Resolve one recipe line against the current ingredient Cost. */
+/** Convert one Owner quantity and unit into the ingredient base unit. */
+function toIngredientBaseUnits(
+  quantity: number,
+  unit: UnitInput,
+  baseUnit: BaseUnit,
+): number {
+  let converted: { baseUnit: BaseUnit; quantity: number };
+  try {
+    converted = convertToBaseUnits(quantity, unit);
+  } catch {
+    throw new HttpsError('invalid-argument', INVENTORY_INVALID_MESSAGE);
+  }
+  if (converted.baseUnit !== baseUnit) {
+    throw new HttpsError('invalid-argument', INVENTORY_UNIT_MISMATCH_MESSAGE);
+  }
+  return converted.quantity;
+}
+
+/**
+ * Resolve one recipe line against the current ingredient: convert quantity and
+ * fixed waste to base units and snapshot the line Cost (REQ-INV-006/007).
+ */
 export function resolveRecipeLine(
   line: RecipeLineInput,
   ingredient: Ingredient | undefined,
@@ -244,11 +281,23 @@ export function resolveRecipeLine(
   if (!parsedLine.success) {
     throw new HttpsError('invalid-argument', INVENTORY_INVALID_MESSAGE);
   }
+  const { quantity, unit, wasteQuantity } = parsedLine.data;
+  const quantityBaseUnits = toIngredientBaseUnits(
+    quantity,
+    unit,
+    ingredient.baseUnit,
+  );
+  const wasteBaseUnits =
+    wasteQuantity > 0
+      ? toIngredientBaseUnits(wasteQuantity, unit, ingredient.baseUnit)
+      : 0;
+  const totalBaseUnits = quantityBaseUnits + wasteBaseUnits;
   return {
     ingredientId: ingredient.ingredientId,
-    quantityBaseUnits: parsedLine.data.quantityBaseUnits,
+    quantityBaseUnits,
+    wasteBaseUnits,
     unitCostVnd: ingredient.unitCostVnd,
-    lineCostVnd: ingredient.unitCostVnd * parsedLine.data.quantityBaseUnits,
+    lineCostVnd: ingredient.unitCostVnd * totalBaseUnits,
   };
 }
 
@@ -358,10 +407,8 @@ export function buildInventoryDeductionPlan(
     }
     for (const line of recipe.lines) {
       const current = required.get(line.ingredientId) ?? 0;
-      required.set(
-        line.ingredientId,
-        current + line.quantityBaseUnits * item.quantity,
-      );
+      const perItem = line.quantityBaseUnits + line.wasteBaseUnits;
+      required.set(line.ingredientId, current + perItem * item.quantity);
     }
   }
 

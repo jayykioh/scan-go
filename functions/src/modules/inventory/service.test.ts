@@ -22,6 +22,7 @@ import {
 } from './service.js';
 import {
   convertToBaseUnits,
+  convertUnitCostToBase,
   ingredientCreateInputSchema,
   type Ingredient,
   type Recipe,
@@ -40,8 +41,8 @@ function createInput(overrides: Record<string, unknown> = {}) {
   return {
     tenantId: TENANT_A_FIXTURE,
     name: 'Bánh phở',
-    baseUnit: 'g',
-    unitCostVnd: 40,
+    purchaseUnit: 'kg',
+    purchasePriceVnd: 40000,
     lowStockThreshold: 500,
     isActive: true,
     stockInput: { unit: 'kg', quantity: 10 },
@@ -87,8 +88,15 @@ describe('ingredient creation with integer base units and VND Cost', () => {
     expect(resolveInitialStockQuantity(parsed)).toBe(0);
   });
 
-  it('rejects a unit that does not match the declared base unit', () => {
-    const parsed = parseIngredientCreateInput(createInput({ baseUnit: 'ml' }));
+  it('converts a purchase price into integer Cost per base unit', () => {
+    expect(convertUnitCostToBase(40000, 'kg')).toBe(40);
+    expect(convertUnitCostToBase(2500, 'g')).toBe(2500);
+    expect(convertUnitCostToBase(15000, 'l')).toBe(15);
+    expect(() => convertUnitCostToBase(-1, 'kg')).toThrow();
+  });
+
+  it('rejects a stock unit that does not match the purchase base unit', () => {
+    const parsed = parseIngredientCreateInput(createInput({ purchaseUnit: 'l' }));
     expect(() => resolveInitialStockQuantity(parsed)).toThrow(HttpsError);
   });
 
@@ -104,7 +112,7 @@ describe('ingredient creation with integer base units and VND Cost', () => {
     expect(() => resolveInitialStockQuantity(parsed)).toThrow(HttpsError);
 
     expect(() =>
-      parseIngredientCreateInput(createInput({ unitCostVnd: -1 })),
+      parseIngredientCreateInput(createInput({ purchasePriceVnd: -1 })),
     ).toThrow(HttpsError);
   });
 });
@@ -117,8 +125,8 @@ describe('ingredient update and owner gate', () => {
         tenantId: TENANT_A_FIXTURE,
         ingredientId: INGREDIENT_NOODLE_ID_FIXTURE,
         name: 'Bánh phở mới',
-        baseUnit: 'g',
-        unitCostVnd: 45,
+        purchaseUnit: 'kg',
+        purchasePriceVnd: 45000,
         lowStockThreshold: 600,
         isActive: true,
       },
@@ -154,8 +162,8 @@ describe('recipe Cost determination', () => {
         tenantId: TENANT_A_FIXTURE,
         menuItemId: MENU_ITEM_ID_FIXTURE,
         lines: [
-          { ingredientId: INGREDIENT_NOODLE_ID_FIXTURE, quantityBaseUnits: 200 },
-          { ingredientId: INGREDIENT_BEEF_ID_FIXTURE, quantityBaseUnits: 100 },
+          { ingredientId: INGREDIENT_NOODLE_ID_FIXTURE, quantity: 200, unit: 'g' },
+          { ingredientId: INGREDIENT_BEEF_ID_FIXTURE, quantity: 100, unit: 'g' },
         ],
       },
       'recipe-new-001',
@@ -168,6 +176,52 @@ describe('recipe Cost determination', () => {
     expect(Number.isInteger(recipe.costVnd)).toBe(true);
   });
 
+  it('converts a kilogram line and adds fixed waste to the Cost', () => {
+    const ingredients = new Map<string, Ingredient>([
+      [INGREDIENT_NOODLE_ID_FIXTURE, noodleIngredientFixture],
+    ]);
+    const recipe = buildNewRecipe(
+      {
+        tenantId: TENANT_A_FIXTURE,
+        menuItemId: MENU_ITEM_ID_FIXTURE,
+        lines: [
+          {
+            ingredientId: INGREDIENT_NOODLE_ID_FIXTURE,
+            quantity: 0.2,
+            unit: 'kg',
+            wasteQuantity: 0.02,
+          },
+        ],
+      },
+      'recipe-new-002',
+      '2026-09-12T05:00:00.000Z',
+      ingredients,
+    );
+    expect(recipe.lines[0].quantityBaseUnits).toBe(200);
+    expect(recipe.lines[0].wasteBaseUnits).toBe(20);
+    expect(recipe.costVnd).toBe(40 * 220);
+  });
+
+  it('rejects a line unit that does not match the ingredient base unit', () => {
+    const ingredients = new Map<string, Ingredient>([
+      [INGREDIENT_NOODLE_ID_FIXTURE, noodleIngredientFixture],
+    ]);
+    expect(() =>
+      buildNewRecipe(
+        {
+          tenantId: TENANT_A_FIXTURE,
+          menuItemId: MENU_ITEM_ID_FIXTURE,
+          lines: [
+            { ingredientId: INGREDIENT_NOODLE_ID_FIXTURE, quantity: 200, unit: 'ml' },
+          ],
+        },
+        'recipe-new-003',
+        '2026-09-12T05:00:00.000Z',
+        ingredients,
+      ),
+    ).toThrow(HttpsError);
+  });
+
   it('fails when a referenced ingredient is missing', () => {
     expect(() =>
       buildNewRecipe(
@@ -175,7 +229,7 @@ describe('recipe Cost determination', () => {
           tenantId: TENANT_A_FIXTURE,
           menuItemId: MENU_ITEM_ID_FIXTURE,
           lines: [
-            { ingredientId: 'ingredient-missing', quantityBaseUnits: 1 },
+            { ingredientId: 'ingredient-missing', quantity: 1, unit: 'g' },
           ],
         },
         'recipe-new-001',
@@ -197,7 +251,7 @@ describe('recipe Cost determination', () => {
         recipeId: recipeFixture.recipeId,
         menuItemId: MENU_ITEM_ID_FIXTURE,
         lines: [
-          { ingredientId: INGREDIENT_NOODLE_ID_FIXTURE, quantityBaseUnits: 100 },
+          { ingredientId: INGREDIENT_NOODLE_ID_FIXTURE, quantity: 100, unit: 'g' },
         ],
       },
       '2026-09-13T00:00:00.000Z',
@@ -241,6 +295,34 @@ describe('deduction plan composition', () => {
     expect(beef?.quantityBaseUnits).toBe(200);
     expect(noodle?.movementId).toBe('order-pho-001__ingredient-noodle-001');
     expect(beef?.movementId).toBe('order-pho-001__ingredient-beef-001');
+  });
+
+  it('adds fixed waste to the deducted quantity', () => {
+    const recipe: Recipe = {
+      ...recipeFixture,
+      lines: [
+        { ...recipeFixture.lines[0], wasteBaseUnits: 50 },
+        recipeFixture.lines[1],
+      ],
+    };
+    const plan = buildInventoryDeductionPlan({
+      tenantId: TENANT_A_FIXTURE,
+      orderId: 'order-pho-001',
+      idempotencyKey: 'idem-cook-0001',
+      items: [{ menuItemId: MENU_ITEM_ID_FIXTURE, quantity: 2 }],
+      recipesByMenuItemId: new Map<string, Recipe>([
+        [MENU_ITEM_ID_FIXTURE, recipe],
+      ]),
+      ingredientsById: new Map<string, Ingredient>([
+        [INGREDIENT_NOODLE_ID_FIXTURE, noodleIngredientFixture],
+        [INGREDIENT_BEEF_ID_FIXTURE, beefIngredientFixture],
+      ]),
+      now: '2026-09-12T07:05:00.000Z',
+    });
+    const noodle = plan.lines.find(
+      (line) => line.ingredientId === INGREDIENT_NOODLE_ID_FIXTURE,
+    );
+    expect(noodle?.quantityBaseUnits).toBe((200 + 50) * 2);
   });
 
   it('is deterministic so a transaction retry reuses the same movements', () => {

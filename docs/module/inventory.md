@@ -15,9 +15,12 @@
 - Store volume in millilitres.
 - Store count as units.
 - Convert kilogram and litre inputs before persistence.
+- Accept a purchase price in the chosen unit and store the integer VND Cost per base unit (REQ-INV-005).
+- Accept a recipe quantity in the chosen unit and store integer base units (REQ-INV-006).
 
 ## Rules
 - Use integer base-unit quantities and integer VND Cost.
+- Store one fixed waste quantity per recipe line and deduct quantity plus waste (REQ-INV-007).
 - Write one stock movement for each effect.
 - Use Order and effect idempotency keys.
 - Store unit and line Cost snapshots on Order items when cooking starts.

@@ -18,10 +18,22 @@ export const unitInputSchema = z.enum(['g', 'kg', 'ml', 'l', 'unit']);
 
 export type UnitInput = z.infer<typeof unitInputSchema>;
 
+/** One Owner input unit mapped to its stored base unit and integer factor. */
+export const UNIT_BASE_FACTOR: Record<
+  UnitInput,
+  { baseUnit: BaseUnit; factor: number }
+> = {
+  g: { baseUnit: 'g', factor: 1 },
+  kg: { baseUnit: 'g', factor: 1000 },
+  ml: { baseUnit: 'ml', factor: 1 },
+  l: { baseUnit: 'ml', factor: 1000 },
+  unit: { baseUnit: 'unit', factor: 1 },
+};
+
 /**
  * Convert one Owner input unit into its stored base unit and integer factor.
  * The server calls this before persistence so only integer base units reach
- * Firestore (docs/module/inventory.md, REQ-INV-001).
+ * Firestore (docs/module/inventory.md, REQ-INV-001, REQ-INV-006).
  */
 export function convertToBaseUnits(
   quantity: number,
@@ -30,19 +42,32 @@ export function convertToBaseUnits(
   if (!Number.isFinite(quantity) || quantity <= 0) {
     throw new Error('quantity must be a positive number');
   }
-  const conversion: Record<UnitInput, { baseUnit: BaseUnit; factor: number }> = {
-    g: { baseUnit: 'g', factor: 1 },
-    kg: { baseUnit: 'g', factor: 1000 },
-    ml: { baseUnit: 'ml', factor: 1 },
-    l: { baseUnit: 'ml', factor: 1000 },
-    unit: { baseUnit: 'unit', factor: 1 },
-  };
-  const { baseUnit, factor } = conversion[unit];
+  const { baseUnit, factor } = UNIT_BASE_FACTOR[unit];
   const converted = quantity * factor;
   if (!Number.isInteger(converted)) {
     throw new Error('quantity does not convert to an integer base unit');
   }
   return { baseUnit, quantity: converted };
+}
+
+/** Return the stored base unit for one Owner input unit. */
+export function baseUnitForUnit(unit: UnitInput): BaseUnit {
+  return UNIT_BASE_FACTOR[unit].baseUnit;
+}
+
+/**
+ * Convert one Owner purchase price in the chosen unit into integer VND per
+ * stored base unit. A price of 100000 VND per kilogram becomes 100 VND per
+ * gram (REQ-INV-005).
+ */
+export function convertUnitCostToBase(
+  priceVnd: number,
+  unit: UnitInput,
+): number {
+  if (!Number.isFinite(priceVnd) || priceVnd < 0) {
+    throw new Error('price must be a non-negative number');
+  }
+  return Math.round(priceVnd / UNIT_BASE_FACTOR[unit].factor);
 }
 
 export const ingredientSchema = z.strictObject({
@@ -51,6 +76,9 @@ export const ingredientSchema = z.strictObject({
   tenantId: z.string().min(1),
   name: z.string().min(1).max(200),
   baseUnit: baseUnitSchema,
+  /** Owner purchase entry, kept so the edit form shows the original unit. */
+  purchaseUnit: unitInputSchema.nullable(),
+  purchasePriceVnd: vndSchema.nullable(),
   unitCostVnd: vndSchema,
   stockQuantity: nonNegativeIntSchema,
   lowStockThreshold: nonNegativeIntSchema,
@@ -65,6 +93,8 @@ export type Ingredient = z.infer<typeof ingredientSchema>;
 export const recipeLineSchema = z.strictObject({
   ingredientId: z.string().min(1),
   quantityBaseUnits: positiveIntSchema,
+  /** Fixed waste quantity in base units; added to the deduction. */
+  wasteBaseUnits: nonNegativeIntSchema,
   unitCostVnd: vndSchema,
   lineCostVnd: vndSchema,
 });
@@ -122,8 +152,9 @@ export type StockInput = z.infer<typeof stockInputSchema>;
 export const ingredientCreateInputSchema = z.strictObject({
   tenantId: z.string().min(1),
   name: z.string().min(1).max(200),
-  baseUnit: baseUnitSchema,
-  unitCostVnd: vndSchema,
+  /** Purchase entry: base unit and Cost are derived from these two fields. */
+  purchaseUnit: unitInputSchema,
+  purchasePriceVnd: vndSchema,
   lowStockThreshold: nonNegativeIntSchema,
   isActive: z.boolean(),
   stockInput: stockInputSchema.nullable(),
@@ -135,8 +166,8 @@ export const ingredientUpdateInputSchema = z.strictObject({
   tenantId: z.string().min(1),
   ingredientId: z.string().min(1),
   name: z.string().min(1).max(200),
-  baseUnit: baseUnitSchema,
-  unitCostVnd: vndSchema,
+  purchaseUnit: unitInputSchema,
+  purchasePriceVnd: vndSchema,
   lowStockThreshold: nonNegativeIntSchema,
   isActive: z.boolean(),
 });
@@ -164,10 +195,16 @@ export const stockAdjustInputSchema = z.strictObject({
 
 export type StockAdjustInput = z.infer<typeof stockAdjustInputSchema>;
 
-/** One Owner recipe line. Cost is resolved from the current ingredients. */
+/**
+ * One Owner recipe line entered in a chosen unit. The server converts the
+ * quantity and the fixed waste to integer base units and resolves Cost from
+ * the current ingredient (REQ-INV-006, REQ-INV-007).
+ */
 export const recipeLineInputSchema = z.strictObject({
   ingredientId: z.string().min(1),
-  quantityBaseUnits: positiveIntSchema,
+  quantity: z.number().positive(),
+  unit: unitInputSchema,
+  wasteQuantity: z.number().nonnegative().default(0),
 });
 
 export type RecipeLineInput = z.infer<typeof recipeLineInputSchema>;

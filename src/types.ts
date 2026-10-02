@@ -22,14 +22,19 @@ export interface IndustryTemplate {
 export interface Ingredient {
   id: string;
   name: string;
-  costPrice: number;
+  costPrice: number; // VND per base unit (g, ml, or unit)
   unit: string; // e.g. kg, ml, cái, lít
   stock: number;
+  /** Owner purchase entry; falls back to `unit`/`costPrice` when absent. */
+  purchaseUnit?: string;
+  purchasePrice?: number;
 }
 
 export interface RecipeItem {
   ingredientId: string;
   quantity: number;
+  /** Fixed waste quantity in the ingredient unit. */
+  wasteQuantity?: number;
 }
 
 export interface MenuItem {

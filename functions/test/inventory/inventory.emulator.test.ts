@@ -60,6 +60,7 @@ import type {
   StockAdjustInput,
   StockAdjustResult,
 } from '../../../shared/contracts/inventory.contract.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
 const PASSWORD = 'password123';
@@ -70,7 +71,7 @@ const MENU_ITEM_ID = 'item-pho-bo-001';
 const INGREDIENT_NOODLE = 'ingredient-noodle-001';
 const INGREDIENT_BEEF = 'ingredient-beef-001';
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -242,8 +243,8 @@ function ingredientInput(
   return {
     tenantId: TENANT_A,
     name: 'Trứng gà',
-    baseUnit: 'g',
-    unitCostVnd: 2500,
+    purchaseUnit: 'kg',
+    purchasePriceVnd: 2500000,
     lowStockThreshold: 100,
     isActive: true,
     stockInput: { unit: 'kg', quantity: 2 },
@@ -258,8 +259,8 @@ function recipeInput(
     tenantId: TENANT_A,
     menuItemId: MENU_ITEM_ID,
     lines: [
-      { ingredientId: INGREDIENT_NOODLE, quantityBaseUnits: 200 },
-      { ingredientId: INGREDIENT_BEEF, quantityBaseUnits: 100 },
+      { ingredientId: INGREDIENT_NOODLE, quantity: 200, unit: 'g' },
+      { ingredientId: INGREDIENT_BEEF, quantity: 100, unit: 'g' },
     ],
     ...overrides,
   };
@@ -302,6 +303,7 @@ describe('callableInventoryCreateIngredient', () => {
     expect(ingredient).not.toBeNull();
     expect(ingredient?.baseUnit).toBe('g');
     expect(ingredient?.stockQuantity).toBe(2000);
+    expect(ingredient?.unitCostVnd).toBe(2500);
     expect(Number.isInteger(ingredient?.stockQuantity)).toBe(true);
     expect(Number.isInteger(ingredient?.unitCostVnd)).toBe(true);
 
@@ -316,12 +318,12 @@ describe('callableInventoryCreateIngredient', () => {
   it('rejects a negative Cost and a bad unit without a write', async () => {
     await signInAs('ownerA');
     await expectRejection(
-      createIngredientCallable()(ingredientInput({ unitCostVnd: -1 })),
+      createIngredientCallable()(ingredientInput({ purchasePriceVnd: -1 })),
       'invalid-argument',
     );
     await expectRejection(
       createIngredientCallable()(
-        ingredientInput({ baseUnit: 'ml', stockInput: { unit: 'kg', quantity: 2 } }),
+        ingredientInput({ purchaseUnit: 'l', stockInput: { unit: 'kg', quantity: 2 } }),
       ),
       'invalid-argument',
     );
@@ -357,7 +359,7 @@ describe('callableInventoryCreateRecipe', () => {
     await expectRejection(
       createRecipeCallable()(
         recipeInput({
-          lines: [{ ingredientId: 'ingredient-missing', quantityBaseUnits: 1 }],
+          lines: [{ ingredientId: 'ingredient-missing', quantity: 1, unit: 'g' }],
         }),
       ),
       'failed-precondition',

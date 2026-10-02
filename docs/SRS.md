@@ -147,6 +147,9 @@ Use independent Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering
 - **REQ-CAT-002 (P0) MUST** support modifiers and five approved industry templates. **Acceptance:** Given a selected template, when Owner initializes a menu, then suitable categories and editable items appear without affecting another tenant.
 - **REQ-INV-001 (P0) MUST** let Owner manage ingredients, stock, recipes, and recipe quantities. **Acceptance:** Given a recipe, when an order starts cooking, then one transaction deducts the configured ingredient quantities.
 - **REQ-INV-002 (P0) MUST** restore eligible ingredients after an unpaid order cancellation. **Acceptance:** Given a previously deducted unpaid order, when Cashier cancels it, then one transaction restores each deduction exactly once.
+- **REQ-INV-005 (P0) MUST** let Owner enter an ingredient purchase price by purchase unit and store the integer VND Cost per base unit. **Acceptance:** Given 100000 VND for one kilogram, when Owner saves, then the stored Cost is 100 VND per gram.
+- **REQ-INV-006 (P0) MUST** let Owner enter each recipe line in a chosen unit and convert it to integer base units. **Acceptance:** Given a line of 0.2 kg, when saved, then the stored quantity is 200 g; a unit that does not match the ingredient base unit is rejected.
+- **REQ-INV-007 (P0) MUST** let Owner set a fixed waste quantity per recipe line in the same chosen unit. **Acceptance:** Given a line of 200 g with 20 g waste, when cooking starts, then one transaction deducts 220 g and the recipe Cost includes the waste.
 
 ### 4.4 Tables, QR, and NFC
 - **REQ-TBL-001 (P0) MUST** let Owner create, rename, archive, and regenerate tenant tables and QR table links. **Acceptance:** Given a regenerated link, when Customer opens the old link, then access fails; the new link opens only its table menu.
@@ -363,6 +366,9 @@ Open questions must be answered before the related extension enters a release ph
 | REQ-CAT-002 | Done | P0-005: industry template seeds editable categories and items scoped to one Tenant. Emulator isolation evidence pass. |
 | REQ-INV-001 | Done | P0-008: Owner ingredient/stock/recipe/base-unit commands, and one transaction deducts configured quantities with stockMovements exactly once when cooking starts. Emulator and Rules evidence pass. |
 | REQ-INV-002 | Done | P0-L07: unpaid cancellation restores inventory through one idempotent server transaction with audit. Emulator evidence pass. |
+| REQ-INV-005 | Done | P0-011: ingredient commands accept a purchase unit and purchase price and store integer VND Cost per base unit. Unit and emulator evidence pass. |
+| REQ-INV-006 | Done | P0-011: recipe lines accept a chosen unit, convert to integer base units, and reject a unit that does not match the ingredient base unit. Unit and emulator evidence pass. |
+| REQ-INV-007 | Done | P0-011: each recipe line stores a fixed waste quantity; cooking deducts quantity plus waste and the recipe Cost includes it. Unit and emulator evidence pass. |
 | REQ-TBL-001 | Done | P0-006: Table Access callables (create/rename/archive/regenerate) with App Check and Zod, opaque random token, atomic old-link revocation, minimal public resolver, QR payload rotation. Emulator and Rules evidence pass. |
 | REQ-NFC-001 | PARTIAL | M3: server-verified NFC provision, revoke, and resolve with opaque tokens and Rules. The physical NDEF device write/read step remains a client task. |
 | REQ-ORD-001 | Done | P0-007: server validates the active Table link and current `publicMenuItems`, and computes integer VND totals from modifiers. Emulator evidence pass. |

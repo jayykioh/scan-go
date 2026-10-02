@@ -59,7 +59,7 @@ Plan: `docs/tickets/p0/README.md`.
 | REQ-AUTH-002, REQ-ACL-001 | P0-004 — worker | Done. Hashed PIN, lockout, sessionVersion, audit, server authorization matrix, and no plaintext PIN in client. Emulator evidence pass. |
 | REQ-CAT-001, REQ-CAT-002 | P0-005 — worker | Done. Catalog callables, private/public projection in one command, template scoping, bounded listener. Emulator and Rules evidence pass. |
 | REQ-TBL-001, NFR-SEC-002 | P0-006 — worker | Done. Table callables, opaque token, atomic revocation, minimal public resolver, QR rotation. Emulator and Rules evidence pass. |
-| REQ-ORD-001..004, NFR-SEC-002, NFR-UX-001 | P0-007 — worker | Done. Server cart validation, integer VND, idempotent Pay-Later Order, public tracking, offline block. Emulator and Rules evidence pass. |
+| REQ-ORD-001..004, NFR-SEC-002, NFR-UX-001 | P0-007 — worker | Done. Server cart validation, selected modifier option IDs, integer VND, idempotent Pay-Later Order, public tracking, offline block. Emulator and Rules evidence pass. |
 | REQ-INV-001, REQ-KDS-001, REQ-ORD-003, NFR-RT-001 | P0-008 — worker | Done. One-transaction deduction, `pending -> cooking -> ready`, Kitchen availability via Catalog, two-second update harness. Emulator and Rules evidence pass. |
 | REQ-CAS-001, REQ-ORD-002, REQ-ORD-003 | P0-009 — worker | Done. VietQR instructions, idempotent cash/VietQR confirmation, immutable Payment, Pay-First Kitchen gate. Emulator and Rules evidence pass. |
 | REQ-WAI-001, REQ-NOT-001, REQ-ONB-001, REQ-ONB-002 | P0-010 — worker | Done (ONB-002 usability artifact pending). Waiter served, notification dedupe and mute, onboarding checklist. Emulator evidence pass. |

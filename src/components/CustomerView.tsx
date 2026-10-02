@@ -128,15 +128,17 @@ export default function CustomerView({
 
   const addActiveItemToCart = () => {
     if (!activeItem) return;
-    const modifiers = [...selectedModifiers].sort();
-    const id = `${activeItem.id}-${modifiers.join('|')}`;
+    const modifierKeys = [...selectedModifiers].sort();
+    const modifiers = modifierKeys.map(key => activeItem.toppings?.find(option => option.optionId === key)?.name ?? key);
+    const selectedOptionIds = modifierKeys.filter(key => activeItem.toppings?.some(option => option.optionId === key));
+    const id = `${activeItem.id}-${modifierKeys.join('|')}`;
     const price = activeItem.price + modifierPrice;
     setCart(prev => {
       const existing = prev.find(item => item.id === id);
       if (existing) {
         return prev.map(item => item.id === id ? { ...item, quantity: item.quantity + 1 } : item);
       }
-      return [...prev, { id, menuId: activeItem.id, name: activeItem.name, price, quantity: 1, selectedModifiers: modifiers }];
+      return [...prev, { id, menuId: activeItem.id, name: activeItem.name, price, quantity: 1, selectedModifiers: modifiers, selectedOptionIds }];
     });
     setActiveItem(null);
   };
@@ -394,7 +396,7 @@ export default function CustomerView({
 
       <AnimatePresence>
         {activeItem && (
-          <ItemSheet locale={locale} item={activeItem} template={template} selectedModifiers={selectedModifiers} modifierPrice={modifierPrice} onToggleModifier={toggleModifier} onClose={() => setActiveItem(null)} onAdd={addActiveItemToCart} />
+          <ItemSheet locale={locale} item={activeItem} template={template} useTemplateModifiers={!directMenu} selectedModifiers={selectedModifiers} modifierPrice={modifierPrice} onToggleModifier={toggleModifier} onClose={() => setActiveItem(null)} onAdd={addActiveItemToCart} />
         )}
         {showCart && (
           <CartSheet locale={locale} cart={cart} cartTotal={cartTotal} finalTotal={finalTotal} promoDiscount={promoDiscount} loyaltyDiscount={loyaltyDiscount} paymentMode={tenantConfig.paymentMode} onQty={updateCartQty} onClose={() => setShowCart(false)} onSubmit={submitOrder} isOnline={isOnline} isSubmitting={isSubmitting} errorMessage={connectionProblem || submitError} />
@@ -452,9 +454,9 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
   );
 }
 
-function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleModifier, onClose, onAdd, locale = 'vi' }: any) {
+function ItemSheet({ item, template, useTemplateModifiers = true, selectedModifiers, modifierPrice, onToggleModifier, onClose, onAdd, locale = 'vi' }: any) {
   const t = (key: I18nMessageKey) => translate(locale, key);
-  const groups = [...template.modifier_groups, ...(item.toppings?.length ? [{ name: 'Topping', required: false, options: item.toppings }] : [])];
+  const groups = [...(useTemplateModifiers ? template.modifier_groups : []), ...(item.toppings?.length ? [{ name: 'Topping', required: false, options: item.toppings }] : [])];
   return (
     <Sheet onClose={onClose}>
       <div className="space-y-4">
@@ -474,9 +476,10 @@ function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleM
               <span className="text-[11px] font-bold text-zinc-400">{group.required ? t('customer.item.required') : t('customer.item.optional')}</span>
             </div>
             {group.options.map((option: any) => {
-              const checked = selectedModifiers.includes(option.name);
+              const optionKey = option.optionId ?? option.name;
+              const checked = selectedModifiers.includes(optionKey);
               return (
-                <button key={option.name} type="button" onClick={() => onToggleModifier(option.name, option.price)} className={`w-full rounded-[20px] px-4 py-3 flex items-center justify-between border ${checked ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-zinc-50 text-zinc-900 border-zinc-100'}`}>
+                <button key={optionKey} type="button" onClick={() => onToggleModifier(optionKey, option.price)} className={`w-full rounded-[20px] px-4 py-3 flex items-center justify-between border ${checked ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-zinc-50 text-zinc-900 border-zinc-100'}`}>
                   <span className="text-sm font-bold">{option.name}</span>
                   <span className="text-sm font-black">{option.price ? `+${money(option.price)}` : t('customer.item.free')}</span>
                 </button>

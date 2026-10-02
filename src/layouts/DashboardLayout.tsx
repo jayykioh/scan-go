@@ -15,6 +15,8 @@ import {
   Table2,
   CircleDollarSign,
   CreditCard,
+  Menu,
+  X,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { TenantSummary } from '@contracts/identity.contract';
@@ -41,6 +43,7 @@ export default function DashboardLayout() {
   const [tenantError, setTenantError] = useState<string | null>(null);
   const [activeContext, setActiveContext] =
     useState<ActiveTenantContext | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const activeContextRef = useRef<ActiveTenantContextHandle | null>(null);
 
   // One bounded listener slot for the active Tenant. Selecting a Tenant
@@ -154,8 +157,25 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex-1 flex min-h-dvh">
-      <aside className="w-64 bg-zinc-950 text-white flex flex-col hidden md:flex border-r border-hard relative overflow-hidden">
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          aria-label="Đóng menu điều hướng"
+          className="fixed inset-0 z-40 bg-zinc-950/60 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      <aside className={`w-64 bg-zinc-950 text-white flex-col border-r border-hard overflow-y-auto md:relative md:flex ${mobileMenuOpen ? 'fixed inset-y-0 left-0 z-50 flex' : 'hidden'}`}>
         <div className="absolute inset-0 opacity-10 bg-noise pointer-events-none" />
+
+        <button
+          type="button"
+          aria-label="Đóng menu"
+          className="absolute right-3 top-3 z-20 rounded p-2 text-white md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <X className="h-5 w-5" />
+        </button>
 
         <div className="relative z-10 p-6 mb-4">
           <motion.div
@@ -200,7 +220,7 @@ export default function DashboardLayout() {
           </motion.div>
         </div>
 
-        <nav className="relative z-10 flex-1 px-4 space-y-3">
+        <nav className="relative z-10 flex-1 px-4 space-y-3" onClick={() => setMobileMenuOpen(false)}>
           <NavLink end to="/dashboard" className={navLinkClass}>
             <LayoutGrid className="w-4 h-4" />
             Doanh thu
@@ -273,7 +293,19 @@ export default function DashboardLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col relative overflow-y-auto bg-zinc-50">
+      <main className="min-w-0 flex-1 flex flex-col relative overflow-y-auto bg-zinc-50">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-3 md:hidden">
+          <button
+            type="button"
+            aria-label="Mở menu điều hướng"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen(true)}
+            className="rounded border border-zinc-300 p-2 text-zinc-900"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <span className="font-mono text-sm font-bold uppercase tracking-widest">ScanGo</span>
+        </header>
         <Outlet />
       </main>
     </div>

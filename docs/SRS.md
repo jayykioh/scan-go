@@ -359,7 +359,7 @@ Open questions must be answered before the related extension enters a release ph
 | REQ-AUTH-002 | Done | P0-004: hashed tenant-scoped Staff PIN, Config policy (six digits, five attempts, 15-minute lock), sessionVersion revocation, audit events, and server-issued sessions. No plaintext PIN in server storage or client state. Emulator evidence pass. |
 | REQ-ACL-001 | Done | P0-003 and P0-004: server membership gate, navigation-only `activeTenantId`, and server role/reduced-permission/tenant/sessionVersion checks independent of UI. Emulator matrix pass. |
 | REQ-ADM-001 | Done | P0-L01: claim-verified delegated ADMIN commands and queries, an ADMIN route with a CUD audit view, and non-ADMIN denial. Read-access audit was removed by ADR 0010. Emulator and Rules evidence pass. |
-| REQ-ONB-001 | Done | P0-010: server onboarding checklist for shop name, industry, plan, payment mode, Tables, and menu, with next incomplete step. Emulator evidence pass. |
+| REQ-ONB-001 | Done | P0-010: server onboarding checklist for shop name, industry, plan, payment mode, Tables, and menu, with next incomplete step. Dashboard navigation now remains available on narrow screens for the Table/Menu setup steps. Emulator evidence pass. |
 | REQ-ONB-002 | PARTIAL | P0-010: 15-minute budget assertion is in the onboarding emulator test. A separate timed usability study artifact is still required. |
 | REQ-CFG-001 | Done | P0-001: three-layer resolution, allowed-key filtering, versioning, `ConfigurationChanged`, ADMIN `callableConfigUpdatePlatform` with audit, and tenant-visible read projection. Unit, Rules (8), and Functions Emulator (12) evidence pass. |
 | REQ-CAT-001 | Done | P0-005: Catalog callables (create/edit/archive/availability/template) with App Check and Zod, private item and `publicMenuItems` written in one command, projection excludes Cost/recipe/private metadata, bounded public listener under two seconds. Emulator and Rules evidence pass. |
@@ -371,7 +371,7 @@ Open questions must be answered before the related extension enters a release ph
 | REQ-INV-007 | Done | P0-011: each recipe line stores a fixed waste quantity; cooking deducts quantity plus waste and the recipe Cost includes it. Unit and emulator evidence pass. |
 | REQ-TBL-001 | Done | P0-006: Table Access callables (create/rename/archive/regenerate) with App Check and Zod, opaque random token, atomic old-link revocation, minimal public resolver, QR payload rotation. Emulator and Rules evidence pass. |
 | REQ-NFC-001 | PARTIAL | M3: server-verified NFC provision, revoke, and resolve with opaque tokens and Rules. The physical NDEF device write/read step remains a client task. |
-| REQ-ORD-001 | Done | P0-007: server validates the active Table link and current `publicMenuItems`, and computes integer VND totals from modifiers. Emulator evidence pass. |
+| REQ-ORD-001 | Done | P0-007: server validates the active Table link and current `publicMenuItems`, and computes integer VND totals from modifiers. Customer cart now sends selected option IDs to server pricing. Emulator evidence pass. |
 | REQ-ORD-002 | Done | P0-007 and P0-009: Pay-Later creates `pending`; Pay-First stays hidden from Kitchen until confirmed Payment. Emulator evidence pass. |
 | REQ-ORD-003 | Done | P0-007, P0-008, P0-009, P0-010: immutable Order, status events, same-transaction tracking projection, and bounded realtime updates. Emulator evidence pass. |
 | REQ-ORD-004 | Done | P0-007: offline submission blocks with a problem UI and creates no Order. Adapter and UI evidence pass. |

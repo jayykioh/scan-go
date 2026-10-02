@@ -6,6 +6,7 @@ import {
   createOrderIdempotencyKey,
   submitOrder,
   subscribeOrderTracking,
+  toOrderCartLines,
 } from '../data/adapters/ordering.adapter';
 import { subscribePublicMenu } from '../data/adapters/catalog.adapter';
 import { buildQrPayload, resolvePublicTable } from '../data/adapters/table.adapter';
@@ -36,7 +37,7 @@ function friendlyError(error: unknown, fallback: string): string {
   return looksInternal ? fallback : raw;
 }
 
-/** One idempotency key per table link, reused across retries (REQ-ORD-004). */
+/** One idempotency key per pending submission, reused across retries (REQ-ORD-004). */
 function readIdempotencyKey(token: string): string {
   const storageKey = `${IDEMPOTENCY_STORAGE_PREFIX}${token}`;
   try {
@@ -47,6 +48,14 @@ function readIdempotencyKey(token: string): string {
     return created;
   } catch {
     return createOrderIdempotencyKey();
+  }
+}
+
+function clearIdempotencyKey(token: string): void {
+  try {
+    window.sessionStorage.removeItem(`${IDEMPOTENCY_STORAGE_PREFIX}${token}`);
+  } catch {
+    // Storage may be unavailable; the completed request still succeeded.
   }
 }
 
@@ -157,11 +166,7 @@ export default function PublicMenuPage() {
           token: linkContext.token,
           paymentMode: paymentMode === 'Pay-First' ? 'payFirst' : 'payLater',
           idempotencyKey: readIdempotencyKey(linkContext.token),
-          lines: cart.map((item) => ({
-            menuItemId: item.menuId,
-            quantity: item.quantity,
-            selectedOptionIds: [],
-          })),
+          lines: toOrderCartLines(cart),
         });
       } catch (error) {
         throw new Error(
@@ -169,6 +174,7 @@ export default function PublicMenuPage() {
           { cause: error },
         );
       }
+      clearIdempotencyKey(linkContext.token);
       setTracking(result.tracking);
       setTrackingToken(result.tracking.trackingToken);
     },

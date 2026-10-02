@@ -35,9 +35,10 @@ function inferType(name: string, category: string, type: string | null): string 
 
 function flattenModifiers(
   groups: CatalogMenuItem['modifierGroups'],
-): { name: string; price: number }[] {
+): { name: string; price: number; optionId: string }[] {
   return groups.flatMap((group) =>
     group.options.map((option) => ({
+      optionId: option.optionId,
       name: option.name,
       price: option.priceDeltaVnd,
     })),
@@ -87,6 +88,7 @@ export function toViewOrder(order: OrderSnapshot): Order {
     price: line.unitPriceVnd,
     quantity: line.quantity,
     selectedModifiers: line.modifiers.map((modifier) => modifier.name),
+    selectedOptionIds: line.modifiers.map((modifier) => modifier.optionId),
   }));
 
   return {

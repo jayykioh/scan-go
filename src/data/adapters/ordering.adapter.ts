@@ -19,6 +19,7 @@ import {
   getFirebaseFirestore,
   getFirebaseFunctions,
 } from '../../services/firebase/client';
+import type { OrderItem } from '../../types';
 import { createIdempotencyKey } from './idempotency';
 
 /** Customer tracking listeners are always bounded to one token document. */
@@ -66,6 +67,15 @@ export interface SubmitOrderRequest {
   paymentMode: OrderPaymentMode;
   idempotencyKey: string;
   lines: OrderCartLineInput[];
+}
+
+/** Preserve the option IDs selected in the cart for server-side price validation. */
+export function toOrderCartLines(cart: ReadonlyArray<OrderItem>): OrderCartLineInput[] {
+  return cart.map((item) => ({
+    menuItemId: item.menuId,
+    quantity: item.quantity,
+    selectedOptionIds: item.selectedOptionIds ?? [],
+  }));
 }
 
 /**

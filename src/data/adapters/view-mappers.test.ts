@@ -44,6 +44,7 @@ describe('toPublicMenuItem', () => {
     expect(item.price).toBe(publicMenuItemFixture.priceVnd);
     expect(item.costPrice).toBe(0);
     expect(item.toppings?.length).toBe(2);
+    expect(item.toppings?.[0].optionId).toBe(publicMenuItemFixture.modifierGroups[0].options[0].optionId);
   });
 });
 

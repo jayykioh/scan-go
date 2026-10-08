@@ -6,16 +6,21 @@ import {
   buildOrderCancelRequestHash,
   buildOrderLines,
   buildOrderSnapshot,
+  buildOrderStaffCreateRequestHash,
   buildPublicOrderTracking,
   computeOrderTotal,
   parseOrderCancelInput,
+  parseOrderStaffCreateInput,
   parseOrderSubmitInput,
   parsePublicMenuItem,
   resolveSelectedModifiers,
+  resolveStaffOrderTable,
   summarizeItems,
 } from './service.js';
 import {
   ORDER_CONTRACT_VERSION,
+  TAKEAWAY_TABLE_ID,
+  TAKEAWAY_TABLE_NAME,
   orderSubmitResultSchema,
   publicOrderTrackingSchema,
 } from '../../../../shared/contracts/order.contract.js';
@@ -302,6 +307,67 @@ describe('unpaid cancellation eligibility', () => {
     );
     expect(buildOrderCancelRequestHash(base)).not.toBe(
       buildOrderCancelRequestHash({ ...base, reason: 'Hết món' }),
+    );
+  });
+});
+
+describe('staff order entry (REQ-ORD-005)', () => {
+  const line = {
+    menuItemId: MENU_ITEM_ID_FIXTURE,
+    quantity: 1,
+    selectedOptionIds: [],
+  };
+  const baseInput = {
+    tenantId: TENANT_A_FIXTURE,
+    orderType: 'dineIn' as const,
+    tableId: 'table-01',
+    paymentMode: 'payLater' as const,
+    idempotencyKey: 'idem-staff-0001',
+    lines: [line],
+  };
+
+  it('rejects a dine-in input without a table', () => {
+    expect(() =>
+      parseOrderStaffCreateInput({ ...baseInput, tableId: null }),
+    ).toThrow(HttpsError);
+  });
+
+  it('resolves the reserved takeaway label', () => {
+    expect(
+      resolveStaffOrderTable({ orderType: 'takeaway', tableId: null }),
+    ).toEqual({ tableId: TAKEAWAY_TABLE_ID, tableName: TAKEAWAY_TABLE_NAME });
+    expect(() =>
+      resolveStaffOrderTable({ orderType: 'dineIn', tableId: 'table-01' }),
+    ).toThrow(HttpsError);
+  });
+
+  it('stores orderType on the Order and public tracking', () => {
+    const lines = buildOrderLines({ publicItems: publicItems(), lines: [line] });
+    const order = buildOrderSnapshot({
+      orderId: 'order-staff-001',
+      tenantId: TENANT_A_FIXTURE,
+      orderType: 'takeaway',
+      tableId: TAKEAWAY_TABLE_ID,
+      tableName: TAKEAWAY_TABLE_NAME,
+      paymentMode: 'payLater',
+      lines,
+      trackingToken: 'track-staff-001',
+      idempotencyKey: 'idem-staff-0001',
+      now: '2026-09-12T07:05:00.000Z',
+    });
+    expect(order.orderType).toBe('takeaway');
+    expect(buildPublicOrderTracking(order).orderType).toBe('takeaway');
+  });
+
+  it('binds the staff request hash to table and lines', () => {
+    expect(buildOrderStaffCreateRequestHash(baseInput)).toBe(
+      buildOrderStaffCreateRequestHash(baseInput),
+    );
+    expect(buildOrderStaffCreateRequestHash(baseInput)).not.toBe(
+      buildOrderStaffCreateRequestHash({
+        ...baseInput,
+        tableId: 'table-02',
+      }),
     );
   });
 });

@@ -18,8 +18,9 @@ import { assertAppCheck } from '../../shared/appCheck.js';
 import { maskPersonalData } from '../../shared/pii.js';
 import { writeAuditEvent } from '../../shared/audit.js';
 import { geminiApiKeySecret } from '../../shared/secrets.js';
+import { runPerTenant } from '../../shared/scheduled.js';
 import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
-import { dayKeyFromIso, nowIso } from '../reporting/service.js';
+import { dayKeyFromIso, nowIso, shiftDayKey } from '../reporting/service.js';
 import {
   readConfigLayers,
   resolveTenantConfig,
@@ -121,6 +122,10 @@ export const callableAiAsk = onCall(CALL_OPTIONS, async (request) => {
     await readConfigLayers(db, input.tenantId),
   );
   const { provider: providerName, monthlyBudgetVnd } = resolvedConfig.values.ai;
+  const warningThresholds = {
+    revenueDropPercent: resolvedConfig.values.ai.revenueDropPercent,
+    lowMarginPercent: resolvedConfig.values.ai.lowMarginPercent,
+  };
 
   // Resolve the concrete adapter first so the reservation matches its real
   // cost profile. The reservation is atomic, so concurrent calls cannot both
@@ -130,28 +135,64 @@ export const callableAiAsk = onCall(CALL_OPTIONS, async (request) => {
   const safeQuestion = maskPersonalData(input.question);
 
   const dayRef = db.doc(`tenants/${input.tenantId}/dailyStats/${dayKey}`);
-  const [daySnap, itemsSnap, menuItems, ingredients] = await Promise.all([
+  // Read the current day and the prior day so the revenue-drop warning can
+  // compare them (REQ-AI-007).
+  const previousDayKey = shiftDayKey(dayKey, -1);
+  const previousDayRef = db.doc(
+    `tenants/${input.tenantId}/dailyStats/${previousDayKey}`,
+  );
+  const [
+    daySnap,
+    itemsSnap,
+    previousDaySnap,
+    previousItemsSnap,
+    menuItems,
+    ingredients,
+  ] = await Promise.all([
     dayRef.get(),
     dayRef.collection('items').limit(MAX_AI_ITEM_STATS).get(),
+    previousDayRef.get(),
+    previousDayRef.collection('items').limit(MAX_AI_ITEM_STATS).get(),
     readMenuItems(db, input.tenantId),
     readIngredients(db, input.tenantId),
   ]);
 
-  const dayStats = daySnap.exists
-    ? [
-        {
-          stats: mapDailyStats(input.tenantId, dayKey, daySnap.data() ?? {}),
-          items: itemsSnap.docs.map((itemSnap) =>
-            mapDailyItemStats(
+  const dayStats = [
+    ...(previousDaySnap.exists
+      ? [
+          {
+            stats: mapDailyStats(
               input.tenantId,
-              dayKey,
-              itemSnap.id,
-              itemSnap.data(),
+              previousDayKey,
+              previousDaySnap.data() ?? {},
             ),
-          ),
-        },
-      ]
-    : [];
+            items: previousItemsSnap.docs.map((itemSnap) =>
+              mapDailyItemStats(
+                input.tenantId,
+                previousDayKey,
+                itemSnap.id,
+                itemSnap.data(),
+              ),
+            ),
+          },
+        ]
+      : []),
+    ...(daySnap.exists
+      ? [
+          {
+            stats: mapDailyStats(input.tenantId, dayKey, daySnap.data() ?? {}),
+            items: itemsSnap.docs.map((itemSnap) =>
+              mapDailyItemStats(
+                input.tenantId,
+                dayKey,
+                itemSnap.id,
+                itemSnap.data(),
+              ),
+            ),
+          },
+        ]
+      : []),
+  ];
 
   const context = assembleSafeContext({
     tenantId: input.tenantId,
@@ -159,7 +200,7 @@ export const callableAiAsk = onCall(CALL_OPTIONS, async (request) => {
     menuItems,
     ingredients,
   });
-  const warnings = computeWarnings(context);
+  const warnings = computeWarnings(context, warningThresholds);
   // Reserve only around the provider call, so no failure between the
   // reservation and the call can leak budget.
   const estimatedReservationVnd = estimateAiReservationVnd(
@@ -352,24 +393,25 @@ export const callableAiGroupFeedback = onCall(
 
 /**
  * Weekly safety net: run the grounded weekly analysis for every tenant in its
- * own timezone. A failure for one tenant never blocks the others (REQ-AI-002).
+ * own timezone. A failure for one tenant never blocks the others, and the run
+ * is reported as failed so Cloud Scheduler retries it and the error is
+ * searchable (REQ-AI-002, NFR-OBS-001).
  */
 export const scheduledAiWeeklyAnalysis = onSchedule(
   {
     region: FUNCTIONS_REGION,
     timeZone: AI_DEFAULT_TIMEZONE,
     schedule: 'every monday 03:00',
+    retryCount: 3,
     secrets: [geminiApiKeySecret],
   },
   async () => {
     const db = getDb();
     const tenantsSnap = await db.collection('tenants').limit(1000).get();
-    for (const tenantSnap of tenantsSnap.docs) {
-      try {
-        await runWeeklyAnalysis(db, tenantSnap.id);
-      } catch {
-        // Keep the schedule alive; the on-demand command surfaces the error.
-      }
-    }
+    await runPerTenant(
+      'scheduledAiWeeklyAnalysis',
+      tenantsSnap.docs.map((tenantSnap) => tenantSnap.id),
+      (tenantId) => runWeeklyAnalysis(db, tenantId),
+    );
   },
 );

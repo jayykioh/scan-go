@@ -73,14 +73,16 @@ async function seed(): Promise<void> {
 }
 
 describe('tenant feedback ticket boundary', () => {
-  it('allows an active Owner and member to read a ticket', async () => {
+  it('allows an active Owner and denies a non-Owner member', async () => {
     await seed();
     const owner = testEnv.authenticatedContext(OWNER_UID).firestore();
     const member = testEnv.authenticatedContext(MEMBER_UID).firestore();
     await assertSucceeds(
       getDoc(doc(owner, 'tenants', TENANT_A, 'feedbackTickets', TICKET_ID)),
     );
-    await assertSucceeds(
+    // A ticket carries the same customer text as its source feedback, so it
+    // follows the Owner gate.
+    await assertFails(
       getDoc(doc(member, 'tenants', TENANT_A, 'feedbackTickets', TICKET_ID)),
     );
   });

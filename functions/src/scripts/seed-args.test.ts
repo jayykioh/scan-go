@@ -16,6 +16,7 @@ describe('parseSeedArgs', () => {
     expect(options.ownerUid).toBeNull();
     expect(options.tenantId).toBe(DEFAULT_SEED_TENANT_ID);
     expect(options.days).toBe(DEFAULT_SEED_DAYS);
+    expect(options.orders).toBe(0);
     expect(options.confirm).toBe(false);
     expect(options.dryRun).toBe(false);
   });
@@ -64,6 +65,24 @@ describe('parseSeedArgs', () => {
     expect(() => parseSeedArgs(['--owner-email'], {})).toThrow(
       /Thiếu giá trị cho --owner-email/,
     );
+  });
+
+  it('parses an orders total', () => {
+    const options = parseSeedArgs(
+      ['--owner-uid', 'a', '--days', '10', '--orders', '100'],
+      {},
+    );
+    expect(options.orders).toBe(100);
+    expect(options.days).toBe(10);
+  });
+
+  it('rejects an orders value outside the allowed range', () => {
+    expect(() =>
+      parseSeedArgs(['--owner-uid', 'a', '--orders', '0'], {}),
+    ).toThrow(/--orders/);
+    expect(() =>
+      parseSeedArgs(['--owner-uid', 'a', '--orders', '999999'], {}),
+    ).toThrow(/--orders/);
   });
 
   it('rejects a days value outside the allowed range', () => {

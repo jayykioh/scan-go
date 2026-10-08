@@ -12,11 +12,15 @@ import {
   buildStockMovement,
   computeNextInventoryVersion,
   computeRecipeCost,
+  computeWeightedAverageUnitCost,
+  lotPriceIncreasePercent,
   movementIdFor,
   restorationMovementIdFor,
   parseIngredientCreateInput,
+  parseIngredientUpdateInput,
   parseStockAdjustInput,
   resolveInitialStockQuantity,
+  resolveStockInLotUnitCost,
   toIngredient,
   type InventoryIdempotencyRecord,
 } from './service.js';
@@ -24,6 +28,7 @@ import {
   convertToBaseUnits,
   convertUnitCostToBase,
   ingredientCreateInputSchema,
+  resolveCountUnitLabel,
   type Ingredient,
   type Recipe,
 } from '../../../../shared/contracts/inventory.contract.js';
@@ -114,6 +119,53 @@ describe('ingredient creation with integer base units and VND Cost', () => {
     expect(() =>
       parseIngredientCreateInput(createInput({ purchasePriceVnd: -1 })),
     ).toThrow(HttpsError);
+  });
+
+  it('stores a free-text count unit name and requires it for a count unit', () => {
+    expect(() =>
+      parseIngredientCreateInput(
+        createInput({ purchaseUnit: 'unit', stockInput: null }),
+      ),
+    ).toThrow(HttpsError);
+
+    const parsed = parseIngredientCreateInput(
+      createInput({
+        purchaseUnit: 'unit',
+        countUnitLabel: 'trái',
+        purchasePriceVnd: 5000,
+        stockInput: { unit: 'unit', quantity: 10 },
+      }),
+    );
+    const ingredient = buildNewIngredient(
+      parsed,
+      INGREDIENT_NOODLE_ID_FIXTURE,
+      '2026-09-12T05:00:00.000Z',
+    );
+    expect(ingredient.baseUnit).toBe('unit');
+    expect(ingredient.countUnitLabel).toBe('trái');
+
+    const update = applyIngredientUpdate(
+      ingredient,
+      parseIngredientUpdateInput({
+        tenantId: TENANT_A_FIXTURE,
+        ingredientId: ingredient.ingredientId,
+        name: ingredient.name,
+        purchaseUnit: 'unit',
+        countUnitLabel: 'hộp',
+        purchasePriceVnd: 5000,
+        lowStockThreshold: 10,
+        isActive: true,
+      }),
+      '2026-09-12T06:00:00.000Z',
+    );
+    expect(update.countUnitLabel).toBe('hộp');
+  });
+
+  it('clears the count unit name for mass and volume ingredients', () => {
+    expect(
+      resolveCountUnitLabel({ purchaseUnit: 'kg', countUnitLabel: 'trái' }),
+    ).toBeNull();
+    expect(resolveCountUnitLabel({ purchaseUnit: 'unit', countUnitLabel: '  ' })).toBeNull();
   });
 });
 
@@ -398,8 +450,40 @@ describe('stock movement and idempotency', () => {
         quantityDeltaBaseUnits: 0,
         reason: 'manual_adjustment',
         idempotencyKey: 'idem-stock-0001',
+        note: 'Kiểm tra',
       }),
     ).toThrow(HttpsError);
+  });
+
+  it('requires a note for waste and manual adjustment', () => {
+    const base = {
+      tenantId: TENANT_A_FIXTURE,
+      ingredientId: INGREDIENT_NOODLE_ID_FIXTURE,
+      quantityDeltaBaseUnits: -100,
+      idempotencyKey: 'idem-stock-note-0001',
+    } as const;
+    expect(() =>
+      parseStockAdjustInput({ ...base, reason: 'waste' }),
+    ).toThrow(HttpsError);
+    expect(() =>
+      parseStockAdjustInput({ ...base, reason: 'manual_adjustment' }),
+    ).toThrow(HttpsError);
+    expect(
+      parseStockAdjustInput({
+        ...base,
+        reason: 'waste',
+        note: 'Hết hạn',
+      }).note,
+    ).toBe('Hết hạn');
+    expect(() =>
+      parseStockAdjustInput({
+        tenantId: TENANT_A_FIXTURE,
+        ingredientId: INGREDIENT_NOODLE_ID_FIXTURE,
+        quantityDeltaBaseUnits: -100,
+        reason: 'order_deduction',
+        idempotencyKey: 'idem-stock-note-0002',
+      }),
+    ).not.toThrow();
   });
 });
 
@@ -477,5 +561,137 @@ describe('contract version helpers', () => {
     });
     expect(ingredient.ingredientId).toBe(INGREDIENT_NOODLE_ID_FIXTURE);
     expect('version' in ingredient).toBe(false);
+  });
+});
+
+describe('weighted-average lot Cost (REQ-INV-010, ADR 0014)', () => {
+  it('averages quantity on hand and the new lot as integer VND', () => {
+    // 1000 g at 100 VND/g plus 1000 g at 200 VND/g -> 150 VND/g.
+    expect(
+      computeWeightedAverageUnitCost({
+        onHandQuantity: 1000,
+        currentUnitCostVnd: 100,
+        lotQuantity: 1000,
+        lotUnitCostVnd: 200,
+      }),
+    ).toBe(150);
+    expect(Number.isInteger(
+      computeWeightedAverageUnitCost({
+        onHandQuantity: 300,
+        currentUnitCostVnd: 33,
+        lotQuantity: 700,
+        lotUnitCostVnd: 100,
+      }),
+    )).toBe(true);
+  });
+
+  it('uses the new lot price when there is no usable stock on hand', () => {
+    expect(
+      computeWeightedAverageUnitCost({
+        onHandQuantity: 0,
+        currentUnitCostVnd: 100,
+        lotQuantity: 500,
+        lotUnitCostVnd: 220,
+      }),
+    ).toBe(220);
+  });
+
+  it('ignores a negative on-hand quantity instead of lowering the Cost', () => {
+    expect(
+      computeWeightedAverageUnitCost({
+        onHandQuantity: -50,
+        currentUnitCostVnd: 50,
+        lotQuantity: 100,
+        lotUnitCostVnd: 200,
+      }),
+    ).toBe(200);
+  });
+
+  it('requires a price for a positive stock-in lot and rejects one otherwise', () => {
+    const priced = parseStockAdjustInput({
+      tenantId: TENANT_A_FIXTURE,
+      ingredientId: INGREDIENT_NOODLE_ID_FIXTURE,
+      quantityDeltaBaseUnits: 1000,
+      reason: 'stock_in',
+      idempotencyKey: 'idem-lot-0001',
+      purchaseUnit: 'kg',
+      purchasePriceVnd: 200000,
+    });
+    expect(resolveStockInLotUnitCost(priced)).toBe(200);
+
+    const missing = () =>
+      parseStockAdjustInput({
+        tenantId: TENANT_A_FIXTURE,
+        ingredientId: INGREDIENT_NOODLE_ID_FIXTURE,
+        quantityDeltaBaseUnits: 1000,
+        reason: 'stock_in',
+        idempotencyKey: 'idem-lot-0002',
+      });
+    expect(missing).toThrow(HttpsError);
+
+    // A priced lot is rejected for a non-purchase effect.
+    expect(() =>
+      parseStockAdjustInput({
+        tenantId: TENANT_A_FIXTURE,
+        ingredientId: INGREDIENT_NOODLE_ID_FIXTURE,
+        quantityDeltaBaseUnits: -100,
+        reason: 'waste',
+        idempotencyKey: 'idem-lot-0003',
+        purchaseUnit: 'kg',
+        purchasePriceVnd: 200000,
+      }),
+    ).toThrow(HttpsError);
+  });
+
+  it('records the lot price on the movement and defaults others to null', () => {
+    const movement = buildStockMovement({
+      movementId: 'move-lot-0001',
+      tenantId: TENANT_A_FIXTURE,
+      ingredientId: INGREDIENT_NOODLE_ID_FIXTURE,
+      quantityDelta: 1000,
+      reason: 'stock_in',
+      orderId: null,
+      actorUid: null,
+      idempotencyKey: 'idem-lot-0001',
+      createdAt: '2026-09-12T08:00:00.000Z',
+      lotUnitCostVnd: 200,
+    });
+    expect(movement.lotUnitCostVnd).toBe(200);
+
+    const plain = buildStockMovement({
+      movementId: 'move-lot-0002',
+      tenantId: TENANT_A_FIXTURE,
+      ingredientId: INGREDIENT_NOODLE_ID_FIXTURE,
+      quantityDelta: -100,
+      reason: 'waste',
+      orderId: null,
+      actorUid: null,
+      idempotencyKey: 'idem-lot-0004',
+      createdAt: '2026-09-12T08:00:00.000Z',
+    });
+    expect(plain.lotUnitCostVnd).toBeNull();
+  });
+
+  it('reports the increase percent and null when there is no increase', () => {
+    expect(lotPriceIncreasePercent({
+      previousUnitCostVnd: 100,
+      lotUnitCostVnd: 105,
+    })).toBeCloseTo(5, 5);
+    expect(lotPriceIncreasePercent({
+      previousUnitCostVnd: 100,
+      lotUnitCostVnd: 115,
+    })).toBeCloseTo(15, 5);
+    expect(lotPriceIncreasePercent({
+      previousUnitCostVnd: 0,
+      lotUnitCostVnd: 500,
+    })).toBeNull();
+    expect(lotPriceIncreasePercent({
+      previousUnitCostVnd: 200,
+      lotUnitCostVnd: 200,
+    })).toBeNull();
+    expect(lotPriceIncreasePercent({
+      previousUnitCostVnd: 200,
+      lotUnitCostVnd: 150,
+    })).toBeNull();
   });
 });

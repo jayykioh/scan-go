@@ -24,6 +24,7 @@ interface ChatMessage {
 
 const SUGGESTIONS = [
   'Hôm nay doanh thu và lãi gộp là bao nhiêu?',
+  'Doanh thu có đang giảm so với hôm trước không?',
   'Món nào đang bán dưới giá vốn?',
   'Nguyên liệu nào sắp hết hàng?',
 ];

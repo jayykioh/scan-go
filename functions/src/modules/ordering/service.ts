@@ -8,15 +8,20 @@ import {
   orderCartLineInputSchema,
   orderCorrectionMutationPlanSchema,
   orderSnapshotSchema,
+  orderStaffCreateInputSchema,
   orderSubmitInputSchema,
   publicOrderTrackingSchema,
+  TAKEAWAY_TABLE_ID,
+  TAKEAWAY_TABLE_NAME,
   type OrderArchivePlan,
   type OrderCancelInput,
   type OrderCorrectionMutationPlan,
   type OrderLineSnapshot,
   type OrderSnapshot,
+  type OrderStaffCreateInput,
   type OrderStatus,
   type OrderSubmitInput,
+  type OrderType,
   type PublicOrderTracking,
 } from '../../../../shared/contracts/order.contract.js';
 import {
@@ -32,6 +37,7 @@ import {
 
 export const ORDER_INVALID_CART_MESSAGE = 'Giỏ hàng không hợp lệ.';
 export const ORDER_INVALID_TOKEN_MESSAGE = 'Link bàn không còn khả dụng.';
+export const ORDER_INVALID_TABLE_MESSAGE = 'Bàn không hợp lệ hoặc đã đóng.';
 export const ORDER_ITEM_CHANGED_MESSAGE =
   'Món ăn đã thay đổi. Vui lòng tải lại thực đơn.';
 export const ORDER_IDEMPOTENCY_CONFLICT_MESSAGE =
@@ -52,6 +58,44 @@ export function parseOrderSubmitInput(data: unknown): OrderSubmitInput {
 
 export function parseOrderCancelInput(data: unknown): OrderCancelInput {
   return parseInput<OrderCancelInput>(orderCancelInputSchema, data);
+}
+
+export function parseOrderStaffCreateInput(
+  data: unknown,
+): OrderStaffCreateInput {
+  return parseInput<OrderStaffCreateInput>(orderStaffCreateInputSchema, data);
+}
+
+/**
+ * Resolve the real Table or the reserved takeaway label for a staff Order
+ * (REQ-ORD-005). A takeaway Order never reads a Table document.
+ */
+export function resolveStaffOrderTable(input: {
+  orderType: OrderType;
+  tableId: string | null;
+  tableName?: string;
+}): { tableId: string; tableName: string } {
+  if (input.orderType === 'takeaway') {
+    return { tableId: TAKEAWAY_TABLE_ID, tableName: TAKEAWAY_TABLE_NAME };
+  }
+  if (!input.tableId || !input.tableName) {
+    throw new HttpsError('invalid-argument', ORDER_INVALID_TABLE_MESSAGE);
+  }
+  return { tableId: input.tableId, tableName: input.tableName };
+}
+
+/** The request hash binds one idempotency key to one staff create request. */
+export function buildOrderStaffCreateRequestHash(
+  input: OrderStaffCreateInput,
+): string {
+  return stableRequestHash({
+    command: 'staffCreateOrder',
+    tenantId: input.tenantId,
+    orderType: input.orderType,
+    tableId: input.orderType === 'takeaway' ? TAKEAWAY_TABLE_ID : input.tableId,
+    paymentMode: input.paymentMode,
+    lines: input.lines,
+  });
 }
 
 /**
@@ -238,6 +282,7 @@ export function summarizeItems(lines: OrderLineSnapshot[]): string {
 export interface BuildOrderInput {
   orderId: string;
   tenantId: string;
+  orderType?: OrderType;
   tableId: string;
   tableName: string;
   paymentMode: OrderSnapshot['paymentMode'];
@@ -253,6 +298,7 @@ export function buildOrderSnapshot(input: BuildOrderInput): OrderSnapshot {
     schemaVersion: ORDER_CONTRACT_VERSION,
     orderId: input.orderId,
     tenantId: input.tenantId,
+    orderType: input.orderType ?? 'dineIn',
     tableId: input.tableId,
     tableNameSnapshot: input.tableName,
     status: 'pending',
@@ -277,6 +323,7 @@ export function buildPublicOrderTracking(
     trackingToken: order.trackingToken,
     tenantId: order.tenantId,
     orderId: order.orderId,
+    orderType: order.orderType,
     tableName: order.tableNameSnapshot,
     itemSummary: summarizeItems(order.items),
     totalVnd: order.totalVnd,

@@ -1,4 +1,5 @@
 import type {
+  CatalogAvailabilityItem,
   CatalogMenuItem,
   PublicMenuItem,
 } from '@contracts/catalog.contract';
@@ -62,6 +63,24 @@ export function toOwnerMenuItem(item: CatalogMenuItem): MenuItem {
   };
 }
 
+/** Map one Kitchen-safe availability row to the Kitchen view model. */
+export function toAvailabilityMenuItem(
+  item: CatalogAvailabilityItem,
+): MenuItem {
+  return {
+    id: item.menuItemId,
+    name: item.name,
+    price: 0,
+    costPrice: 0,
+    category: item.category,
+    type: inferType(item.name, item.category, null),
+    image: '',
+    description: '',
+    inStock: item.isAvailable,
+    stockCount: 999,
+  };
+}
+
 /** Map one public menu projection to the Customer menu view model. */
 export function toPublicMenuItem(item: PublicMenuItem): MenuItem {
   return {
@@ -94,6 +113,8 @@ export function toViewOrder(order: OrderSnapshot): Order {
   return {
     id: order.orderId,
     tableId: order.tableId,
+    tableName: order.tableNameSnapshot,
+    orderType: order.orderType,
     items,
     total: order.totalVnd,
     status: order.status as OrderStatus,

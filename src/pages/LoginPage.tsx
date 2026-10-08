@@ -111,7 +111,7 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <div className="mt-12 pt-6 border-t border-hard">
+      <div className="mt-12 pt-6 border-t border-hard space-y-3">
         <p className="font-mono text-xs text-zinc-500">
           Chưa có tài khoản?{' '}
           <Link
@@ -119,6 +119,15 @@ export default function LoginPage() {
             className="font-bold text-zinc-900 hover:text-orange-600 cursor-pointer underline underline-offset-4 transition-colors"
           >
             Khởi tạo ngay
+          </Link>
+        </p>
+        <p className="font-mono text-xs text-zinc-500">
+          Bạn là nhân viên?{' '}
+          <Link
+            to="/staff"
+            className="font-bold text-zinc-900 hover:text-orange-600 cursor-pointer underline underline-offset-4 transition-colors"
+          >
+            Đăng nhập ca làm
           </Link>
         </p>
       </div>

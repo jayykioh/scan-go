@@ -1,12 +1,14 @@
 # AI Module
 
-- Serves: REQ-AI-001, REQ-AI-002, REQ-AI-003, REQ-AI-004, REQ-AI-005, REQ-AI-006, NFR-AI-001, NFR-AI-002, NFR-PRIV-002, NFR-SEC-003
+- Serves: REQ-AI-001, REQ-AI-002, REQ-AI-003, REQ-AI-004, REQ-AI-005, REQ-AI-006, REQ-INV-011, NFR-AI-001, NFR-AI-002, NFR-PRIV-002, NFR-SEC-003
 - Owns: Provider adapter, prompt assembly, weekly analysis, warnings, explanations, source references, `aiInsights` records, and `aiUsage` cost records
 - Does not own: Menu, price, Cost, Inventory, Orders, Feedback raw text, permissions, or configuration writes
 
 ## Queries
 - Identify loss and low-profit menu items.
 - Identify low ingredient stock.
+- Warn when the latest purchase-lot price is over ten percent above the prior
+  Cost, citing both prices and the change percentage (REQ-INV-011, ADR 0014).
 - Answer Owner questions from authorized tenant data and state the update time.
 - Explain the data, period, and formula behind each answer.
 - Deny out-of-permission questions server-side: payroll, personal data, secrets,

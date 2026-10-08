@@ -16,3 +16,12 @@ firebase-debug.log
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# Browser automation artifacts and the npm cache the CLI creates next to them.
+# Both are regenerable local state, never source.
+/.playwright-cli/
+/.pw-cache/
+
+# Optional local Firebase emulator jar cache, for hosts where the CLI cannot
+# write to ~/.cache/firebase/emulators. Point FIREBASE_EMULATORS_PATH here.
+/.emu-cache/

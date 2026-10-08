@@ -1,0 +1,11 @@
+- main:
+  - paragraph: Bàn khong-ton-tai
+  - heading "ScanGo" [level=1]
+  - button "Hội viên"
+  - textbox "Tìm món..."
+  - paragraph: Menu hôm nay
+  - heading "Gọi món nhanh, bếp nhận ngay." [level=2]
+  - text: 0 món Trả sau
+  - button "Tất cả"
+  - paragraph: Chưa có món phù hợp
+  - paragraph: Thử đổi bộ lọc hoặc tìm từ khóa khác.

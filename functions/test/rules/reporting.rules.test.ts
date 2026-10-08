@@ -107,14 +107,11 @@ function unauthDb() {
 }
 
 describe('tenant dailyStats read boundary', () => {
-  it('allows an active Owner and member to read stats and their subcollections', async () => {
+  it('allows an active Owner to read stats and their subcollections', async () => {
     await seed();
 
     await assertSucceeds(
       getDoc(doc(ownerDb(), 'tenants', TENANT_A, 'dailyStats', DAY_KEY)),
-    );
-    await assertSucceeds(
-      getDoc(doc(memberDb(), 'tenants', TENANT_A, 'dailyStats', DAY_KEY)),
     );
     await assertSucceeds(
       getDoc(
@@ -139,6 +136,27 @@ describe('tenant dailyStats read boundary', () => {
           DAY_KEY,
           'tables',
           'table-01',
+        ),
+      ),
+    );
+  });
+
+  it('denies a non-Owner member because revenue and COGS are Owner data', async () => {
+    await seed();
+
+    await assertFails(
+      getDoc(doc(memberDb(), 'tenants', TENANT_A, 'dailyStats', DAY_KEY)),
+    );
+    await assertFails(
+      getDoc(
+        doc(
+          memberDb(),
+          'tenants',
+          TENANT_A,
+          'dailyStats',
+          DAY_KEY,
+          'items',
+          'item-pho-bo-001',
         ),
       ),
     );

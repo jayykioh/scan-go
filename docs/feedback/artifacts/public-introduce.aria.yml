@@ -1,0 +1,19 @@
+- navigation:
+  - text: ScanGo Lite
+  - link "Về Trang Chủ":
+    - /url: /
+- text: Phiên bản Blueprint 2.0
+- heading "Bán hàng tối giản. Không cần phần cứng." [level=1]
+- paragraph: ScanGo Lite thiết kế riêng cho quán ăn, quán cà phê nhỏ. Trải nghiệm gọi món bằng QR và NFC chạm cực nhanh, tích hợp AI tự động phân tích vận hành.
+- link "Trải Nghiệm Thử":
+  - /url: /simulator
+- heading "Ba Trụ Cột Giá Trị" [level=2]
+- paragraph: Định vị khác biệt so với các phần mềm truyền thống.
+- heading "Order Chạm NFC & QR" [level=3]
+- paragraph: Khách tự quét QR hoặc chạm thẻ NFC tại bàn. Giao diện order mượt mà, giúp tăng tốc độ gọi món và chống phá đơn ảo hiệu quả bằng công nghệ token hóa.
+- heading "AI Giúp Nhìn Ra Tiền" [level=3]
+- paragraph: Hệ thống AI tự tính lời lỗ theo món, tự động ẩn món khi hết nguyên liệu. Với gói Pro, bạn có thể hỏi đáp trực tiếp với AI về tình hình kinh doanh.
+- heading "Phân Quyền Rõ Ràng" [level=3]
+- paragraph: Chủ quán thấy toàn bộ doanh thu. Thu ngân xử lý thanh toán. Bếp chỉ thấy hàng đợi món. Chống thất thoát triệt để mà không cần thuê người giám sát.
+- contentinfo:
+  - paragraph: © 2026 ScanGo Lite. Blueprint 2.0.

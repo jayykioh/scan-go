@@ -1,0 +1,9 @@
+- heading "Unexpected Application Error!" [level=2]
+- heading "404 Not Found" [level=3]
+- paragraph: 💿 Hey developer 👋
+- paragraph:
+  - text: You can provide a way better UX than this when your app throws errors by providing your own
+  - code: ErrorBoundary
+  - text: or
+  - code: errorElement
+  - text: prop on your route.

@@ -90,12 +90,14 @@ function unauthDb() {
 }
 
 describe('tenant feedback read boundary', () => {
-  it('allows an active Owner and member to read feedback', async () => {
+  it('allows an active Owner and denies a non-Owner member', async () => {
     await seed();
     await assertSucceeds(
       getDoc(doc(ownerDb(), 'tenants', TENANT_A, 'feedback', FEEDBACK_ID)),
     );
-    await assertSucceeds(
+    // Feedback carries raw customer text and contact detail, so membership
+    // alone is not enough: a Cashier keeps the reduced permission set.
+    await assertFails(
       getDoc(doc(memberDb(), 'tenants', TENANT_A, 'feedback', FEEDBACK_ID)),
     );
   });

@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-10-08T10:26:49.645Z",
+  "baseUrl": "http://127.0.0.1:3000",
+  "log": [
+    {
+      "flow": "w6",
+      "label": "after sign out",
+      "detail": "http://127.0.0.1:3000/login",
+      "at": "2026-10-08T10:26:44.255Z"
+    },
+    {
+      "flow": "w6",
+      "label": "after sign in",
+      "detail": "http://127.0.0.1:3000/dashboard",
+      "at": "2026-10-08T10:26:49.640Z"
+    }
+  ],
+  "flows": [
+    {
+      "id": "w6-owner-signout-signin",
+      "name": "Owner: đăng xuất rồi đăng nhập lại",
+      "ok": true,
+      "screenshots": [],
+      "durationMs": 16655,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=D5qyievF8dYUfNyGzVqsKIWN1KpWDhIQFtBqX8HtntNgbaYeWmImiQ&VER=8&database=p :: net::ERR_ABORTED",
+        "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=Mm63x1c7UeeZsK5VW9OCu37OJSgdGxzfnsp8n6cpYugUECV8ltJlgw&VER=8&database=p :: net::ERR_ABORTED"
+      ],
+      "finalUrl": "http://127.0.0.1:3000/dashboard"
+    }
+  ]
+}

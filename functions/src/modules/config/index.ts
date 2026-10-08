@@ -242,9 +242,10 @@ const SCHEDULE_OPTIONS = {
 /**
  * Daily retention and archive job. Config supplies the five-year default; paid
  * Orders and confirmed Payments are archived, never deleted (NFR-RET-001).
+ * Retention is idempotent, so a failed run is retried rather than skipped.
  */
 export const scheduledRetentionArchive = onSchedule(
-  { ...SCHEDULE_OPTIONS, schedule: 'every day 03:00' },
+  { ...SCHEDULE_OPTIONS, schedule: 'every day 03:00', retryCount: 3 },
   async () => {
     await runRetentionArchive(getDb());
   },
@@ -252,10 +253,10 @@ export const scheduledRetentionArchive = onSchedule(
 
 /**
  * Daily Firestore backup job. The deployment configuration retains backups for
- * 30 days (NFR-REL-001).
+ * 30 days (NFR-REL-001). A retried run replaces the same day's backup.
  */
 export const scheduledFirestoreBackup = onSchedule(
-  { ...SCHEDULE_OPTIONS, schedule: 'every day 02:00' },
+  { ...SCHEDULE_OPTIONS, schedule: 'every day 02:00', retryCount: 3 },
   async () => {
     await runScheduledBackup(getDb());
   },

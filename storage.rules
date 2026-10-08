@@ -2,20 +2,64 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // A Tenant member may write menu images; the file must be an image and
-    // bounded in size. Cost and recipe never live in Storage metadata.
+    // A Tenant member may write menu images; the file must be a raster image
+    // from the allowlist below and bounded in size. Cost and recipe never live
+    // in Storage metadata.
     function isActiveMember(tenantId) {
       return request.auth != null
         && firestore.exists(/databases/(default)/documents/tenants/$(tenantId)/members/$(request.auth.uid))
         && firestore.get(/databases/(default)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.isActive != false;
     }
 
+    // ADMIN is a Firebase Auth claim, never a membership (ADR 0012). `.get`
+    // with a default is used instead of `token.admin`, because reading an
+    // absent property raises an evaluation error and a hard error is not a
+    // clean deny.
+    function isAdmin() {
+      return request.auth != null && request.auth.token.get('admin', false) == true;
+    }
+
     // Tenant-scoped menu image path (REQ-CAT-001, NFR-SEC-001).
+    //
+    // Writes are restricted to an explicit raster allowlist rather than
+    // `image/.*`, because that pattern also admits `image/svg+xml`, which can
+    // carry script and is a stored-XSS vector if the object is ever served
+    // inline. Deletes stay explicitly denied so the intent is visible rather
+    // than implied by `request.resource` being null on a delete.
     match /tenants/{tenantId}/menuItems/{fileName} {
       allow read: if true;
-      allow write: if isActiveMember(tenantId)
+      allow create, update: if isActiveMember(tenantId)
         && request.resource.size <= 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && request.resource.contentType in [
+          'image/png',
+          'image/jpeg',
+          'image/webp',
+          'image/gif'
+        ];
+      allow delete: if false;
+    }
+
+    // Product-feedback screenshots (REQ-FDB-004, REQ-FDB-005).
+    //
+    // The reporter uploads straight to their own tenant + uid prefix, so the
+    // path itself proves who wrote the object and a cross-tenant or cross-user
+    // upload is impossible without a rule change. Reads are limited to active
+    // Tenant members and ADMIN: a screenshot may show revenue, customer names,
+    // or a phone number, so it is never public like a menu image. Deletes stay
+    // explicitly denied so the intent is visible rather than implied by
+    // `request.resource` being null on a delete.
+    match /tenants/{tenantId}/feedbackAttachments/{uid}/{fileName} {
+      allow read: if isActiveMember(tenantId) || isAdmin();
+      allow create, update: if isActiveMember(tenantId)
+        && request.auth.uid == uid
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType in [
+          'image/png',
+          'image/jpeg',
+          'image/webp',
+          'image/gif'
+        ];
+      allow delete: if false;
     }
 
     match /{allPaths=**} {

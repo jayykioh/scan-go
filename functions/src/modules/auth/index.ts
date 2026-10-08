@@ -317,6 +317,7 @@ export const callableAuthStaffPinVerify = onCall(
  */
 export const callableAuthAuthorizeStaff = onCall(CALL_OPTIONS, async (request) => {
   const uid = requireUid(request.auth?.uid);
+  assertAppCheck(request);
   const token = request.auth?.token as Record<string, unknown> | undefined;
   const isAdmin = isPlatformAdmin(token);
   const input = parseStaffAuthorizationInput(request.data);

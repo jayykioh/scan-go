@@ -248,6 +248,28 @@ describe('callableTenantCreate: additional Tenant', () => {
 
     expect(await countTenants()).toBe(2);
   });
+
+  it('caps additional Tenant creation per account', async () => {
+    await createUserWithEmailAndPassword(
+      auth,
+      'rate-limited-owner@example.com',
+      PASSWORD,
+    );
+    await bootstrapCallable()({});
+
+    // The limit is 3 per minute for one account; the first three calls mint a
+    // Tenant each, and the fourth is refused instead of creating a fourth.
+    for (let index = 0; index < 3; index += 1) {
+      await createTenantCallable()({ shopName: `Quán ${index}` });
+    }
+
+    await expect(
+      createTenantCallable()({ shopName: 'Quán 4' }),
+    ).rejects.toMatchObject({ code: 'functions/resource-exhausted' });
+
+    // One bootstrap Tenant plus the three created above.
+    expect(await countTenants()).toBe(4);
+  });
 });
 
 describe('callableTenantBootstrap: repeat bootstrap', () => {

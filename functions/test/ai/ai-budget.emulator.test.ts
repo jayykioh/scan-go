@@ -138,11 +138,15 @@ async function seedEmulators(): Promise<void> {
     });
   }
 
-  // Tenant A is already at its zero budget.
+  // Tenant A is already at its zero budget. The provider is pinned to the
+  // deterministic adapter so the recorded `provider`/`model` and the integer
+  // cost assertions never depend on an ambient GEMINI_API_KEY.
   await db.doc(`tenants/${TENANT_A}`).set({
     shopName: 'AI Budget Tenant A',
     timezone: 'Asia/Ho_Chi_Minh',
-    configOverrides: { ai: { monthlyBudgetVnd: 0 } },
+    configOverrides: {
+      ai: { provider: 'rule-based', monthlyBudgetVnd: 0 },
+    },
   });
   await db.doc(`tenants/${TENANT_A}/members/${USERS.ownerA.uid}`).set({
     membershipType: 'owner',
@@ -150,10 +154,12 @@ async function seedEmulators(): Promise<void> {
     isActive: true,
   });
 
-  // Tenant B keeps the default budget.
+  // Tenant B keeps the default budget, but the provider is pinned so the
+  // under-budget assertions never reach a live provider.
   await db.doc(`tenants/${TENANT_B}`).set({
     shopName: 'AI Budget Tenant B',
     timezone: 'Asia/Ho_Chi_Minh',
+    configOverrides: { ai: { provider: 'rule-based' } },
   });
   await db.doc(`tenants/${TENANT_B}/members/${USERS.ownerB.uid}`).set({
     membershipType: 'owner',

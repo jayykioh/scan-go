@@ -54,6 +54,13 @@ export type AiProviderName = z.infer<typeof aiProviderSchema>;
 export const aiConfigSchema = z.strictObject({
   provider: aiProviderSchema,
   monthlyBudgetVnd: z.number().int().nonnegative(),
+  /**
+   * Deterministic warning thresholds (REQ-AI-007, REQ-AI-008). A day whose
+   * revenue drops at least `revenueDropPercent` against the previous day warns
+   * the Owner; a menu item whose margin is below `lowMarginPercent` warns too.
+   */
+  revenueDropPercent: z.number().int().min(1).max(100),
+  lowMarginPercent: z.number().int().min(1).max(100),
 });
 
 export type AiConfig = z.infer<typeof aiConfigSchema>;
@@ -146,6 +153,8 @@ export const rateLimitOverrideInputSchema = z.strictObject({
 export const aiOverrideInputSchema = z.strictObject({
   provider: aiProviderSchema.optional(),
   monthlyBudgetVnd: z.number().int().nonnegative().optional(),
+  revenueDropPercent: z.number().int().min(1).max(100).optional(),
+  lowMarginPercent: z.number().int().min(1).max(100).optional(),
 });
 
 /** Tenant Owner input. Only the approved keys are accepted. */

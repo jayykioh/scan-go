@@ -4,6 +4,12 @@ import {
   feedbackSubmitResultSchema,
   feedbackTicketResultSchema,
 } from '../../../../shared/contracts/feedback.contract.js';
+import {
+  PRODUCT_FEEDBACK_CONTRACT_VERSION,
+  productFeedbackListResultSchema,
+  productFeedbackSetStatusResultSchema,
+  productFeedbackSubmitResultSchema,
+} from '../../../../shared/contracts/product-feedback.contract.js';
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { assertRateLimit } from '../../shared/rateLimit.js';
@@ -18,6 +24,20 @@ import {
   parseFeedbackSubmitInput,
   resolveVerificationState,
 } from './service.js';
+import {
+  PRODUCT_FEEDBACK_NOT_FOUND_MESSAGE,
+  applyProductFeedbackStatusChange,
+  assertActiveOwnerMember as assertProductFeedbackOwner,
+  assertActiveReporter,
+  assertAttachmentsInReporterPrefix,
+  buildProductFeedbackRecord,
+  parseProductFeedbackListInput,
+  parseProductFeedbackSetStatusInput,
+  parseProductFeedbackSubmitInput,
+  productFeedbackCollectionPath,
+  resolveProductFeedbackActorRole,
+  toProductFeedbackRecord,
+} from './product-feedback.service.js';
 import {
   FEEDBACK_TICKET_FEEDBACK_MISSING_MESSAGE,
   FEEDBACK_TICKET_NOT_FOUND_MESSAGE,
@@ -238,6 +258,179 @@ export const callableFeedbackUpdateTicket = onCall(
       schemaVersion: FEEDBACK_CONTRACT_VERSION,
       status: 'applied',
       ticket,
+    });
+  },
+);
+
+const PRODUCT_FEEDBACK_SUBMITTED_ACTION = 'ProductFeedbackSubmitted';
+const PRODUCT_FEEDBACK_STATUS_ACTION = 'ProductFeedbackStatusChanged';
+
+/**
+ * Owner, Staff, Kitchen, or Cashier reports a problem or a request about
+ * ScanGo itself, with optional screenshots already uploaded to the reporter's
+ * own Storage prefix (REQ-FDB-004, REQ-FDB-005).
+ *
+ * The record is tenant-scoped and server-written. The server re-verifies
+ * membership, derives the reporter role, and rejects an attachment path that
+ * is outside `tenants/{tenantId}/feedbackAttachments/{uid}/`.
+ */
+export const callableProductFeedbackSubmit = onCall(
+  CALL_OPTIONS,
+  async (request) => {
+    assertAppCheck(request);
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError('unauthenticated', FEEDBACK_INVALID_MESSAGE);
+    }
+    const input = parseProductFeedbackSubmitInput(request.data);
+    const db = getDb();
+
+    const memberSnap = await db
+      .doc(`tenants/${input.tenantId}/members/${uid}`)
+      .get();
+    assertActiveReporter(memberSnap.data());
+
+    assertAttachmentsInReporterPrefix({
+      tenantId: input.tenantId,
+      uid,
+      attachments: input.attachments,
+    });
+
+    assertRateLimit(
+      `product-feedback:${uid}`,
+      await resolvePublicOrderRateLimit(db),
+    );
+
+    const now = nowIso();
+    const ref = db.collection(productFeedbackCollectionPath(input.tenantId)).doc();
+    const record = buildProductFeedbackRecord({
+      feedbackId: ref.id,
+      tenantId: input.tenantId,
+      category: input.category,
+      severity: input.severity,
+      message: input.message,
+      attachments: input.attachments ?? [],
+      actorUid: uid,
+      actorRole: resolveProductFeedbackActorRole(
+        memberSnap.data(),
+        request.auth?.token?.admin === true,
+      ),
+      screenContext: input.screenContext ?? null,
+      now,
+    });
+    await ref.set(record);
+
+    return productFeedbackSubmitResultSchema.parse({
+      schemaVersion: PRODUCT_FEEDBACK_CONTRACT_VERSION,
+      feedbackId: ref.id,
+      tenantId: input.tenantId,
+      status: record.status,
+      attachmentCount: record.attachments.length,
+      createdAt: now,
+    });
+  },
+);
+
+/**
+ * Owner inbox read (REQ-FDB-006). The server re-checks that the caller is an
+ * active Owner, so a direct Firestore read is not the only gate. The message is
+ * returned because the inbox is Owner-only in both the contract and the Rules.
+ */
+export const callableProductFeedbackList = onCall(
+  CALL_OPTIONS,
+  async (request) => {
+    assertAppCheck(request);
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError('unauthenticated', FEEDBACK_INVALID_MESSAGE);
+    }
+    const input = parseProductFeedbackListInput(request.data);
+    const db = getDb();
+
+    const memberSnap = await db
+      .doc(`tenants/${input.tenantId}/members/${uid}`)
+      .get();
+    assertProductFeedbackOwner(
+      memberSnap.data(),
+      request.auth?.token?.admin === true,
+    );
+
+    const limit = input.limit ?? 50;
+    const snap = await db
+      .collection(productFeedbackCollectionPath(input.tenantId))
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+
+    return productFeedbackListResultSchema.parse({
+      schemaVersion: PRODUCT_FEEDBACK_CONTRACT_VERSION,
+      tenantId: input.tenantId,
+      items: snap.docs.map((docSnap) =>
+        toProductFeedbackRecord(docSnap.id, docSnap.data()),
+      ),
+    });
+  },
+);
+
+/**
+ * Owner triage command. Every change appends actor, time, and reason to the
+ * append-only history (REQ-FDB-006).
+ */
+export const callableProductFeedbackSetStatus = onCall(
+  CALL_OPTIONS,
+  async (request) => {
+    assertAppCheck(request);
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError('unauthenticated', FEEDBACK_INVALID_MESSAGE);
+    }
+    const input = parseProductFeedbackSetStatusInput(request.data);
+    const db = getDb();
+
+    const memberRef = db.doc(`tenants/${input.tenantId}/members/${uid}`);
+    const feedbackRef = db.doc(
+      `${productFeedbackCollectionPath(input.tenantId)}/${input.feedbackId}`,
+    );
+
+    const record = await db.runTransaction(async (transaction) => {
+      const memberSnap = await transaction.get(memberRef);
+      assertProductFeedbackOwner(
+        memberSnap.data(),
+        request.auth?.token?.admin === true,
+      );
+      const feedbackSnap = await transaction.get(feedbackRef);
+      if (!feedbackSnap.exists) {
+        throw new HttpsError('not-found', PRODUCT_FEEDBACK_NOT_FOUND_MESSAGE);
+      }
+      const current = toProductFeedbackRecord(
+        input.feedbackId,
+        feedbackSnap.data() ?? {},
+      );
+      const next = applyProductFeedbackStatusChange(current, {
+        toStatus: input.toStatus,
+        reason: input.reason,
+        actorUid: uid,
+        now: nowIso(),
+      });
+      transaction.set(feedbackRef, next);
+      writeAuditEventInTransaction(transaction, {
+        tenantId: input.tenantId,
+        actorUid: uid,
+        actorType: memberSnap.get('membershipType') === 'owner' ? 'owner' : 'staff',
+        role: 'owner',
+        action: PRODUCT_FEEDBACK_STATUS_ACTION,
+        targetType: 'product_feedback',
+        targetId: input.feedbackId,
+        reason: input.reason,
+        detail: { fromStatus: current.status, toStatus: next.status },
+      });
+      return next;
+    });
+
+    return productFeedbackSetStatusResultSchema.parse({
+      schemaVersion: PRODUCT_FEEDBACK_CONTRACT_VERSION,
+      status: 'applied',
+      record,
     });
   },
 );

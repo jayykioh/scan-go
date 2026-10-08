@@ -11,8 +11,10 @@ import {
   type OrderCartLineInput,
   type OrderPaymentMode,
   type OrderSnapshot,
+  type OrderStaffCreateInput,
   type OrderSubmitResult,
   type OrderTrackingResult,
+  type OrderType,
   type PublicOrderTracking,
 } from '@contracts/order.contract';
 import {
@@ -97,6 +99,30 @@ export async function submitOrder(
   return orderSubmitResultSchema.parse(result.data);
 }
 
+/** Staff order entry request. The server resolves tenant, price, and table. */
+export type StaffCreateOrderRequest = OrderStaffCreateInput;
+
+/**
+ * Create one Order as Owner or Cashier through the server callable
+ * (REQ-ORD-005). The client sends no price or total.
+ */
+export async function createStaffOrder(
+  request: StaffCreateOrderRequest,
+): Promise<OrderSubmitResult> {
+  const functions = getFirebaseFunctions();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<
+    StaffCreateOrderRequest,
+    OrderSubmitResult
+  >(functions, 'callableOrderStaffCreate');
+  const result = await callable(request);
+  return orderSubmitResultSchema.parse(result.data);
+}
+
+export type { OrderType };
+
 /**
  * Cancel one unpaid Order through the server callable. The server stops
  * fulfilment, restores Inventory, and writes the audit event (REQ-CAS-002).
@@ -144,6 +170,7 @@ export function mapStoredTracking(
     trackingToken,
     tenantId: data.tenantId,
     orderId: data.orderId,
+    orderType: data.orderType ?? 'dineIn',
     tableName: data.tableName,
     itemSummary: data.itemSummary,
     totalVnd: data.totalVnd,
@@ -158,7 +185,11 @@ export function mapStoredOrder(
   orderId: string,
   data: Record<string, unknown>,
 ): OrderSnapshot {
-  return orderSnapshotSchema.parse({ ...data, orderId });
+  return orderSnapshotSchema.parse({
+    orderType: 'dineIn',
+    ...data,
+    orderId,
+  });
 }
 
 /** Bounded listener for one Customer tracking document; unsubscribe on exit. */

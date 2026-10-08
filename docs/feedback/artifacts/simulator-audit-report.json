@@ -1,0 +1,368 @@
+{
+  "generatedAt": "2026-10-08T13:07:53.798Z",
+  "baseUrl": "http://127.0.0.1:3000",
+  "flows": [
+    {
+      "id": "s1-customer",
+      "name": "Khách: gọi món trong simulator",
+      "durationMs": 19624,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "s2-kitchen",
+      "name": "Bếp: KDS và chuyển trạng thái món",
+      "durationMs": 10565,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "s3-cashier",
+      "name": "Thu ngân: thu tiền và hội viên",
+      "durationMs": 10479,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "s4-staff",
+      "name": "Nhân viên: cổng PIN xác thực máy chủ",
+      "durationMs": 11479,
+      "error": null,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "id": "s5-owner-tabs",
+      "name": "Owner: các tab trong simulator",
+      "durationMs": 21101,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "s6-solo",
+      "name": "Solo: luồng thiết lập quán",
+      "durationMs": 9547,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "s7-i18n",
+      "name": "Cấu hình: độ phủ của nút đổi ngôn ngữ",
+      "durationMs": 107490,
+      "error": null,
+      "consoleErrors": []
+    }
+  ],
+  "findings": [
+    {
+      "flow": "s1-customer",
+      "kind": "pass",
+      "label": "Simulator khách: có danh sách bàn",
+      "detail": "count=6"
+    },
+    {
+      "flow": "s1-customer",
+      "kind": "pass",
+      "label": "Menu simulator có món để chọn",
+      "detail": "count=1"
+    },
+    {
+      "flow": "s1-customer",
+      "kind": "pass",
+      "label": "Có nút thêm vào giỏ ở màn chi tiết món",
+      "detail": "count=1"
+    },
+    {
+      "flow": "s1-customer",
+      "kind": "pass",
+      "label": "Giỏ hàng ghi nhận 1 món",
+      "detail": "6 items"
+    },
+    {
+      "flow": "s1-customer",
+      "kind": "pass",
+      "label": "Có tab theo dõi đơn",
+      "detail": "count=1"
+    },
+    {
+      "flow": "s1-customer",
+      "kind": "pass",
+      "label": "Simulator khách hiển thị màn theo dõi đơn",
+      "detail": "Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên 20:07 5G Menu BÀN 01 Your order #ORD_1 1x Phở Bò Tái Lăn Kinh Kỳ 65.000đ New Cooking Done Served"
+    },
+    {
+      "flow": "s1-customer",
+      "kind": "pass",
+      "label": "Màn theo dõi có các bước trạng thái món",
+      "detail": "perator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên 20:07 5G Menu BÀN 01 Your order #ORD_1 1x Phở Bò Tái Lăn Kinh Kỳ 65.000đ New Cooking Done Served"
+    },
+    {
+      "flow": "s1-customer",
+      "kind": "pass",
+      "label": "Không bị chặn bởi thông báo \"chỉ gửi qua liên kết bàn chính thức\"",
+      "detail": "không bị chặn"
+    },
+    {
+      "flow": "s1-customer",
+      "kind": "note",
+      "label": "Đơn của simulator là đơn demo cục bộ (không ghi Firestore)",
+      "detail": "#ORD_1"
+    },
+    {
+      "flow": "s2-kitchen",
+      "kind": "pass",
+      "label": "PIN 4 số bất kỳ (9999) được chấp nhận — không kiểm tra tài khoản",
+      "detail": "TEST ENVIRONMENT Bún Phở Kinh Kỳ Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên K"
+    },
+    {
+      "flow": "s2-kitchen",
+      "kind": "note",
+      "label": "Hàng đợi bếp",
+      "detail": "TEST ENVIRONMENT Bún Phở Kinh Kỳ Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên KDS Nhà Bếp 0 Đơn Chờ Missing or insufficient permissions. Hàng đợi sync Bếp đã rảnh! Chờ đơn mới từ "
+    },
+    {
+      "flow": "s2-kitchen",
+      "kind": "fail",
+      "label": "KDS không hiện lỗi quyền bằng tiếng Anh thô",
+      "detail": "có lỗi thô"
+    },
+    {
+      "flow": "s2-kitchen",
+      "kind": "note",
+      "label": "Không có đơn nào trong hàng đợi bếp",
+      "detail": "bỏ qua bước chuyển trạng thái"
+    },
+    {
+      "flow": "s3-cashier",
+      "kind": "pass",
+      "label": "PIN 4 số bất kỳ (0000) được chấp nhận — không kiểm tra tài khoản",
+      "detail": "TEST ENVIRONMENT Bún Phở Kinh Kỳ Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên T"
+    },
+    {
+      "flow": "s3-cashier",
+      "kind": "pass",
+      "label": "Thu ngân không hiện lỗi quyền bằng tiếng Anh thô",
+      "detail": "ok"
+    },
+    {
+      "flow": "s3-cashier",
+      "kind": "note",
+      "label": "Không có đơn chưa thu trong hàng đợi",
+      "detail": "bỏ qua bước thu tiền"
+    },
+    {
+      "flow": "s3-cashier",
+      "kind": "pass",
+      "label": "Có khu vực hội viên/loyalty cho thu ngân",
+      "detail": "Hội viên trung thành hệ thống DEMO Nguyễn Văn Hùng SĐT: 0987654321 3"
+    },
+    {
+      "flow": "s4-staff",
+      "kind": "note",
+      "label": "Sau khi nhập PIN sai",
+      "detail": "TEST ENVIRONMENT Bún Phở Kinh Kỳ Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên Nhân viên Nhập mã PIN cá nhân để bắt đầu ca làm việc Cần đăng nhập để thực hiện thao tác này. [401] Đ"
+    },
+    {
+      "flow": "s4-staff",
+      "kind": "pass",
+      "label": "PIN sai bị máy chủ từ chối và có thông báo hiểu được",
+      "detail": "TEST ENVIRONMENT Bún Phở Kinh Kỳ Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên Nhân viên Nhập mã PIN"
+    },
+    {
+      "flow": "s5-owner-tabs",
+      "kind": "pass",
+      "label": "Tab \"Report/Báo cáo\" render nội dung",
+      "detail": "846 ký tự"
+    },
+    {
+      "flow": "s5-owner-tabs",
+      "kind": "pass",
+      "label": "Tab \"Dishes/Món ăn\" render nội dung",
+      "detail": "744 ký tự"
+    },
+    {
+      "flow": "s5-owner-tabs",
+      "kind": "pass",
+      "label": "Tab \"Inventory/Kho\" render nội dung",
+      "detail": "414 ký tự"
+    },
+    {
+      "flow": "s5-owner-tabs",
+      "kind": "pass",
+      "label": "Tab \"QR tables/Bàn QR\" render nội dung",
+      "detail": "521 ký tự"
+    },
+    {
+      "flow": "s5-owner-tabs",
+      "kind": "pass",
+      "label": "Tab \"Staff/Nhân viên\" render nội dung",
+      "detail": "392 ký tự"
+    },
+    {
+      "flow": "s5-owner-tabs",
+      "kind": "pass",
+      "label": "Tab \"AI assistant/Trợ lý AI\" render nội dung",
+      "detail": "507 ký tự"
+    },
+    {
+      "flow": "s5-owner-tabs",
+      "kind": "pass",
+      "label": "Owner simulator không hiện lỗi quyền thô",
+      "detail": "ok"
+    },
+    {
+      "flow": "s6-solo",
+      "kind": "pass",
+      "label": "Solo: sang được bước thiết lập tiếp theo",
+      "detail": "TEST ENVIRONMENT Bún Phở Kinh Kỳ Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên Thiết lập quán Tối ưu"
+    },
+    {
+      "flow": "s6-solo",
+      "kind": "pass",
+      "label": "Solo: không lộ giá trị lỗi (undefined/NaN)",
+      "detail": "ok"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "Đổi được ngôn ngữ sang \"English\"",
+      "detail": "ok"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "Đổi được ngôn ngữ sang \"Tiếng Việt\"",
+      "detail": "ok"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "dashboard: nội dung đổi khi chuyển ngôn ngữ",
+      "detail": "có đổi"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "dashboard: chế độ Tiếng Việt không còn nhãn tiếng Anh",
+      "detail": "không có"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "note",
+      "label": "dashboard: số nhãn đổi",
+      "detail": "EN=7 · VI=7"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "dashboard-menu: nội dung đổi khi chuyển ngôn ngữ",
+      "detail": "có đổi"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "dashboard-menu: chế độ Tiếng Việt không còn nhãn tiếng Anh",
+      "detail": "không có"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "note",
+      "label": "dashboard-menu: số nhãn đổi",
+      "detail": "EN=8 · VI=8"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "sim-customer: nội dung đổi khi chuyển ngôn ngữ",
+      "detail": "có đổi"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "sim-customer: chế độ Tiếng Việt không còn nhãn tiếng Anh",
+      "detail": "không có"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "note",
+      "label": "sim-customer: số nhãn đổi",
+      "detail": "EN=9 · VI=9"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "sim-owner: nội dung đổi khi chuyển ngôn ngữ",
+      "detail": "có đổi"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "sim-owner: chế độ Tiếng Việt không còn nhãn tiếng Anh",
+      "detail": "không có"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "note",
+      "label": "sim-owner: số nhãn đổi",
+      "detail": "EN=10 · VI=10"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "fail",
+      "label": "sim-kitchen: nội dung đổi khi chuyển ngôn ngữ",
+      "detail": "KHÔNG đổi"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "sim-kitchen: chế độ Tiếng Việt không còn nhãn tiếng Anh",
+      "detail": "không có"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "note",
+      "label": "sim-kitchen: số nhãn đổi",
+      "detail": "EN=4 · VI=4"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "fail",
+      "label": "sim-cashier: nội dung đổi khi chuyển ngôn ngữ",
+      "detail": "KHÔNG đổi"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "pass",
+      "label": "sim-cashier: chế độ Tiếng Việt không còn nhãn tiếng Anh",
+      "detail": "không có"
+    },
+    {
+      "flow": "s7-i18n",
+      "kind": "note",
+      "label": "sim-cashier: số nhãn đổi",
+      "detail": "EN=4 · VI=4"
+    }
+  ],
+  "screenshots": [
+    "docs/feedback/artifacts/audit-s1-customer-tables.png",
+    "docs/feedback/artifacts/audit-s1-customer-menu.png",
+    "docs/feedback/artifacts/audit-s1-customer-cart.png",
+    "docs/feedback/artifacts/audit-s1-customer-after-submit.png",
+    "docs/feedback/artifacts/audit-s2-kitchen-pin.png",
+    "docs/feedback/artifacts/audit-s2-kitchen-queue.png",
+    "docs/feedback/artifacts/audit-s3-cashier-pin.png",
+    "docs/feedback/artifacts/audit-s3-cashier-queue.png",
+    "docs/feedback/artifacts/audit-s4-staff-pin.png",
+    "docs/feedback/artifacts/audit-s4-staff-denied.png",
+    "docs/feedback/artifacts/audit-s5-owner-report.png",
+    "docs/feedback/artifacts/audit-s5-owner-dishes.png",
+    "docs/feedback/artifacts/audit-s5-owner-inventory.png",
+    "docs/feedback/artifacts/audit-s5-owner-qr-tables.png",
+    "docs/feedback/artifacts/audit-s5-owner-staff.png",
+    "docs/feedback/artifacts/audit-s5-owner-ai-assistant.png",
+    "docs/feedback/artifacts/audit-s6-solo-step1.png",
+    "docs/feedback/artifacts/audit-s6-solo-step2.png",
+    "docs/feedback/artifacts/audit-s7-i18n-vi.png"
+  ]
+}

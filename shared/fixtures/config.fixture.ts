@@ -103,6 +103,8 @@ export function tenantVisibleResolvedConfigFixture(): TenantVisibleResolvedConfi
       ai: {
         provider: 'gemini',
         monthlyBudgetVnd: 500000,
+        revenueDropPercent: 20,
+        lowMarginPercent: 20,
       },
     },
     sources: {
@@ -115,6 +117,8 @@ export function tenantVisibleResolvedConfigFixture(): TenantVisibleResolvedConfi
       'pinPolicy.sessionHours': 'default',
       'ai.provider': 'default',
       'ai.monthlyBudgetVnd': 'default',
+      'ai.revenueDropPercent': 'default',
+      'ai.lowMarginPercent': 'default',
     },
     allowedTenantOverrideKeys: ['locale', 'timezone', 'pinPolicy', 'ai'],
   });

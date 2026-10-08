@@ -26,6 +26,15 @@ export const orderPaymentModeSchema = z.enum(['payFirst', 'payLater']);
 
 export type OrderPaymentMode = z.infer<typeof orderPaymentModeSchema>;
 
+/** Dine-in Orders use a real Table; takeaway Orders use a reserved label. */
+export const orderTypeSchema = z.enum(['dineIn', 'takeaway']);
+
+export type OrderType = z.infer<typeof orderTypeSchema>;
+
+/** Reserved table id and label for a takeaway Order (REQ-ORD-005). */
+export const TAKEAWAY_TABLE_ID = 'takeaway';
+export const TAKEAWAY_TABLE_NAME = 'Mang về';
+
 /** One selected modifier option snapshotted on an Order line. */
 export const orderLineModifierSchema = z.strictObject({
   optionId: z.string().min(1),
@@ -75,10 +84,31 @@ export const orderSubmitInputSchema = z.strictObject({
 
 export type OrderSubmitInput = z.infer<typeof orderSubmitInputSchema>;
 
+/**
+ * Staff order entry (REQ-ORD-005). A dine-in Order needs a real `tableId`; a
+ * takeaway Order ignores it. The server resolves every price.
+ */
+export const orderStaffCreateInputSchema = z
+  .strictObject({
+    tenantId: z.string().min(1),
+    orderType: orderTypeSchema.default('dineIn'),
+    tableId: z.string().min(1).max(128).nullable(),
+    paymentMode: orderPaymentModeSchema,
+    idempotencyKey: z.string().min(8).max(128),
+    lines: z.array(orderCartLineInputSchema).min(1).max(100),
+  })
+  .refine(
+    (input) => input.orderType !== 'dineIn' || input.tableId !== null,
+    'a dine-in order needs a tableId',
+  );
+
+export type OrderStaffCreateInput = z.infer<typeof orderStaffCreateInputSchema>;
+
 export const orderSnapshotSchema = z.strictObject({
   schemaVersion: z.literal(ORDER_CONTRACT_VERSION),
   orderId: z.string().min(1),
   tenantId: z.string().min(1),
+  orderType: orderTypeSchema,
   tableId: z.string().min(1),
   tableNameSnapshot: z.string().min(1),
   status: orderStatusSchema,
@@ -117,6 +147,7 @@ export const publicOrderTrackingSchema = z.strictObject({
   trackingToken: z.string().min(1),
   tenantId: z.string().min(1),
   orderId: z.string().min(1),
+  orderType: orderTypeSchema,
   tableName: z.string().min(1),
   itemSummary: z.string().min(1),
   totalVnd: vndSchema,

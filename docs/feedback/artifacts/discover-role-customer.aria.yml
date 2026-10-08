@@ -1,0 +1,22 @@
+- banner:
+  - link:
+    - /url: /simulator
+  - button "Đơn ảo"
+  - button "Xóa Data"
+- main:
+  - combobox:
+    - option "Solo Operator"
+    - option "Owner (Quản lý)"
+    - option "Thu Ngân"
+    - option "KDS (Bếp)"
+    - option "Khách hàng" [selected]
+    - option "Nhân viên"
+  - text: 18:55 5G ScanGo ready
+  - heading "Choose a table to open the menu." [level=1]
+  - paragraph: QR/NFC simulation. A public link opens the menu for its table.
+  - button "Bàn 01 Open menu"
+  - button "Bàn 02 Open menu"
+  - button "Bàn 03 Open menu"
+  - button "Bàn 04 Open menu"
+  - button "Bàn 05 Open menu"
+  - button "Bàn 06 Open menu"

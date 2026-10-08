@@ -31,21 +31,22 @@ export default function PhoneSimulator({
     return () => clearInterval(interval);
   }, []);
 
-  // Determine styles based on tablet vs phone mode
-  const containerClasses = isTablet 
-    ? "relative mx-auto w-full h-full" 
-    : "relative mx-auto max-w-[390px] w-full h-full";
-    
+  // Determine styles based on tablet vs phone mode. On a large screen the frame
+  // drops away so the role view fills the viewer (REQ-UX-002).
+  const containerClasses = isTablet
+    ? "relative mx-auto w-full h-full"
+    : "relative mx-auto max-w-[390px] w-full h-full lg:max-w-none";
+
   const bezelClasses = isTablet
-    ? "relative bg-zinc-950 border-4 border-zinc-900 rounded-[32px] shadow-[0_20px_50px_rgba(9,9,11,0.2)] overflow-hidden w-full h-full flex flex-col ring-8 ring-zinc-200/30"
-    : "relative bg-zinc-950 border-4 border-zinc-900 rounded-[48px] shadow-[0_20px_50px_rgba(9,9,11,0.2)] overflow-hidden w-full h-full min-h-0 flex flex-col ring-8 ring-zinc-200/30";
+    ? "relative bg-zinc-950 border-4 border-zinc-900 rounded-[32px] shadow-[0_20px_50px_rgba(9,9,11,0.2)] overflow-hidden w-full h-full flex flex-col ring-8 ring-zinc-200/30 lg:rounded-none lg:border-0 lg:ring-0 lg:shadow-none lg:bg-transparent"
+    : "relative bg-zinc-950 border-4 border-zinc-900 rounded-[48px] shadow-[0_20px_50px_rgba(9,9,11,0.2)] overflow-hidden w-full h-full min-h-0 flex flex-col ring-8 ring-zinc-200/30 lg:rounded-none lg:border-0 lg:ring-0 lg:shadow-none lg:bg-transparent";
 
   return (
     <div className={containerClasses} id={`phone-simulator-${actorName.toLowerCase()}`}>
       <div className={bezelClasses}>
         
         {/* Status Bar */}
-        <div className="px-6 pt-3 pb-2 flex justify-between items-center bg-white border-b border-[#B5C7D8]/50 z-40 text-[11px] font-bold text-[#2D2B30] select-none">
+        <div className="px-6 pt-3 pb-2 flex justify-between items-center bg-white border-b border-[#B5C7D8]/50 z-40 text-[11px] font-bold text-[#2D2B30] select-none lg:hidden">
           <div className="flex items-center gap-1">
             <span className="tabular-nums">{time}</span>
           </div>
@@ -91,7 +92,7 @@ export default function PhoneSimulator({
         </div>
 
         {/* Home Indicator Bar */}
-        <div className="bg-white py-1.5 flex justify-center items-center z-40 select-none">
+        <div className="bg-white py-1.5 flex justify-center items-center z-40 select-none lg:hidden">
           <div className="w-24 h-1 bg-zinc-200 rounded-full"></div>
         </div>
 

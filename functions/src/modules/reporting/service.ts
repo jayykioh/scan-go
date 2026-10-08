@@ -604,6 +604,22 @@ export function aggregateTotals(docs: DailyStats[]): ReportingTotals {
   );
 }
 
+/** Copy the reporting totals out of a stored day for a per-day chart point. */
+export function dayTotalsFromStats(doc: DailyStats): ReportingTotals {
+  return reportingTotalsSchema.parse({
+    createdOrderCount: doc.createdOrderCount,
+    cancelledOrderCount: doc.cancelledOrderCount,
+    paidOrderCount: doc.paidOrderCount,
+    reversedOrderCount: doc.reversedOrderCount,
+    refundedOrderCount: doc.refundedOrderCount,
+    revenueVnd: doc.revenueVnd,
+    costVnd: doc.costVnd,
+    grossProfitVnd: doc.grossProfitVnd,
+    reversedVnd: doc.reversedVnd,
+    refundedVnd: doc.refundedVnd,
+  });
+}
+
 export interface ReconcileInput {
   stats: DailyStats;
   tenantId: string;

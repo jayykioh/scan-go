@@ -13,11 +13,14 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import {
   ingredientSchema,
+  inventoryChangeReportResultSchema,
   recipeSchema,
   type Ingredient,
+  type IngredientArchiveInput,
   type IngredientCommandResult,
   type IngredientCreateInput,
   type IngredientUpdateInput,
+  type InventoryChangeReportResult,
   type Recipe,
   type RecipeCommandResult,
   type RecipeCreateInput,
@@ -87,6 +90,7 @@ export function mapStoredIngredient(
     name: data.name,
     baseUnit: data.baseUnit,
     purchaseUnit: data.purchaseUnit ?? null,
+    countUnitLabel: data.countUnitLabel ?? null,
     purchasePriceVnd: data.purchasePriceVnd ?? null,
     unitCostVnd: data.unitCostVnd,
     stockQuantity: data.stockQuantity ?? 0,
@@ -154,12 +158,16 @@ export async function updateIngredient(
   return (await callable({ ...fields, tenantId, ingredientId })).data;
 }
 
-/** Apply one integer base-unit stock effect through the server command. */
+/** Apply one integer base-unit stock effect through the server command. A
+ *  purchase lot carries its own price so the server can record it and move the
+ *  ingredient Cost to the weighted average (REQ-INV-010, ADR 0014). */
 export async function adjustStock(
   ingredientId: string,
   quantityDeltaBaseUnits: number,
   reason: StockAdjustInput['reason'],
   idempotencyKey: string,
+  note?: string | null,
+  lot?: { purchaseUnit: StockAdjustInput['purchaseUnit']; purchasePriceVnd: number },
 ): Promise<StockAdjustResult> {
   const functions = getFirebaseFunctions();
   const { tenantId } = await currentTenantContext();
@@ -177,6 +185,8 @@ export async function adjustStock(
       quantityDeltaBaseUnits,
       reason,
       idempotencyKey,
+      note: note ?? null,
+      ...(lot ? { purchaseUnit: lot.purchaseUnit, purchasePriceVnd: lot.purchasePriceVnd } : {}),
     })
   ).data;
 }
@@ -210,6 +220,43 @@ export async function updateRecipe(
     'callableInventoryUpdateRecipe',
   );
   return (await callable({ ...fields, tenantId, recipeId })).data;
+}
+
+/** Owner or Kitchen command: archive an ingredient instead of deleting it. */
+export async function archiveIngredient(
+  ingredientId: string,
+  reason: string | null,
+): Promise<IngredientCommandResult> {
+  const functions = getFirebaseFunctions();
+  const { tenantId } = await currentTenantContext();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<
+    IngredientArchiveInput,
+    IngredientCommandResult
+  >(functions, 'callableInventoryArchiveIngredient');
+  return (await callable({ tenantId, ingredientId, reason })).data;
+}
+
+/**
+ * Read the append-only inventory change report (REQ-INV-008). Owner and Kitchen
+ * review every add, edit, and archive with its actor and time.
+ */
+export async function getInventoryChangeReport(
+  limit = 50,
+): Promise<InventoryChangeReportResult> {
+  const functions = getFirebaseFunctions();
+  const { tenantId } = await currentTenantContext();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<
+    { tenantId: string; limit: number },
+    InventoryChangeReportResult
+  >(functions, 'callableInventoryChangeReport');
+  const result = await callable({ tenantId, limit });
+  return inventoryChangeReportResultSchema.parse(result.data);
 }
 
 /** Bounded ingredient listener for the Owner stock page. */

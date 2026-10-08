@@ -6,12 +6,16 @@ import {
   assertTenantScopedImagePath,
   buildNewMenuItem,
   computeNextCatalogVersion,
+  isCategoryAvailabilityTarget,
   isPublicProjectionVisible,
   matchesCatalogSearch,
   parseCatalogApplyTemplateInput,
+  parseCatalogAvailabilityListInput,
   parseCatalogCreateInput,
   parseCatalogSearchInput,
+  parseCatalogSetCategoryAvailabilityInput,
   parseCatalogUpdateInput,
+  toCatalogAvailabilityItem,
   toCatalogMenuItem,
   toPublicMenuItem,
 } from './service.js';
@@ -124,6 +128,69 @@ describe('applyMenuItemAvailability', () => {
     const projection = toPublicMenuItem(updated);
     expect(projection.isAvailable).toBe(false);
     expect(projection.updatedAt).toBe(now);
+  });
+});
+
+describe('isCategoryAvailabilityTarget', () => {
+  it('selects only active items in the category that still need the change', () => {
+    const active = { ...privateMenuItemFixture, isAvailable: true };
+    expect(isCategoryAvailabilityTarget(active, active.category, false)).toBe(
+      true,
+    );
+    expect(isCategoryAvailabilityTarget(active, active.category, true)).toBe(
+      false,
+    );
+    expect(isCategoryAvailabilityTarget(active, 'Danh mục khác', false)).toBe(
+      false,
+    );
+    expect(
+      isCategoryAvailabilityTarget(
+        { ...active, archivedAt: '2026-09-14T00:00:00.000Z' },
+        active.category,
+        false,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('parseCatalogSetCategoryAvailabilityInput', () => {
+  it('accepts a valid category command and rejects a missing category', () => {
+    expect(
+      parseCatalogSetCategoryAvailabilityInput({
+        tenantId: TENANT_A_FIXTURE,
+        category: 'Món chính',
+        isAvailable: false,
+      }).category,
+    ).toBe('Món chính');
+    expect(() =>
+      parseCatalogSetCategoryAvailabilityInput({
+        tenantId: TENANT_A_FIXTURE,
+        isAvailable: false,
+      }),
+    ).toThrow(HttpsError);
+  });
+});
+
+describe('toCatalogAvailabilityItem', () => {
+  it('keeps only the Kitchen-safe fields', () => {
+    const row = toCatalogAvailabilityItem(privateMenuItemFixture);
+    expect(row).toEqual({
+      menuItemId: privateMenuItemFixture.menuItemId,
+      name: privateMenuItemFixture.name,
+      category: privateMenuItemFixture.category,
+      isAvailable: privateMenuItemFixture.isAvailable,
+    });
+    expect(row).not.toHaveProperty('costPriceVnd');
+    expect(row).not.toHaveProperty('recipeId');
+  });
+});
+
+describe('parseCatalogAvailabilityListInput', () => {
+  it('accepts a tenant id and rejects a missing one', () => {
+    expect(
+      parseCatalogAvailabilityListInput({ tenantId: TENANT_A_FIXTURE }).tenantId,
+    ).toBe(TENANT_A_FIXTURE);
+    expect(() => parseCatalogAvailabilityListInput({})).toThrow(HttpsError);
   });
 });
 

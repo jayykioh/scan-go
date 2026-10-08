@@ -1,0 +1,25 @@
+- banner:
+  - text: ScanGo_
+  - link "Đăng nhập":
+    - /url: /login
+  - link "Khởi tạo":
+    - /url: /register
+- main:
+  - text: Vận hành tuyệt đối
+  - heading "Hệ thống Đặt món QR Không POS." [level=1]
+  - link "Vận hành ngay":
+    - /url: /register
+  - link "Xem mô phỏng":
+    - /url: /simulator
+  - paragraph: / Tối ưu quy trình gọi món, nấu nướng và thanh toán chỉ với thiết bị di động cá nhân.
+  - paragraph: / Cấu trúc máy chủ độc lập, hoạt động bền bỉ, loại bỏ chi phí phần cứng cồng kềnh.
+  - heading "Cấu trúc Hệ thống" [level=2]
+  - text: / Tính năng cốt lõi
+  - heading "Quản lý trung tâm" [level=3]
+  - paragraph: Điều hướng doanh thu, thiết lập menu và kiểm soát phân quyền nhân sự theo thời gian thực.
+  - heading "Giao thức Khách hàng" [level=3]
+  - paragraph: Giao diện quét mã QR tinh gọn, tiếp nhận order ngay tại bàn không độ trễ.
+  - heading "Terminal Bếp" [level=3]
+  - paragraph: Màn hình KDS tiếp nhận trạng thái độc lập, đồng bộ hóa quy trình xuất món.
+  - heading "Cổng thanh toán" [level=3]
+  - paragraph: Xử lý hóa đơn nhanh chóng, chính xác. Tích hợp thanh toán số và quản lý dòng tiền.

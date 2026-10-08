@@ -1,13 +1,13 @@
 import { httpsCallable } from 'firebase/functions';
 import {
   reportingRebuildResultSchema,
-  reportingSummaryResultSchema,
   type ReportingPeriod,
   type ReportingRebuildInput,
   type ReportingRebuildResult,
   type ReportingSummaryResult,
 } from '@contracts/reporting.contract';
 import { getFirebaseFunctions } from '../../services/firebase/client';
+import { readReportingSummary } from '../firestoreRead';
 
 export interface ReportingSummaryRequest {
   tenantId: string;
@@ -21,23 +21,14 @@ export function formatVnd(amountVnd: number): string {
 }
 
 /**
- * Owner Reporting summary (REQ-RPT-001). The server re-verifies tenant
- * membership and returns the day, week, or month totals. The client parses the
- * result through the shared Zod contract before use.
+ * Owner Reporting summary (REQ-RPT-001). The rules let an active tenant member
+ * read the materialized `dailyStats` tree, so the client aggregates it directly
+ * without a server round-trip.
  */
 export async function getReportingSummary(
   request: ReportingSummaryRequest,
 ): Promise<ReportingSummaryResult> {
-  const functions = getFirebaseFunctions();
-  if (!functions) {
-    throw new Error('Firebase chưa được cấu hình.');
-  }
-  const callable = httpsCallable<ReportingSummaryRequest, ReportingSummaryResult>(
-    functions,
-    'callableReportingGetSummary',
-  );
-  const result = await callable(request);
-  return reportingSummaryResultSchema.parse(result.data);
+  return readReportingSummary(request.period, request.anchorDay);
 }
 
 /**

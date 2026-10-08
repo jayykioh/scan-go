@@ -15,7 +15,7 @@
  *   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 npm run seed -- --owner-uid demo
  */
 import { applicationDefault, initializeApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
+import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import type { CatalogMenuItem } from '../../../shared/contracts/catalog.contract.js';
 import {
@@ -56,13 +56,19 @@ import {
 import { hashPin } from '../modules/auth/service.js';
 import {
   SEED_INGREDIENTS,
+  SEED_INGREDIENT_PRICE_SOURCES,
   SEED_MENU_ITEMS,
   SEED_STAFF,
   SEED_TABLE_COUNT,
   SEED_TIMEZONE,
   seedTable,
 } from './seed-data.js';
-import { parseSeedArgs } from './seed-args.js';
+import {
+  isSurveyStale,
+  SURVEY_MAX_AGE_DAYS,
+  SURVEY_OBSERVED_AT,
+} from './market-prices/market-prices.js';
+import { parseSeedArgs, DEFAULT_SEED_ORDERS_PER_DAY } from './seed-args.js';
 
 const VIETNAM_UTC_OFFSET_HOURS = 7;
 const BATCH_LIMIT = 400;
@@ -157,8 +163,7 @@ async function commitWrites(
 
 async function resolveOwner(
   options: ReturnType<typeof parseSeedArgs>,
-): Promise<OwnerIdentity> {
-  if (options.ownerUid) {
+): Promise<OwnerIdentity> {  if (options.ownerUid) {
     return {
       uid: options.ownerUid,
       email: options.ownerEmail,
@@ -184,6 +189,32 @@ async function resolveOwner(
   }
 }
 
+/**
+ * Provision the Firebase Auth account for one demo Staff member. Reuse an
+ * existing account for the same email so a repeated seed stays safe. When Auth
+ * is unavailable (dry-run or no emulator), fall back to the synthetic uid.
+ */
+async function provisionStaffAuthUser(
+  auth: Auth,
+  staff: (typeof SEED_STAFF)[number],
+): Promise<string> {
+  try {
+    const existing = await auth.getUserByEmail(staff.email);
+    return existing.uid;
+  } catch {
+    try {
+      const created = await auth.createUser({
+        email: staff.email,
+        password: staff.password,
+        displayName: staff.displayName,
+      });
+      return created.uid;
+    } catch {
+      return staff.uid;
+    }
+  }
+}
+
 export function buildIngredient(
   tenantId: string,
   definition: (typeof SEED_INGREDIENTS)[number],
@@ -196,6 +227,7 @@ export function buildIngredient(
     name: definition.name,
     baseUnit: baseUnitForUnit(definition.purchaseUnit),
     purchaseUnit: definition.purchaseUnit,
+    countUnitLabel: definition.countUnitLabel ?? null,
     purchasePriceVnd: definition.purchasePriceVnd,
     unitCostVnd: convertUnitCostToBase(
       definition.purchasePriceVnd,
@@ -401,6 +433,7 @@ export function generateOrder(
     schemaVersion: ORDER_CONTRACT_VERSION,
     orderId,
     tenantId,
+    orderType: 'dineIn',
     tableId: table.tableId,
     tableNameSnapshot: table.name,
     status,
@@ -448,6 +481,7 @@ export function generateOrder(
     trackingToken: order.trackingToken as string,
     tenantId,
     orderId,
+    orderType: 'dineIn',
     tableName: table.name,
     itemSummary: lines.reduce(
       (summary, line) =>
@@ -517,13 +551,19 @@ export function generateOrder(
   return { order, events, tracking, payment, source, paymentSource };
 }
 
+export interface SeedStaffIdentity {
+  uid: string;
+  roles: string[];
+}
+
 export function buildShifts(
   tenantId: string,
   now: string,
   todayKey: string,
+  staff: readonly SeedStaffIdentity[],
 ): Shift[] {
   const shifts: Shift[] = [];
-  SEED_STAFF.forEach((staff, staffIndex) => {
+  staff.forEach((member, staffIndex) => {
     for (let offset = 1; offset <= 7; offset += 1) {
       const dayKey = shiftDayKey(todayKey, -offset);
       const startHour = 8 + (staffIndex % 2) * 2;
@@ -533,11 +573,11 @@ export function buildShifts(
         schemaVersion: WORKFORCE_CONTRACT_VERSION,
         shiftId: `seed-shift-${staffIndex + 1}-${offset}`,
         tenantId,
-        staffUid: staff.uid,
+        staffUid: member.uid,
         date: dayKey,
         startAt,
         endAt,
-        role: staff.roles[0] ?? null,
+        role: member.roles[0] ?? null,
         createdAt: now,
         updatedAt: now,
       });
@@ -669,21 +709,30 @@ async function run(): Promise<void> {
       updatedAt: now,
     },
   });
+  const ownerProfile: Record<string, unknown> = {
+    locale: 'vi',
+    activeTenantId: tenantId,
+    updatedAt: now,
+  };
+  // Never clobber an existing profile field with null.
+  if (owner.email) ownerProfile.email = owner.email;
+  if (owner.displayName) ownerProfile.displayName = owner.displayName;
   writes.push({
     path: `users/${owner.uid}`,
-    data: {
-      email: owner.email,
-      displayName: owner.displayName ?? 'Chủ quán Demo',
-      locale: 'vi',
-      activeTenantId: tenantId,
-      updatedAt: now,
-    },
+    data: ownerProfile,
   });
+  const auth = options.dryRun ? null : getAuth();
+  const resolvedStaff: Array<(typeof SEED_STAFF)[number]> = [];
   for (const staff of SEED_STAFF) {
+    const staffUid =
+      auth === null ? staff.uid : await provisionStaffAuthUser(auth, staff);
+    resolvedStaff.push({ ...staff, uid: staffUid });
     writes.push({
-      path: `tenants/${tenantId}/members/${staff.uid}`,
+      path: `tenants/${tenantId}/members/${staffUid}`,
       data: {
-        uid: staff.uid,
+        uid: staffUid,
+        email: staff.email,
+        displayName: staff.displayName,
         membershipType: 'staff',
         roles: [...staff.roles],
         permissions: [...staff.permissions],
@@ -697,6 +746,15 @@ async function run(): Promise<void> {
         updatedAt: now,
       },
     });
+    // A previous seed run created a membership under a synthetic uid. When the
+    // real Auth uid is available, deactivate the legacy record so the Staff
+    // list does not show a duplicate.
+    if (staffUid !== staff.uid) {
+      writes.push({
+        path: `tenants/${tenantId}/members/${staff.uid}`,
+        data: { isActive: false, updatedAt: now },
+      });
+    }
   }
   for (const ingredient of ingredientById.values()) {
     writes.push({
@@ -757,9 +815,17 @@ async function run(): Promise<void> {
   const orderSources: ReportingOrderSource[] = [];
   const paymentSources: ReportingPaymentSource[] = [];
   const firstDayKey = shiftDayKey(todayKey, -(options.days - 1));
+  // Distribute the requested total as evenly as possible across the days; the
+  // default is a fixed per-day count when `--orders` is not given.
+  const baseOrdersPerDay =
+    options.orders > 0
+      ? Math.floor(options.orders / options.days)
+      : DEFAULT_SEED_ORDERS_PER_DAY;
+  const remainder =
+    options.orders > 0 ? options.orders % options.days : 0;
   for (let dayIndex = 0; dayIndex < options.days; dayIndex += 1) {
     const dayKey = shiftDayKey(todayKey, -dayIndex);
-    const ordersPerDay = 6;
+    const ordersPerDay = baseOrdersPerDay + (dayIndex < remainder ? 1 : 0);
     for (let orderIndex = 0; orderIndex < ordersPerDay; orderIndex += 1) {
       const generated = generateOrder(
         tenantId,
@@ -825,7 +891,7 @@ async function run(): Promise<void> {
     }
   }
 
-  const shifts = buildShifts(tenantId, now, todayKey);
+  const shifts = buildShifts(tenantId, now, todayKey, resolvedStaff);
   for (const shift of shifts) {
     writes.push({
       path: `tenants/${tenantId}/shifts/${shift.shiftId}`,
@@ -855,7 +921,8 @@ async function run(): Promise<void> {
         `  Bàn: ${SEED_TABLE_COUNT}\n` +
         `  Đơn hàng: ${orderSources.length} trong ${options.days} ngày\n` +
         `  Payment: ${paymentSources.length}, doanh thu ${totalRevenue} VND\n` +
-        `  Tổng lượt ghi: ${writes.length}\n`,
+        `  Tổng lượt ghi: ${writes.length}\n` +
+        formatPriceProvenance(),
     );
     return;
   }
@@ -869,8 +936,42 @@ async function run(): Promise<void> {
       `  Đơn hàng: ${orderSources.length}, Payment: ${paymentSources.length}\n` +
       `  Doanh thu seed: ${totalRevenue} VND\n` +
       `  Tổng lượt ghi: ${committed}\n` +
+      formatPriceProvenance() +
       `Chọn tenant ${tenantId} trong ứng dụng để xem dữ liệu.\n`,
   );
+}
+
+/**
+ * Report where each Seed ingredient price came from. A surveyed retail price is
+ * not a purchase cost, so the operator sees that rather than assuming the demo
+ * Cost is an invoice figure.
+ */
+function formatPriceProvenance(): string {
+  const fromSurvey = SEED_INGREDIENT_PRICE_SOURCES.filter(
+    (entry) => entry.source === 'survey',
+  );
+  const overridden = SEED_INGREDIENT_PRICE_SOURCES.filter(
+    (entry) => entry.source === 'override',
+  );
+  const fallback = SEED_INGREDIENT_PRICE_SOURCES.filter(
+    (entry) => entry.source === 'seed-default',
+  );
+
+  let output =
+    `  Nguồn giá: ${fromSurvey.length} khảo sát ${SURVEY_OBSERVED_AT}, ` +
+    `${overridden.length} do người duyệt, ${fallback.length} giá mặc định\n`;
+
+  if (isSurveyStale(SURVEY_OBSERVED_AT)) {
+    output +=
+      `  ! Khảo sát giá đã cũ hơn ${SURVEY_MAX_AGE_DAYS} ngày — ` +
+      `chạy lại "npm run market:survey".\n`;
+  }
+  if (fromSurvey.length > 0) {
+    output +=
+      '  ! Giá khảo sát gần với giá vốn nhưng KHÔNG phải hoá đơn của quán. ' +
+      'Thay bằng hoá đơn thật trước khi tin vào lãi gộp.\n';
+  }
+  return output;
 }
 
 const invokedDirectly =

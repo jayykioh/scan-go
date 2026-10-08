@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, TrendingUp, DollarSign, Users, ShoppingBag, CreditCard, Flame } from 'lucide-react';
-import type { ReportingSummaryResult } from '@contracts/reporting.contract';
+import type { ReportingPeriod, ReportingSummaryResult } from '@contracts/reporting.contract';
 import type { SubscriptionState } from '@contracts/subscription.contract';
 import { formatVnd, getReportingSummary } from '../../data/adapters/reporting.adapter';
 import { getSubscription } from '../../data/adapters/subscription.adapter';
@@ -14,8 +14,28 @@ interface TopItem {
   rev: number;
 }
 
+interface PeriodOption {
+  value: ReportingPeriod;
+  label: string;
+  rangeLabel: string;
+}
+
+const PERIOD_OPTIONS: PeriodOption[] = [
+  { value: 'day', label: 'Hôm nay', rangeLabel: 'Hôm nay' },
+  { value: 'week', label: 'Tuần', rangeLabel: 'Tuần này' },
+  { value: 'month', label: 'Tháng', rangeLabel: 'Tháng này' },
+];
+
+/** Short tenant-local day label from a `yyyymmdd` key. */
+function formatDayLabel(dayKey: string): string {
+  const day = Number(dayKey.slice(6, 8));
+  const month = Number(dayKey.slice(4, 6));
+  return `${day}/${month}`;
+}
+
 export default function OverviewPage() {
   const tenantId = useActiveTenantId();
+  const [period, setPeriod] = useState<ReportingPeriod>('day');
   const [summary, setSummary] = useState<ReportingSummaryResult | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionState | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
@@ -29,7 +49,7 @@ export default function OverviewPage() {
     }
     let cancelled = false;
     setReportError(null);
-    void getReportingSummary({ tenantId, period: 'day' })
+    void getReportingSummary({ tenantId, period })
       .then((result) => {
         if (!cancelled) setSummary(result);
       })
@@ -44,7 +64,7 @@ export default function OverviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [tenantId]);
+  }, [tenantId, period]);
 
   useEffect(() => {
     if (!tenantId) {
@@ -73,9 +93,11 @@ export default function OverviewPage() {
 
   const currentPlan = subscription ? formatPlanLabel(subscription.plan) : '—';
   const hasLiveData = summary !== null;
-  const todayRevenue = summary?.totals.revenueVnd ?? 0;
+  const periodLabel =
+    PERIOD_OPTIONS.find((option) => option.value === period)?.rangeLabel ??
+    'Hôm nay';
+  const periodRevenue = summary?.totals.revenueVnd ?? 0;
   const grossProfitVnd = summary?.totals.grossProfitVnd ?? null;
-  const cogsVnd = summary?.totals.costVnd ?? null;
   const totalOrders = summary?.totals.createdOrderCount ?? 0;
   const paidOrders = summary?.totals.paidOrderCount ?? 0;
   const topItems: TopItem[] = (summary?.popularItems ?? []).map((item) => ({
@@ -83,9 +105,14 @@ export default function OverviewPage() {
     qty: item.paidQuantity,
     rev: item.revenueVnd,
   }));
-  // One server day is the reporting anchor; the bar stays at zero until the
-  // server reports a paid revenue for that day.
-  const hasServerRevenue = hasLiveData && todayRevenue > 0;
+  const dailyBreakdown = summary?.dailyBreakdown ?? [];
+  const maxDayRevenue = dailyBreakdown.reduce(
+    (max, day) => Math.max(max, day.totals.revenueVnd),
+    0,
+  );
+  // The chart shows a bar per stored day; the placeholder stays until the
+  // server reports a paid revenue inside the selected period.
+  const hasServerRevenue = hasLiveData && periodRevenue > 0;
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto w-full animate-fadeIn">
@@ -93,7 +120,7 @@ export default function OverviewPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tighter text-zinc-900 uppercase">Tổng quan Kinh doanh</h1>
           <p className="text-zinc-500 font-medium mt-1">
-            Số liệu trực tiếp ngày hôm nay.
+            Số liệu trực tiếp {periodLabel.toLowerCase()}.
             <span className="ml-2 border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
               {reportError ? 'Lỗi tải báo cáo' : hasLiveData ? 'Số liệu thật' : 'Trống'}
             </span>
@@ -107,17 +134,36 @@ export default function OverviewPage() {
         </Link>
       </div>
 
+      {/* Period selector */}
+      <div className="flex items-center gap-2 mb-6" role="group" aria-label="Chọn kỳ báo cáo">
+        {PERIOD_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={period === option.value}
+            onClick={() => setPeriod(option.value)}
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-colors ${
+              period === option.value
+                ? 'bg-zinc-900 text-white border-zinc-900'
+                : 'bg-white text-zinc-500 border-zinc-300 hover:border-zinc-900 hover:text-zinc-900'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white p-6 border-hard shadow-[4px_4px_0_0_#f97316]">
           <div className="flex items-center gap-3 text-orange-600 mb-2">
             <DollarSign className="w-5 h-5" />
-            <h3 className="font-bold text-xs uppercase tracking-widest">Doanh thu nay</h3>
+            <h3 className="font-bold text-xs uppercase tracking-widest">Doanh thu {periodLabel}</h3>
           </div>
-          <div className="text-3xl font-black tracking-tighter">{formatVnd(todayRevenue)}</div>
+          <div className="text-3xl font-black tracking-tighter">{formatVnd(periodRevenue)}</div>
           {grossProfitVnd === null ? (
             <div className="text-xs font-bold text-zinc-400 mt-2">
-              Chưa có số liệu hôm nay
+              Chưa có số liệu {periodLabel.toLowerCase()}
             </div>
           ) : (
             <div className="text-xs font-bold text-emerald-600 mt-2 flex items-center gap-1">
@@ -178,7 +224,7 @@ export default function OverviewPage() {
       )}
       {!reportError && summary && totalOrders === 0 && (
         <div className="mb-6 border border-zinc-200 bg-white px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-500">
-          Chưa có số liệu báo cáo cho ngày hôm nay.
+          Chưa có số liệu báo cáo cho {periodLabel.toLowerCase()}.
         </div>
       )}
 
@@ -187,34 +233,50 @@ export default function OverviewPage() {
         <div className="md:col-span-2 bg-white border-hard shadow-hard flex flex-col">
           <div className="p-5 border-b border-zinc-100 flex justify-between items-center">
             <h3 className="font-bold text-lg uppercase tracking-tight text-zinc-900">Biểu đồ Doanh Thu</h3>
-            <span className="text-xs font-bold px-2 py-1 bg-zinc-100 text-zinc-600 border border-zinc-200">Hôm nay</span>
+            <span className="text-xs font-bold px-2 py-1 bg-zinc-100 text-zinc-600 border border-zinc-200">{periodLabel}</span>
           </div>
-          <div className="flex-1 p-6 flex flex-col items-center justify-center min-h-[300px] relative">
+          <div className="flex-1 p-6 flex flex-col justify-end min-h-[300px] relative">
             <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
 
             {hasServerRevenue ? (
-              <div className="w-full h-full flex items-end justify-center gap-2 z-10 px-4">
-                <div
-                  className="w-24 bg-orange-500 border border-orange-600 relative group flex justify-center"
-                  style={{ height: '75%' }}
-                >
-                  <div className="absolute -top-8 opacity-0 group-hover:opacity-100 bg-zinc-900 text-white text-[10px] font-bold px-2 py-1 rounded transition-opacity whitespace-nowrap">
-                    {formatVnd(todayRevenue)}
-                  </div>
-                </div>
+              <div className="w-full h-full flex items-end justify-around gap-2 z-10 px-2">
+                {dailyBreakdown.map((day) => {
+                  const heightPct =
+                    maxDayRevenue > 0
+                      ? Math.max(4, Math.round((day.totals.revenueVnd / maxDayRevenue) * 100))
+                      : 4;
+                  return (
+                    <div key={day.dayKey} className="flex-1 max-w-[56px] flex flex-col items-center h-full justify-end">
+                      <div
+                        className="w-full bg-orange-500 border border-orange-600 relative group"
+                        style={{ height: `${heightPct}%` }}
+                      >
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 bg-zinc-900 text-white text-[10px] font-bold px-2 py-1 rounded transition-opacity whitespace-nowrap z-20">
+                          {formatDayLabel(day.dayKey)} · {formatVnd(day.totals.revenueVnd)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <div className="z-10 text-center">
+              <div className="z-10 text-center self-center">
                 <DollarSign className="w-8 h-8 text-zinc-300 mx-auto" aria-hidden="true" />
                 <p className="mt-3 text-xs font-bold uppercase tracking-widest text-zinc-400">
-                  Chưa có doanh thu đã thu hôm nay.
+                  Chưa có doanh thu đã thu {periodLabel.toLowerCase()}.
                 </p>
               </div>
             )}
 
-            <div className="w-full border-t-2 border-zinc-900 mt-2 flex justify-center px-4 pt-2 text-[10px] font-bold text-zinc-400 uppercase">
-              <span className="text-zinc-900">Hôm nay</span>
-            </div>
+            {hasServerRevenue && (
+              <div className="w-full border-t-2 border-zinc-900 mt-2 flex justify-around px-2 pt-2 text-[10px] font-bold text-zinc-400 uppercase">
+                {dailyBreakdown.map((day) => (
+                  <span key={day.dayKey} className="flex-1 max-w-[56px] text-center truncate">
+                    {formatDayLabel(day.dayKey)}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

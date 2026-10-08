@@ -78,6 +78,11 @@ export const ingredientSchema = z.strictObject({
   baseUnit: baseUnitSchema,
   /** Owner purchase entry, kept so the edit form shows the original unit. */
   purchaseUnit: unitInputSchema.nullable(),
+  /**
+   * Free-text name for a count ingredient, for example "trái" or "hộp". It is
+   * null for mass and volume ingredients (REQ-INV-012).
+   */
+  countUnitLabel: z.string().min(1).max(40).nullable(),
   purchasePriceVnd: vndSchema.nullable(),
   unitCostVnd: vndSchema,
   stockQuantity: nonNegativeIntSchema,
@@ -137,6 +142,16 @@ export const stockMovementSchema = z.strictObject({
   orderId: z.string().min(1).nullable(),
   actorUid: z.string().min(1).nullable(),
   idempotencyKey: z.string().min(1),
+  /**
+   * Integer VND per base unit for one `stock_in` lot, so purchase prices stay
+   * auditable over time (REQ-INV-010, ADR 0014). Null for non-purchase effects.
+   */
+  lotUnitCostVnd: vndSchema.nullable().default(null),
+  /**
+   * Free-text note for a `waste` or `manual_adjustment` effect. It explains the
+   * loss, for example expiry or breakage (REQ-INV-009). Null for other effects.
+   */
+  note: z.string().min(1).max(500).nullable().default(null),
   createdAt: isoUtcTimestampSchema,
 });
 
@@ -149,30 +164,64 @@ export const stockInputSchema = z.strictObject({
 
 export type StockInput = z.infer<typeof stockInputSchema>;
 
-export const ingredientCreateInputSchema = z.strictObject({
-  tenantId: z.string().min(1),
-  name: z.string().min(1).max(200),
-  /** Purchase entry: base unit and Cost are derived from these two fields. */
-  purchaseUnit: unitInputSchema,
-  purchasePriceVnd: vndSchema,
-  lowStockThreshold: nonNegativeIntSchema,
-  isActive: z.boolean(),
-  stockInput: stockInputSchema.nullable(),
-});
+export const ingredientCreateInputSchema = z
+  .strictObject({
+    tenantId: z.string().min(1),
+    name: z.string().min(1).max(200),
+    /** Purchase entry: base unit and Cost are derived from these two fields. */
+    purchaseUnit: unitInputSchema,
+    /** Required free-text count unit when `purchaseUnit` is `unit` (REQ-INV-012). */
+    countUnitLabel: z.string().trim().max(40).nullable().optional(),
+    purchasePriceVnd: vndSchema,
+    lowStockThreshold: nonNegativeIntSchema,
+    isActive: z.boolean(),
+    stockInput: stockInputSchema.nullable(),
+  })
+  .refine(
+    (input) =>
+      input.purchaseUnit !== 'unit' ||
+      (typeof input.countUnitLabel === 'string' &&
+        input.countUnitLabel.trim().length > 0),
+    { message: 'countUnitLabel is required for a count unit', path: ['countUnitLabel'] },
+  );
 
 export type IngredientCreateInput = z.infer<typeof ingredientCreateInputSchema>;
 
-export const ingredientUpdateInputSchema = z.strictObject({
-  tenantId: z.string().min(1),
-  ingredientId: z.string().min(1),
-  name: z.string().min(1).max(200),
-  purchaseUnit: unitInputSchema,
-  purchasePriceVnd: vndSchema,
-  lowStockThreshold: nonNegativeIntSchema,
-  isActive: z.boolean(),
-});
+export const ingredientUpdateInputSchema = z
+  .strictObject({
+    tenantId: z.string().min(1),
+    ingredientId: z.string().min(1),
+    name: z.string().min(1).max(200),
+    purchaseUnit: unitInputSchema,
+    countUnitLabel: z.string().trim().max(40).nullable().optional(),
+    purchasePriceVnd: vndSchema,
+    lowStockThreshold: nonNegativeIntSchema,
+    isActive: z.boolean(),
+  })
+  .refine(
+    (input) =>
+      input.purchaseUnit !== 'unit' ||
+      (typeof input.countUnitLabel === 'string' &&
+        input.countUnitLabel.trim().length > 0),
+    { message: 'countUnitLabel is required for a count unit', path: ['countUnitLabel'] },
+  );
 
 export type IngredientUpdateInput = z.infer<typeof ingredientUpdateInputSchema>;
+
+/**
+ * Store the count unit name only for a count ingredient. Mass and volume
+ * ingredients keep a null label (REQ-INV-012).
+ */
+export function resolveCountUnitLabel(input: {
+  purchaseUnit: UnitInput;
+  countUnitLabel?: string | null;
+}): string | null {
+  if (input.purchaseUnit !== 'unit') {
+    return null;
+  }
+  const label = input.countUnitLabel?.trim() ?? '';
+  return label.length > 0 ? label : null;
+}
 
 export const ingredientArchiveInputSchema = z.strictObject({
   tenantId: z.string().min(1),
@@ -182,16 +231,64 @@ export const ingredientArchiveInputSchema = z.strictObject({
 
 export type IngredientArchiveInput = z.infer<typeof ingredientArchiveInputSchema>;
 
-export const stockAdjustInputSchema = z.strictObject({
-  tenantId: z.string().min(1),
-  ingredientId: z.string().min(1),
-  quantityDeltaBaseUnits: z
-    .number()
-    .int()
-    .refine((value) => value !== 0, 'delta must be non-zero'),
-  reason: stockMovementReasonSchema,
-  idempotencyKey: z.string().min(8).max(128),
-});
+/**
+ * True when an adjust command is a purchase lot that needs a price. A positive
+ * `stock_in` records a new lot; a negative `stock_in` corrects a prior mistake
+ * and keeps the existing Cost (REQ-INV-010).
+ */
+export function isPricedStockIn(input: {
+  reason: StockMovementReason;
+  quantityDeltaBaseUnits: number;
+}): boolean {
+  return input.reason === 'stock_in' && input.quantityDeltaBaseUnits > 0;
+}
+
+export const stockAdjustInputSchema = z
+  .strictObject({
+    tenantId: z.string().min(1),
+    ingredientId: z.string().min(1),
+    quantityDeltaBaseUnits: z
+      .number()
+      .int()
+      .refine((value) => value !== 0, 'delta must be non-zero'),
+    reason: stockMovementReasonSchema,
+    idempotencyKey: z.string().min(8).max(128),
+    /**
+     * Purchase cost for one `stock_in` lot, in a chosen purchase unit. The server
+     * converts it to integer VND per base unit, records it on the movement, and
+     * recomputes the weighted-average Cost (REQ-INV-010, ADR 0014). It is required
+     * for a positive-`stock_in` lot and ignored for any other effect.
+     */
+    purchaseUnit: unitInputSchema.optional(),
+    purchasePriceVnd: vndSchema.optional(),
+    /**
+     * Free-text note for a `waste` or `manual_adjustment` effect. It is required
+     * for those reasons so every loss is explainable (REQ-INV-009).
+     */
+    note: z.string().trim().max(500).nullable().optional(),
+  })
+  .refine(
+    (input) =>
+      (input.reason !== 'waste' && input.reason !== 'manual_adjustment') ||
+      (typeof input.note === 'string' && input.note.trim().length > 0),
+    {
+      message: 'note is required for waste and manual adjustment',
+      path: ['note'],
+    },
+  )
+  .refine(
+    (input) => {
+      const hasPrice =
+        input.purchaseUnit !== undefined && input.purchasePriceVnd !== undefined;
+      const priced = isPricedStockIn(input);
+      // A positive stock-in lot needs a price; any other effect must omit it.
+      return priced ? hasPrice : !hasPrice;
+    },
+    {
+      message: 'a purchase price is required only for a positive stock-in lot',
+      path: ['purchasePriceVnd'],
+    },
+  );
 
 export type StockAdjustInput = z.infer<typeof stockAdjustInputSchema>;
 
@@ -421,3 +518,51 @@ export const lossReviewResultSchema = z.strictObject({
   generatedAt: isoUtcTimestampSchema,
 });
 export type LossReviewResult = z.infer<typeof lossReviewResultSchema>;
+
+/**
+ * Inventory change report (REQ-INV-008). Returns the append-only ingredient and
+ * recipe audit entries so the Owner or Kitchen can review every add, edit, and
+ * archive with its actor and time. It reads the audit ledger and mutates nothing.
+ */
+export const inventoryChangeReportInputSchema = z
+  .strictObject({
+    tenantId: z.string().min(1),
+    limit: z.number().int().min(1).max(200).optional(),
+  });
+export type InventoryChangeReportInput = z.infer<
+  typeof inventoryChangeReportInputSchema
+>;
+
+export const inventoryChangeEntrySchema = z.strictObject({
+  eventId: z.string().min(1),
+  action: z.string().min(1),
+  targetType: z.string().min(1).nullable(),
+  targetId: z.string().min(1).nullable(),
+  targetName: z.string().min(1).nullable(),
+  command: z.string().min(1).nullable(),
+  actorType: z.string().min(1),
+  role: z.string().min(1).nullable(),
+  actorUid: z.string().min(1).nullable(),
+  reason: z.string().min(1).nullable(),
+  note: z.string().min(1).nullable(),
+  quantityDelta: z.number().int().nullable(),
+  createdAt: isoUtcTimestampSchema,
+});
+export type InventoryChangeEntry = z.infer<typeof inventoryChangeEntrySchema>;
+
+export const inventoryChangeReportResultSchema = z.strictObject({
+  schemaVersion: z.literal(INVENTORY_CONTRACT_VERSION),
+  tenantId: z.string().min(1),
+  entries: z.array(inventoryChangeEntrySchema).max(200),
+});
+export type InventoryChangeReportResult = z.infer<
+  typeof inventoryChangeReportResultSchema
+>;
+
+/** The audit actions that describe an ingredient, recipe, or stock change. */
+export const INVENTORY_CHANGE_ACTIONS: readonly string[] = [
+  'IngredientChanged',
+  'RecipeChanged',
+  'StockAdjusted',
+  'StockCountRecorded',
+];

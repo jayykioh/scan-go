@@ -85,6 +85,8 @@ const DEPARTMENT_BY_KIND: Record<AiWarning['kind'], AiInsightDepartment> = {
   loss: 'menu',
   lowProfit: 'menu',
   lowStock: 'inventory',
+  priceIncrease: 'inventory',
+  revenueDrop: 'finance',
   missingData: 'operations',
 };
 
@@ -98,6 +100,8 @@ const TITLE_BY_KIND: Record<AiWarning['kind'], string> = {
   loss: 'Món bán dưới giá vốn',
   lowProfit: 'Món biên lợi nhuận thấp',
   lowStock: 'Nguyên liệu sắp hết',
+  priceIncrease: 'Nguyên liệu tăng giá nhập',
+  revenueDrop: 'Doanh thu giảm so với ngày trước',
   missingData: 'Thiếu dữ liệu để kết luận',
 };
 
@@ -219,10 +223,13 @@ export async function runWeeklyAnalysis(
     menuItems,
     ingredients,
   });
-  const warnings = computeWarnings(context);
   const resolvedConfig = resolveTenantConfig(
     await readConfigLayers(db, tenantId),
   );
+  const warnings = computeWarnings(context, {
+    revenueDropPercent: resolvedConfig.values.ai.revenueDropPercent,
+    lowMarginPercent: resolvedConfig.values.ai.lowMarginPercent,
+  });
   const { provider: providerName, monthlyBudgetVnd } = resolvedConfig.values.ai;
   const provider = resolveAiProvider(
     providerName,

@@ -207,7 +207,11 @@ describe('seed order generation', () => {
 describe('seed workforce generation', () => {
   it('builds contract-valid shifts and attendance', () => {
     const today = dayKeyFromIso(NOW, SEED_TIMEZONE);
-    const shifts = buildShifts(TENANT, NOW, today);
+    const staff = SEED_STAFF.map((member) => ({
+      uid: member.uid,
+      roles: [...member.roles],
+    }));
+    const shifts = buildShifts(TENANT, NOW, today, staff);
     expect(shifts).toHaveLength(SEED_STAFF.length * 7);
     for (const shift of shifts) {
       expect(shiftSchema.safeParse(shift).success).toBe(true);

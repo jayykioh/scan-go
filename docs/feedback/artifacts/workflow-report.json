@@ -1,0 +1,906 @@
+{
+  "generatedAt": "2026-10-08T10:06:09.047Z",
+  "baseUrl": "http://127.0.0.1:3000",
+  "ownerAccount": "qa.playwright+1791453969001@example.com",
+  "steps": [
+    {
+      "id": "public-landing",
+      "name": "Landing page (khách truy cập)",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/",
+      "timing": {
+        "domContentLoadedMs": 202,
+        "loadMs": 413,
+        "firstPaintMs": 208,
+        "resourceCount": 49
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 6,
+        "h1": "Hệ thốngĐặt món QRKhông POS.",
+        "interactiveCount": 4,
+        "smallTargetCount": 1,
+        "issues": [],
+        "textLength": 710,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/public-landing.png",
+      "ariaSnapshot": "docs/feedback/artifacts/public-landing.aria.yml",
+      "durationMs": 7709
+    },
+    {
+      "id": "public-introduce",
+      "name": "Trang giới thiệu",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/introduce",
+      "timing": {
+        "domContentLoadedMs": 67,
+        "loadMs": 70,
+        "firstPaintMs": 72,
+        "resourceCount": 55
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 5,
+        "h1": "Bán hàng tối giản.Không cần phần cứng.",
+        "interactiveCount": 2,
+        "smallTargetCount": 1,
+        "issues": [],
+        "textLength": 871,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/public-introduce.png",
+      "ariaSnapshot": "docs/feedback/artifacts/public-introduce.aria.yml",
+      "durationMs": 6862
+    },
+    {
+      "id": "public-login",
+      "name": "Đăng nhập Owner",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/login",
+      "timing": {
+        "domContentLoadedMs": 55,
+        "loadMs": 57,
+        "firstPaintMs": 84,
+        "resourceCount": 55
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 2,
+        "h1": "Hệ thốngVận hànhTuyệt đối.",
+        "interactiveCount": 6,
+        "smallTargetCount": 2,
+        "issues": [],
+        "textLength": 333,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/public-login.png",
+      "ariaSnapshot": "docs/feedback/artifacts/public-login.aria.yml",
+      "durationMs": 6780
+    },
+    {
+      "id": "public-register",
+      "name": "Đăng ký Owner",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/register",
+      "timing": {
+        "domContentLoadedMs": 55,
+        "loadMs": 57,
+        "firstPaintMs": 60,
+        "resourceCount": 55
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 2,
+        "h1": "Hệ thốngVận hànhTuyệt đối.",
+        "interactiveCount": 7,
+        "smallTargetCount": 1,
+        "issues": [],
+        "textLength": 348,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/public-register.png",
+      "ariaSnapshot": "docs/feedback/artifacts/public-register.aria.yml",
+      "durationMs": 6788
+    },
+    {
+      "id": "public-staff-login",
+      "name": "Đăng nhập Staff bằng PIN",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/staff",
+      "timing": {
+        "domContentLoadedMs": 58,
+        "loadMs": 61,
+        "firstPaintMs": 64,
+        "resourceCount": 75
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 1,
+        "h1": "Đăng nhập nhân viên",
+        "interactiveCount": 4,
+        "smallTargetCount": 1,
+        "issues": [
+          {
+            "type": "form-control-without-label",
+            "detail": "<input required=\"\" autocomplete=\"email\" class=\"w-full px-4 py-3 bg-white border-hard focus:outline-none focus:border-orange-600 transition-c"
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<input required=\"\" autocomplete=\"current-password\" class=\"w-full px-4 py-3 bg-white border-hard focus:outline-none focus:border-orange-600 t"
+          }
+        ],
+        "textLength": 118,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/public-staff-login.png",
+      "ariaSnapshot": "docs/feedback/artifacts/public-staff-login.aria.yml",
+      "durationMs": 6777
+    },
+    {
+      "id": "public-menu-bad-token",
+      "name": "Menu công khai với token sai",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/menu/khong-ton-tai",
+      "timing": {
+        "domContentLoadedMs": 58,
+        "loadMs": 61,
+        "firstPaintMs": 64,
+        "resourceCount": 69
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 2,
+        "h1": "ScanGo",
+        "interactiveCount": 3,
+        "smallTargetCount": 0,
+        "issues": [
+          {
+            "type": "form-control-without-label",
+            "detail": "<input placeholder=\"Tìm món...\" class=\"min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-zinc-400\" value=\"\">"
+          }
+        ],
+        "textLength": 160,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/public-menu-bad-token.png",
+      "ariaSnapshot": "docs/feedback/artifacts/public-menu-bad-token.aria.yml",
+      "durationMs": 3476
+    },
+    {
+      "id": "public-dashboard-guard",
+      "name": "Truy cập /dashboard khi chưa đăng nhập",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/login",
+      "timing": {
+        "domContentLoadedMs": 70,
+        "loadMs": 74,
+        "firstPaintMs": 76,
+        "resourceCount": 63
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 2,
+        "h1": "Hệ thốngVận hànhTuyệt đối.",
+        "interactiveCount": 6,
+        "smallTargetCount": 2,
+        "issues": [],
+        "textLength": 333,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/public-dashboard-guard.png",
+      "ariaSnapshot": "docs/feedback/artifacts/public-dashboard-guard.aria.yml",
+      "durationMs": 3508
+    },
+    {
+      "id": "public-404",
+      "name": "Route không tồn tại",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/khong-co-trang-nay",
+      "timing": {
+        "domContentLoadedMs": 57,
+        "loadMs": 59,
+        "firstPaintMs": 112,
+        "resourceCount": 54
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 2,
+        "h1": null,
+        "interactiveCount": 0,
+        "smallTargetCount": 0,
+        "issues": [],
+        "textLength": 207,
+        "hasHorizontalOverflow": false
+      },
+      "console": [
+        {
+          "type": "error",
+          "text": "Error handled by React Router default ErrorBoundary: ErrorResponseImpl"
+        },
+        {
+          "type": "error",
+          "text": "Error handled by React Router default ErrorBoundary: ErrorResponseImpl"
+        }
+      ],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/public-404.png",
+      "ariaSnapshot": "docs/feedback/artifacts/public-404.aria.yml",
+      "durationMs": 3485
+    },
+    {
+      "id": "owner-register-flow",
+      "name": "Đăng ký tài khoản Owner mới (workflow thật)",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/dashboard",
+      "timing": {
+        "domContentLoadedMs": 69,
+        "loadMs": 71,
+        "firstPaintMs": 72,
+        "resourceCount": 77
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 7,
+        "h1": "Tổng quan Kinh doanh",
+        "interactiveCount": 20,
+        "smallTargetCount": 3,
+        "issues": [
+          {
+            "type": "control-without-accessible-name",
+            "detail": "<button class=\"text-zinc-400 hover:text-white transition-colors cursor-pointer shrink-0 ml-4\"><svg xmlns=\"http://www.w3.org/2000/svg\" width="
+          }
+        ],
+        "textLength": 538,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/owner-register-flow.png",
+      "ariaSnapshot": "docs/feedback/artifacts/owner-register-flow.aria.yml",
+      "durationMs": 12064
+    },
+    {
+      "id": "dashboard-overview",
+      "name": "Dashboard — Tổng quan",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/dashboard",
+      "timing": {
+        "domContentLoadedMs": 70,
+        "loadMs": 72,
+        "firstPaintMs": 76,
+        "resourceCount": 74
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 7,
+        "h1": "Tổng quan Kinh doanh",
+        "interactiveCount": 21,
+        "smallTargetCount": 2,
+        "issues": [],
+        "textLength": 554,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/dashboard-overview.png",
+      "ariaSnapshot": "docs/feedback/artifacts/dashboard-overview.aria.yml",
+      "durationMs": 6804
+    },
+    {
+      "id": "dashboard-manage",
+      "name": "Dashboard — Quản lý (ADMIN)",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/dashboard/manage",
+      "timing": {
+        "domContentLoadedMs": 55,
+        "loadMs": 57,
+        "firstPaintMs": 112,
+        "resourceCount": 61
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 1,
+        "h1": "Khu vực ADMIN",
+        "interactiveCount": 15,
+        "smallTargetCount": 1,
+        "issues": [],
+        "textLength": 295,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/dashboard-manage.png",
+      "ariaSnapshot": "docs/feedback/artifacts/dashboard-manage.aria.yml",
+      "durationMs": 6774
+    },
+    {
+      "id": "dashboard-menu",
+      "name": "Dashboard — Thực đơn",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/dashboard/menu",
+      "timing": {
+        "domContentLoadedMs": 58,
+        "loadMs": 60,
+        "firstPaintMs": 64,
+        "resourceCount": 65
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 2,
+        "h1": "Quản lý Thực đơn",
+        "interactiveCount": 20,
+        "smallTargetCount": 1,
+        "issues": [
+          {
+            "type": "form-control-without-label",
+            "detail": "<input placeholder=\"Tìm kiếm món ăn...\" class=\"w-full pl-10 pr-4 py-3 border-hard bg-white focus:outline-none focus:ring-2 focus:ring-orange"
+          }
+        ],
+        "textLength": 702,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/dashboard-menu.png",
+      "ariaSnapshot": "docs/feedback/artifacts/dashboard-menu.aria.yml",
+      "durationMs": 6795
+    },
+    {
+      "id": "dashboard-inventory",
+      "name": "Dashboard — Kho & giá vốn",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/dashboard/inventory",
+      "timing": {
+        "domContentLoadedMs": 77,
+        "loadMs": 80,
+        "firstPaintMs": 84,
+        "resourceCount": 63
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 1,
+        "h1": "Kho nguyên liệu",
+        "interactiveCount": 17,
+        "smallTargetCount": 1,
+        "issues": [],
+        "textLength": 393,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/dashboard-inventory.png",
+      "ariaSnapshot": "docs/feedback/artifacts/dashboard-inventory.aria.yml",
+      "durationMs": 6822
+    },
+    {
+      "id": "dashboard-tables",
+      "name": "Dashboard — Bàn & QR",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/dashboard/tables",
+      "timing": {
+        "domContentLoadedMs": 58,
+        "loadMs": 61,
+        "firstPaintMs": 64,
+        "resourceCount": 68
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 2,
+        "h1": "Quản lý Bàn",
+        "interactiveCount": 18,
+        "smallTargetCount": 1,
+        "issues": [],
+        "textLength": 697,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/dashboard-tables.png",
+      "ariaSnapshot": "docs/feedback/artifacts/dashboard-tables.aria.yml",
+      "durationMs": 6805
+    },
+    {
+      "id": "dashboard-staff",
+      "name": "Dashboard — Nhân viên",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/dashboard/staff",
+      "timing": {
+        "domContentLoadedMs": 61,
+        "loadMs": 63,
+        "firstPaintMs": 64,
+        "resourceCount": 67
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 1,
+        "h1": "Nhân sự",
+        "interactiveCount": 16,
+        "smallTargetCount": 1,
+        "issues": [],
+        "textLength": 625,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/dashboard-staff.png",
+      "ariaSnapshot": "docs/feedback/artifacts/dashboard-staff.aria.yml",
+      "durationMs": 6798
+    },
+    {
+      "id": "dashboard-subscription",
+      "name": "Dashboard — Gói dịch vụ",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/dashboard/subscription",
+      "timing": {
+        "domContentLoadedMs": 68,
+        "loadMs": 71,
+        "firstPaintMs": 72,
+        "resourceCount": 68
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 4,
+        "h1": "Gói Cước & Thanh Toán",
+        "interactiveCount": 18,
+        "smallTargetCount": 1,
+        "issues": [],
+        "textLength": 906,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/dashboard-subscription.png",
+      "ariaSnapshot": "docs/feedback/artifacts/dashboard-subscription.aria.yml",
+      "durationMs": 6820
+    },
+    {
+      "id": "dashboard-settings",
+      "name": "Dashboard — Cài đặt",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/dashboard/settings",
+      "timing": {
+        "domContentLoadedMs": 60,
+        "loadMs": 62,
+        "firstPaintMs": 64,
+        "resourceCount": 63
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 6,
+        "h1": "Cấu hình",
+        "interactiveCount": 32,
+        "smallTargetCount": 1,
+        "issues": [
+          {
+            "type": "form-control-without-label",
+            "detail": "<input class=\"w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-orange-600 transition-"
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<select class=\"w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm font-bold text-zinc-900 focus:outline-none focus:border-orange-600 "
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<select class=\"w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm font-bold text-zinc-900 focus:outline-none focus:border-orange-600 "
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<input min=\"1\" class=\"w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-orange-600\" ty"
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<input class=\"w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-orange-600 uppercase\" "
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<select class=\"w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm font-bold text-zinc-900 focus:outline-none focus:border-orange-600 "
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<select class=\"w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm font-bold text-zinc-900 focus:outline-none focus:border-orange-600 "
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<input min=\"1\" class=\"w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-orange-600\" ty"
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<input min=\"0\" step=\"1000\" class=\"w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-or"
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<input min=\"0\" step=\"1000\" class=\"w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-or"
+          }
+        ],
+        "textLength": 902,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/dashboard-settings.png",
+      "ariaSnapshot": "docs/feedback/artifacts/dashboard-settings.aria.yml",
+      "durationMs": 7071
+    },
+    {
+      "id": "simulator-index",
+      "name": "Simulator — chọn vai trò",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/simulator",
+      "timing": {
+        "domContentLoadedMs": 64,
+        "loadMs": 66,
+        "firstPaintMs": 120,
+        "resourceCount": 58
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 2,
+        "h1": "ScanGo_",
+        "interactiveCount": 10,
+        "smallTargetCount": 0,
+        "issues": [
+          {
+            "type": "control-without-accessible-name",
+            "detail": "<a class=\"w-10 h-10 bg-zinc-950 flex items-center justify-center border-hard shadow-hard cursor-pointer hover:-translate-y-0.5 active:transl"
+          }
+        ],
+        "textLength": 448,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/simulator-index.png",
+      "ariaSnapshot": "docs/feedback/artifacts/simulator-index.aria.yml",
+      "durationMs": 6965
+    },
+    {
+      "id": "simulator-owner",
+      "name": "Simulator — owner",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/simulator/owner",
+      "timing": {
+        "domContentLoadedMs": 83,
+        "loadMs": 87,
+        "firstPaintMs": 92,
+        "resourceCount": 71
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 1,
+        "h1": null,
+        "interactiveCount": 12,
+        "smallTargetCount": 6,
+        "issues": [
+          {
+            "type": "form-control-without-label",
+            "detail": "<select class=\"bg-transparent text-white font-bold text-sm px-4 py-2 outline-none cursor-pointer appearance-none pr-8\" style=\"background-ima"
+          },
+          {
+            "type": "control-without-accessible-name",
+            "detail": "<a class=\"w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border border-zinc-200 hover:scale-105 transition-trans"
+          }
+        ],
+        "textLength": 845,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/simulator-owner.png",
+      "ariaSnapshot": "docs/feedback/artifacts/simulator-owner.aria.yml",
+      "durationMs": 3715
+    },
+    {
+      "id": "simulator-kitchen",
+      "name": "Simulator — kitchen",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/simulator/kitchen",
+      "timing": {
+        "domContentLoadedMs": 57,
+        "loadMs": 59,
+        "firstPaintMs": 60,
+        "resourceCount": 68
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 1,
+        "h1": null,
+        "interactiveCount": 7,
+        "smallTargetCount": 0,
+        "issues": [
+          {
+            "type": "form-control-without-label",
+            "detail": "<select class=\"bg-transparent text-white font-bold text-sm px-4 py-2 outline-none cursor-pointer appearance-none pr-8\" style=\"background-ima"
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<input placeholder=\"••••\" maxlength=\"4\" class=\"w-32 bg-[#F2F2F7] border border-[#E5E5EA] rounded-2xl text-center tracking-[0.4em] text-xl py"
+          },
+          {
+            "type": "control-without-accessible-name",
+            "detail": "<a class=\"w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border border-zinc-200 hover:scale-105 transition-trans"
+          }
+        ],
+        "textLength": 207,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/simulator-kitchen.png",
+      "ariaSnapshot": "docs/feedback/artifacts/simulator-kitchen.aria.yml",
+      "durationMs": 3626
+    },
+    {
+      "id": "simulator-cashier",
+      "name": "Simulator — cashier",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/simulator/cashier",
+      "timing": {
+        "domContentLoadedMs": 51,
+        "loadMs": 53,
+        "firstPaintMs": 100,
+        "resourceCount": 67
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 1,
+        "h1": null,
+        "interactiveCount": 7,
+        "smallTargetCount": 0,
+        "issues": [
+          {
+            "type": "form-control-without-label",
+            "detail": "<select class=\"bg-transparent text-white font-bold text-sm px-4 py-2 outline-none cursor-pointer appearance-none pr-8\" style=\"background-ima"
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<input placeholder=\"••••\" maxlength=\"4\" class=\"w-32 bg-[#F2F2F7] border border-[#E5E5EA] rounded-2xl text-center tracking-[0.4em] text-xl py"
+          },
+          {
+            "type": "control-without-accessible-name",
+            "detail": "<a class=\"w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border border-zinc-200 hover:scale-105 transition-trans"
+          }
+        ],
+        "textLength": 210,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/simulator-cashier.png",
+      "ariaSnapshot": "docs/feedback/artifacts/simulator-cashier.aria.yml",
+      "durationMs": 3669
+    },
+    {
+      "id": "simulator-customer",
+      "name": "Simulator — customer",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/simulator/customer",
+      "timing": {
+        "domContentLoadedMs": 145,
+        "loadMs": 148,
+        "firstPaintMs": 152,
+        "resourceCount": 59
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 1,
+        "h1": "Chọn bàn để mở menu.",
+        "interactiveCount": 11,
+        "smallTargetCount": 0,
+        "issues": [
+          {
+            "type": "form-control-without-label",
+            "detail": "<select class=\"bg-transparent text-white font-bold text-sm px-4 py-2 outline-none cursor-pointer appearance-none pr-8\" style=\"background-ima"
+          },
+          {
+            "type": "control-without-accessible-name",
+            "detail": "<a class=\"w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border border-zinc-200 hover:scale-105 transition-trans"
+          }
+        ],
+        "textLength": 276,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/simulator-customer.png",
+      "ariaSnapshot": "docs/feedback/artifacts/simulator-customer.aria.yml",
+      "durationMs": 3659
+    },
+    {
+      "id": "simulator-staff",
+      "name": "Simulator — staff",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/simulator/staff",
+      "timing": {
+        "domContentLoadedMs": 67,
+        "loadMs": 69,
+        "firstPaintMs": 72,
+        "resourceCount": 78
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 1,
+        "h1": null,
+        "interactiveCount": 7,
+        "smallTargetCount": 0,
+        "issues": [
+          {
+            "type": "form-control-without-label",
+            "detail": "<select class=\"bg-transparent text-white font-bold text-sm px-4 py-2 outline-none cursor-pointer appearance-none pr-8\" style=\"background-ima"
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<input inputmode=\"numeric\" pattern=\"[0-9]*\" maxlength=\"6\" placeholder=\"Mã PIN\" class=\"w-full text-center text-lg font-mono tracking-[8px] bg"
+          },
+          {
+            "type": "control-without-accessible-name",
+            "detail": "<a class=\"w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border border-zinc-200 hover:scale-105 transition-trans"
+          }
+        ],
+        "textLength": 159,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/simulator-staff.png",
+      "ariaSnapshot": "docs/feedback/artifacts/simulator-staff.aria.yml",
+      "durationMs": 3536
+    },
+    {
+      "id": "simulator-solo",
+      "name": "Simulator — solo",
+      "ok": true,
+      "url": "http://127.0.0.1:3000/simulator/solo",
+      "timing": {
+        "domContentLoadedMs": 61,
+        "loadMs": 63,
+        "firstPaintMs": 64,
+        "resourceCount": 83
+      },
+      "audit": {
+        "lang": "vi",
+        "title": "ScanGo | Gọi món QR & vận hành quán",
+        "hasViewportMeta": true,
+        "headingCount": 2,
+        "h1": null,
+        "interactiveCount": 9,
+        "smallTargetCount": 0,
+        "issues": [
+          {
+            "type": "form-control-without-label",
+            "detail": "<select class=\"bg-transparent text-white font-bold text-sm px-4 py-2 outline-none cursor-pointer appearance-none pr-8\" style=\"background-ima"
+          },
+          {
+            "type": "form-control-without-label",
+            "detail": "<input required=\"\" class=\"w-full bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] px-[13px] py-2.5 text-[14px] text-[#2D2B30] focus:outli"
+          },
+          {
+            "type": "control-without-accessible-name",
+            "detail": "<a class=\"w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border border-zinc-200 hover:scale-105 transition-trans"
+          }
+        ],
+        "textLength": 291,
+        "hasHorizontalOverflow": false
+      },
+      "console": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "badResponses": [],
+      "screenshot": "docs/feedback/artifacts/simulator-solo.png",
+      "ariaSnapshot": "docs/feedback/artifacts/simulator-solo.aria.yml",
+      "durationMs": 3621
+    }
+  ],
+  "owner": {
+    "name": "QA Playwright",
+    "shop": "Quán QA Playwright",
+    "email": "qa.playwright+1791453969001@example.com",
+    "password": "ScanGo-QA-2026!"
+  }
+}

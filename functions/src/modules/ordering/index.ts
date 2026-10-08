@@ -49,15 +49,19 @@ import {
   buildOrderCancelRequestHash,
   buildOrderLines,
   buildOrderSnapshot,
+  buildOrderStaffCreateRequestHash,
   buildPublicOrderTracking,
   isOrderStatus,
   nowIso,
   ORDER_IDEMPOTENCY_CONFLICT_MESSAGE,
+  ORDER_INVALID_TABLE_MESSAGE,
   ORDER_INVALID_TOKEN_MESSAGE,
   ORDER_NOT_FOUND_MESSAGE,
   parseOrderCancelInput,
+  parseOrderStaffCreateInput,
   parseOrderSubmitInput,
   parsePublicMenuItem,
+  resolveStaffOrderTable,
   type IdempotencyRecord,
 } from './service.js';
 
@@ -125,6 +129,22 @@ function assertCashierOrOwner(memberData: DocumentData | undefined): void {
   assertActiveOrderingMember(memberData);
   if (!memberData || !hasOrderingRole(memberData, 'cashier')) {
     throw new HttpsError('permission-denied', ORDERING_CANCEL_DENIED_MESSAGE);
+  }
+}
+
+const ORDERING_CREATE_DENIED_MESSAGE =
+  'Chỉ thu ngân hoặc chủ cửa hàng tạo được đơn hàng.';
+
+/**
+ * Staff order-entry authorization. Owner is allowed; a Staff membership must
+ * carry the `cashier` role (REQ-ORD-005, REQ-ACL-001).
+ */
+function assertCashierOrOwnerCreate(
+  memberData: DocumentData | undefined,
+): void {
+  assertActiveOrderingMember(memberData);
+  if (!memberData || !hasOrderingRole(memberData, 'cashier')) {
+    throw new HttpsError('permission-denied', ORDERING_CREATE_DENIED_MESSAGE);
   }
 }
 
@@ -325,6 +345,217 @@ export const callableOrderSubmit = onCall(CALL_OPTIONS, async (request) => {
 
   return orderSubmitResultSchema.parse(result);
 });
+
+/**
+ * Staff callable: create one Order for a table or for takeaway. Owner and
+ * Cashier only. The server owns every price and total, actors are recorded,
+ * and a retry never duplicates the Order (REQ-ORD-005, REQ-ORD-001).
+ */
+export const callableOrderStaffCreate = onCall(
+  CALL_OPTIONS,
+  async (request) => {
+    const uid = requireUid(request.auth?.uid);
+    assertAppCheck(request);
+    const input = parseOrderStaffCreateInput(request.data);
+
+    const db = getDb();
+    assertRateLimit(
+      `staff-order-create:${input.tenantId}:${uid}`,
+      await resolvePublicOrderRateLimit(db),
+    );
+
+    // Resolve the real Table for a dine-in Order before any write.
+    let tableName: string | undefined;
+    if (input.orderType === 'dineIn' && input.tableId) {
+      const tableSnap = await db
+        .doc(`tenants/${input.tenantId}/tables/${input.tableId}`)
+        .get();
+      const storedName = tableSnap.get('name');
+      if (
+        !tableSnap.exists ||
+        tableSnap.get('isActive') !== true ||
+        tableSnap.get('archivedAt') != null ||
+        typeof storedName !== 'string'
+      ) {
+        throw new HttpsError('failed-precondition', ORDER_INVALID_TABLE_MESSAGE);
+      }
+      tableName = storedName;
+    }
+    const { tableId, tableName: resolvedTableName } = resolveStaffOrderTable({
+      orderType: input.orderType,
+      tableId: input.tableId,
+      tableName,
+    });
+
+    const requestHash = buildOrderStaffCreateRequestHash(input);
+    const orderRef = db.collection(`tenants/${input.tenantId}/orders`).doc();
+    const idempotencyRef = db.doc(
+      `tenants/${input.tenantId}/idempotency/${input.idempotencyKey}`,
+    );
+    const memberRef = db.doc(`tenants/${input.tenantId}/members/${uid}`);
+    const trackingToken = generateTrackingToken();
+    const trackingRef = db.doc(`publicOrderTracking/${trackingToken}`);
+
+    // Read every menu item and its private Cost before the transaction.
+    const publicItemRefs = Array.from(
+      new Set(input.lines.map((line) => line.menuItemId)),
+    ).map((menuItemId) => ({
+      menuItemId,
+      ref: db.doc(`tenants/${input.tenantId}/publicMenuItems/${menuItemId}`),
+      privateRef: db.doc(`tenants/${input.tenantId}/menuItems/${menuItemId}`),
+    }));
+
+    const publicSnaps = await db.getAll(
+      ...publicItemRefs.map((entry) => entry.ref),
+    );
+    const privateSnaps = await db.getAll(
+      ...publicItemRefs.map((entry) => entry.privateRef),
+    );
+
+    const publicItems = new Map(
+      publicItemRefs.map((entry, index) => [
+        entry.menuItemId,
+        parsePublicMenuItem(entry.menuItemId, publicSnaps[index]?.data() ?? {}),
+      ]),
+    );
+    for (const [menuItemId, item] of publicItems) {
+      if (!item.isAvailable || item.tenantId !== input.tenantId) {
+        throw new HttpsError(
+          'failed-precondition',
+          `Món ${menuItemId} không khả dụng.`,
+        );
+      }
+    }
+
+    const costByMenuItemId = new Map<string, number>();
+    publicItemRefs.forEach((entry, index) => {
+      const cost = readCostVnd(privateSnaps[index]);
+      if (cost !== null) {
+        costByMenuItemId.set(entry.menuItemId, cost);
+      }
+    });
+
+    const result = await db.runTransaction<OrderSubmitResult>(
+      async (transaction) => {
+        // All reads precede all writes (RULES_FIREBASE §4).
+        const memberSnap = await transaction.get(memberRef);
+        assertCashierOrOwnerCreate(memberSnap.data());
+        const idempotencySnap = await transaction.get(idempotencyRef);
+        const existing = idempotencySnap.data() as
+          | IdempotencyRecord
+          | undefined;
+        if (existing) {
+          assertIdempotencyMatch(existing, requestHash);
+          const existingOrderSnap = await transaction.get(
+            db.doc(`tenants/${input.tenantId}/orders/${existing.orderId}`),
+          );
+          const existingTrackingSnap = await transaction.get(
+            db.doc(`publicOrderTracking/${existing.trackingToken}`),
+          );
+          if (!existingOrderSnap.exists || !existingTrackingSnap.exists) {
+            throw new HttpsError(
+              'internal',
+              ORDER_IDEMPOTENCY_CONFLICT_MESSAGE,
+            );
+          }
+          return {
+            schemaVersion: ORDER_CONTRACT_VERSION,
+            status: 'created',
+            order: mapStoredOrder(
+              existing.orderId,
+              existingOrderSnap.data() ?? {},
+            ),
+            tracking:
+              existingTrackingSnap.data() as OrderSubmitResult['tracking'],
+            replayed: true,
+          };
+        }
+
+        const now = nowIso();
+        const lines = buildOrderLines({
+          publicItems,
+          lines: input.lines,
+          costByMenuItemId,
+        });
+        const order = buildOrderSnapshot({
+          orderId: orderRef.id,
+          tenantId: input.tenantId,
+          orderType: input.orderType,
+          tableId,
+          tableName: resolvedTableName,
+          paymentMode: input.paymentMode,
+          lines,
+          trackingToken,
+          idempotencyKey: input.idempotencyKey,
+          now,
+        });
+        const tracking = buildPublicOrderTracking(order, now);
+
+        const statusEvent: OrderStatusEvent = {
+          schemaVersion: ORDER_CONTRACT_VERSION,
+          eventId: orderRef.id,
+          previousStatus: null,
+          newStatus: 'pending',
+          actorType: 'staff',
+          actorUid: uid,
+          reason: null,
+          createdAt: now,
+        };
+
+        transaction.set(orderRef, order);
+        transaction.set(
+          orderRef.collection('statusEvents').doc(statusEvent.eventId),
+          statusEvent,
+        );
+        transaction.set(trackingRef, tracking);
+        if (order.paymentMode === 'payLater') {
+          applyOrderNotificationPlan(
+            transaction,
+            db,
+            buildOrderNotificationEvent({
+              tenantId: input.tenantId,
+              kind: 'orderCreated',
+              order,
+              now,
+            }),
+          );
+        }
+        transaction.set(idempotencyRef, {
+          command: 'staffCreateOrder',
+          requestHash,
+          orderId: orderRef.id,
+          trackingToken,
+          status: 'applied',
+          createdAt: now,
+        } satisfies IdempotencyRecord);
+        writeAuditEventInTransaction(transaction, {
+          tenantId: input.tenantId,
+          actorUid: uid,
+          actorType: 'staff',
+          role: memberSnap.get('membershipType') === 'owner' ? 'owner' : 'cashier',
+          action: 'OrderCreatedByStaff',
+          targetType: 'order',
+          targetId: orderRef.id,
+          detail: {
+            orderType: order.orderType,
+            tableId: order.tableId,
+            totalVnd: order.totalVnd,
+          },
+        });
+
+        return {
+          schemaVersion: ORDER_CONTRACT_VERSION,
+          status: 'created',
+          order,
+          tracking,
+          replayed: false,
+        };
+      },
+    );
+
+    return orderSubmitResultSchema.parse(result);
+  },
+);
 
 /** Read integer VND Cost from a private item snapshot, or null when absent. */
 function readCostVnd(snap: DocumentSnapshot | undefined): number | null {

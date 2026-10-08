@@ -24,6 +24,7 @@ const TENANT_B = 'tenant-bravo';
 
 const OWNER_UID = 'owner-uid';
 const STAFF_UID = 'staff-uid';
+const CASHIER_UID = 'cashier-uid';
 const INACTIVE_UID = 'inactive-uid';
 const OTHER_UID = 'other-uid';
 
@@ -62,6 +63,14 @@ async function seed(): Promise<void> {
       uid: STAFF_UID,
       membershipType: 'staff',
       roles: ['kitchen'],
+      isActive: true,
+    });
+    // A non-Kitchen Staff member keeps the reduced permission set: inventory
+    // carries Cost and is not part of the till role (ADR 0013).
+    await setDoc(doc(db, 'tenants', TENANT_A, 'members', CASHIER_UID), {
+      uid: CASHIER_UID,
+      membershipType: 'staff',
+      roles: ['cashier'],
       isActive: true,
     });
     await setDoc(doc(db, 'tenants', TENANT_A, 'members', INACTIVE_UID), {
@@ -120,6 +129,10 @@ function staffDb() {
   return testEnv.authenticatedContext(STAFF_UID).firestore();
 }
 
+function cashierDb() {
+  return testEnv.authenticatedContext(CASHIER_UID).firestore();
+}
+
 function otherDb() {
   return testEnv.authenticatedContext(OTHER_UID).firestore();
 }
@@ -133,7 +146,7 @@ function unauthDb() {
 }
 
 describe('ingredient tenant read boundary', () => {
-  it('allows active members and denies cross-tenant, inactive, and anonymous readers', async () => {
+  it('allows the Owner and Kitchen, and denies Cashier, cross-tenant, inactive, and anonymous readers', async () => {
     await seed();
 
     await assertSucceeds(
@@ -141,6 +154,9 @@ describe('ingredient tenant read boundary', () => {
     );
     await assertSucceeds(
       getDoc(doc(staffDb(), 'tenants', TENANT_A, 'ingredients', 'ingredient-1')),
+    );
+    await assertFails(
+      getDoc(doc(cashierDb(), 'tenants', TENANT_A, 'ingredients', 'ingredient-1')),
     );
     await assertFails(
       getDoc(doc(otherDb(), 'tenants', TENANT_A, 'ingredients', 'ingredient-1')),
@@ -155,7 +171,7 @@ describe('ingredient tenant read boundary', () => {
 });
 
 describe('recipe and stock-movement tenant read boundary', () => {
-  it('allows active members and denies a cross-tenant Owner', async () => {
+  it('allows the Owner and Kitchen, and denies Cashier and a cross-tenant Owner', async () => {
     await seed();
 
     await assertSucceeds(
@@ -163,6 +179,14 @@ describe('recipe and stock-movement tenant read boundary', () => {
     );
     await assertSucceeds(
       getDoc(doc(staffDb(), 'tenants', TENANT_A, 'stockMovements', 'movement-1')),
+    );
+    await assertFails(
+      getDoc(doc(cashierDb(), 'tenants', TENANT_A, 'recipes', 'recipe-1')),
+    );
+    await assertFails(
+      getDoc(
+        doc(cashierDb(), 'tenants', TENANT_A, 'stockMovements', 'movement-1'),
+      ),
     );
     await assertFails(
       getDoc(doc(otherDb(), 'tenants', TENANT_A, 'recipes', 'recipe-1')),

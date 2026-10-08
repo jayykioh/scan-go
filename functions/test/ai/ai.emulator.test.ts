@@ -149,9 +149,16 @@ async function seedEmulators(): Promise<void> {
     });
   }
 
+  // Pin the deterministic provider for tenant A. The suite must be hermetic:
+  // without this override the three-layer Config default (`gemini`, ADR 0008)
+  // applies, and a developer machine or CI runner that happens to expose
+  // GEMINI_API_KEY would send these assertions to the live provider. The
+  // deterministic adapter is what proves cited sources, deterministic
+  // warnings, and no external spend.
   await db.doc(`tenants/${TENANT_A}`).set({
     shopName: 'AI Tenant A',
     timezone: 'Asia/Ho_Chi_Minh',
+    configOverrides: { ai: { provider: 'rule-based' } },
   });
   await db.doc(`tenants/${TENANT_A}/members/${USERS.ownerA.uid}`).set({
     membershipType: 'owner',

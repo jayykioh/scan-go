@@ -12,6 +12,12 @@ export interface SeedArgs {
   ownerUid: string | null;
   /** Number of tenant-local days of Orders to generate, ending today. */
   days: number;
+  /**
+   * Total Orders to generate across the day range. The total is distributed as
+   * evenly as possible across the days. `0` means "use the default per-day
+   * count" (`DEFAULT_SEED_ORDERS_PER_DAY`).
+   */
+  orders: number;
   /** Required on a real project; the guard against an accidental write. */
   confirm: boolean;
   dryRun: boolean;
@@ -21,9 +27,12 @@ export interface SeedArgs {
 export const DEFAULT_SEED_TENANT_ID = 'demo-nha-hang';
 export const DEFAULT_SEED_SHOP_NAME = 'Nhà hàng Demo ScanGo';
 export const DEFAULT_SEED_DAYS = 14;
+/** Orders per day when `--orders` is not given. */
+export const DEFAULT_SEED_ORDERS_PER_DAY = 6;
 export const DEFAULT_SEED_PROJECT_ID = 'scango-8f0e9';
 export const MIN_SEED_DAYS = 1;
 export const MAX_SEED_DAYS = 62;
+export const MAX_SEED_ORDERS = 2000;
 
 function readValue(
   argv: readonly string[],
@@ -47,6 +56,7 @@ export function parseSeedArgs(
     ownerEmail: null,
     ownerUid: null,
     days: DEFAULT_SEED_DAYS,
+    orders: 0,
     confirm: false,
     dryRun: false,
     projectId:
@@ -98,6 +108,18 @@ export function parseSeedArgs(
         );
       }
       options.days = days;
+      index += 1;
+      continue;
+    }
+    if (flag === '--orders') {
+      const raw = readValue(argv, index, flag);
+      const orders = Number(raw);
+      if (!Number.isInteger(orders) || orders < 1 || orders > MAX_SEED_ORDERS) {
+        throw new Error(
+          `--orders phải là số nguyên từ 1 đến ${MAX_SEED_ORDERS}.`,
+        );
+      }
+      options.orders = orders;
       index += 1;
       continue;
     }

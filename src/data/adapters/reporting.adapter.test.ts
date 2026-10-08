@@ -12,6 +12,7 @@ import {
 const mocks = vi.hoisted(() => ({
   getFirebaseFunctions: vi.fn(),
   httpsCallable: vi.fn(),
+  readReportingSummary: vi.fn(),
 }));
 
 vi.mock('firebase/functions', () => ({
@@ -20,6 +21,11 @@ vi.mock('firebase/functions', () => ({
 
 vi.mock('../../services/firebase/client', () => ({
   getFirebaseFunctions: () => mocks.getFirebaseFunctions(),
+}));
+
+vi.mock('../firestoreRead', () => ({
+  readReportingSummary: (...args: unknown[]) =>
+    mocks.readReportingSummary(...args),
 }));
 
 afterEach(() => {
@@ -36,30 +42,17 @@ describe('formatVnd', () => {
 });
 
 describe('getReportingSummary', () => {
-  it('calls the Reporting callable and parses the Zod result', async () => {
-    mocks.getFirebaseFunctions.mockReturnValue({});
-    mocks.httpsCallable.mockReturnValue(
-      vi.fn().mockResolvedValue({ data: reportingSummaryResultFixture }),
-    );
+  it('reads the materialized daily stats directly through firestoreRead', async () => {
+    mocks.readReportingSummary.mockResolvedValue(reportingSummaryResultFixture);
 
     const result = await getReportingSummary({
       tenantId: 'tenant-alpha',
       period: 'day',
     });
 
-    expect(mocks.httpsCallable).toHaveBeenCalledWith(
-      {},
-      'callableReportingGetSummary',
-    );
+    expect(mocks.readReportingSummary).toHaveBeenCalledWith('day', undefined);
     expect(result.totals.revenueVnd).toBe(200000);
     expect(Number.isInteger(result.totals.grossProfitVnd)).toBe(true);
-  });
-
-  it('rejects when Firebase is not configured', async () => {
-    mocks.getFirebaseFunctions.mockReturnValue(null);
-    await expect(
-      getReportingSummary({ tenantId: 'tenant-alpha', period: 'week' }),
-    ).rejects.toThrow('Firebase');
   });
 });
 

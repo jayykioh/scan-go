@@ -16,6 +16,7 @@ import {
 } from '../../../../shared/contracts/authorization.contract.js';
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
+import { assertRateLimit } from '../../shared/rateLimit.js';
 import { writeAuditEvent, writeAuditEventInTransaction } from '../../shared/audit.js';
 import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
@@ -122,9 +123,18 @@ export const callableTenantBootstrap = onCall(
   },
 );
 
+/**
+ * Additional-Tenant creation is the one resource an authenticated account can
+ * create without bound: each call mints a new Tenant with a fresh id. The first
+ * Tenant is idempotent by construction (`provisionFirstOwnerTenant` derives a
+ * deterministic id inside a transaction), so only this path needs a cap.
+ */
+export const ADDITIONAL_TENANT_PER_MINUTE = 3;
+
 export const callableTenantCreate = onCall(CALL_OPTIONS, async (request) => {
   const uid = requireUid(request.auth?.uid);
   assertAppCheck(request);
+  assertRateLimit(`tenantCreate:${uid}`, ADDITIONAL_TENANT_PER_MINUTE);
   const token = request.auth?.token as Record<string, unknown> | undefined;
   const isAdmin = token?.admin === true;
 

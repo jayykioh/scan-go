@@ -1,0 +1,51 @@
+- complementary:
+  - text: ScanGo_
+  - navigation:
+    - link "Doanh thu":
+      - /url: /dashboard
+    - link "Vận hành":
+      - /url: /simulator
+    - link "Quản lý quán":
+      - /url: /dashboard/manage
+    - link "Thực đơn":
+      - /url: /dashboard/menu
+    - link "Kho nguyên liệu":
+      - /url: /dashboard/inventory
+    - link "Sơ đồ Bàn":
+      - /url: /dashboard/tables
+    - link "Nhân sự":
+      - /url: /dashboard/staff
+    - link "Gói Dịch Vụ":
+      - /url: /dashboard/subscription
+    - link "Cấu hình":
+      - /url: /dashboard/settings
+    - link "Phản hồi":
+      - /url: /dashboard/feedback
+  - paragraph: g43h5hgnc4RJ0FJrYHxmd3g7qXl1
+  - text: local
+  - paragraph: Cửa hàng
+  - button "Tạo cửa hàng mới"
+  - list:
+    - listitem:
+      - button "Quán QA Playwright"
+  - paragraph: "Bối cảnh: Quán QA Playwright"
+  - button "Thoát"
+- main:
+  - heading "Kho nguyên liệu" [level=1]
+  - paragraph: Quản lý và theo dõi mọi thay đổi
+  - button "Báo cáo thay đổi"
+  - button "Thêm nguyên liệu"
+  - table:
+    - rowgroup:
+      - row "Nguyên liệu Đơn vị Giá nhập Tồn kho Trạng thái Thao tác":
+        - columnheader "Nguyên liệu"
+        - columnheader "Đơn vị"
+        - columnheader "Giá nhập"
+        - columnheader "Tồn kho"
+        - columnheader "Trạng thái"
+        - columnheader "Thao tác"
+    - rowgroup:
+      - row "Chưa có nguyên liệu. Bấm \"Thêm nguyên liệu\".":
+        - cell "Chưa có nguyên liệu. Bấm \"Thêm nguyên liệu\"."
+- button "Mở trợ lý AI"
+- button "Send feedback"

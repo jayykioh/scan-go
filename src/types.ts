@@ -67,6 +67,10 @@ export type OrderStatus = 'pending' | 'cooking' | 'ready' | 'served' | 'paid';
 export interface Order {
   id: string;
   tableId: string;
+  /** Snapshot label from the server, e.g. a table name or "Mang về". */
+  tableName?: string;
+  /** Dine-in Order uses a real table; takeaway uses the reserved label. */
+  orderType?: 'dineIn' | 'takeaway';
   items: OrderItem[];
   total: number;
   status: OrderStatus;

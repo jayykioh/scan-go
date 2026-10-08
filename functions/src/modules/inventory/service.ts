@@ -16,11 +16,13 @@ import {
   ingredientUpdateInputSchema,
   inventoryDeductionPlanSchema,
   inventoryRestorationPlanSchema,
+  isPricedStockIn,
   recipeArchiveInputSchema,
   recipeCreateInputSchema,
   recipeLineInputSchema,
   recipeSchema,
   recipeUpdateInputSchema,
+  resolveCountUnitLabel,
   stockAdjustInputSchema,
   stockMovementSchema,
   type BaseUnit,
@@ -42,6 +44,8 @@ import {
 
 export const INVENTORY_OWNER_DENIED_MESSAGE =
   'Chỉ chủ cửa hàng quản lý được kho.';
+export const INVENTORY_MANAGER_DENIED_MESSAGE =
+  'Chỉ chủ cửa hàng hoặc bếp quản lý được kho.';
 export const INVENTORY_MEMBER_DENIED_MESSAGE =
   'Bạn không thuộc cửa hàng này.';
 export const INVENTORY_INVALID_MESSAGE = 'Dữ liệu kho không hợp lệ.';
@@ -80,6 +84,46 @@ export function assertActiveOwnerMember(
   if (memberData?.membershipType !== 'owner') {
     throw new HttpsError('permission-denied', INVENTORY_OWNER_DENIED_MESSAGE);
   }
+}
+
+/**
+ * Inventory management gate (REQ-INV-005, REQ-ACL-001). The Owner and an active
+ * Kitchen member may change ingredients, recipes, and stock. Cashier, Waiter,
+ * inactive Staff, and another Tenant fail.
+ */
+export function assertInventoryManagerMember(
+  memberData: DocumentData | undefined,
+): void {
+  assertActiveMember(memberData);
+  const isOwner = memberData?.membershipType === 'owner';
+  const roles: unknown[] = Array.isArray(memberData?.roles)
+    ? memberData.roles
+    : [];
+  if (!isOwner && !roles.includes('kitchen')) {
+    throw new HttpsError(
+      'permission-denied',
+      INVENTORY_MANAGER_DENIED_MESSAGE,
+    );
+  }
+}
+
+export interface InventoryActor {
+  actorType: 'owner' | 'staff';
+  role: string;
+}
+
+/** Derive the audit actor shape from the acting membership. */
+export function describeInventoryActor(
+  memberData: DocumentData | undefined,
+): InventoryActor {
+  const isOwner = memberData?.membershipType === 'owner';
+  const roles: string[] = Array.isArray(memberData?.roles)
+    ? memberData.roles.map(String)
+    : [];
+  return {
+    actorType: isOwner ? 'owner' : 'staff',
+    role: isOwner ? 'owner' : roles[0] ?? 'kitchen',
+  };
 }
 
 function parseOrInvalid<T>(schema: ZodType<T>, data: unknown): T {
@@ -139,6 +183,7 @@ export function toIngredient(
     name: data.name,
     baseUnit: data.baseUnit,
     purchaseUnit: data.purchaseUnit ?? null,
+    countUnitLabel: data.countUnitLabel ?? null,
     purchasePriceVnd: data.purchasePriceVnd ?? null,
     unitCostVnd: data.unitCostVnd,
     stockQuantity: data.stockQuantity ?? 0,
@@ -207,6 +252,7 @@ export function buildNewIngredient(
     name: input.name,
     baseUnit: baseUnitForUnit(input.purchaseUnit),
     purchaseUnit: input.purchaseUnit,
+    countUnitLabel: resolveCountUnitLabel(input),
     purchasePriceVnd: input.purchasePriceVnd,
     unitCostVnd: convertUnitCostToBase(input.purchasePriceVnd, input.purchaseUnit),
     stockQuantity: resolveInitialStockQuantity(input),
@@ -228,6 +274,7 @@ export function applyIngredientUpdate(
     name: input.name,
     baseUnit: baseUnitForUnit(input.purchaseUnit),
     purchaseUnit: input.purchaseUnit,
+    countUnitLabel: resolveCountUnitLabel(input),
     purchasePriceVnd: input.purchasePriceVnd,
     unitCostVnd: convertUnitCostToBase(input.purchasePriceVnd, input.purchaseUnit),
     lowStockThreshold: input.lowStockThreshold,
@@ -243,6 +290,45 @@ export function computeNextInventoryVersion(current: unknown): number {
     current >= 0
     ? current + 1
     : 1;
+}
+
+/**
+ * Weighted-average Cost per base unit after a purchase lot arrives. The result
+ * is integer VND (REQ-INV-010, ADR 0014). When there is no positive quantity on
+ * hand, the new lot price becomes the Cost. A negative quantity on hand is
+ * treated as zero so the average stays well defined.
+ */
+export function computeWeightedAverageUnitCost(input: {
+  onHandQuantity: number;
+  currentUnitCostVnd: number;
+  lotQuantity: number;
+  lotUnitCostVnd: number;
+}): number {
+  const onHand = Math.max(0, input.onHandQuantity);
+  const lotQuantity = Math.max(0, input.lotQuantity);
+  const total = onHand + lotQuantity;
+  if (total <= 0) {
+    return input.lotUnitCostVnd;
+  }
+  const totalValue =
+    onHand * input.currentUnitCostVnd + lotQuantity * input.lotUnitCostVnd;
+  return Math.round(totalValue / total);
+}
+
+/** Percentage by which a new lot price exceeds the previous Cost, or null. */
+export function lotPriceIncreasePercent(input: {
+  previousUnitCostVnd: number;
+  lotUnitCostVnd: number;
+}): number | null {
+  if (input.previousUnitCostVnd <= 0) {
+    return null;
+  }
+  if (input.lotUnitCostVnd <= input.previousUnitCostVnd) {
+    return null;
+  }
+  return ((input.lotUnitCostVnd - input.previousUnitCostVnd) /
+    input.previousUnitCostVnd) *
+    100;
 }
 
 /** Convert one Owner quantity and unit into the ingredient base unit. */
@@ -368,12 +454,44 @@ export function buildStockMovement(
     actorUid: string | null;
     idempotencyKey: string;
     createdAt: string;
+    /** Integer VND per base unit for a purchase lot; null otherwise. */
+    lotUnitCostVnd?: number | null;
+    /** Free-text note for a waste or manual adjustment; null otherwise. */
+    note?: string | null;
   },
 ): StockMovement {
   return stockMovementSchema.parse({
     schemaVersion: INVENTORY_CONTRACT_VERSION,
+    lotUnitCostVnd: args.lotUnitCostVnd ?? null,
+    note: args.note ?? null,
     ...args,
   });
+}
+
+/**
+ * Read one stock-in lot price from an adjust command in a purchase unit and
+ * convert it to integer VND per base unit. A positive `stock_in` must carry a
+ * price; a non-purchase effect must not (REQ-INV-010, ADR 0014).
+ */
+export function resolveStockInLotUnitCost(
+  input: StockAdjustInput,
+): number | null {
+  const priced = isPricedStockIn(input);
+  const hasPrice =
+    input.purchaseUnit !== undefined && input.purchasePriceVnd !== undefined;
+  if (!priced) {
+    if (hasPrice) {
+      throw new HttpsError('invalid-argument', INVENTORY_INVALID_MESSAGE);
+    }
+    return null;
+  }
+  if (
+    input.purchasePriceVnd === undefined ||
+    input.purchaseUnit === undefined
+  ) {
+    throw new HttpsError('invalid-argument', INVENTORY_INVALID_MESSAGE);
+  }
+  return convertUnitCostToBase(input.purchasePriceVnd, input.purchaseUnit);
 }
 
 export interface DeductionOrderItem {

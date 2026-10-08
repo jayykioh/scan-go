@@ -30,6 +30,9 @@ export const CONFIG_DEFAULTS = {
   ai: {
     provider: 'gemini',
     monthlyBudgetVnd: 500000,
+    // Deterministic warning thresholds (REQ-AI-007, REQ-AI-008).
+    revenueDropPercent: 20,
+    lowMarginPercent: 20,
   },
 } as const;
 

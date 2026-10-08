@@ -167,6 +167,7 @@ export function mapPaymentOrder(
     schemaVersion: data.schemaVersion ?? 1,
     orderId,
     tenantId: data.tenantId,
+    orderType: data.orderType ?? 'dineIn',
     tableId: data.tableId,
     tableNameSnapshot: data.tableNameSnapshot,
     status: data.status,

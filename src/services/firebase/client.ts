@@ -6,6 +6,11 @@ import {
   getFunctions,
   type Functions,
 } from 'firebase/functions';
+import {
+  connectStorageEmulator,
+  getStorage,
+  type FirebaseStorage,
+} from 'firebase/storage';
 
 import { FUNCTIONS_REGION } from '@shared/config/region';
 
@@ -52,6 +57,7 @@ let cachedApp: FirebaseApp | null = null;
 let cachedAuth: Auth | null = null;
 let cachedFirestore: Firestore | null = null;
 let cachedFunctions: Functions | null = null;
+let cachedStorage: FirebaseStorage | null = null;
 
 export function getFirebaseApp(): FirebaseApp | null {
   if (cachedApp) {
@@ -111,4 +117,36 @@ export function getFirebaseFunctions(): Functions | null {
   }
 
   return cachedFunctions;
+}
+
+export const STORAGE_EMULATOR_HOST = 'localhost';
+export const STORAGE_EMULATOR_PORT = 9199;
+
+/**
+ * The Storage emulator is opt-in and separate from the Functions emulator:
+ * `npm run emulators` starts Functions only, so connecting Storage by default
+ * would break a normal local run (REQ-FDB-005).
+ */
+function usesStorageEmulator(): boolean {
+  return import.meta.env.VITE_USE_STORAGE_EMULATOR === 'true';
+}
+
+export function getFirebaseStorage(): FirebaseStorage | null {
+  const app = getFirebaseApp();
+  if (!app) {
+    return null;
+  }
+
+  if (!cachedStorage) {
+    cachedStorage = getStorage(app);
+    if (usesStorageEmulator()) {
+      connectStorageEmulator(
+        cachedStorage,
+        STORAGE_EMULATOR_HOST,
+        STORAGE_EMULATOR_PORT,
+      );
+    }
+  }
+
+  return cachedStorage;
 }

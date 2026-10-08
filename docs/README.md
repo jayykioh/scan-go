@@ -23,6 +23,7 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[data-model.md](data-model.md)** | Approved Firestore collections and invariants | Data design and migrations |
 | **[module/README.md](module/README.md)** | Independent module contracts | Vertical implementation |
 | **[frontend-ui-integration.md](frontend-ui-integration.md)** | Existing UI and backend integration map | Frontend and backend delivery |
+| **[demo-runbook.md](demo-runbook.md)** | Demo flow, screens, accounts, and talking points | Product demo preparation |
 | **[plan/p0-five-person-assignment.md](plan/p0-five-person-assignment.md)** | P0 master schedule | Four parallel UI and backend tracks |
 | **[plan/week-1-sprint.md](plan/week-1-sprint.md)** | Week 1 sprint plan | Firebase foundation and first vertical slices |
 | **[plan/p0-parallel-skeleton.md](plan/p0-parallel-skeleton.md)** | Shared parallel frame | Directory tree, file ownership, contract freeze zone, atomic gates |
@@ -44,6 +45,10 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[ADR 0009](adr/0009-defer-reservations-and-separate-payment-state.md)** | Reservations deferred; payment and preparation state separated | Scope changes |
 | **[ADR 0010](adr/0010-do-not-audit-read-access.md)** | Audit records changes only; read access is not audited | Audit and privacy changes |
 | **[ADR 0011](adr/0011-deploy-cloud-functions-in-asia-southeast1.md)** | Cloud Functions deploy in asia-southeast1 | Region and deployment changes |
+| **[ADR 0012](adr/0012-owner-managed-staff-accounts.md)** | Owner-managed Staff accounts | Auth and Staff account changes |
+| **[ADR 0013](adr/0013-kitchen-manages-inventory-with-report.md)** | Kitchen manages inventory with a change report | Inventory permission changes |
+| **[ADR 0014](adr/0014-weighted-average-ingredient-cost.md)** | Weighted-average ingredient Cost with per-lot purchase price | Inventory Cost and price-warning changes |
+| **[ADR 0015](adr/0015-direct-firestore-reads.md)** | Read tenant data directly when the rules allow it | Client read path and data-access changes |
 | **[USP.md](USP.md)** | Unique Selling Proposition | Writing marketing copy, sales pitches, positioning |
 | **[SWOT.md](SWOT.md)** | Strategic analysis | Quarterly reviews, investor updates, risk assessment |
 | **[PESTEL.md](PESTEL.md)** | Macro-environment analysis | Quarterly strategy reviews, investor discussions, regulatory tracking |

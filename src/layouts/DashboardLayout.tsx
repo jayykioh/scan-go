@@ -12,10 +12,13 @@ import {
   Settings,
   LogOut,
   UtensilsCrossed,
+  Boxes,
   Table2,
   CircleDollarSign,
   CreditCard,
   Menu,
+  MessageSquarePlus,
+  MonitorPlay,
   X,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -34,6 +37,8 @@ import {
   type ActiveTenantContextHandle,
 } from '../data/adapters/tenant.adapter';
 import TenantSwitcher from '../components/TenantSwitcher';
+import AiChatWidget from '../components/AiChatWidget';
+import FeedbackWidget from '../components/FeedbackWidget';
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
@@ -60,8 +65,13 @@ export default function DashboardLayout() {
     };
   }, []);
 
-  const activeTenantId =
-    tenants.find((tenant) => tenant.isActiveTenant)?.tenantId ?? null;
+  const activeTenant =
+    tenants.find((tenant) => tenant.isActiveTenant) ?? null;
+  const activeTenantId = activeTenant?.tenantId ?? null;
+  // The AI assistant is Owner-only (REQ-AI-001). The server re-verifies the
+  // membership; this gate only hides the widget from Staff (REQ-AUTH-002).
+  const showAiAssistant =
+    configured && user !== null && activeTenant?.membershipType === 'owner';
 
   useEffect(() => {
     const handle = activeContextRef.current;
@@ -225,6 +235,10 @@ export default function DashboardLayout() {
             <LayoutGrid className="w-4 h-4" />
             Doanh thu
           </NavLink>
+          <NavLink to="/simulator" className={navLinkClass}>
+            <MonitorPlay className="w-4 h-4" />
+            Vận hành
+          </NavLink>
           <NavLink to="/dashboard/manage" className={navLinkClass}>
             <CircleDollarSign className="w-4 h-4" />
             Quản lý quán
@@ -232,6 +246,10 @@ export default function DashboardLayout() {
           <NavLink to="/dashboard/menu" className={navLinkClass}>
             <UtensilsCrossed className="w-4 h-4" />
             Thực đơn
+          </NavLink>
+          <NavLink to="/dashboard/inventory" className={navLinkClass}>
+            <Boxes className="w-4 h-4" />
+            Kho nguyên liệu
           </NavLink>
           <NavLink to="/dashboard/tables" className={navLinkClass}>
             <Table2 className="w-4 h-4" />
@@ -248,6 +266,10 @@ export default function DashboardLayout() {
           <NavLink to="/dashboard/settings" className={navLinkClass}>
             <Settings className="w-4 h-4" />
             Cấu hình
+          </NavLink>
+          <NavLink to="/dashboard/feedback" className={navLinkClass}>
+            <MessageSquarePlus className="w-4 h-4" />
+            Phản hồi
           </NavLink>
         </nav>
 
@@ -308,6 +330,9 @@ export default function DashboardLayout() {
         </header>
         <Outlet />
       </main>
+
+      {showAiAssistant && <AiChatWidget />}
+      {configured && user !== null && <FeedbackWidget />}
     </div>
   );
 }

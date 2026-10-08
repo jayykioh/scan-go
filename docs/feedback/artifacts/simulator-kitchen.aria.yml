@@ -1,0 +1,20 @@
+- banner:
+  - link:
+    - /url: /simulator
+  - text: Test Environment Bún Phở Kinh Kỳ
+  - button "Đơn ảo"
+  - button "Xóa Data"
+- main:
+  - combobox:
+    - option "Solo Operator"
+    - option "Owner (Quản lý)"
+    - option "Thu Ngân"
+    - option "KDS (Bếp)" [selected]
+    - option "Khách hàng"
+    - option "Nhân viên"
+  - heading "KDS Nhà Bếp" [level=3]
+  - paragraph: Vui lòng nhập mã PIN.
+  - textbox "••••"
+  - paragraph: Nhập mã PIN 4 số để bắt đầu
+  - button "Đăng nhập"
+  - button "Thêm màn hình"

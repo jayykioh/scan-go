@@ -1,13 +1,13 @@
 import { httpsCallable } from 'firebase/functions';
 import {
   promotionEvaluationResultSchema,
-  promotionListResultSchema,
   type Promotion,
   type PromotionCartLine,
   type PromotionEvaluationResult,
 } from '@contracts/promotion.contract';
 import { getFirebaseFunctions } from '../../services/firebase/client';
 import { getActiveTenantId } from './subscription.adapter';
+import { readPromotions } from '../firestoreRead';
 
 /**
  * Server-authoritative promotion calculation. The client sends only menu ids
@@ -32,16 +32,7 @@ export async function evaluatePromotions(
   );
 }
 
+/** Read the tenant Promotion definitions directly (REQ-PRO-001). */
 export async function listPromotions(): Promise<Promotion[]> {
-  const functions = getFirebaseFunctions();
-  if (!functions) {
-    throw new Error('Firebase chưa được cấu hình.');
-  }
-  const tenantId = await getActiveTenantId();
-  if (!tenantId) {
-    throw new Error('Chưa chọn cửa hàng.');
-  }
-  const callable = httpsCallable(functions, 'callablePromotionList');
-  return promotionListResultSchema.parse((await callable({ tenantId })).data)
-    .promotions;
+  return readPromotions();
 }

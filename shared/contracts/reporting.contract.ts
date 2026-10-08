@@ -120,6 +120,14 @@ export const popularTableSchema = z.strictObject({
 
 export type PopularTable = z.infer<typeof popularTableSchema>;
 
+/** Per-day totals inside a period, used to draw an income trend chart. */
+export const reportingDayPointSchema = z.strictObject({
+  dayKey: dayKeySchema,
+  totals: reportingTotalsSchema,
+});
+
+export type ReportingDayPoint = z.infer<typeof reportingDayPointSchema>;
+
 export const reportingSummaryResultSchema = z.strictObject({
   schemaVersion: z.literal(REPORTING_CONTRACT_VERSION),
   tenantId: z.string().min(1),
@@ -128,6 +136,8 @@ export const reportingSummaryResultSchema = z.strictObject({
   toDay: dayKeySchema,
   dayCount: nonNegativeIntSchema,
   totals: reportingTotalsSchema,
+  /** One entry per day that has stored daily stats, ordered by dayKey asc. */
+  dailyBreakdown: z.array(reportingDayPointSchema).max(62),
   popularItems: z.array(popularItemSchema).max(20),
   tables: z.array(popularTableSchema).max(50),
 });

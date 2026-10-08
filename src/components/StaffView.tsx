@@ -27,7 +27,9 @@ import {
 } from '../data/adapters/auth.adapter';
 import KitchenView from './KitchenView';
 import CashierView from './CashierView';
-import { ChefHat, Coffee, CreditCard, LogOut, CheckCircle, Bell, Volume2, VolumeX } from 'lucide-react';
+import InventoryPanel from './InventoryPanel';
+import StaffOrderEntry from './StaffOrderEntry';
+import { Boxes, ChefHat, ClipboardList, Coffee, CreditCard, LogOut, CheckCircle, Bell, Volume2, VolumeX } from 'lucide-react';
 
 interface StaffViewProps {
   staffAccounts: StaffAccount[];
@@ -39,13 +41,17 @@ interface StaffViewProps {
   tenantId?: string;
   /** Device identifier bound into the server-issued Staff session. */
   deviceId?: string;
+  /** Name shown when the account list has no matching entry (real Staff login). */
+  fallbackName?: string;
 }
 
 const DEFAULT_TENANT_ID = 'demo-tenant';
 const DEFAULT_DEVICE_ID = 'simulator-staff-device';
 
-const TABS: { key: 'kitchen' | 'waiter' | 'cashier'; label: string; icon: React.ReactNode; roleKey: 'isKitchen' | 'isWaiter' | 'isCashier' }[] = [
+const TABS: { key: 'kitchen' | 'inventory' | 'order' | 'waiter' | 'cashier'; label: string; icon: React.ReactNode; roleKey: 'isKitchen' | 'isWaiter' | 'isCashier' }[] = [
   { key: 'kitchen', label: 'Bếp', icon: <ChefHat className="w-5 h-5" />, roleKey: 'isKitchen' },
+  { key: 'inventory', label: 'Kho', icon: <Boxes className="w-5 h-5" />, roleKey: 'isKitchen' },
+  { key: 'order', label: 'Lên món', icon: <ClipboardList className="w-5 h-5" />, roleKey: 'isCashier' },
   { key: 'waiter', label: 'Phục vụ', icon: <Bell className="w-5 h-5" />, roleKey: 'isWaiter' },
   { key: 'cashier', label: 'Thu ngân', icon: <CreditCard className="w-5 h-5" />, roleKey: 'isCashier' },
 ];
@@ -58,11 +64,12 @@ export default function StaffView({
   tables,
   tenantId = DEFAULT_TENANT_ID,
   deviceId = DEFAULT_DEVICE_ID,
+  fallbackName,
 }: StaffViewProps) {
   const [pinInput, setPinInput] = useState('');
   const [denied, setDenied] = useState<StaffPinDeniedState | null>(null);
   const [verifying, setVerifying] = useState(false);
-  const [activeTab, setActiveTab] = useState<'kitchen' | 'waiter' | 'cashier'>('kitchen');
+  const [activeTab, setActiveTab] = useState<'kitchen' | 'inventory' | 'order' | 'waiter' | 'cashier'>('kitchen');
   const [serveError, setServeError] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [notificationState, setNotificationState] = useState<NotificationState>(
@@ -131,11 +138,12 @@ export default function StaffView({
   }, [currentStaffUid, tenantId, handleNotificationEvents]);
 
   useEffect(() => {
-    if (!currentStaff) return;
+    if (!currentStaff?.roles.isWaiter) return;
     void refreshReadyQueue();
   }, [currentStaff, refreshReadyQueue]);
 
-  const getTableName = (tableId: string) => tables.find(t => t.id === tableId)?.name || tableId;
+  const getTableName = (order: Order) =>
+    order.tableName ?? tables.find(t => t.id === order.tableId)?.name ?? order.tableId;
 
   useEffect(() => {
     if (currentStaff) {
@@ -157,9 +165,9 @@ export default function StaffView({
         deviceId,
         pin: pinInput,
       });
-      const displayName = staffAccounts.find(
-        (account) => account.id === session.uid,
-      )?.name;
+      const displayName =
+        staffAccounts.find((account) => account.id === session.uid)?.name ??
+        fallbackName;
       const view = toStaffSessionView(session, displayName);
       setCurrentStaff(view);
       setPinInput('');
@@ -319,6 +327,16 @@ export default function StaffView({
           />
         )}
 
+        {activeTab === 'inventory' && <InventoryPanel embedded />}
+
+        {activeTab === 'order' && (
+          <StaffOrderEntry
+            tenantId={tenantId}
+            tenantConfig={tenantConfig}
+            tables={tables}
+          />
+        )}
+
         {activeTab === 'waiter' && (
           <div className="p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -342,7 +360,7 @@ export default function StaffView({
             {readyOrders.map(order => (
               <div key={order.id} className="bg-[#F5F5F7] border border-emerald-200 p-4 rounded-[21px] shadow-sm">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-bold text-[12px]">Bàn {getTableName(order.tableId)}</span>
+                  <span className="font-bold text-[12px]">{order.orderType === 'takeaway' ? 'Mang về' : `Bàn ${getTableName(order)}`}</span>
                   <span className="text-[10px] text-[#8E8E93]">#{order.id.slice(-6)}</span>
                 </div>
                 <div className="text-[11px] text-[#707070] space-y-1 mb-3">
@@ -369,7 +387,7 @@ export default function StaffView({
                 {servedOrders.map(order => (
                   <div key={order.id} className="bg-white border border-[#B5C7D8] p-3 rounded-[21px] opacity-60">
                     <div className="flex justify-between items-center">
-                      <span className="font-semibold text-[11px]">Bàn {getTableName(order.tableId)}</span>
+                      <span className="font-semibold text-[11px]">{order.orderType === 'takeaway' ? 'Mang về' : `Bàn ${getTableName(order)}`}</span>
                       <span className="text-[10px] text-green-600">✓ Hoàn tất</span>
                     </div>
                   </div>

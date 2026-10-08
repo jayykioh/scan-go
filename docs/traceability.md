@@ -62,6 +62,11 @@ Plan: `docs/tickets/p0/README.md`.
 | REQ-ORD-001..004, NFR-SEC-002, NFR-UX-001 | P0-007 — worker | Done. Server cart validation, selected modifier option IDs, integer VND, idempotent Pay-Later Order, public tracking, offline block. Emulator and Rules evidence pass. |
 | REQ-INV-001, REQ-KDS-001, REQ-ORD-003, NFR-RT-001 | P0-008 — worker | Done. One-transaction deduction, `pending -> cooking -> ready`, Kitchen availability via Catalog, two-second update harness. Emulator and Rules evidence pass. |
 | REQ-INV-005, REQ-INV-006, REQ-INV-007 | [P0-011](tickets/p0/P0-011-inventory-measurement.md) — Inventory/UI | Done. Purchase-unit Cost conversion, recipe input units, and fixed waste per line in Cost and deduction. Web 199, functions 354, and Functions Emulator 224 tests pass; typecheck and lint pass. |
+| REQ-ORD-005 | [P0-012](tickets/p0/P0-012-staff-order-create.md), [P0-013](tickets/p0/P0-013-takeaway-order.md) — Ordering/UI | Done. Owner/Cashier staff order entry, server pricing, and takeaway Orders. Staff order and Rules tests pass. Three emulator failures remain from other in-flight AI and Inventory work, not this ticket. |
+| REQ-CAT-003, REQ-KDS-002 | [P0-015](tickets/p0/P0-015-category-availability.md), [P0-014](tickets/p0/P0-014-kitchen-responsive.md) — Catalog/Fulfilment/UI | Done. Category availability command and Cost-free list; phone/tablet Kitchen layout grouped by category with per-category and per-item toggles. Unit, Functions Emulator, Rules, component, typecheck, and lint evidence pass. |
+| REQ-INV-009 | [P0-016](tickets/p0/P0-016-stock-deduction-note.md) — Inventory/UI | Done. Required note on waste and manual-adjustment deductions, stored on the movement and audit, and shown in the change report. Unit, Functions Emulator, and Rules evidence pass. |
+| REQ-UX-002 | [P0-017](tickets/p0/P0-017-responsive-role-frame.md) — Simulator/UI | Done. The device frame is removed on a large viewport and the role view fills the screen; the phone frame stays on a small viewport. Typecheck, lint, and unit evidence pass. |
+| REQ-INV-012 | [P0-018](tickets/p0/P0-018-free-text-count-unit.md) — Inventory/UI | Done. A count ingredient stores a free-text unit name; the server requires it for a count unit and clears it for mass and volume. Unit and Functions Emulator evidence pass. |
 | REQ-CAS-001, REQ-ORD-002, REQ-ORD-003 | P0-009 — worker | Done. VietQR instructions, idempotent cash/VietQR confirmation, immutable Payment, Pay-First Kitchen gate. Emulator and Rules evidence pass. |
 | REQ-WAI-001, REQ-NOT-001, REQ-ONB-001, REQ-ONB-002 | P0-010 — worker | Done (ONB-002 usability artifact pending). Waiter served, notification dedupe and mute, onboarding checklist. Narrow-screen dashboard navigation exposes Table/Menu setup. Emulator evidence pass. |
 | REQ-ADM-001, NFR-PRIV-001, REQ-I18N-001, NFR-PERF-001 | P0-L01, L04, L05, L06 — worker | Done, except REQ-I18N-001 PARTIAL (a few Owner strings pending). ADMIN change audit (reads not audited, ADR 0010), phone filtering, i18n contract, and performance budget evidence pass. |
@@ -80,16 +85,21 @@ Plan: `docs/plan/insight-growth-plan.md`. ADRs: 0008 (AI provider), 0009 (reserv
 | REQ-FDB-002 | G2-05 — Feedback/AI | Done. Source-cited theme grouping, masking, adversarial resistance. Emulator evidence pass. |
 | REQ-AI-004, NFR-AI-002 | G2-06 — AI | Done. Feature-flagged Jev adapter and offline evaluation report; default provider unchanged (ADR 0008). |
 | REQ-FDB-003 | G3-01 — Feedback | Done. Ticket state, actor, time, reason on transition. Emulator evidence pass. |
+| REQ-FDB-004, REQ-FDB-005 | QA-01 — Product feedback | Done. Member-scoped report with screenshot prefix boundary; Storage raster allowlist and bounded size; client delete denied. Unit, Rules, and Emulator evidence pass. |
+| REQ-FDB-006 | QA-01 — Product feedback | Done. Owner-only inbox with append-only status history (actor, time, reason). Rules and Emulator evidence pass. |
 | REQ-HRM-001 | G3-02 — Workforce | Done. Shift overlap rejected server-side. Emulator evidence pass. |
 | REQ-HRM-002, REQ-HRM-003 | G3-03 — Workforce | Done. Pending correction with approval history; minutes only, no payroll. Emulator and Rules evidence pass. |
 | REQ-INV-003 | G3-04 — Inventory | Done. Stock count expected quantity and variance with audit. Emulator evidence pass. |
 | REQ-INV-004 | G3-05 — Inventory/AI | Done. Loss findings cite count, movement, period, and state missing-count limits. Emulator evidence pass. |
 | REQ-PRO-001, REQ-LOY-001, NFR-SEC-003 | G3-06 — Promotion/Loyalty | Done. Owner approval gate and measurement. Emulator evidence pass. |
+| REQ-INV-010, REQ-INV-011 | G3-07 — Inventory/AI | Done. Stock-in lots record their price and move the ingredient Cost to the weighted average (ADR 0014). A lot above ten percent over the prior Cost produces a deterministic price-increase warning with both prices and the percentage. The Kho screen asks for the lot price on a positive adjustment and shows the purchase price beside the weighted-average Cost. Unit evidence pass; emulator test pending. |
 | REQ-NFC-001, REQ-PRO-001, REQ-LOY-001, REQ-SUB-001, REQ-PAY-002 | M3 baseline — worker | Done, except NFC device write and loyalty code delivery and payment webhook transport (deployment tasks). Emulator and Rules evidence pass. |
 | REQ-RSV-001, REQ-RSV-002, REQ-RSV-003 | ADR 0009 | Deferred, outside M1–M3 |
 
 ## Evidence gap
 
-The M1, M2, and M3 baseline tickets have real contracts, fixtures, unit tests, Functions Emulator tests, and Security Rules tests. Evidence is green: 199 web/shared, 342 functions, 100 Rules, and 224 Functions Emulator tests.
+The M1, M2, and M3 baseline tickets have real contracts, fixtures, unit tests, Functions Emulator tests, and Security Rules tests. Evidence is green and all four suites run in CI: 210 web/shared, 401 functions, 107 Rules, and 238 Functions Emulator tests (measured 2026-10-06).
 
-Remaining partial evidence: the NFC physical device step, loyalty SMS/Zalo code delivery, live payment provider transport and secret, a few i18n strings, a separate timed usability study artifact, PWA service-worker offline caching, and a live AI provider secret. Reservations stay DEFERRED under ADR 0009.
+The emulator suites are hermetic: the AI tests pin the deterministic provider in their seed, so a provider secret present on the host cannot change a result or incur spend.
+
+Remaining partial evidence: the NFC physical device step, loyalty SMS/Zalo code delivery, live payment provider transport and secret, hardcoded i18n strings in OwnerView/InventoryPanel/MenuPage, a separate timed usability study artifact, a measured end-to-end latency harness for NFR-RT-001, PWA service-worker offline caching, and a live AI provider secret. Reservations stay DEFERRED under ADR 0009.

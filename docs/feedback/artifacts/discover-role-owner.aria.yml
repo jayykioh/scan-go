@@ -1,0 +1,26 @@
+- banner:
+  - link:
+    - /url: /simulator
+  - button "Đơn ảo"
+  - button "Xóa Data"
+- main:
+  - combobox:
+    - option "Solo Operator"
+    - option "Owner (Quản lý)" [selected]
+    - option "Thu Ngân"
+    - option "KDS (Bếp)"
+    - option "Khách hàng"
+    - option "Nhân viên"
+  - text: 18:54 5G LIVE PLATFORM MANAGEMENT
+  - heading "Bún Phở Kinh Kỳ" [level=3]
+  - paragraph: "Type: Restaurant / Pho"
+  - text: Plan PRO
+  - paragraph: Owner workspace
+  - button "Reset setup"
+  - button "Report"
+  - button "Dishes"
+  - button "Inventory"
+  - button "QR tables"
+  - button "Staff"
+  - button "AI assistant"
+  - text: "Actual revenue 0đ ✓ Real-time POS Profit margin 0đ Ingredient cost: 0đ Most popular dishes Live chart 1 Bún Chả Tre Thạch Thất (Món ăn) 2 orders 2 Phở Bò Tái Lăn Kinh Kỳ (Món ăn) 1 orders 3 Trà Sâm Dứa Hương Lài (Món ăn) 1 orders Member loyalty (4 people) Order growth Nguyễn Văn Hùng Phone: 0987654321 • Visits: 12 times 340 points ✓ OTP verified Trần Thị Mai Phone: 0901234567 • Visits: 5 times 120 points ✓ OTP verified Lê Hoàng Minh Phone: 0933344455 • Visits: 2 times 55 points Pending Phạm Thanh Thảo Phone: 0977888999 • Visits: 0 times 0 points Pending"

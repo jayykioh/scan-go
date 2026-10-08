@@ -5,9 +5,15 @@
  * 10 menu items, so the Catalog, Inventory, Ordering, Reporting, and Workforce
  * screens all have consistent data. It is not product data and is never
  * imported into a production Tenant automatically.
+ *
+ * Ingredient prices are overlaid from the generated market survey
+ * (`npm run market:survey`) where a comparable product was found, so the demo
+ * carries sourced street prices instead of invented ones. Run the seed with
+ * `--show-prices` to print which source each price came from.
  */
 import type { CatalogModifierGroup } from '../../../shared/contracts/catalog.contract.js';
 import type { UnitInput } from '../../../shared/contracts/inventory.contract.js';
+import { resolveSeedPrice } from './market-prices/market-prices.js';
 
 export const SEED_TIMEZONE = 'Asia/Ho_Chi_Minh';
 
@@ -21,6 +27,8 @@ export interface SeedIngredient {
   /** Initial stock in base units (g, ml, or unit). */
   stockQuantity: number;
   lowStockThreshold: number;
+  /** Free-text count unit name for a `unit` purchase unit (REQ-INV-012). */
+  countUnitLabel?: string;
 }
 
 /** One recipe line in base units. Waste is added to the deduction. */
@@ -45,8 +53,11 @@ export interface SeedMenuItem {
 
 /** One demo Staff member stored as a Tenant membership. */
 export interface SeedStaff {
+  /** Synthetic uid fallback when Firebase Auth is unavailable (dry-run). */
   uid: string;
   displayName: string;
+  email: string;
+  password: string;
   roles: string[];
   permissions: string[];
   /** Six-digit PIN; the seed stores only the scrypt hash. */
@@ -80,7 +91,12 @@ const SIZE_GROUP: CatalogModifierGroup = {
   ],
 };
 
-export const SEED_INGREDIENTS: readonly SeedIngredient[] = [
+/**
+ * Hand-written fallback prices. A value here is used only when the market
+ * survey found no comparable product and no human override exists, so it stays
+ * the last resort rather than the source of truth.
+ */
+const SEED_INGREDIENT_DEFAULTS: readonly SeedIngredient[] = [
   { id: 'seed-ing-banh-pho', name: 'Bánh phở', purchaseUnit: 'kg', purchasePriceVnd: 40000, stockQuantity: 12000, lowStockThreshold: 1000 },
   { id: 'seed-ing-bun-tuoi', name: 'Bún tươi', purchaseUnit: 'kg', purchasePriceVnd: 30000, stockQuantity: 10000, lowStockThreshold: 1000 },
   { id: 'seed-ing-gao-te', name: 'Gạo tẻ', purchaseUnit: 'kg', purchasePriceVnd: 20000, stockQuantity: 20000, lowStockThreshold: 2000 },
@@ -89,8 +105,8 @@ export const SEED_INGREDIENTS: readonly SeedIngredient[] = [
   { id: 'seed-ing-ga-ta', name: 'Gà ta', purchaseUnit: 'kg', purchasePriceVnd: 120000, stockQuantity: 8000, lowStockThreshold: 1000 },
   { id: 'seed-ing-ca-loc', name: 'Cá lóc', purchaseUnit: 'kg', purchasePriceVnd: 140000, stockQuantity: 6000, lowStockThreshold: 800 },
   { id: 'seed-ing-tom-su', name: 'Tôm sú', purchaseUnit: 'kg', purchasePriceVnd: 280000, stockQuantity: 4000, lowStockThreshold: 500 },
-  { id: 'seed-ing-trung-ga', name: 'Trứng gà', purchaseUnit: 'unit', purchasePriceVnd: 4000, stockQuantity: 200, lowStockThreshold: 30 },
-  { id: 'seed-ing-dau-hu', name: 'Đậu hũ', purchaseUnit: 'unit', purchasePriceVnd: 5000, stockQuantity: 120, lowStockThreshold: 20 },
+  { id: 'seed-ing-trung-ga', name: 'Trứng gà', purchaseUnit: 'unit', countUnitLabel: 'quả', purchasePriceVnd: 4000, stockQuantity: 200, lowStockThreshold: 30 },
+  { id: 'seed-ing-dau-hu', name: 'Đậu hũ', purchaseUnit: 'unit', countUnitLabel: 'miếng', purchasePriceVnd: 5000, stockQuantity: 120, lowStockThreshold: 20 },
   { id: 'seed-ing-rau-song', name: 'Rau sống', purchaseUnit: 'kg', purchasePriceVnd: 30000, stockQuantity: 5000, lowStockThreshold: 500 },
   { id: 'seed-ing-gia-do', name: 'Giá đỗ', purchaseUnit: 'kg', purchasePriceVnd: 20000, stockQuantity: 4000, lowStockThreshold: 500 },
   { id: 'seed-ing-ca-chua', name: 'Cà chua', purchaseUnit: 'kg', purchasePriceVnd: 25000, stockQuantity: 5000, lowStockThreshold: 500 },
@@ -102,6 +118,38 @@ export const SEED_INGREDIENTS: readonly SeedIngredient[] = [
   { id: 'seed-ing-nuoc-dua', name: 'Nước dừa', purchaseUnit: 'l', purchasePriceVnd: 30000, stockQuantity: 10000, lowStockThreshold: 1000 },
   { id: 'seed-ing-tra-dao', name: 'Nước cốt trà đào', purchaseUnit: 'l', purchasePriceVnd: 80000, stockQuantity: 5000, lowStockThreshold: 500 },
 ] as const;
+
+/**
+ * The Seed ingredients with the market survey applied.
+ *
+ * Each price is resolved independently: a human override wins, then an observed
+ * retail price, then the hand-written fallback above. Retail is not wholesale,
+ * so treat these as sourced demo values to be replaced by real invoices
+ * (ADR 0014).
+ */
+export const SEED_INGREDIENTS: readonly SeedIngredient[] =
+  SEED_INGREDIENT_DEFAULTS.map((ingredient) => ({
+    ...ingredient,
+    purchasePriceVnd: resolveSeedPrice(
+      ingredient.id,
+      ingredient.purchasePriceVnd,
+      ingredient.purchaseUnit,
+    ).purchasePriceVnd,
+  }));
+
+/** Per-ingredient provenance, so the seed can report where a price came from. */
+export const SEED_INGREDIENT_PRICE_SOURCES = SEED_INGREDIENT_DEFAULTS.map(
+  (ingredient) => ({
+    id: ingredient.id,
+    name: ingredient.name,
+    defaultPurchasePriceVnd: ingredient.purchasePriceVnd,
+    ...resolveSeedPrice(
+      ingredient.id,
+      ingredient.purchasePriceVnd,
+      ingredient.purchaseUnit,
+    ),
+  }),
+);
 
 const IMAGE_BASE = 'https://images.unsplash.com';
 
@@ -275,10 +323,10 @@ export const SEED_MENU_ITEMS: readonly SeedMenuItem[] = [
 ] as const;
 
 export const SEED_STAFF: readonly SeedStaff[] = [
-  { uid: 'seed-staff-kitchen', displayName: 'Bếp trưởng Minh', roles: ['kitchen'], permissions: ['order.read'], pin: '111111' },
-  { uid: 'seed-staff-waiter', displayName: 'Phục vụ Lan', roles: ['waiter'], permissions: ['order.read'], pin: '222222' },
-  { uid: 'seed-staff-cashier', displayName: 'Thu ngân Hoa', roles: ['cashier'], permissions: ['order.read', 'order.settle'], pin: '333333' },
-  { uid: 'seed-staff-manager', displayName: 'Quản lý ca Tuấn', roles: ['cashier', 'kitchen'], permissions: ['order.read', 'order.settle', 'payment.correct'], pin: '444444' },
+  { uid: 'seed-staff-kitchen', displayName: 'Bếp trưởng Minh', email: 'bep@demo.scango.vn', password: 'scango123', roles: ['kitchen'], permissions: ['order.read'], pin: '111111' },
+  { uid: 'seed-staff-waiter', displayName: 'Phục vụ Lan', email: 'phucvu@demo.scango.vn', password: 'scango123', roles: ['waiter'], permissions: ['order.read'], pin: '222222' },
+  { uid: 'seed-staff-cashier', displayName: 'Thu ngân Hoa', email: 'thungan@demo.scango.vn', password: 'scango123', roles: ['cashier'], permissions: ['order.read', 'order.settle'], pin: '333333' },
+  { uid: 'seed-staff-manager', displayName: 'Quản lý ca Tuấn', email: 'quanly@demo.scango.vn', password: 'scango123', roles: ['cashier', 'kitchen'], permissions: ['order.read', 'order.settle', 'payment.correct'], pin: '444444' },
 ] as const;
 
 export const SEED_TABLE_COUNT = 10;

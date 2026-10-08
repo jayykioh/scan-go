@@ -22,6 +22,8 @@
 - Never perform direct Firestore business writes from the client.
 - Never invent callable names. Search existing exports and client usage first.
 - Every write validates authentication, App Check, tenant, role, permission, payload, and idempotency.
+- Read directly when the rules grant an active tenant member read on the whole collection and no field needs permission filtering. Put these reads in `src/data/firestoreRead.ts` (ADR 0015).
+- Keep a read on the callable when it joins or filters sensitive data, or reads a collection the rules deny to clients.
 
 ## 2. Callable Naming
 

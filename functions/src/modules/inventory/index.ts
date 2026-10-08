@@ -1,7 +1,10 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import {
+  INVENTORY_CHANGE_ACTIONS,
   INVENTORY_CONTRACT_VERSION,
   ingredientCommandResultSchema,
+  inventoryChangeReportInputSchema,
+  inventoryChangeReportResultSchema,
   lossReviewInputSchema,
   lossReviewResultSchema,
   recipeCommandResultSchema,
@@ -9,6 +12,7 @@ import {
   stockCountResultSchema,
   type Ingredient,
   type IngredientCommandResult,
+  type InventoryChangeEntry,
   type LossFinding,
   type Recipe,
   type RecipeCommandResult,
@@ -33,12 +37,14 @@ import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   applyIngredientUpdate,
   applyRecipeUpdate,
-  assertActiveOwnerMember,
+  assertInventoryManagerMember,
   assertInventoryIdempotencyMatch,
   buildNewIngredient,
   buildNewRecipe,
   buildStockMovement,
   computeNextInventoryVersion,
+  computeWeightedAverageUnitCost,
+  describeInventoryActor,
   ingredientCollectionPath,
   INVENTORY_INGREDIENT_NOT_FOUND_MESSAGE,
   INVENTORY_INSUFFICIENT_STOCK_MESSAGE,
@@ -55,6 +61,7 @@ import {
   parseStockAdjustInput,
   recipeCollectionPath,
   requireUid,
+  resolveStockInLotUnitCost,
   stockMovementCollectionPath,
   toIngredient,
   toRecipe,
@@ -108,15 +115,15 @@ export const callableInventoryCreateIngredient = onCall(
 
     const outcome = await db.runTransaction(async (transaction) => {
       const memberSnap = await transaction.get(memberRef);
-      assertActiveOwnerMember(memberSnap.data());
+      assertInventoryManagerMember(memberSnap.data());
 
       const ingredient = buildNewIngredient(input, ingredientRef.id, nowIso());
       transaction.set(ingredientRef, { ...ingredient, version: 1 });
       writeAuditEventInTransaction(transaction, {
         tenantId: input.tenantId,
         actorUid: uid,
-        actorType: 'owner',
-        role: 'owner',
+        actorType: describeInventoryActor(memberSnap.data()).actorType,
+        role: describeInventoryActor(memberSnap.data()).role,
         action: INGREDIENT_CHANGED_ACTION,
         targetType: 'ingredient',
         targetId: ingredientRef.id,
@@ -146,7 +153,7 @@ export const callableInventoryUpdateIngredient = onCall(
     const outcome = await db.runTransaction(async (transaction) => {
       const memberSnap = await transaction.get(memberRef);
       const ingredientSnap = await transaction.get(ingredientRef);
-      assertActiveOwnerMember(memberSnap.data());
+      assertInventoryManagerMember(memberSnap.data());
       if (!ingredientSnap.exists) {
         throw new HttpsError(
           'not-found',
@@ -161,8 +168,8 @@ export const callableInventoryUpdateIngredient = onCall(
       writeAuditEventInTransaction(transaction, {
         tenantId: input.tenantId,
         actorUid: uid,
-        actorType: 'owner',
-        role: 'owner',
+        actorType: describeInventoryActor(memberSnap.data()).actorType,
+        role: describeInventoryActor(memberSnap.data()).role,
         action: INGREDIENT_CHANGED_ACTION,
         targetType: 'ingredient',
         targetId: input.ingredientId,
@@ -192,7 +199,7 @@ export const callableInventoryArchiveIngredient = onCall(
     const version = await db.runTransaction(async (transaction) => {
       const memberSnap = await transaction.get(memberRef);
       const ingredientSnap = await transaction.get(ingredientRef);
-      assertActiveOwnerMember(memberSnap.data());
+      assertInventoryManagerMember(memberSnap.data());
       if (!ingredientSnap.exists) {
         throw new HttpsError(
           'not-found',
@@ -213,8 +220,8 @@ export const callableInventoryArchiveIngredient = onCall(
       writeAuditEventInTransaction(transaction, {
         tenantId: input.tenantId,
         actorUid: uid,
-        actorType: 'owner',
-        role: 'owner',
+        actorType: describeInventoryActor(memberSnap.data()).actorType,
+        role: describeInventoryActor(memberSnap.data()).role,
         action: INGREDIENT_CHANGED_ACTION,
         targetType: 'ingredient',
         targetId: input.ingredientId,
@@ -244,6 +251,9 @@ export const callableInventoryAdjustStock = onCall(
       ingredientId: input.ingredientId,
       delta: input.quantityDeltaBaseUnits,
       reason: input.reason,
+      purchaseUnit: input.purchaseUnit ?? null,
+      purchasePriceVnd: input.purchasePriceVnd ?? null,
+      note: input.note ?? null,
     });
 
     const db = getDb();
@@ -265,7 +275,7 @@ export const callableInventoryAdjustStock = onCall(
       const memberSnap = await transaction.get(memberRef);
       const idempotencySnap = await transaction.get(idempotencyRef);
       const ingredientSnap = await transaction.get(ingredientRef);
-      assertActiveOwnerMember(memberSnap.data());
+      assertInventoryManagerMember(memberSnap.data());
       if (!ingredientSnap.exists) {
         throw new HttpsError(
           'not-found',
@@ -298,10 +308,25 @@ export const callableInventoryAdjustStock = onCall(
         );
       }
 
+      // A purchase lot records its own price and moves the Cost to the
+      // weighted average of quantity on hand and the new lot (REQ-INV-010,
+      // ADR 0014). Any other effect keeps the current Cost.
+      const lotUnitCostVnd = resolveStockInLotUnitCost(input);
+      const nextUnitCostVnd =
+        lotUnitCostVnd === null
+          ? current.unitCostVnd
+          : computeWeightedAverageUnitCost({
+              onHandQuantity: current.stockQuantity,
+              currentUnitCostVnd: current.unitCostVnd,
+              lotQuantity: input.quantityDeltaBaseUnits,
+              lotUnitCostVnd,
+            });
+
       const now = nowIso();
       const updated: Ingredient = {
         ...current,
         stockQuantity: nextStock,
+        unitCostVnd: nextUnitCostVnd,
         updatedAt: now,
       };
       const movement = buildStockMovement({
@@ -314,6 +339,8 @@ export const callableInventoryAdjustStock = onCall(
         actorUid: uid,
         idempotencyKey: input.idempotencyKey,
         createdAt: now,
+        lotUnitCostVnd,
+        note: input.note ?? null,
       });
 
       transaction.set(ingredientRef, { ...updated, version: computeNextInventoryVersion(ingredientSnap.get('version')) });
@@ -328,15 +355,18 @@ export const callableInventoryAdjustStock = onCall(
       writeAuditEventInTransaction(transaction, {
         tenantId: input.tenantId,
         actorUid: uid,
-        actorType: 'owner',
-        role: 'owner',
+        actorType: describeInventoryActor(memberSnap.data()).actorType,
+        role: describeInventoryActor(memberSnap.data()).role,
         action: STOCK_ADJUSTED_ACTION,
         targetType: 'ingredient',
         targetId: input.ingredientId,
+        reason: input.reason,
         detail: {
           command: 'adjustStock',
           quantityDelta: input.quantityDeltaBaseUnits,
           reason: input.reason,
+          lotUnitCostVnd,
+          note: input.note ?? null,
         },
       });
       return { replayed: false, ingredient: updated, movement };
@@ -373,7 +403,7 @@ export const callableInventoryCreateRecipe = onCall(
     const outcome = await db.runTransaction(async (transaction) => {
       const memberSnap = await transaction.get(memberRef);
       const snaps = await transaction.getAll(...ingredientRefs);
-      assertActiveOwnerMember(memberSnap.data());
+      assertInventoryManagerMember(memberSnap.data());
 
       const ingredientsById = new Map<string, Ingredient>();
       snaps.forEach((snap, index) => {
@@ -391,8 +421,8 @@ export const callableInventoryCreateRecipe = onCall(
       writeAuditEventInTransaction(transaction, {
         tenantId: input.tenantId,
         actorUid: uid,
-        actorType: 'owner',
-        role: 'owner',
+        actorType: describeInventoryActor(memberSnap.data()).actorType,
+        role: describeInventoryActor(memberSnap.data()).role,
         action: RECIPE_CHANGED_ACTION,
         targetType: 'recipe',
         targetId: recipeRef.id,
@@ -426,7 +456,7 @@ export const callableInventoryUpdateRecipe = onCall(
       const memberSnap = await transaction.get(memberRef);
       const recipeSnap = await transaction.get(recipeRef);
       const snaps = await transaction.getAll(...ingredientRefs);
-      assertActiveOwnerMember(memberSnap.data());
+      assertInventoryManagerMember(memberSnap.data());
       if (!recipeSnap.exists) {
         throw new HttpsError('not-found', INVENTORY_RECIPE_NOT_FOUND_MESSAGE);
       }
@@ -449,8 +479,8 @@ export const callableInventoryUpdateRecipe = onCall(
       writeAuditEventInTransaction(transaction, {
         tenantId: input.tenantId,
         actorUid: uid,
-        actorType: 'owner',
-        role: 'owner',
+        actorType: describeInventoryActor(memberSnap.data()).actorType,
+        role: describeInventoryActor(memberSnap.data()).role,
         action: RECIPE_CHANGED_ACTION,
         targetType: 'recipe',
         targetId: input.recipeId,
@@ -480,7 +510,7 @@ export const callableInventoryArchiveRecipe = onCall(
     const version = await db.runTransaction(async (transaction) => {
       const memberSnap = await transaction.get(memberRef);
       const recipeSnap = await transaction.get(recipeRef);
-      assertActiveOwnerMember(memberSnap.data());
+      assertInventoryManagerMember(memberSnap.data());
       if (!recipeSnap.exists) {
         throw new HttpsError('not-found', INVENTORY_RECIPE_NOT_FOUND_MESSAGE);
       }
@@ -497,8 +527,8 @@ export const callableInventoryArchiveRecipe = onCall(
       writeAuditEventInTransaction(transaction, {
         tenantId: input.tenantId,
         actorUid: uid,
-        actorType: 'owner',
-        role: 'owner',
+        actorType: describeInventoryActor(memberSnap.data()).actorType,
+        role: describeInventoryActor(memberSnap.data()).role,
         action: RECIPE_CHANGED_ACTION,
         targetType: 'recipe',
         targetId: input.recipeId,
@@ -569,7 +599,7 @@ export const callableInventoryRecordStockCount = onCall(
       const idempotencySnap = await transaction.get(idempotencyRef);
       const countSnap = await transaction.get(countRef);
       const movementsSnap = await transaction.get(movementsQuery);
-      assertActiveOwnerMember(memberSnap.data());
+      assertInventoryManagerMember(memberSnap.data());
       if (!ingredientSnap.exists) {
         throw new HttpsError(
           'not-found',
@@ -613,8 +643,8 @@ export const callableInventoryRecordStockCount = onCall(
       writeAuditEventInTransaction(transaction, {
         tenantId: input.tenantId,
         actorUid: uid,
-        actorType: 'owner',
-        role: 'owner',
+        actorType: describeInventoryActor(memberSnap.data()).actorType,
+        role: describeInventoryActor(memberSnap.data()).role,
         action: 'StockCountRecorded',
         targetType: 'ingredient',
         targetId: input.ingredientId,
@@ -657,7 +687,7 @@ export const callableInventoryReviewLoss = onCall(
     const memberSnap = await db
       .doc(`tenants/${input.tenantId}/members/${uid}`)
       .get();
-    assertActiveOwnerMember(memberSnap.data());
+    assertInventoryManagerMember(memberSnap.data());
 
     const bounds = dayBounds(input.fromDay, input.toDay);
     // Firestore Query objects are immutable: each filter must be reassigned.
@@ -729,6 +759,113 @@ export const callableInventoryReviewLoss = onCall(
       missingData: missingDataNotes.length > 0,
       missingDataNotes,
       generatedAt: nowIso(),
+    });
+  },
+);
+
+const CHANGE_REPORT_DEFAULT_LIMIT = 50;
+const CHANGE_REPORT_READ_LIMIT = 200;
+
+/**
+ * Owner and Kitchen query: the append-only inventory change report
+ * (REQ-INV-008). It reads recent ingredient, recipe, and stock audit entries and
+ * enriches each with its target name, so every add, edit, and archive is
+ * traceable. It mutates nothing.
+ */
+export const callableInventoryChangeReport = onCall(
+  CALL_OPTIONS,
+  async (request) => {
+    const uid = requireUid(request.auth?.uid);
+    assertAppCheck(request);
+    const parsed = inventoryChangeReportInputSchema.safeParse(
+      request.data ?? {},
+    );
+    if (!parsed.success) {
+      throw new HttpsError('invalid-argument', INVENTORY_INVALID_MESSAGE);
+    }
+    const input = parsed.data;
+
+    const db = getDb();
+    const memberSnap = await db
+      .doc(`tenants/${input.tenantId}/members/${uid}`)
+      .get();
+    assertInventoryManagerMember(memberSnap.data());
+
+    const auditSnap = await db
+      .collection(`tenants/${input.tenantId}/audit`)
+      .where('action', 'in', [...INVENTORY_CHANGE_ACTIONS])
+      .orderBy('createdAt', 'desc')
+      .limit(CHANGE_REPORT_READ_LIMIT)
+      .get();
+
+    const [ingredientsSnap, recipesSnap] = await Promise.all([
+      db.collection(ingredientCollectionPath(input.tenantId)).limit(200).get(),
+      db.collection(recipeCollectionPath(input.tenantId)).limit(200).get(),
+    ]);
+    const ingredientNames = new Map<string, string>();
+    for (const docSnap of ingredientsSnap.docs) {
+      ingredientNames.set(docSnap.id, String(docSnap.get('name') ?? docSnap.id));
+    }
+    const recipeNames = new Map<string, string>();
+    for (const docSnap of recipesSnap.docs) {
+      recipeNames.set(
+        docSnap.id,
+        String(docSnap.get('menuItemId') ?? docSnap.id),
+      );
+    }
+
+    const entries: InventoryChangeEntry[] = auditSnap.docs.map((docSnap) => {
+      const metadata = (docSnap.get('metadata') ?? {}) as Record<string, unknown>;
+      const targetType =
+        typeof docSnap.get('targetType') === 'string'
+          ? (docSnap.get('targetType') as string)
+          : null;
+      const targetId =
+        typeof docSnap.get('targetId') === 'string'
+          ? (docSnap.get('targetId') as string)
+          : null;
+      const targetName =
+        targetId === null
+          ? null
+          : targetType === 'ingredient'
+            ? ingredientNames.get(targetId) ?? null
+            : targetType === 'recipe'
+              ? recipeNames.get(targetId) ?? null
+              : null;
+      return {
+        eventId: docSnap.id,
+        action: String(docSnap.get('action') ?? ''),
+        targetType,
+        targetId,
+        targetName,
+        command:
+          typeof metadata.command === 'string' ? metadata.command : null,
+        actorType: String(docSnap.get('actorType') ?? 'system'),
+        role:
+          typeof docSnap.get('role') === 'string'
+            ? (docSnap.get('role') as string)
+            : null,
+        actorUid:
+          typeof docSnap.get('actorUid') === 'string'
+            ? (docSnap.get('actorUid') as string)
+            : null,
+        reason:
+          typeof docSnap.get('reason') === 'string'
+            ? (docSnap.get('reason') as string)
+            : null,
+        note: typeof metadata.note === 'string' ? metadata.note : null,
+        quantityDelta:
+          typeof metadata.quantityDelta === 'number'
+            ? metadata.quantityDelta
+            : null,
+        createdAt: String(docSnap.get('createdAt') ?? ''),
+      };
+    });
+
+    return inventoryChangeReportResultSchema.parse({
+      schemaVersion: INVENTORY_CONTRACT_VERSION,
+      tenantId: input.tenantId,
+      entries: entries.slice(0, input.limit ?? CHANGE_REPORT_DEFAULT_LIMIT),
     });
   },
 );

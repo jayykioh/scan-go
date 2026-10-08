@@ -122,7 +122,8 @@ Stores name, active state, token version, active token reference, QR payload met
 ### `tenants/{tenantId}/orders/{orderId}` — Ordering source
 | Field | Type |
 |---|---|
-| `tableId`, `tableNameSnapshot` | string |
+| `orderType` | `dineIn | takeaway` |
+| `tableId`, `tableNameSnapshot` | string; a takeaway Order uses the reserved `takeaway` id and `Mang về` label |
 | `status` | `pending | cooking | ready | served | paid | cancelled` |
 | `paymentMode` | `payFirst | payLater` |
 | `paymentMethod` | `cash | vietQr` or null |
@@ -196,6 +197,12 @@ Stores rating or issue text, optional Order reference, verification state, maske
 ### `tenants/{tenantId}/feedbackTickets/{ticketId}` — Feedback
 Stores state (`received`, `in_progress`, `resolved`), owner, priority, linked feedback IDs, and an append-only history of state, actor, time, and reason.
 
+### `tenants/{tenantId}/productFeedback/{feedbackId}` — Product feedback
+Stores the operator's report about ScanGo itself: category, severity, status, message, up to three screenshot descriptors (`storagePath`, `contentType`, `sizeBytes`), the reporter uid and derived role, the screen the reporter was on, and an append-only history of status, actor, time, and reason. Server-written only; Owner or ADMIN read.
+
+### Storage `tenants/{tenantId}/feedbackAttachments/{uid}/{fileName}` — Product feedback
+One screenshot per object, under the reporter's own tenant and uid prefix. Reads require an active Tenant member or ADMIN; writes require the matching uid, a raster content type from the allowlist, and at most 5 MB; client deletes are denied (REQ-FDB-005).
+
 ### `tenants/{tenantId}/shifts/{shiftId}` — Workforce
 Stores Staff member, date, start and end time, role, and audit metadata. Times store as UTC and render in tenant time. Two overlapping Shifts for one Staff are rejected.
 
@@ -218,9 +225,11 @@ Stores Staff member, clock in and clock out, source, correction state (`none`, `
 | `aiUsage` | `tenantId`, `createdAt desc` |
 | `feedback` | `createdAt desc`, `verificationState` |
 | `feedbackTickets` | `state`, `updatedAt desc` |
+| `productFeedback` | `createdAt desc` |
 | `shifts` | `staffUid`, `date` |
 | `attendance` | `staffUid`, `clockInAt desc` |
 | `stockCounts` | `ingredientId`, `createdAt desc` |
+| `audit` | `action`, `createdAt desc` |
 
 All queries remain tenant-scoped. Public listeners read only one table link, one tracking token, or bounded public menu items.
 

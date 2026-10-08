@@ -1,0 +1,19 @@
+- banner:
+  - link:
+    - /url: /simulator
+  - button "Đơn ảo"
+  - button "Xóa Data"
+- main:
+  - combobox:
+    - option "Solo Operator"
+    - option "Owner (Quản lý)"
+    - option "Thu Ngân" [selected]
+    - option "KDS (Bếp)"
+    - option "Khách hàng"
+    - option "Nhân viên"
+  - text: 18:54 Wi-Fi
+  - heading "Thu Ngân" [level=3]
+  - paragraph: Vui lòng nhập mã PIN.
+  - textbox "••••"
+  - paragraph: Nhập số bất kỳ để trải nghiệm thử
+  - button "Đăng nhập"

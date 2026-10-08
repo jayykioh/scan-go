@@ -1,0 +1,24 @@
+- link "Home":
+  - /url: /
+- text: ScanGo_
+- heading "Hệ thống Vận hành Tuyệt đối." [level=1]
+- paragraph: Loại bỏ thiết bị thừa. Đơn giản hóa quy trình. POS qua mã QR trực tiếp từ trình duyệt.
+- paragraph: ScanGo System v1.0.0 // Tối ưu hóa cho tốc độ
+- main:
+  - heading "Đăng nhập" [level=1]
+  - paragraph: Truy cập hệ thống POS của bạn
+  - text: Local emulator Email Bắt buộc
+  - textbox "Email Bắt buộc":
+    - /placeholder: nam@scango.vn
+  - text: Mật khẩu
+  - textbox "Mật khẩu":
+    - /placeholder: ••••••••
+  - button "Đăng nhập"
+  - paragraph:
+    - text: Chưa có tài khoản?
+    - link "Khởi tạo ngay":
+      - /url: /register
+  - paragraph:
+    - text: Bạn là nhân viên?
+    - link "Đăng nhập ca làm":
+      - /url: /staff

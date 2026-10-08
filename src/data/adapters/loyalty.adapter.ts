@@ -1,6 +1,5 @@
 import { httpsCallable } from 'firebase/functions';
 import {
-  loyaltyConfigResultSchema,
   loyaltyListResultSchema,
   loyaltyPointResultSchema,
   loyaltyRegisterResultSchema,
@@ -10,6 +9,7 @@ import {
 } from '@contracts/loyalty.contract';
 import { getFirebaseFunctions } from '../../services/firebase/client';
 import { getActiveTenantId } from './subscription.adapter';
+import { readLoyaltyConfig } from '../firestoreRead';
 
 function requireFunctions() {
   const functions = getFirebaseFunctions();
@@ -95,10 +95,7 @@ export async function redeemLoyaltyPoints(
   return result.member;
 }
 
+/** Read the tenant Loyalty configuration directly (REQ-LOY-001). */
 export async function getLoyaltyConfig(): Promise<LoyaltyConfig> {
-  const functions = requireFunctions();
-  const tenantId = await requireTenantId();
-  const callable = httpsCallable(functions, 'callableLoyaltyGetConfig');
-  return loyaltyConfigResultSchema.parse((await callable({ tenantId })).data)
-    .config;
+  return readLoyaltyConfig();
 }

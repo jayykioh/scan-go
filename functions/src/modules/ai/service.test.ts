@@ -139,12 +139,110 @@ describe('deterministic warnings', () => {
     }
   });
 
+  it('warns when a purchase lot rises more than ten percent (REQ-INV-011)', () => {
+    const context = baseContext();
+    context.ingredients = [
+      ...context.ingredients,
+      {
+        ingredientId: 'ing-beef-lot',
+        name: 'Thịt bò',
+        unitCostVnd: 150,
+        stockQuantity: 4000,
+        lowStockThreshold: 100,
+        isActive: true,
+        lastLotUnitCostVnd: 115,
+        previousUnitCostVnd: 100,
+      },
+      {
+        ingredientId: 'ing-mild',
+        name: 'Rau thơm',
+        unitCostVnd: 102,
+        stockQuantity: 4000,
+        lowStockThreshold: 100,
+        isActive: true,
+        lastLotUnitCostVnd: 105,
+        previousUnitCostVnd: 100,
+      },
+    ];
+    const warnings = computeWarnings(context);
+    const priceWarnings = warnings.filter(
+      (warning) => warning.kind === 'priceIncrease',
+    );
+    expect(priceWarnings).toHaveLength(1);
+    expect(priceWarnings[0].subjectId).toBe('ing-beef-lot');
+    expect(priceWarnings[0].sourceIds).toContain('ing-beef-lot');
+    expect(priceWarnings[0].formula).toContain('0.1');
+  });
+
+  it('does not warn about price when no priced lot exists', () => {
+    const context = baseContext();
+    context.ingredients = [
+      {
+        ingredientId: 'ing-no-lot',
+        name: 'Nước mắm',
+        unitCostVnd: 80,
+        stockQuantity: 4000,
+        lowStockThreshold: 100,
+        isActive: true,
+        lastLotUnitCostVnd: null,
+        previousUnitCostVnd: null,
+      },
+    ];
+    const kinds = computeWarnings(context).map((warning) => warning.kind);
+    expect(kinds).not.toContain('priceIncrease');
+  });
+
+  it('warns when revenue drops at least twenty percent from the prior day (REQ-AI-007)', () => {
+    const context = assembleSafeContext({
+      tenantId: 'tenant-1',
+      dayStats: [
+        {
+          stats: stats({ dayKey: '20260911', revenueVnd: 500000, paidOrderCount: 5 }),
+          items: [],
+        },
+        {
+          stats: stats({ dayKey: '20260912', revenueVnd: 300000, paidOrderCount: 3 }),
+          items: [],
+        },
+      ],
+      menuItems: [],
+      ingredients: [],
+    });
+    const warnings = computeWarnings(context).filter(
+      (warning) => warning.kind === 'revenueDrop',
+    );
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].sourceIds).toEqual(['20260911', '20260912']);
+    expect(warnings[0].message).toContain('20260911');
+    expect(warnings[0].message).toContain('20260912');
+    expect(warnings[0].formula).toContain('0.2');
+  });
+
+  it('does not warn when the revenue drop is smaller than the threshold', () => {
+    const context = assembleSafeContext({
+      tenantId: 'tenant-1',
+      dayStats: [
+        {
+          stats: stats({ dayKey: '20260911', revenueVnd: 500000, paidOrderCount: 5 }),
+          items: [],
+        },
+        {
+          stats: stats({ dayKey: '20260912', revenueVnd: 450000, paidOrderCount: 4 }),
+          items: [],
+        },
+      ],
+      menuItems: [],
+      ingredients: [],
+    });
+    const kinds = computeWarnings(context).map((warning) => warning.kind);
+    expect(kinds).not.toContain('revenueDrop');
+  });
+
   it('warns about missing data instead of inventing a value', () => {
     const warnings = computeWarnings({
       ...baseContext(),
       dayStats: [],
-    });
-    expect(warnings.some((warning) => warning.kind === 'missingData')).toBe(
+    });    expect(warnings.some((warning) => warning.kind === 'missingData')).toBe(
       true,
     );
   });

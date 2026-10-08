@@ -127,6 +127,10 @@ export default function SettingsPage() {
     lockMinutes: 15,
     sessionHours: 8,
   });
+  const [draftAi, setDraftAi] = useState({
+    revenueDropPercent: 20,
+    lowMarginPercent: 20,
+  });
 
   const loadResolvedConfig = useCallback(async () => {
     if (!configured) {
@@ -142,6 +146,10 @@ export default function SettingsPage() {
         setDraftLocale(result.values.locale);
         setDraftTimezone(result.values.timezone);
         setDraftPinPolicy({ ...result.values.pinPolicy });
+        setDraftAi({
+          revenueDropPercent: result.values.ai.revenueDropPercent,
+          lowMarginPercent: result.values.ai.lowMarginPercent,
+        });
       }
     } catch (error) {
       setConfigError(
@@ -196,6 +204,13 @@ export default function SettingsPage() {
         maxFailedAttempts: Number(draftPinPolicy.maxFailedAttempts),
         lockMinutes: Number(draftPinPolicy.lockMinutes),
         sessionHours: Number(draftPinPolicy.sessionHours),
+      };
+    }
+
+    if (allowed.includes('ai')) {
+      overrides.ai = {
+        revenueDropPercent: Number(draftAi.revenueDropPercent),
+        lowMarginPercent: Number(draftAi.lowMarginPercent),
       };
     }
 
@@ -296,8 +311,12 @@ export default function SettingsPage() {
   const canOverrideLocale = allowedOverrideKeys.includes('locale');
   const canOverrideTimezone = allowedOverrideKeys.includes('timezone');
   const canOverridePinPolicy = allowedOverrideKeys.includes('pinPolicy');
+  const canOverrideAi = allowedOverrideKeys.includes('ai');
   const canSaveTenantConfig =
-    canOverrideLocale || canOverrideTimezone || canOverridePinPolicy;
+    canOverrideLocale ||
+    canOverrideTimezone ||
+    canOverridePinPolicy ||
+    canOverrideAi;
 
   const updateDraft = <K extends keyof TenantConfig>(key: K, value: TenantConfig[K]) => {
     setDraft(prev => ({ ...prev, [key]: value }));
@@ -539,6 +558,47 @@ export default function SettingsPage() {
                       <input id={`pin-${field}`} type="number" min={1} value={draftPinPolicy[field]} disabled={configSaving || !canOverridePinPolicy} onChange={e => setDraftPinPolicy(prev => ({ ...prev, [field]: Number(e.target.value) }))} className="w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" />
                     </div>
                   ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  Ngưỡng cảnh báo AI {canOverrideAi ? '(được phép ghi đè)' : '(chỉ ADMIN chỉnh)'}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Trợ lý AI cảnh báo chủ quán khi doanh thu một ngày giảm quá ngưỡng, hoặc khi một món có biên lợi nhuận dưới ngưỡng.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-3">
+                    <label htmlFor="ai-revenueDrop" className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500 block">
+                      Doanh thu giảm (%)
+                    </label>
+                    <input
+                      id="ai-revenueDrop"
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={draftAi.revenueDropPercent}
+                      disabled={configSaving || !canOverrideAi}
+                      onChange={e => setDraftAi(prev => ({ ...prev, revenueDropPercent: Number(e.target.value) }))}
+                      className="w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label htmlFor="ai-lowMargin" className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500 block">
+                      Biên lợi nhuận tối thiểu (%)
+                    </label>
+                    <input
+                      id="ai-lowMargin"
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={draftAi.lowMarginPercent}
+                      disabled={configSaving || !canOverrideAi}
+                      onChange={e => setDraftAi(prev => ({ ...prev, lowMarginPercent: Number(e.target.value) }))}
+                      className="w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
                 </div>
               </div>
 

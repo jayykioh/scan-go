@@ -29,8 +29,10 @@ export {
   callableCatalogApplyTemplate,
   callableCatalogArchive,
   callableCatalogCreate,
+  callableCatalogListAvailability,
   callableCatalogSearch,
   callableCatalogSetAvailability,
+  callableCatalogSetCategoryAvailability,
   callableCatalogUpdate,
 } from './modules/catalog/index.js';
 
@@ -46,6 +48,9 @@ export {
   callableFeedbackCreateTicket,
   callableFeedbackSubmit,
   callableFeedbackUpdateTicket,
+  callableProductFeedbackList,
+  callableProductFeedbackSetStatus,
+  callableProductFeedbackSubmit,
 } from './modules/feedback/index.js';
 
 export {
@@ -67,6 +72,7 @@ export {
   callableOrderGetTracking,
   callableOrderListKitchen,
   callableOrderListUnpaid,
+  callableOrderStaffCreate,
   callableOrderSubmit,
 } from './modules/ordering/index.js';
 
@@ -115,6 +121,7 @@ export {
   callableInventoryAdjustStock,
   callableInventoryArchiveIngredient,
   callableInventoryArchiveRecipe,
+  callableInventoryChangeReport,
   callableInventoryCreateIngredient,
   callableInventoryCreateRecipe,
   callableInventoryRecordStockCount,
@@ -150,3 +157,11 @@ export {
   callableTenantOnboardingUpdate,
   callableTenantSelectActive,
 } from './modules/tenant/index.js';
+
+export {
+  callableStaffCreate,
+  callableStaffList,
+  callableStaffResetPin,
+  callableStaffSetActive,
+  callableStaffUpdate,
+} from './modules/staff/index.js';

@@ -97,12 +97,16 @@ function unauthDb() {
 }
 
 describe('tenant aiUsage read boundary', () => {
-  it('allows an active Owner and member to read usage', async () => {
+  it('allows an active Owner to read usage', async () => {
     await seed();
     await assertSucceeds(
       getDoc(doc(ownerDb(), 'tenants', TENANT_A, 'aiUsage', USAGE_ID)),
     );
-    await assertSucceeds(
+  });
+
+  it('denies a non-Owner member because provider spend is Owner data', async () => {
+    await seed();
+    await assertFails(
       getDoc(doc(memberDb(), 'tenants', TENANT_A, 'aiUsage', USAGE_ID)),
     );
   });
@@ -135,12 +139,16 @@ describe('tenant aiUsage write denial', () => {
 });
 
 describe('tenant aiInsights boundary', () => {
-  it('allows an active Owner and member to read insights', async () => {
+  it('allows an active Owner to read insights', async () => {
     await seed();
     await assertSucceeds(
       getDoc(doc(ownerDb(), 'tenants', TENANT_A, 'aiInsights', INSIGHT_ID)),
     );
-    await assertSucceeds(
+  });
+
+  it('denies a non-Owner member because insights summarise margin and loss', async () => {
+    await seed();
+    await assertFails(
       getDoc(doc(memberDb(), 'tenants', TENANT_A, 'aiInsights', INSIGHT_ID)),
     );
   });

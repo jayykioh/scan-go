@@ -15,6 +15,7 @@ import {
   writeAuditEventInTransaction,
   writePlatformAuditEventInTransaction,
 } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   applyTenantStatePlan,
   buildTenantStatePlan,
@@ -36,7 +37,7 @@ import {
   toAdminTenantSummary,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 const ADMIN_TENANT_NOT_FOUND_MESSAGE = 'Không tìm thấy cửa hàng.';
 
 /**

@@ -41,6 +41,7 @@ import {
   type Functions,
 } from 'firebase/functions';
 import type { TableLinkContext } from '../../../shared/contracts/table.contract.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 import {
   MENU_LOAD_SAMPLE_COUNT,
   PUBLIC_MENU_LOAD_LIMIT,
@@ -50,7 +51,7 @@ import {
 } from '../../src/modules/catalog/performance.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 

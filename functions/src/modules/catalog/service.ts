@@ -5,18 +5,23 @@ import {
   CATALOG_CONTRACT_VERSION,
   catalogApplyTemplateInputSchema,
   catalogArchiveInputSchema,
+  catalogAvailabilityListInputSchema,
   catalogCreateInputSchema,
   catalogMenuItemSchema,
   catalogSearchInputSchema,
   catalogSetAvailabilityInputSchema,
+  catalogSetCategoryAvailabilityInputSchema,
   catalogUpdateInputSchema,
   publicMenuItemSchema,
   type CatalogApplyTemplateInput,
   type CatalogArchiveInput,
+  type CatalogAvailabilityItem,
+  type CatalogAvailabilityListInput,
   type CatalogCreateInput,
   type CatalogMenuItem,
   type CatalogSearchInput,
   type CatalogSetAvailabilityInput,
+  type CatalogSetCategoryAvailabilityInput,
   type CatalogUpdateInput,
   type PublicMenuItem,
 } from '../../../../shared/contracts/catalog.contract.js';
@@ -84,6 +89,24 @@ export function parseCatalogSetAvailabilityInput(
 ): CatalogSetAvailabilityInput {
   return parseOrInvalid<CatalogSetAvailabilityInput>(
     catalogSetAvailabilityInputSchema,
+    data,
+  );
+}
+
+export function parseCatalogSetCategoryAvailabilityInput(
+  data: unknown,
+): CatalogSetCategoryAvailabilityInput {
+  return parseOrInvalid<CatalogSetCategoryAvailabilityInput>(
+    catalogSetCategoryAvailabilityInputSchema,
+    data,
+  );
+}
+
+export function parseCatalogAvailabilityListInput(
+  data: unknown,
+): CatalogAvailabilityListInput {
+  return parseOrInvalid<CatalogAvailabilityListInput>(
+    catalogAvailabilityListInputSchema,
     data,
   );
 }
@@ -166,6 +189,18 @@ export function isPublicProjectionVisible(item: CatalogMenuItem): boolean {
   return item.archivedAt === null && item.isAvailable;
 }
 
+/** Strip an item to the Kitchen-safe availability fields (no Cost or stock). */
+export function toCatalogAvailabilityItem(
+  item: CatalogMenuItem,
+): CatalogAvailabilityItem {
+  return {
+    menuItemId: item.menuItemId,
+    name: item.name,
+    category: item.category,
+    isAvailable: item.isAvailable,
+  };
+}
+
 export function buildNewMenuItem(
   input: CatalogCreateInput,
   menuItemId: string,
@@ -231,6 +266,24 @@ export function applyMenuItemAvailability(
     isAvailable,
     updatedAt: now,
   });
+}
+
+/**
+ * Pick the active items in one category that still need the target
+ * availability. An item already at the target is skipped, so a retried
+ * Category availability command changes nothing and writes no audit event
+ * (REQ-CAT-003).
+ */
+export function isCategoryAvailabilityTarget(
+  item: CatalogMenuItem,
+  category: string,
+  isAvailable: boolean,
+): boolean {
+  return (
+    item.archivedAt === null &&
+    item.category === category &&
+    item.isAvailable !== isAvailable
+  );
 }
 
 export function matchesCatalogSearch(

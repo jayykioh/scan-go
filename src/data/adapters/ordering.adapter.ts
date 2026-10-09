@@ -11,14 +11,17 @@ import {
   type OrderCartLineInput,
   type OrderPaymentMode,
   type OrderSnapshot,
+  type OrderStaffCreateInput,
   type OrderSubmitResult,
   type OrderTrackingResult,
+  type OrderType,
   type PublicOrderTracking,
 } from '@contracts/order.contract';
 import {
   getFirebaseFirestore,
   getFirebaseFunctions,
 } from '../../services/firebase/client';
+import type { OrderItem } from '../../types';
 import { createIdempotencyKey } from './idempotency';
 
 /** Customer tracking listeners are always bounded to one token document. */
@@ -66,6 +69,19 @@ export interface SubmitOrderRequest {
   paymentMode: OrderPaymentMode;
   idempotencyKey: string;
   lines: OrderCartLineInput[];
+  /** The Promotion code the Customer typed, when the cart asked for one. */
+  promotionCode?: string | null;
+  /** The verified Loyalty member, needed by a redemption or a segment. */
+  loyaltyMemberId?: string | null;
+}
+
+/** Preserve the option IDs selected in the cart for server-side price validation. */
+export function toOrderCartLines(cart: ReadonlyArray<OrderItem>): OrderCartLineInput[] {
+  return cart.map((item) => ({
+    menuItemId: item.menuId,
+    quantity: item.quantity,
+    selectedOptionIds: item.selectedOptionIds ?? [],
+  }));
 }
 
 /**
@@ -86,6 +102,30 @@ export async function submitOrder(
   const result = await callable(request);
   return orderSubmitResultSchema.parse(result.data);
 }
+
+/** Staff order entry request. The server resolves tenant, price, and table. */
+export type StaffCreateOrderRequest = OrderStaffCreateInput;
+
+/**
+ * Create one Order as Owner or Cashier through the server callable
+ * (REQ-ORD-005). The client sends no price or total.
+ */
+export async function createStaffOrder(
+  request: StaffCreateOrderRequest,
+): Promise<OrderSubmitResult> {
+  const functions = getFirebaseFunctions();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<
+    StaffCreateOrderRequest,
+    OrderSubmitResult
+  >(functions, 'callableOrderStaffCreate');
+  const result = await callable(request);
+  return orderSubmitResultSchema.parse(result.data);
+}
+
+export type { OrderType };
 
 /**
  * Cancel one unpaid Order through the server callable. The server stops
@@ -134,9 +174,11 @@ export function mapStoredTracking(
     trackingToken,
     tenantId: data.tenantId,
     orderId: data.orderId,
+    orderType: data.orderType ?? 'dineIn',
     tableName: data.tableName,
     itemSummary: data.itemSummary,
     totalVnd: data.totalVnd,
+    discountVnd: data.discountVnd ?? 0,
     status: data.status,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
@@ -148,7 +190,11 @@ export function mapStoredOrder(
   orderId: string,
   data: Record<string, unknown>,
 ): OrderSnapshot {
-  return orderSnapshotSchema.parse({ ...data, orderId });
+  return orderSnapshotSchema.parse({
+    orderType: 'dineIn',
+    ...data,
+    orderId,
+  });
 }
 
 /** Bounded listener for one Customer tracking document; unsubscribe on exit. */

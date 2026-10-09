@@ -1,0 +1,51 @@
+- banner:
+  - link:
+    - /url: /dashboard
+  - heading "ScanGo_" [level=1]
+  - paragraph: Bún Phở Kinh Kỳ
+  - button "Khôi phục dữ liệu demo": Reset State
+- main:
+  - text: Chọn vai trò mô phỏng
+  - heading "Bún Phở Kinh Kỳ" [level=2]
+  - link "3-IN-1 Chủ Toàn Năng Solo Operator Đặt + Nấu + Thu tiền":
+    - /url: /simulator/solo
+    - text: 3-IN-1
+    - paragraph: Chủ Toàn Năng
+    - paragraph: Solo Operator
+    - paragraph: Đặt + Nấu + Thu tiền
+  - link "OWNER Chủ Quán Báo cáo & Menu":
+    - /url: /simulator/owner
+    - text: OWNER
+    - paragraph: Chủ Quán
+    - paragraph: Báo cáo & Menu
+  - link "CASHIER Thu Ngân Thanh toán":
+    - /url: /simulator/cashier
+    - text: CASHIER
+    - paragraph: Thu Ngân
+    - paragraph: Thanh toán
+  - link "KITCHEN KDS Bếp Nhận đơn":
+    - /url: /simulator/kitchen
+    - text: KITCHEN
+    - paragraph: KDS Bếp
+    - paragraph: Nhận đơn
+  - link "CUSTOMER Khách Hàng Quét QR":
+    - /url: /simulator/customer
+    - text: CUSTOMER
+    - paragraph: Khách Hàng
+    - paragraph: Quét QR
+  - link "STAFF Nhân Viên PIN & Vai trò":
+    - /url: /simulator/staff
+    - text: STAFF
+    - paragraph: Nhân Viên
+    - paragraph: PIN & Vai trò
+  - text: Cấu hình quán Ngành nghề
+  - combobox "Ngành nghề":
+    - option "Quán ăn / Phở" [selected]
+    - option "Quán Café"
+    - option "Nhà hàng / Quán nhậu"
+    - option "Tiệm bánh"
+    - option "Trà sữa Boba"
+  - text: Thanh toán
+  - combobox "Thanh toán":
+    - option "Trả sau (Ăn xong tính)" [selected]
+    - option "Trả trước (Thanh toán để nấu)"

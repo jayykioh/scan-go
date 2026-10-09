@@ -5,6 +5,7 @@ import {
   mapStoredOrder,
   mapStoredTracking,
   OFFLINE_SUBMIT_MESSAGE,
+  toOrderCartLines,
 } from './ordering.adapter';
 import {
   ORDER_TRACKING_TOKEN_FIXTURE,
@@ -45,6 +46,17 @@ describe('createOrderIdempotencyKey', () => {
     const second = createOrderIdempotencyKey();
     expect(first.startsWith('ord-')).toBe(true);
     expect(first).not.toBe(second);
+  });
+});
+
+describe('toOrderCartLines', () => {
+  it('passes selected modifier option IDs to server pricing', () => {
+    expect(toOrderCartLines([{
+      id: 'cart-1', menuId: 'menu-1', name: 'Phở', price: 75000,
+      quantity: 2, selectedModifiers: ['Thêm thịt'], selectedOptionIds: ['option-thit'],
+    }])).toEqual([{
+      menuItemId: 'menu-1', quantity: 2, selectedOptionIds: ['option-thit'],
+    }]);
   });
 });
 

@@ -1,7 +1,7 @@
 # Inventory Module
 
-- Serves: REQ-INV-001, REQ-INV-002, REQ-RPT-001
-- Owns: Ingredients, recipes, Cost calculation, stock movements
+- Serves: REQ-INV-001, REQ-INV-002, REQ-INV-010, REQ-INV-011, REQ-RPT-001
+- Owns: Ingredients, recipes, Cost calculation, stock movements, purchase-lot prices
 - Does not own: Menu price, Order status, or Payment state
 
 ## Commands
@@ -15,12 +15,22 @@
 - Store volume in millilitres.
 - Store count as units.
 - Convert kilogram and litre inputs before persistence.
+- Accept a purchase price in the chosen unit and store the integer VND Cost per base unit (REQ-INV-005).
+- Accept a recipe quantity in the chosen unit and store integer base units (REQ-INV-006).
 
 ## Rules
 - Use integer base-unit quantities and integer VND Cost.
+- Record the purchase price on each positive `stock_in` lot and recompute the
+  ingredient Cost as the weighted average of quantity on hand and the new lot
+  (REQ-INV-010, ADR 0014).
+- Keep the previous Cost available so a price increase over ten percent can be
+  reported (REQ-INV-011).
+- Store one fixed waste quantity per recipe line and deduct quantity plus waste (REQ-INV-007).
 - Write one stock movement for each effect.
 - Use Order and effect idempotency keys.
 - Store unit and line Cost snapshots on Order items when cooking starts.
 
 ## Contracts
 - Emits `InventoryDeducted`, `InventoryRestored`, and `IngredientStockChanged`.
+- `stockMovement.lotUnitCostVnd` holds the integer VND per base unit of one
+  purchase lot and is null for non-purchase effects.

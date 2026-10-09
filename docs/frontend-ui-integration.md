@@ -12,7 +12,7 @@
 | Tenant switch and Staff access | PARTIAL | `SimulatorLayout`, `StaffPage`, `StaffView` | REQ-TEN-001, REQ-AUTH-002, REQ-ACL-001 | membership query; `tenant-select-active`; Staff PIN command; authorization decision |
 | Dashboard shell and navigation | PARTIAL | `DashboardLayout`, `RootLayout`, `AuthLayout` | REQ-TEN-001, REQ-I18N-001 | authenticated active-Tenant context; locale state; route guards |
 | Owner menu | PARTIAL | `/dashboard/menu`; `MenuPage`, `OwnerView` | REQ-CAT-001, REQ-CAT-002 | Catalog create/update/archive/template commands; private menu query; public projection listener |
-| Tables and QR Table link | PARTIAL | `/dashboard/tables`; `TablesPage`, `OwnerView` | REQ-TBL-001, NFR-SEC-002 | Table create/update/archive/regenerate commands; tenant table query; public-token resolver |
+| Tables and QR Table link | IMPLEMENTED | `/dashboard/tables`; `TablesPage`, `OwnerView` | REQ-TBL-001, REQ-TBL-002, REQ-TBL-003, NFR-SEC-002 | Table create/rename/archive/regenerate/configure commands; tenant table query through the shared `tables` store slice (not a page-owned listener); public-token resolver; loading/empty/error states; floor plan with drag and arrow-key moves, area filter, list view, summary strip, detail panel; table service state polled from `callableOrderListTableStatus` |
 | Owner settings | PARTIAL | `/dashboard/settings`; `SettingsPage` | REQ-CFG-001, REQ-ONB-001 | direct authorized read of `platform/config` and tenant `configOverrides`; resolved Config with source; `callableConfigUpdateTenant` for allowed tenant settings; Tenant query |
 | Staff administration | PARTIAL | `/dashboard/staff`; `StaffPage` | REQ-AUTH-002, REQ-ACL-001 | membership create/update/disable command; membership query; PIN set command |
 | Customer menu and cart | PARTIAL | `/menu/:tableId`; `PublicMenuPage`, `CustomerView` | REQ-ORD-001, REQ-ORD-004, NFR-UX-001 | public Table resolver; public menu query; cart validation and Order-create callable |
@@ -26,7 +26,8 @@
 | Subscription | MOCKUP | `/dashboard/subscription`; `SubscriptionPage` | P2 REQ-SUB-001 | Subscription command/query; no P0 implementation |
 | Solo | MOCKUP | `/simulator/solo`; `SoloOperatorView` | P1 REQ-SOLO-001 | Module contracts only; no P0 implementation |
 | AI assistant | MOCKUP | `OwnerView`, `SoloOperatorView` | P1 REQ-AI-001 | server-side read-only AI query; no P0 implementation |
-| Loyalty and Promotion | MOCKUP | `CustomerView`, `CashierView`, `SettingsPage`, `SoloOperatorView` | P2 REQ-LOY-001, REQ-PRO-001 | Loyalty/Promotion commands and queries; no P0 implementation |
+| Promotion | IMPLEMENTED | `/dashboard/promotions`; `PromotionsPage`; `CustomerView` cart; `SettingsPage` quick discount | P2 REQ-PRO-001…REQ-PRO-006 | Promotion upsert/status/list/evaluate callables, direct `promotions` read, AI campaign suggest/approve/measure |
+| Loyalty | PARTIAL | `CustomerView` (mock OTP sheet), `SettingsPage` | P2 REQ-LOY-001, REQ-PRO-004 | Loyalty callables exist and now back `pointsRedemption`; the Customer OTP sheet is still a demo and changes no total |
 | ADMIN | MISSING | No route or component | REQ-ADM-001, NFR-PRIV-001 | ADMIN delegated commands/queries; audited Tenant access |
 | Vietnamese and English UI | MISSING | No locale provider or catalogs | REQ-I18N-001 | user locale query/command; locale catalog loader |
 | Kitchen and Waiter notification | MISSING | No notification component | REQ-NOT-001, NFR-RT-001 | bounded Order event listener; mute preference query/command |

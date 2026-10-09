@@ -288,8 +288,10 @@ export default function OwnerView({
     setEditingIng(ing);
     setShowAddIngForm(false);
     setIngFormName(ing.name);
-    setIngFormCost(ing.costPrice);
-    setIngFormUnit(ing.unit);
+    setIngFormCost(ing.purchasePrice ?? ing.costPrice);
+    setIngFormUnit(
+      ing.purchaseUnit ?? (ing.unit === 'unit' ? 'cái' : ing.unit),
+    );
     setIngFormStock(ing.stock);
   };
 
@@ -299,28 +301,31 @@ export default function OwnerView({
 
     void (async () => {
       try {
-        const unit = (['g', 'kg', 'ml', 'l', 'unit'].includes(ingFormUnit)
+        const unit = (['g', 'kg', 'ml', 'l', 'unit', 'cái', 'xiên'].includes(ingFormUnit)
           ? ingFormUnit
-          : 'unit') as 'g' | 'kg' | 'ml' | 'l' | 'unit';
-        const baseUnit = unit === 'kg' ? 'g' : unit === 'l' ? 'ml' : unit;
+          : 'unit') as 'g' | 'kg' | 'ml' | 'l' | 'unit' | 'cái' | 'xiên';
+        const purchaseUnit = (unit === 'cái' || unit === 'xiên'
+          ? 'unit'
+          : unit) as 'g' | 'kg' | 'ml' | 'l' | 'unit';
+        const purchasePriceVnd = Math.max(0, Math.round(Number(ingFormCost) || 0));
         if (showAddIngForm) {
           await createIngredient({
             name: ingFormName.trim(),
-            baseUnit,
-            unitCostVnd: Math.max(0, Math.round(Number(ingFormCost) || 0)),
+            purchaseUnit,
+            purchasePriceVnd,
             lowStockThreshold: 0,
             isActive: true,
             stockInput:
               Number(ingFormStock) > 0
-                ? { unit, quantity: Number(ingFormStock) }
+                ? { unit: purchaseUnit, quantity: Number(ingFormStock) }
                 : null,
           });
           setShowAddIngForm(false);
         } else if (editingIng) {
           await updateIngredient(editingIng.id, {
             name: ingFormName.trim(),
-            baseUnit,
-            unitCostVnd: Math.max(0, Math.round(Number(ingFormCost) || 0)),
+            purchaseUnit,
+            purchasePriceVnd,
             lowStockThreshold: 0,
             isActive: true,
           });
@@ -1520,14 +1525,17 @@ export default function OwnerView({
                   </div>
                   <div className="space-y-[4px]">
                     <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.inventory.unit')}</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={ingFormUnit} 
+                    <select
+                      value={ingFormUnit}
                       onChange={(e) => setIngFormUnit(e.target.value)}
                       className="w-full bg-white border border-[#B5C7D8] rounded-[21px] px-3 py-1.5 focus:outline-2 focus:outline-zinc-900 font-semibold text-sm "
-                      placeholder={t('owner.inventory.unitPlaceholder')}
-                    />
+                    >
+                      <option value="kg">kg</option>
+                      <option value="g">gam (g)</option>
+                      <option value="l">lít (l)</option>
+                      <option value="ml">mililít (ml)</option>
+                      <option value="cái">cái / xiên</option>
+                    </select>
                   </div>
                   <div className="space-y-[4px]">
                     <label className="block text-xs text-[#808080] font-bold select-none">{t('owner.inventory.stock')}</label>

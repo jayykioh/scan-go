@@ -1,0 +1,84 @@
+name: Market price survey
+
+# Keeps the market benchmark from going stale. The survey is a proposal, not a
+# commit: it opens a pull request so a human sees which prices moved before the
+# Seed starts using them.
+on:
+  schedule:
+    # Weekly, Monday 02:00 UTC (09:00 Asia/Ho_Chi_Minh).
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  survey:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Survey both regions
+        run: npm run market:survey -- --region=HCM,HN
+
+      - name: Fail if the survey produced nothing
+        # A silently empty survey would open a PR that deletes every price, so
+        # an empty result is treated as a failure instead.
+        run: |
+          count=$(grep -c "ingredientId: 'seed-" functions/src/scripts/market-prices.generated.ts || true)
+          echo "observations: $count"
+          if [ "$count" -lt 10 ]; then
+            echo "::error::survey returned only $count observations; refusing to open a PR"
+            exit 1
+          fi
+
+      - name: Typecheck and test the survey tooling
+        run: |
+          npm run typecheck:functions
+          npm --workspace functions run test -- src/scripts/market-prices
+
+      - name: Open a pull request with the updated prices
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- functions/src/scripts/market-prices.generated.ts; then
+            echo "No price change this week."
+            exit 0
+          fi
+
+          branch="chore/market-survey-$(date -u +%Y-%m-%d)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add functions/src/scripts/market-prices.generated.ts
+          git commit -m "chore(market): refresh surveyed ingredient prices"
+          git push --set-upstream origin "$branch"
+
+          gh pr create \
+            --title "chore(market): refresh surveyed ingredient prices" \
+            --body "$(cat <<'BODY'
+          Automated weekly market price survey.
+
+          These are **observed shelf prices**, not purchase costs. Review the diff
+          before merging:
+
+          - Check `marketType` per row: `wholesale` (Kamereo) is close to a real
+            purchase cost, `retail` is a street-price reference only.
+          - Check `spreadPercent`: a large gap means the sellers disagree, so
+            "cheapest" is a weak signal.
+          - Check for a product that is clearly the wrong ingredient. Automated
+            name matching has priced pork fat as meat, a floor cleaner as
+            lemongrass, and a sandwich as beef.
+
+          See `docs/market-price-survey.md`.
+          BODY
+          )"

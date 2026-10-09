@@ -23,6 +23,7 @@ const TENANT_B = 'tenant-bravo';
 const OWNER_UID = 'owner-uid';
 const OTHER_UID = 'other-uid';
 const MEMBER_UID = 'member-uid';
+const KITCHEN_UID = 'kitchen-uid';
 const PAYMENT_ID = 'payment_order-001';
 
 const paymentRules = readFileSync(
@@ -60,6 +61,14 @@ async function seed(): Promise<void> {
       uid: MEMBER_UID,
       membershipType: 'staff',
       roles: ['cashier'],
+      isActive: true,
+    });
+    // A Kitchen member settles nothing at the till, so money stays out of the
+    // reduced permission set.
+    await setDoc(doc(db, 'tenants', TENANT_A, 'members', KITCHEN_UID), {
+      uid: KITCHEN_UID,
+      membershipType: 'staff',
+      roles: ['kitchen'],
       isActive: true,
     });
     await setDoc(doc(db, 'tenants', TENANT_A, 'payments', PAYMENT_ID), {
@@ -108,6 +117,10 @@ function memberDb() {
   return testEnv.authenticatedContext(MEMBER_UID).firestore();
 }
 
+function kitchenDb() {
+  return testEnv.authenticatedContext(KITCHEN_UID).firestore();
+}
+
 function otherDb() {
   return testEnv.authenticatedContext(OTHER_UID).firestore();
 }
@@ -117,7 +130,7 @@ function unauthDb() {
 }
 
 describe('tenant Payment read boundary', () => {
-  it('allows an active tenant member and Owner to read payment records', async () => {
+  it('allows the Owner and an active Cashier to read payment records', async () => {
     await seed();
 
     await assertSucceeds(
@@ -125,6 +138,14 @@ describe('tenant Payment read boundary', () => {
     );
     await assertSucceeds(
       getDoc(doc(memberDb(), 'tenants', TENANT_A, 'payments', PAYMENT_ID)),
+    );
+  });
+
+  it('denies a non-Cashier member because money is not in their permission set', async () => {
+    await seed();
+
+    await assertFails(
+      getDoc(doc(kitchenDb(), 'tenants', TENANT_A, 'payments', PAYMENT_ID)),
     );
   });
 

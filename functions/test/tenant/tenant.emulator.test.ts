@@ -54,11 +54,12 @@ import type {
   ListMembershipsResult,
   SelectActiveTenantResult,
 } from '../../../shared/contracts/identity.contract.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
 const PASSWORD = 'password123';
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -246,6 +247,28 @@ describe('callableTenantCreate: additional Tenant', () => {
     expect(created?.eventId).toBe(created?.id);
 
     expect(await countTenants()).toBe(2);
+  });
+
+  it('caps additional Tenant creation per account', async () => {
+    await createUserWithEmailAndPassword(
+      auth,
+      'rate-limited-owner@example.com',
+      PASSWORD,
+    );
+    await bootstrapCallable()({});
+
+    // The limit is 3 per minute for one account; the first three calls mint a
+    // Tenant each, and the fourth is refused instead of creating a fourth.
+    for (let index = 0; index < 3; index += 1) {
+      await createTenantCallable()({ shopName: `Quán ${index}` });
+    }
+
+    await expect(
+      createTenantCallable()({ shopName: 'Quán 4' }),
+    ).rejects.toMatchObject({ code: 'functions/resource-exhausted' });
+
+    // One bootstrap Tenant plus the three created above.
+    expect(await countTenants()).toBe(4);
   });
 });
 

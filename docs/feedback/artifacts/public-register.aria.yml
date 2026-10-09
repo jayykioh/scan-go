@@ -1,0 +1,26 @@
+- link "Home":
+  - /url: /
+- text: ScanGo_
+- heading "Hệ thống Vận hành Tuyệt đối." [level=1]
+- paragraph: Loại bỏ thiết bị thừa. Đơn giản hóa quy trình. POS qua mã QR trực tiếp từ trình duyệt.
+- paragraph: ScanGo System v1.0.0 // Tối ưu hóa cho tốc độ
+- main:
+  - heading "Tạo hệ thống mới" [level=1]
+  - paragraph: Khởi tạo không gian POS của riêng bạn
+  - text: Tên chủ cửa hàng Bắt buộc
+  - textbox "Tên chủ cửa hàng Bắt buộc":
+    - /placeholder: Nguyễn Văn Nam
+  - text: Tên cửa hàng Bắt buộc
+  - textbox "Tên cửa hàng Bắt buộc":
+    - /placeholder: Phở Kinh Kỳ
+  - text: Email định danh Bắt buộc
+  - textbox "Email định danh Bắt buộc":
+    - /placeholder: nam@scango.vn
+  - text: Mật khẩu
+  - textbox "Mật khẩu":
+    - /placeholder: ••••••••
+  - button "Khởi tạo"
+  - paragraph:
+    - text: Đã có không gian?
+    - link "Truy cập":
+      - /url: /login

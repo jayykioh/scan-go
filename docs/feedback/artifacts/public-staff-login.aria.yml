@@ -1,0 +1,11 @@
+- heading "Đăng nhập nhân viên" [level=1]
+- paragraph: Dùng tài khoản chủ quán đã tạo cho bạn.
+- text: Email
+- textbox "nhanvien@quan.vn"
+- text: Mật khẩu
+- textbox "••••••••"
+- button "Đăng nhập"
+- paragraph:
+  - text: Là chủ quán?
+  - link "Vào trang quản lý":
+    - /url: /login

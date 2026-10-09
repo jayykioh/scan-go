@@ -24,6 +24,9 @@ export const noodleIngredientFixture: Ingredient = {
   tenantId: TENANT_A_FIXTURE,
   name: 'Bánh phở',
   baseUnit: 'g',
+  purchaseUnit: 'kg',
+  countUnitLabel: null,
+  purchasePriceVnd: 40000,
   unitCostVnd: 40,
   stockQuantity: 10000,
   lowStockThreshold: 500,
@@ -51,12 +54,14 @@ export const recipeFixture: Recipe = {
     {
       ingredientId: INGREDIENT_NOODLE_ID_FIXTURE,
       quantityBaseUnits: 200,
+      wasteBaseUnits: 0,
       unitCostVnd: 40,
       lineCostVnd: 8000,
     },
     {
       ingredientId: INGREDIENT_BEEF_ID_FIXTURE,
       quantityBaseUnits: 100,
+      wasteBaseUnits: 0,
       unitCostVnd: 300,
       lineCostVnd: 30000,
     },
@@ -78,6 +83,8 @@ export const stockMovementFixture: StockMovement = {
   orderId: 'order-pho-001',
   actorUid: 'uid-kitchen-001',
   idempotencyKey: INVENTORY_IDEMPOTENCY_KEY_FIXTURE,
+  lotUnitCostVnd: null,
+  note: null,
   createdAt: UPDATED_AT,
 };
 

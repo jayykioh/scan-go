@@ -1,0 +1,18 @@
+- banner:
+  - link:
+    - /url: /simulator
+  - button "Đơn ảo"
+  - button "Xóa Data"
+- main:
+  - combobox:
+    - option "Solo Operator"
+    - option "Owner (Quản lý)"
+    - option "Thu Ngân"
+    - option "KDS (Bếp)"
+    - option "Khách hàng"
+    - option "Nhân viên" [selected]
+  - text: 18:55 5G
+  - heading "Nhân viên" [level=3]
+  - paragraph: Nhập mã PIN cá nhân để bắt đầu ca làm việc
+  - textbox "Mã PIN"
+  - button "Đăng nhập"

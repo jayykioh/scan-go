@@ -1,0 +1,28 @@
+- banner:
+  - link:
+    - /url: /simulator
+  - text: Test Environment Bún Phở Kinh Kỳ
+  - button "Đơn ảo"
+  - button "Xóa Data"
+- main:
+  - combobox:
+    - option "Solo Operator"
+    - option "Owner (Quản lý)" [selected]
+    - option "Thu Ngân"
+    - option "KDS (Bếp)"
+    - option "Khách hàng"
+    - option "Nhân viên"
+  - text: QUẢN LÝ LIVE PLATFORM
+  - heading "Bún Phở Kinh Kỳ" [level=3]
+  - paragraph: "Mô hình: Quán ăn / Phở"
+  - text: Gói PRO
+  - paragraph: Workspace chủ
+  - button "Cài đặt lại mô hình"
+  - button "Báo cáo"
+  - button "Món ăn"
+  - button "Kho / NVL"
+  - button "Bàn QR"
+  - button "Nhân viên"
+  - button "Trợ lý AI"
+  - text: "Doanh Thu Thật 0đ ✓ Real-time POS Biên Lợi Nhuận 0đ Vốn NVL: 0đ Món được đặt chọn phổ biến Live-chart 1 Bún Chả Tre Thạch Thất (Món ăn) 2 lượt đặt 2 Phở Bò Tái Lăn Kinh Kỳ (Món ăn) 1 lượt đặt 3 Trà Sâm Dứa Hương Lài (Món ăn) 1 lượt đặt Tích luỹ hội viên (4 người) Tăng trưởng chốt đơn Nguyễn Văn Hùng SĐT: 0987654321 • Ghé: 12 lần 340 điểm tích ✓ Đã verify OTP Trần Thị Mai SĐT: 0901234567 • Ghé: 5 lần 120 điểm tích ✓ Đã verify OTP Lê Hoàng Minh SĐT: 0933344455 • Ghé: 2 lần 55 điểm tích Tạm Phạm Thanh Thảo SĐT: 0977888999 • Ghé: 0 lần 0 điểm tích Tạm"
+  - button "Thêm màn hình"

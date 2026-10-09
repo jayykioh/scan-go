@@ -27,8 +27,11 @@ import {
 } from '../../../../shared/contracts/reporting.contract.js';
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
+import { runPerTenant } from '../../shared/scheduled.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   aggregateTotals,
+  dayTotalsFromStats,
   assertReportingMember,
   assertReportingOwner,
   dayKeyFromIso,
@@ -46,9 +49,9 @@ import {
   type ReportingPaymentSource,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 const SCHEDULE_OPTIONS = {
-  region: 'us-central1',
+  region: FUNCTIONS_REGION,
   timeZone: 'Asia/Ho_Chi_Minh',
 } as const;
 
@@ -124,6 +127,8 @@ export function mapStoredOrderSource(
             name: item.name,
             quantity,
             lineTotalVnd: item.lineTotalVnd ?? unitPriceVnd * quantity,
+            lineDiscountVnd: item.lineDiscountVnd ?? 0,
+            isGift: item.isGift ?? false,
             lineCostVnd:
               item.lineCostVnd ??
               (item.unitCostVnd != null ? item.unitCostVnd * quantity : 0),
@@ -432,6 +437,12 @@ export const callableReportingGetSummary = onCall(
       toDay,
       dayCount: days.length,
       totals: aggregateTotals(days),
+      dailyBreakdown: [...days]
+        .sort((a, b) => a.dayKey.localeCompare(b.dayKey))
+        .map((day) => ({
+          dayKey: day.dayKey,
+          totals: dayTotalsFromStats(day),
+        })),
       popularItems: mergePopularItems(items),
       tables: mergePopularTables(tables),
     });
@@ -547,26 +558,27 @@ export const callableReportingRebuildDailyStats = onCall(
 
 /**
  * Nightly safety net: rebuild the previous two tenant-local days for every
- * tenant. A failure for one tenant never blocks the others. The on-demand
- * callable remains the repair tool (ADR 0005, REQ-RPT-002).
+ * tenant. A failure for one tenant never blocks the others, and the run is
+ * reported as failed so Cloud Scheduler retries it and the error is searchable.
+ * The on-demand callable remains the repair tool (ADR 0005, REQ-RPT-002).
  */
 export const scheduledReportingRebuildDailyStats = onSchedule(
-  { ...SCHEDULE_OPTIONS, schedule: 'every day 04:00' },
+  { ...SCHEDULE_OPTIONS, schedule: 'every day 04:00', retryCount: 3 },
   async () => {
     const db = getDb();
     const tenantsSnap = await db.collection('tenants').limit(1000).get();
-    for (const tenantSnap of tenantsSnap.docs) {
-      try {
-        const timezone = await readTenantTimezone(db, tenantSnap.id);
+    await runPerTenant(
+      'scheduledReportingRebuildDailyStats',
+      tenantsSnap.docs.map((tenantSnap) => tenantSnap.id),
+      async (tenantId) => {
+        const timezone = await readTenantTimezone(db, tenantId);
         const today = dayKeyFromIso(nowIso(), timezone);
         await runReportingRebuild(db, {
-          tenantId: tenantSnap.id,
+          tenantId,
           fromDay: shiftDayKey(today, -1),
           toDay: today,
         });
-      } catch {
-        // Keep the schedule alive; the on-demand command surfaces the error.
-      }
-    }
+      },
+    );
   },
 );

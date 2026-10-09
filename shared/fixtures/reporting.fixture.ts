@@ -79,6 +79,23 @@ export const reportingSummaryResultFixture: ReportingSummaryResult = {
     reversedVnd: dailyStatsFixture.reversedVnd,
     refundedVnd: dailyStatsFixture.refundedVnd,
   },
+  dailyBreakdown: [
+    {
+      dayKey: dailyStatsFixture.dayKey,
+      totals: {
+        createdOrderCount: dailyStatsFixture.createdOrderCount,
+        cancelledOrderCount: dailyStatsFixture.cancelledOrderCount,
+        paidOrderCount: dailyStatsFixture.paidOrderCount,
+        reversedOrderCount: dailyStatsFixture.reversedOrderCount,
+        refundedOrderCount: dailyStatsFixture.refundedOrderCount,
+        revenueVnd: dailyStatsFixture.revenueVnd,
+        costVnd: dailyStatsFixture.costVnd,
+        grossProfitVnd: dailyStatsFixture.grossProfitVnd,
+        reversedVnd: dailyStatsFixture.reversedVnd,
+        refundedVnd: dailyStatsFixture.refundedVnd,
+      },
+    },
+  ],
   popularItems: [
     {
       itemId: dailyItemStatsFixture.itemId,

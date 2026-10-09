@@ -5,12 +5,14 @@ import type { ZodType } from 'zod';
 import {
   TABLE_CONTRACT_VERSION,
   tableArchiveInputSchema,
+  tableConfigureInputSchema,
   tableCreateInputSchema,
   tableLinkContextSchema,
   tableRegenerateInputSchema,
   tableRenameInputSchema,
   tableResolveInputSchema,
   type TableArchiveInput,
+  type TableConfigureInput,
   type TableCreateInput,
   type TableLinkContext,
   type TableRegenerateInput,
@@ -89,6 +91,10 @@ export function parseTableArchiveInput(data: unknown): TableArchiveInput {
 
 export function parseTableRegenerateInput(data: unknown): TableRegenerateInput {
   return parseInput<TableRegenerateInput>(tableRegenerateInputSchema, data);
+}
+
+export function parseTableConfigureInput(data: unknown): TableConfigureInput {
+  return parseInput<TableConfigureInput>(tableConfigureInputSchema, data);
 }
 
 export function parseTableResolveInput(data: unknown): TableResolveInput {
@@ -210,6 +216,9 @@ export function buildTableDocument(input: {
   name: string;
   token: string;
   now: string;
+  area?: string | null;
+  seats?: number | null;
+  position?: TableConfigureInput['position'];
 }): Record<string, unknown> {
   return {
     name: input.name,
@@ -219,8 +228,29 @@ export function buildTableDocument(input: {
     qrPayload: `/menu/${input.token}`,
     nfcWritten: false,
     archivedAt: null,
+    // A new table starts where the Owner dropped it, or with an empty layout
+    // that `configure` fills later (REQ-TBL-002).
+    area: input.area ?? null,
+    seats: input.seats ?? null,
+    position: input.position ?? null,
     createdAt: input.now,
     updatedAt: input.now,
+  };
+}
+
+/**
+ * The stored layout patch for one `configure` command (REQ-TBL-002). Written as
+ * a full replace so clearing a value is a deliberate `null`, never a leftover.
+ */
+export function buildTableLayoutPatch(
+  input: TableConfigureInput,
+  now: string,
+): Record<string, unknown> {
+  return {
+    area: input.area,
+    seats: input.seats,
+    position: input.position,
+    updatedAt: now,
   };
 }
 

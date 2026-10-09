@@ -10,5 +10,23 @@ firebase-debug.log
 .env*
 !.env.example
 
+# ADR 0017: this deployment's flags are versioned on purpose, so a fresh clone
+# deploys the same environment. It holds no secret; secrets live in Secret
+# Manager. Keep this exception narrow — never widen it to all of `.env*`.
+!functions/.env.scango-8f0e9
+
+# Local secret values for the Functions emulator. Never commit.
+.secret.local
+**/.secret.local
+
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# Browser automation artifacts and the npm cache the CLI creates next to them.
+# Both are regenerable local state, never source.
+/.playwright-cli/
+/.pw-cache/
+
+# Optional local Firebase emulator jar cache, for hosts where the CLI cannot
+# write to ~/.cache/firebase/emulators. Point FIREBASE_EMULATORS_PATH here.
+/.emu-cache/

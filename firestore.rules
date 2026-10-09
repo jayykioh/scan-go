@@ -7,8 +7,13 @@ service cloud.firestore {
     }
 
     // ADMIN is a server-verified platform claim, not a tenant membership.
+    //
+    // `map.get(key, default)` is used instead of `token.admin` because reading
+    // an absent key raises a rules evaluation error. An error denies the
+    // request either way, but it also masks the real reason in the emulator and
+    // makes an `A || isAdmin()` chain fail instead of evaluating to A.
     function isAdmin() {
-      return signedIn() && request.auth.token.admin == true;
+      return signedIn() && request.auth.token.get('admin', false) == true;
     }
 
     function memberPath(tenantId) {
@@ -25,6 +30,24 @@ service cloud.firestore {
 
     function isActiveOwner(tenantId) {
       return isActiveMember(tenantId) && get(memberPath(tenantId)).data.membershipType == 'owner';
+    }
+
+    /**
+     * True when the caller is an active member whose stored `roles` list
+     * contains `role`. Membership alone is not enough for the collections that
+     * carry money, cost, or customer personal data: the reduced permission set
+     * a Staff member holds in their session must also bound what a direct
+     * Firestore read can return (NFR-SEC-001, NFR-PRIV-001).
+     */
+    function hasActiveRole(tenantId, role) {
+      return isActiveMember(tenantId)
+        && get(memberPath(tenantId)).data.roles is list
+        && role in get(memberPath(tenantId)).data.roles;
+    }
+
+    /** Owner or an active member holding the given role. */
+    function isOwnerOrRole(tenantId, role) {
+      return isActiveOwner(tenantId) || hasActiveRole(tenantId, role);
     }
 
     match /users/{uid} {
@@ -72,21 +95,25 @@ service cloud.firestore {
         allow write: if false;
       }
 
-      // Inventory source: active members and ADMIN read; server writes only.
+      // Inventory source carries Cost, so it is read by the Owner and by an
+      // active Kitchen member, who manages stock during a shift (ADR 0013).
+      // Server writes only (REQ-INV-001, NFR-PRIV-001).
       match /ingredients/{ingredientId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isOwnerOrRole(tenantId, 'kitchen') || isAdmin();
         allow write: if false;
       }
 
-      // Recipe source: active members and ADMIN read; server writes only.
+      // Recipe source carries the Cost build-up, so it follows the same Owner
+      // and Kitchen gate. Server writes only (REQ-INV-006).
       match /recipes/{recipeId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isOwnerOrRole(tenantId, 'kitchen') || isAdmin();
         allow write: if false;
       }
 
-      // Stock-movement ledger is append-only and server-written.
+      // Stock-movement ledger is append-only and server-written. It reveals
+      // Cost and waste, so it follows the Owner and Kitchen gate.
       match /stockMovements/{movementId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isOwnerOrRole(tenantId, 'kitchen') || isAdmin();
         allow write: if false;
       }
 
@@ -107,11 +134,12 @@ service cloud.firestore {
         }
       }
 
-      // Payment records are immutable and server-written only. Active tenant
-      // members and ADMIN read; cross-tenant reads stay denied (REQ-CAS-001,
-      // NFR-SEC-001).
+      // Payment records are immutable and server-written only. Money is read
+      // by the Owner and by an active Cashier member, who settles Orders at the
+      // till; other Staff roles keep the reduced permission set. Cross-tenant
+      // reads stay denied (REQ-CAS-001, NFR-SEC-001).
       match /payments/{paymentId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isOwnerOrRole(tenantId, 'cashier') || isAdmin();
         allow write: if false;
       }
 
@@ -145,29 +173,30 @@ service cloud.firestore {
       }
 
       // Reporting daily materialized stats are derived and server-written only.
-      // Active tenant members and ADMIN read; cross-tenant reads stay denied and
-      // every direct write is denied (REQ-RPT-001, REQ-RPT-002, ADR 0005,
-      // NFR-SEC-001).
+      // Revenue, COGS, and gross profit are Owner-only business data, so the
+      // direct read is Owner-gated rather than membership-gated; cross-tenant
+      // reads stay denied and every direct write is denied (REQ-RPT-001,
+      // REQ-RPT-002, ADR 0005, NFR-SEC-001).
       match /dailyStats/{dayKey} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isActiveOwner(tenantId) || isAdmin();
         allow write: if false;
 
         match /items/{itemId} {
-          allow read: if isActiveMember(tenantId) || isAdmin();
+          allow read: if isActiveOwner(tenantId) || isAdmin();
           allow write: if false;
         }
 
         match /tables/{tableId} {
-          allow read: if isActiveMember(tenantId) || isAdmin();
+          allow read: if isActiveOwner(tenantId) || isAdmin();
           allow write: if false;
         }
       }
 
-      // AI usage accounting is server-written only. Active tenant members and
-      // ADMIN read; cross-tenant reads stay denied (REQ-AI-004, REQ-AI-005,
-      // NFR-AI-002).
+      // AI usage accounting is server-written only. It exposes provider spend,
+      // so it is Owner-gated; cross-tenant reads stay denied (REQ-AI-004,
+      // REQ-AI-005, NFR-AI-002).
       match /aiUsage/{usageId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isActiveOwner(tenantId) || isAdmin();
         allow write: if false;
       }
 
@@ -177,26 +206,37 @@ service cloud.firestore {
         allow read, write: if false;
       }
 
-      // AI weekly Insights are derived and server-written only. Active tenant
-      // members and ADMIN read; cross-tenant reads stay denied and every direct
-      // write is denied (REQ-AI-002, NFR-SEC-001).
+      // AI weekly Insights summarise revenue, margin, and loss, so they are
+      // Owner-gated and server-written only; cross-tenant reads stay denied and
+      // every direct write is denied (REQ-AI-002, NFR-SEC-001).
       match /aiInsights/{insightId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isActiveOwner(tenantId) || isAdmin();
         allow write: if false;
       }
 
       // Feedback is tenant-scoped and server-written only. Customer submits
-      // through the Feedback callable, so raw text stays permission-controlled
-      // and no direct client write is possible (REQ-FDB-001, NFR-PRIV-002).
+      // through the Feedback callable, and the raw text plus any contact detail
+      // is Owner-only, matching the claim this comment always made
+      // (REQ-FDB-001, NFR-PRIV-002).
       match /feedback/{feedbackId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isActiveOwner(tenantId) || isAdmin();
         allow write: if false;
       }
 
-      // Feedback tickets are server-written only. Active tenant members and
-      // ADMIN read; cross-tenant reads stay denied (REQ-FDB-003).
+      // Feedback tickets carry the same customer text as their source, so they
+      // follow the Owner gate. Server-written only; cross-tenant reads stay
+      // denied (REQ-FDB-003).
       match /feedbackTickets/{ticketId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isActiveOwner(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Product feedback is the operator's report about ScanGo itself, with
+      // optional screenshots in Storage. It is server-written only and Owner or
+      // ADMIN read, so a report cannot be forged or read cross-tenant
+      // (REQ-FDB-004, REQ-FDB-006).
+      match /productFeedback/{feedbackId} {
+        allow read: if isActiveOwner(tenantId) || isAdmin();
         allow write: if false;
       }
 
@@ -215,10 +255,11 @@ service cloud.firestore {
         allow write: if false;
       }
 
-      // Stock counts are server-written only. Active tenant members and ADMIN
-      // read; cross-tenant reads stay denied (REQ-INV-003, REQ-INV-004).
+      // Stock counts expose expected quantity, variance, and Cost, so they
+      // follow the Owner and Kitchen gate. Server-written only; cross-tenant
+      // reads stay denied (REQ-INV-003, REQ-INV-004).
       match /stockCounts/{countId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isOwnerOrRole(tenantId, 'kitchen') || isAdmin();
         allow write: if false;
       }
 
@@ -226,6 +267,13 @@ service cloud.firestore {
       // ADMIN read; cross-tenant reads stay denied (REQ-PRO-001, NFR-SEC-003).
       match /campaignSuggestions/{suggestionId} {
         allow read: if isActiveMember(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
+      // Promotion AI sessions contain structured Owner requirements only. The
+      // server owns all writes; Owner reads are allowed for resume (REQ-PRO-007).
+      match /promotionAiSessions/{sessionId} {
+        allow read: if isActiveOwner(tenantId) || isAdmin();
         allow write: if false;
       }
 

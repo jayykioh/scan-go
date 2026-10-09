@@ -29,6 +29,17 @@ import { nowIso } from '../reporting/service.js';
 export const MAX_AI_MENU_ITEMS = 200;
 export const MAX_AI_INGREDIENTS = 200;
 export const MAX_AI_ITEM_STATS = 100;
+export const MAX_AI_LOT_MOVEMENTS = 400;
+/** A stock-in lot above this percent over the prior Cost warns the Owner. */
+export const AI_LOT_PRICE_INCREASE_PERCENT = 10;
+/**
+ * A tenant-local day whose revenue drops at least this percent against the
+ * previous day warns the Owner (REQ-AI-007). The value is arithmetic, never an
+ * AI guess. It is the built-in fallback when Config supplies no override.
+ */
+export const AI_REVENUE_DROP_PERCENT = 20;
+/** Built-in fallback margin threshold for the low-profit warning (REQ-AI-008). */
+export const AI_LOW_MARGIN_PERCENT = 20;
 export const AI_DEFAULT_TIMEZONE = 'Asia/Ho_Chi_Minh';
 
 /** Convert a Firestore timestamp, Date, or ISO string into an ISO string. */
@@ -112,25 +123,80 @@ export async function readMenuItems(
     .filter((item) => item.name.length > 0);
 }
 
+export interface IngredientLotPrice {
+  lotUnitCostVnd: number;
+  previousUnitCostVnd: number | null;
+}
+
+/**
+ * Read the two most recent priced purchase lots per ingredient and return the
+ * latest lot price plus the Cost that was in effect before it. Only `stock_in`
+ * movements with a recorded lot price are counted (REQ-INV-010, ADR 0014).
+ */
+export async function readIngredientLotPrices(
+  db: Firestore,
+  tenantId: string,
+): Promise<Map<string, IngredientLotPrice>> {
+  const snap = await db
+    .collection(`tenants/${tenantId}/stockMovements`)
+    .where('reason', '==', 'stock_in')
+    .orderBy('createdAt', 'desc')
+    .limit(MAX_AI_LOT_MOVEMENTS)
+    .get();
+  const byIngredient = new Map<string, number[]>();
+  for (const docSnap of snap.docs) {
+    const lotCost = Number(docSnap.get('lotUnitCostVnd') ?? -1);
+    if (lotCost < 0) {
+      continue;
+    }
+    const ingredientId = docSnap.get('ingredientId');
+    if (typeof ingredientId !== 'string' || ingredientId.length === 0) {
+      continue;
+    }
+    const prices = byIngredient.get(ingredientId) ?? [];
+    if (prices.length >= 2) {
+      continue;
+    }
+    prices.push(lotCost);
+    byIngredient.set(ingredientId, prices);
+  }
+  const result = new Map<string, IngredientLotPrice>();
+  for (const [ingredientId, prices] of byIngredient) {
+    result.set(ingredientId, {
+      lotUnitCostVnd: prices[0],
+      previousUnitCostVnd: prices.length > 1 ? prices[1] : null,
+    });
+  }
+  return result;
+}
+
 export async function readIngredients(
   db: Firestore,
   tenantId: string,
 ): Promise<AiIngredientContext[]> {
-  const snap = await db
-    .collection(`tenants/${tenantId}/ingredients`)
-    .limit(MAX_AI_INGREDIENTS)
-    .get();
+  const [snap, lotPrices] = await Promise.all([
+    db
+      .collection(`tenants/${tenantId}/ingredients`)
+      .limit(MAX_AI_INGREDIENTS)
+      .get(),
+    readIngredientLotPrices(db, tenantId),
+  ]);
   return snap.docs
     .filter((docSnap) => docSnap.get('archivedAt') == null)
-    .map((docSnap) => ({
-      ingredientId: docSnap.id,
-      name:
-        typeof docSnap.get('name') === 'string' ? docSnap.get('name') : '',
-      unitCostVnd: Number(docSnap.get('unitCostVnd') ?? 0),
-      stockQuantity: Number(docSnap.get('stockQuantity') ?? 0),
-      lowStockThreshold: Number(docSnap.get('lowStockThreshold') ?? 0),
-      isActive: docSnap.get('isActive') !== false,
-    }))
+    .map((docSnap) => {
+      const lot = lotPrices.get(docSnap.id);
+      return {
+        ingredientId: docSnap.id,
+        name:
+          typeof docSnap.get('name') === 'string' ? docSnap.get('name') : '',
+        unitCostVnd: Number(docSnap.get('unitCostVnd') ?? 0),
+        stockQuantity: Number(docSnap.get('stockQuantity') ?? 0),
+        lowStockThreshold: Number(docSnap.get('lowStockThreshold') ?? 0),
+        isActive: docSnap.get('isActive') !== false,
+        lastLotUnitCostVnd: lot ? lot.lotUnitCostVnd : null,
+        previousUnitCostVnd: lot ? lot.previousUnitCostVnd : null,
+      };
+    })
     .filter((item) => item.name.length > 0);
 }
 
@@ -140,10 +206,13 @@ export const AI_OWNER_DENIED_MESSAGE =
   'Chỉ chủ cửa hàng dùng được trợ lý AI.';
 export const AI_BUDGET_EXCEEDED_MESSAGE =
   'Cửa hàng đã đạt hạn mức chi phí AI trong tháng.';
-export const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash';
-/** Estimated VND per 1,000 tokens; used only for cost accounting. */
-export const GEMINI_INPUT_VND_PER_1K = 190;
-export const GEMINI_OUTPUT_VND_PER_1K = 760;
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite';
+/** Estimated VND per 1,000 tokens; used only for cost accounting.
+ *  `gemini-3.5-flash-lite` list price is $0.30 input / $2.50 output per 1M
+ *  tokens. At roughly 26,300 VND per USD this is about 7.9 / 65.8 VND per 1K.
+ *  The values keep a small buffer upward. */
+export const GEMINI_INPUT_VND_PER_1K = 9;
+export const GEMINI_OUTPUT_VND_PER_1K = 70;
 
 const SECRET_PATTERNS: RegExp[] = [
   /AIza[0-9A-Za-z_-]{20,}/,
@@ -233,6 +302,14 @@ const aiIngredientContextSchema = z.strictObject({
   stockQuantity: nonNegativeIntSchema,
   lowStockThreshold: nonNegativeIntSchema,
   isActive: z.boolean(),
+  /**
+   * Latest recorded purchase-lot price per base unit, or null when no priced
+   * lot exists. The current `unitCostVnd` is the weighted average, so the two
+   * differ after a price change (REQ-INV-010, REQ-INV-011, ADR 0014).
+   */
+  lastLotUnitCostVnd: vndSchema.nullable().default(null),
+  /** Cost per base unit that was in effect before the latest priced lot. */
+  previousUnitCostVnd: vndSchema.nullable().default(null),
 });
 
 export type AiIngredientContext = z.infer<typeof aiIngredientContextSchema>;
@@ -350,14 +427,34 @@ export function assembleSafeContext(
   return context;
 }
 
-const LOW_MARGIN_THRESHOLD = 0.2;
+/**
+ * Deterministic warning thresholds. Values come from Config; the constants are
+ * the built-in fallback when Config supplies no override (REQ-AI-008).
+ */
+export interface WarningThresholds {
+  /** Revenue drop percent that triggers the revenue-drop warning. */
+  revenueDropPercent: number;
+  /** Margin percent below which the low-profit warning fires. */
+  lowMarginPercent: number;
+}
+
+export const DEFAULT_WARNING_THRESHOLDS: WarningThresholds = {
+  revenueDropPercent: AI_REVENUE_DROP_PERCENT,
+  lowMarginPercent: AI_LOW_MARGIN_PERCENT,
+};
 
 /**
- * Deterministic warnings for loss, low profit, and low stock. Every claim cites
- * a source id and states its formula. Missing data is a warning, never an
- * invented value (REQ-AI-001, NFR-AI-001).
+ * Deterministic warnings for loss, low profit, low stock, and a revenue drop.
+ * Every claim cites a source id and states its formula. Missing data is a
+ * warning, never an invented value (REQ-AI-001, REQ-AI-007, REQ-AI-008,
+ * NFR-AI-001).
  */
-export function computeWarnings(context: SafeAiContext): AiWarning[] {
+export function computeWarnings(
+  context: SafeAiContext,
+  thresholds: WarningThresholds = DEFAULT_WARNING_THRESHOLDS,
+): AiWarning[] {
+  const lowMarginThreshold = thresholds.lowMarginPercent / 100;
+  const revenueDropThreshold = thresholds.revenueDropPercent;
   const warnings: AiWarning[] = [];
   const paidOrderCount = context.dayStats.reduce(
     (sum, day) => sum + day.paidOrderCount,
@@ -377,6 +474,40 @@ export function computeWarnings(context: SafeAiContext): AiWarning[] {
         formula: 'paidOrderCount == 0',
       }),
     );
+  }
+
+  // Revenue-drop warning (REQ-AI-007). Compare each tenant-local day with the
+  // previous day that has data. The percentage is arithmetic, not an AI guess.
+  const byDay = [...context.dayStats].sort((a, b) =>
+    a.dayKey.localeCompare(b.dayKey),
+  );
+  for (let index = 1; index < byDay.length; index += 1) {
+    const previous = byDay[index - 1];
+    const current = byDay[index];
+    if (previous.revenueVnd <= 0 || current.paidOrderCount === 0) {
+      continue;
+    }
+    const changePercent =
+      ((current.revenueVnd - previous.revenueVnd) / previous.revenueVnd) * 100;
+    if (changePercent <= -revenueDropThreshold) {
+      warnings.push(
+        aiWarningSchema.parse({
+          kind: 'revenueDrop',
+          severity: 'warning',
+          subjectId: null,
+          subjectName: null,
+          message:
+            `Doanh thu ngày ${current.dayKey} giảm ${Math.round(
+              Math.abs(changePercent),
+            )}% so với ngày ${previous.dayKey} ` +
+            `(${previous.revenueVnd} xuống ${current.revenueVnd} VND).`,
+          sourceIds: [previous.dayKey, current.dayKey],
+          formula:
+            '(revenueVnd[day] - revenueVnd[day-1]) / revenueVnd[day-1] ' +
+            `<= -${revenueDropThreshold / 100}`,
+        }),
+      );
+    }
   }
 
   for (const item of context.menuItems) {
@@ -399,7 +530,7 @@ export function computeWarnings(context: SafeAiContext): AiWarning[] {
       continue;
     }
     const margin = grossProfitVnd / item.priceVnd;
-    if (margin < LOW_MARGIN_THRESHOLD) {
+    if (margin < lowMarginThreshold) {
       warnings.push(
         aiWarningSchema.parse({
           kind: 'lowProfit',
@@ -410,7 +541,7 @@ export function computeWarnings(context: SafeAiContext): AiWarning[] {
             margin * 100,
           )}%).`,
           sourceIds: [item.menuItemId],
-          formula: '(priceVnd - costVnd) / priceVnd < 0.2',
+          formula: `(priceVnd - costVnd) / priceVnd < ${lowMarginThreshold}`,
         }),
       );
     }
@@ -432,6 +563,28 @@ export function computeWarnings(context: SafeAiContext): AiWarning[] {
           formula: 'stockQuantity <= lowStockThreshold',
         }),
       );
+    }
+
+    // Warn when the latest purchase lot is well above the prior Cost. The
+    // percentage is arithmetic, never an AI guess (REQ-INV-011, ADR 0014).
+    const previous = ingredient.previousUnitCostVnd;
+    const lot = ingredient.lastLotUnitCostVnd;
+    if (previous !== null && lot !== null && previous > 0) {
+      const percent = ((lot - previous) / previous) * 100;
+      if (percent > AI_LOT_PRICE_INCREASE_PERCENT) {
+        warnings.push(
+          aiWarningSchema.parse({
+            kind: 'priceIncrease',
+            severity: 'warning',
+            subjectId: ingredient.ingredientId,
+            subjectName: ingredient.name,
+            message: `${ingredient.name} tăng giá nhập ${Math.round(percent)}% (từ ${previous} lên ${lot} VND/đơn vị gốc).`,
+            sourceIds: [ingredient.ingredientId],
+            formula:
+              '(lastLotUnitCostVnd - previousUnitCostVnd) / previousUnitCostVnd > 0.1',
+          }),
+        );
+      }
     }
   }
 

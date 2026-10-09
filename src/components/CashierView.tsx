@@ -244,7 +244,7 @@ export default function CashierView({
         ) : (
           <div className="space-y-[13px]">
             {activeUnpaidOrders.map((order) => {
-              const tableName = tables.find(t => t.id === order.tableId)?.name || `Bàn ${order.tableId}`;
+              const tableName = order.tableName ?? tables.find(t => t.id === order.tableId)?.name ?? `Bàn ${order.tableId}`;
               const hasLoyaltyPhone = !!order.customerPhone;
               const loyaltyInfo = loyaltyMembers.find(m => m.phone === order.customerPhone);
 

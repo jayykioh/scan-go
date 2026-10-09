@@ -28,6 +28,28 @@ export const catalogModifierGroupSchema = z.strictObject({
 
 export type CatalogModifierGroup = z.infer<typeof catalogModifierGroupSchema>;
 
+/**
+ * Integer VND of the selected modifier options on one menu item. It sums only
+ * option ids that exist on the item, so the same selection always resolves to
+ * the same price whether Ordering or Promotion asks (REQ-ORD-001,
+ * REQ-PRO-001). Ordering still owns the required/min/max group validation.
+ */
+export function sumModifierDeltaVnd(
+  modifierGroups: readonly CatalogModifierGroup[],
+  selectedOptionIds: readonly string[],
+): number {
+  const requested = new Set(selectedOptionIds);
+  let total = 0;
+  for (const group of modifierGroups) {
+    for (const option of group.options) {
+      if (requested.has(option.optionId)) {
+        total += option.priceDeltaVnd;
+      }
+    }
+  }
+  return total;
+}
+
 export const catalogMenuItemSchema = z.strictObject({
   schemaVersion: z.literal(CATALOG_CONTRACT_VERSION),
   menuItemId: z.string().min(1),
@@ -73,6 +95,7 @@ export const catalogCommandSchema = z.enum([
   'archive',
   'restore',
   'setAvailability',
+  'setCategoryAvailability',
   'applyTemplate',
 ]);
 
@@ -99,6 +122,9 @@ export type CatalogCommandResult = z.infer<typeof catalogCommandResultSchema>;
 
 /** Bounded upper page size for the private Owner menu query. */
 export const CATALOG_SEARCH_LIMIT = 100;
+
+/** Bounded upper count of items one Category availability command may touch. */
+export const CATALOG_CATEGORY_LIMIT = 200;
 
 const catalogItemFields = {
   name: z.string().min(1).max(200),
@@ -145,6 +171,49 @@ export const catalogSetAvailabilityInputSchema = z.strictObject({
 
 export type CatalogSetAvailabilityInput = z.infer<
   typeof catalogSetAvailabilityInputSchema
+>;
+
+export const catalogSetCategoryAvailabilityInputSchema = z.strictObject({
+  tenantId: z.string().min(1),
+  category: z.string().min(1).max(100),
+  isAvailable: z.boolean(),
+});
+
+export type CatalogSetCategoryAvailabilityInput = z.infer<
+  typeof catalogSetCategoryAvailabilityInputSchema
+>;
+
+/**
+ * A public-safe availability row for the Kitchen board. It carries no Cost,
+ * recipe, or stock field, so a Kitchen device can list every active item and
+ * toggle both directions (REQ-KDS-002, NFR-DATA-001).
+ */
+export const catalogAvailabilityItemSchema = z.strictObject({
+  menuItemId: z.string().min(1),
+  name: z.string().min(1),
+  category: z.string().min(1),
+  isAvailable: z.boolean(),
+});
+
+export type CatalogAvailabilityItem = z.infer<
+  typeof catalogAvailabilityItemSchema
+>;
+
+export const catalogAvailabilityListInputSchema = z.strictObject({
+  tenantId: z.string().min(1),
+});
+
+export type CatalogAvailabilityListInput = z.infer<
+  typeof catalogAvailabilityListInputSchema
+>;
+
+export const catalogAvailabilityListResultSchema = z.strictObject({
+  schemaVersion: z.literal(CATALOG_CONTRACT_VERSION),
+  items: z.array(catalogAvailabilityItemSchema),
+});
+
+export type CatalogAvailabilityListResult = z.infer<
+  typeof catalogAvailabilityListResultSchema
 >;
 
 export const catalogSearchInputSchema = z.strictObject({

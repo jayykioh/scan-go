@@ -17,7 +17,7 @@ Each module owns its writes and exposes explicit commands, queries, and events. 
 | Loyalty | [loyalty.md](loyalty.md) | Members and point ledger |
 | Reporting | [reporting.md](reporting.md) | Rebuildable daily stats |
 | AI | [ai.md](ai.md) | Provider adapter, weekly analysis, warnings, cost records |
-| Feedback | [feedback.md](feedback.md) | Reviews, issues, and Feedback tickets |
+| Feedback | [feedback.md](feedback.md) | Reviews, issues, Feedback tickets, and product feedback with screenshots |
 | Workforce | [workforce.md](workforce.md) | Shifts and attendance |
 | Reservation | [reservation.md](reservation.md) | DEFERRED by ADR 0009; no data owner |
 | Subscription | [subscription.md](subscription.md) | Free, Lite, and Pro entitlements |
@@ -31,7 +31,7 @@ Shared data rules are in `docs/data-model.md`. Technology rules are in `docs/TEC
 |---|---|---|---|---|---|---|---|
 | Any tenant and platform setting | Full | Own tenants | No | No | No | Own tenant | No |
 | Menu and Inventory management | Full | Full | No | Availability only | No | Full | Public active items only |
-| Order creation | Full | Full | No | No | No | Full | Valid table token |
+| Order creation | Full | Full | Yes | No | No | Full | Valid table token |
 | Kitchen transitions | Full | Full | No | Yes | No | Yes | No |
 | Served transition | Full | Full | No | No | Yes | Yes | No |
 | Confirm or cancel unpaid Orders | Full | Full | Yes | No | No | Yes | No |

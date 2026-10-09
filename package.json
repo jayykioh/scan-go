@@ -17,10 +17,18 @@
     "test:emulator": "npm run build:functions && firebase emulators:exec --only firestore,auth,functions --project scango-rules-test \"npm --workspace functions run test:emulator\"",
     "emulators": "npm run build:functions && firebase emulators:start --project scango-8f0e9 --only functions",
     "admin:grant": "tsx functions/src/scripts/grant-admin.ts",
+    "seed": "tsx functions/src/scripts/seed.ts",
+    "seed:emulator": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 tsx functions/src/scripts/seed.ts",
+    "seed:feedback": "tsx functions/src/scripts/seed-feedback.ts",
+    "seed:feedback:emulator": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 tsx functions/src/scripts/seed-feedback.ts",
+    "market:survey": "tsx functions/src/scripts/market-prices/collect.ts",
+    "market:drift": "tsx functions/src/scripts/market-prices/drift.ts",
     "build:functions": "npm --workspace functions run build",
     "typecheck:functions": "npm --workspace functions run typecheck",
     "lint:functions": "npm --workspace functions run lint",
     "deploy:rules": "firebase deploy --only firestore:rules --project scango-8f0e9",
+    "deploy:storage": "firebase deploy --only storage --project scango-8f0e9",
+    "deploy:indexes": "firebase deploy --only firestore:indexes --project scango-8f0e9",
     "deploy:functions": "firebase deploy --only functions --project scango-8f0e9"
   },
   "dependencies": {

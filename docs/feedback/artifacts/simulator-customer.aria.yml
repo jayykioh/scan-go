@@ -1,0 +1,22 @@
+- banner:
+  - link:
+    - /url: /simulator
+  - button "Đơn ảo"
+  - button "Xóa Data"
+- main:
+  - combobox:
+    - option "Solo Operator"
+    - option "Owner (Quản lý)"
+    - option "Thu Ngân"
+    - option "KDS (Bếp)"
+    - option "Khách hàng" [selected]
+    - option "Nhân viên"
+  - text: 17:08 5G ScanGo ready
+  - heading "Chọn bàn để mở menu." [level=1]
+  - paragraph: Mô phỏng QR/NFC. Link public sẽ mở thẳng menu theo bàn.
+  - button "Bàn 01 Mở menu"
+  - button "Bàn 02 Mở menu"
+  - button "Bàn 03 Mở menu"
+  - button "Bàn 04 Mở menu"
+  - button "Bàn 05 Mở menu"
+  - button "Bàn 06 Mở menu"

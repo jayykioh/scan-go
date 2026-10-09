@@ -16,6 +16,9 @@ All M1 tickets below are Done with unit, Functions Emulator, and Rules evidence.
 8. [P0-008 — Inventory and Kitchen](P0-008-inventory-kitchen.md) and [P0-009 — Payment](P0-009-payment.md) — Done
 9. [P0-010 — Waiter, notification, and onboarding](P0-010-waiter-notification-onboarding.md) — Done
 10. [P0-later — Remaining M1 sub-tickets](P0-later-m1-remainder.md) — L01 through L09 Done, except the NFC device step and live payment provider transport.
+11. [P0-014 — Kitchen responsive layout](P0-014-kitchen-responsive.md), [P0-015 — Category availability command](P0-015-category-availability.md), [P0-016 — Stock deduction note](P0-016-stock-deduction-note.md) — Done.
+12. [P0-017 — Responsive role frame](P0-017-responsive-role-frame.md) — Done.
+13. [P0-018 — Free-text count unit](P0-018-free-text-count-unit.md) — Done.
 
 M2/P1 and the M3/P2 baseline are implemented from `docs/plan/insight-growth-plan.md` and the M2/M3 module docs. Current verification: 199 web/shared, 342 functions, 100 Rules, and 224 Functions Emulator tests pass.
 

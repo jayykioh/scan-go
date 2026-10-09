@@ -69,8 +69,10 @@ export default function SimulatorRole() {
     const info = getActorInfo(r);
     const isTabletMode = info.isTablet;
     
+    // The left panel must stay visible on a small viewport even when a second
+    // role is open; the right panel is already lg-only, so it cannot stack.
     return (
-      <div className={`relative flex flex-col items-center justify-center h-full w-full ${rightRole && !isRight ? 'hidden lg:flex' : 'flex'}`}>
+      <div className="relative flex flex-col items-center justify-center h-full w-full lg:justify-start">
         <div className="z-50 mb-6 flex justify-center">
           <div className="bg-zinc-950 rounded-2xl p-1.5 flex items-center shadow-xl border border-zinc-800 backdrop-blur-md">
             <select 
@@ -98,7 +100,7 @@ export default function SimulatorRole() {
           </div>
         </div>
 
-        <div className={`transition-all duration-500 ease-in-out ${isTabletMode ? 'w-[min(620px,calc(100vw-2rem))] h-[clamp(560px,calc(100dvh-7rem),780px)]' : 'w-[min(390px,calc(100vw-2rem))] h-[clamp(640px,calc(100dvh-7rem),844px)]'}`}>
+        <div className={`transition-all duration-500 ease-in-out lg:w-full lg:flex-1 lg:min-h-0 lg:h-auto ${isTabletMode ? 'w-[min(620px,calc(100vw-2rem))] h-[clamp(560px,calc(100dvh-7rem),780px)]' : 'w-[min(390px,calc(100vw-2rem))] h-[clamp(640px,calc(100dvh-7rem),844px)]'}`}>
           <PhoneSimulator 
             actorName={info.name} 
             actorColor={info.color} 
@@ -157,16 +159,16 @@ export default function SimulatorRole() {
             {renderSimulatorFrame(rightRole, true)}
           </div>
         ) : (
-          <div className="absolute right-12 top-1/2 -translate-y-1/2 z-40 hidden lg:block">
+          <div className="absolute right-6 top-6 z-40 hidden lg:block">
             <button 
               onClick={() => setRightRole('kitchen')}
-              className="flex flex-col items-center justify-center gap-3 w-24 h-48 bg-white/50 hover:bg-white border-2 border-dashed border-zinc-300 rounded-[2rem] text-zinc-400 hover:text-orange-500 hover:border-orange-300 transition-all cursor-pointer backdrop-blur-sm group shadow-sm hover:shadow-lg"
+              className="flex items-center gap-2 bg-white/70 hover:bg-white border-2 border-dashed border-zinc-300 rounded-full px-4 py-2.5 text-zinc-500 hover:text-orange-500 hover:border-orange-300 transition-all cursor-pointer backdrop-blur-sm group shadow-sm hover:shadow-lg"
               title="Mở thêm thiết bị giả lập"
             >
-              <div className="w-10 h-10 rounded-full bg-zinc-100 group-hover:bg-orange-100 flex items-center justify-center transition-colors">
-                <Plus className="w-6 h-6" />
+              <div className="w-7 h-7 rounded-full bg-zinc-100 group-hover:bg-orange-100 flex items-center justify-center transition-colors">
+                <Plus className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-center px-2">Thêm<br/>Màn Hình</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider">Thêm màn hình</span>
             </button>
           </div>
         )}

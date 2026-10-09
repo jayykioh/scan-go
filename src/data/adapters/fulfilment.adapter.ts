@@ -28,8 +28,11 @@ import {
 } from '@contracts/order.contract';
 import {
   publicMenuItemSchema,
+  type CatalogAvailabilityItem,
+  type CatalogAvailabilityListResult,
   type CatalogCommandResult,
   type CatalogSetAvailabilityInput,
+  type CatalogSetCategoryAvailabilityInput,
   type PublicMenuItem,
 } from '@contracts/catalog.contract';
 import {
@@ -194,6 +197,47 @@ export async function setKitchenItemAvailability(
     CatalogCommandResult
   >(functions, 'callableCatalogSetAvailability');
   return (await callable({ tenantId, menuItemId, isAvailable })).data;
+}
+
+/**
+ * Kitchen changes availability for a whole menu category through the Catalog
+ * contract. The server resolves the affected items and writes the projection
+ * (REQ-CAT-003).
+ */
+export async function setKitchenCategoryAvailability(
+  category: string,
+  isAvailable: boolean,
+): Promise<CatalogCommandResult> {
+  const functions = getFirebaseFunctions();
+  const { tenantId } = await currentTenantContext();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<
+    CatalogSetCategoryAvailabilityInput,
+    CatalogCommandResult
+  >(functions, 'callableCatalogSetCategoryAvailability');
+  return (await callable({ tenantId, category, isAvailable })).data;
+}
+
+/**
+ * Member query: every active item stripped to Kitchen-safe availability fields.
+ * It lets the Kitchen board show unavailable items so they can be turned back
+ * on (REQ-KDS-002).
+ */
+export async function listKitchenAvailability(): Promise<
+  CatalogAvailabilityItem[]
+> {
+  const functions = getFirebaseFunctions();
+  const { tenantId } = await currentTenantContext();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<
+    { tenantId: string },
+    CatalogAvailabilityListResult
+  >(functions, 'callableCatalogListAvailability');
+  return (await callable({ tenantId })).data.items;
 }
 
 /**

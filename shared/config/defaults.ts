@@ -24,11 +24,15 @@ export const CONFIG_DEFAULTS = {
   rateLimit: {
     publicOrderPerMinute: 30,
   },
-  // Deterministic provider is the safe default until a provider secret is
-  // configured; Gemini is selected through Config (ADR 0008).
+  // Gemini is the intended default provider (ADR 0008, TECH_STACK §2). The
+  // server falls back to the deterministic adapter when no provider secret is
+  // bound, so an unconfigured tenant stays safe and cost-free.
   ai: {
-    provider: 'rule-based',
+    provider: 'gemini',
     monthlyBudgetVnd: 500000,
+    // Deterministic warning thresholds (REQ-AI-007, REQ-AI-008).
+    revenueDropPercent: 20,
+    lowMarginPercent: 20,
   },
 } as const;
 

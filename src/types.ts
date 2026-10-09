@@ -22,14 +22,19 @@ export interface IndustryTemplate {
 export interface Ingredient {
   id: string;
   name: string;
-  costPrice: number;
+  costPrice: number; // VND per base unit (g, ml, or unit)
   unit: string; // e.g. kg, ml, cái, lít
   stock: number;
+  /** Owner purchase entry; falls back to `unit`/`costPrice` when absent. */
+  purchaseUnit?: string;
+  purchasePrice?: number;
 }
 
 export interface RecipeItem {
   ingredientId: string;
   quantity: number;
+  /** Fixed waste quantity in the ingredient unit. */
+  wasteQuantity?: number;
 }
 
 export interface MenuItem {
@@ -43,7 +48,7 @@ export interface MenuItem {
   description: string;
   inStock: boolean;
   stockCount: number;
-  toppings?: { name: string; price: number }[];
+  toppings?: { name: string; price: number; optionId?: string }[];
   recipe?: RecipeItem[];
 }
 
@@ -54,6 +59,7 @@ export interface OrderItem {
   price: number;
   quantity: number;
   selectedModifiers?: string[];
+  selectedOptionIds?: string[];
 }
 
 export type OrderStatus = 'pending' | 'cooking' | 'ready' | 'served' | 'paid';
@@ -61,6 +67,10 @@ export type OrderStatus = 'pending' | 'cooking' | 'ready' | 'served' | 'paid';
 export interface Order {
   id: string;
   tableId: string;
+  /** Snapshot label from the server, e.g. a table name or "Mang về". */
+  tableName?: string;
+  /** Dine-in Order uses a real table; takeaway uses the reserved label. */
+  orderType?: 'dineIn' | 'takeaway';
   items: OrderItem[];
   total: number;
   status: OrderStatus;

@@ -105,7 +105,7 @@ export default function RegisterPage() {
 
         <div className="space-y-2">
           <label htmlFor="password" className="font-mono text-[10px] font-bold uppercase text-zinc-900 tracking-widest">
-            Khóa truy cập
+            Mật khẩu
           </label>
           <input
             id="password"

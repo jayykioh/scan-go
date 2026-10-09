@@ -14,6 +14,7 @@ import {
   writeAuditEvent,
   writeAuditEventInTransaction,
 } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import { isPlatformAdmin } from '../admin/index.js';
 import {
   layersFromSnapshots,
@@ -51,7 +52,7 @@ import {
   verifyPinHash,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 
 export const callableAuthRegisterOwner = onCall(
   CALL_OPTIONS,
@@ -316,6 +317,7 @@ export const callableAuthStaffPinVerify = onCall(
  */
 export const callableAuthAuthorizeStaff = onCall(CALL_OPTIONS, async (request) => {
   const uid = requireUid(request.auth?.uid);
+  assertAppCheck(request);
   const token = request.auth?.token as Record<string, unknown> | undefined;
   const isAdmin = isPlatformAdmin(token);
   const input = parseStaffAuthorizationInput(request.data);

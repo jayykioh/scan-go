@@ -11,14 +11,18 @@ const LandingPage = lazy(() => import('./pages/LandingPage'));
 const IntroducePage = lazy(() => import('./pages/IntroducePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const StaffLoginPage = lazy(() => import('./pages/StaffLoginPage'));
 
 const OverviewPage = lazy(() => import('./pages/dashboard/OverviewPage'));
 const ManagementPage = lazy(() => import('./pages/dashboard/ManagementPage'));
 const StaffPage = lazy(() => import('./pages/dashboard/StaffPage'));
 const SettingsPage = lazy(() => import('./pages/dashboard/SettingsPage'));
 const MenuPage = lazy(() => import('./pages/dashboard/MenuPage'));
+const InventoryPage = lazy(() => import('./pages/dashboard/InventoryPage'));
 const TablesPage = lazy(() => import('./pages/dashboard/TablesPage'));
 const SubscriptionPage = lazy(() => import('./pages/dashboard/SubscriptionPage'));
+const FeedbackPage = lazy(() => import('./pages/dashboard/FeedbackPage'));
+const PromotionsPage = lazy(() => import('./pages/dashboard/PromotionsPage'));
 
 const SimulatorIndex = lazy(() => import('./pages/SimulatorIndex'));
 const SimulatorRole = lazy(() => import('./pages/SimulatorRole'));
@@ -95,10 +99,13 @@ const router = createBrowserRouter([
           { index: true, element: <OverviewPage /> },
           { path: 'manage', element: <ManagementPage /> },
           { path: 'menu', element: <MenuPage /> },
+          { path: 'promotions', element: <PromotionsPage /> },
+          { path: 'inventory', element: <InventoryPage /> },
           { path: 'tables', element: <TablesPage /> },
           { path: 'staff', element: <StaffPage /> },
           { path: 'settings', element: <SettingsPage /> },
-          { path: 'subscription', element: <SubscriptionPage /> }
+          { path: 'subscription', element: <SubscriptionPage /> },
+          { path: 'feedback', element: <FeedbackPage /> }
         ]
       },
       {
@@ -120,6 +127,10 @@ const router = createBrowserRouter([
   {
     path: '/menu/:tableId',
     element: <PublicMenuPage />
+  },
+  {
+    path: '/staff',
+    element: <StaffLoginPage />
   },
   {
     path: '/',

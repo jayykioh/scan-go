@@ -61,6 +61,7 @@ import type {
   AiWeeklyAnalysisInput,
   AiWeeklyAnalysisResult,
 } from '../../../shared/contracts/ai.contract.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
 const PASSWORD = 'password123';
@@ -71,7 +72,7 @@ const DAY_KEY = '20260912';
 const ORDER_ID = 'order-ai-001';
 const PAYMENT_ID = 'payment-ai-001';
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -148,9 +149,16 @@ async function seedEmulators(): Promise<void> {
     });
   }
 
+  // Pin the deterministic provider for tenant A. The suite must be hermetic:
+  // without this override the three-layer Config default (`gemini`, ADR 0008)
+  // applies, and a developer machine or CI runner that happens to expose
+  // GEMINI_API_KEY would send these assertions to the live provider. The
+  // deterministic adapter is what proves cited sources, deterministic
+  // warnings, and no external spend.
   await db.doc(`tenants/${TENANT_A}`).set({
     shopName: 'AI Tenant A',
     timezone: 'Asia/Ho_Chi_Minh',
+    configOverrides: { ai: { provider: 'rule-based' } },
   });
   await db.doc(`tenants/${TENANT_A}/members/${USERS.ownerA.uid}`).set({
     membershipType: 'owner',

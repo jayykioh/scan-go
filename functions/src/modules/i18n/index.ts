@@ -5,6 +5,7 @@ import {
 } from '../../../../shared/contracts/i18n.contract.js';
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   nowIso,
   parseUpdateLocaleInput,
@@ -12,7 +13,7 @@ import {
   requireUid,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 
 /**
  * Read the authenticated user's persisted interface locale. A missing profile

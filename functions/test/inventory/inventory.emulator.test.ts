@@ -55,11 +55,13 @@ import {
 import type {
   IngredientCommandResult,
   IngredientCreateInput,
+  InventoryChangeReportResult,
   RecipeCommandResult,
   RecipeCreateInput,
   StockAdjustInput,
   StockAdjustResult,
 } from '../../../shared/contracts/inventory.contract.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
 const PASSWORD = 'password123';
@@ -70,7 +72,7 @@ const MENU_ITEM_ID = 'item-pho-bo-001';
 const INGREDIENT_NOODLE = 'ingredient-noodle-001';
 const INGREDIENT_BEEF = 'ingredient-beef-001';
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -236,14 +238,21 @@ function adjustStockCallable() {
   );
 }
 
+function changeReportCallable() {
+  return httpsCallable<
+    { tenantId: string; limit?: number },
+    InventoryChangeReportResult
+  >(functions, 'callableInventoryChangeReport');
+}
+
 function ingredientInput(
   overrides: Partial<IngredientCreateInput> = {},
 ): IngredientCreateInput {
   return {
     tenantId: TENANT_A,
     name: 'Trứng gà',
-    baseUnit: 'g',
-    unitCostVnd: 2500,
+    purchaseUnit: 'kg',
+    purchasePriceVnd: 2500000,
     lowStockThreshold: 100,
     isActive: true,
     stockInput: { unit: 'kg', quantity: 2 },
@@ -258,8 +267,8 @@ function recipeInput(
     tenantId: TENANT_A,
     menuItemId: MENU_ITEM_ID,
     lines: [
-      { ingredientId: INGREDIENT_NOODLE, quantityBaseUnits: 200 },
-      { ingredientId: INGREDIENT_BEEF, quantityBaseUnits: 100 },
+      { ingredientId: INGREDIENT_NOODLE, quantity: 200, unit: 'g' },
+      { ingredientId: INGREDIENT_BEEF, quantity: 100, unit: 'g' },
     ],
     ...overrides,
   };
@@ -302,6 +311,7 @@ describe('callableInventoryCreateIngredient', () => {
     expect(ingredient).not.toBeNull();
     expect(ingredient?.baseUnit).toBe('g');
     expect(ingredient?.stockQuantity).toBe(2000);
+    expect(ingredient?.unitCostVnd).toBe(2500);
     expect(Number.isInteger(ingredient?.stockQuantity)).toBe(true);
     expect(Number.isInteger(ingredient?.unitCostVnd)).toBe(true);
 
@@ -316,18 +326,40 @@ describe('callableInventoryCreateIngredient', () => {
   it('rejects a negative Cost and a bad unit without a write', async () => {
     await signInAs('ownerA');
     await expectRejection(
-      createIngredientCallable()(ingredientInput({ unitCostVnd: -1 })),
+      createIngredientCallable()(ingredientInput({ purchasePriceVnd: -1 })),
       'invalid-argument',
     );
     await expectRejection(
       createIngredientCallable()(
-        ingredientInput({ baseUnit: 'ml', stockInput: { unit: 'kg', quantity: 2 } }),
+        ingredientInput({ purchaseUnit: 'l', stockInput: { unit: 'kg', quantity: 2 } }),
       ),
       'invalid-argument',
     );
     expect(
       (await db.collection(`tenants/${TENANT_A}/ingredients`).get()).size,
     ).toBe(2);
+  });
+
+  it('stores a free-text count unit and requires it for a count unit', async () => {
+    await signInAs('ownerA');
+    await expectRejection(
+      createIngredientCallable()(
+        ingredientInput({ purchaseUnit: 'unit', stockInput: null }),
+      ),
+      'invalid-argument',
+    );
+
+    const response = await createIngredientCallable()(
+      ingredientInput({
+        name: 'Trứng gà',
+        purchaseUnit: 'unit',
+        countUnitLabel: 'quả',
+        purchasePriceVnd: 4000,
+        stockInput: { unit: 'unit', quantity: 10 },
+      }),
+    );
+    expect(response.data.ingredient?.baseUnit).toBe('unit');
+    expect(response.data.ingredient?.countUnitLabel).toBe('quả');
   });
 });
 
@@ -357,7 +389,7 @@ describe('callableInventoryCreateRecipe', () => {
     await expectRejection(
       createRecipeCallable()(
         recipeInput({
-          lines: [{ ingredientId: 'ingredient-missing', quantityBaseUnits: 1 }],
+          lines: [{ ingredientId: 'ingredient-missing', quantity: 1, unit: 'g' }],
         }),
       ),
       'failed-precondition',
@@ -399,18 +431,64 @@ describe('callableInventoryAdjustStock', () => {
         quantityDeltaBaseUnits: -999999,
         reason: 'manual_adjustment',
         idempotencyKey: 'idem-stock-0002',
+        note: 'Kiểm tra tồn âm',
       }),
       'failed-precondition',
     );
     expect(await movementCount()).toBe(0);
   });
+
+  it('requires a note for waste and records it in the change report', async () => {
+    await signInAs('ownerA');
+    await expectRejection(
+      adjustStockCallable()({
+        tenantId: TENANT_A,
+        ingredientId: INGREDIENT_NOODLE,
+        quantityDeltaBaseUnits: -100,
+        reason: 'waste',
+        idempotencyKey: 'idem-stock-note-0001',
+      }),
+      'invalid-argument',
+    );
+    expect(await movementCount()).toBe(0);
+
+    const applied = await adjustStockCallable()({
+      tenantId: TENANT_A,
+      ingredientId: INGREDIENT_NOODLE,
+      quantityDeltaBaseUnits: -100,
+      reason: 'waste',
+      idempotencyKey: 'idem-stock-note-0002',
+      note: 'Hết hạn ngày 01/10',
+    });
+    expect(applied.data.movement.note).toBe('Hết hạn ngày 01/10');
+
+    const report = await changeReportCallable()({ tenantId: TENANT_A });
+    const entry = report.data.entries.find(
+      (row) => row.note === 'Hết hạn ngày 01/10',
+    );
+    expect(entry).toBeDefined();
+    expect(entry?.reason).toBe('waste');
+  });
 });
 
 describe('Inventory callable authorization', () => {
-  it('denies Kitchen, Cashier, and cross-tenant Owner writes', async () => {
+  it('allows Kitchen and denies Cashier and cross-tenant Owner writes', async () => {
+    // ADR 0013 widens the Inventory gate to the Owner and an active Kitchen
+    // member, so a Kitchen create must succeed and be audited with its role.
     await signInAs('kitchenA');
-    await expectRejection(createIngredientCallable()(ingredientInput()), 'permission-denied');
+    const created = await createIngredientCallable()(ingredientInput());
+    expect(created.data.ingredient?.name).toBe('Trứng gà');
+    expect(
+      (await db.collection(`tenants/${TENANT_A}/ingredients`).get()).size,
+    ).toBe(3);
 
+    const auditSnap = await db
+      .collection(`tenants/${TENANT_A}/audit`)
+      .where('targetId', '==', created.data.ingredient?.ingredientId)
+      .get();
+    expect(auditSnap.docs[0]?.get('role')).toBe('kitchen');
+
+    // Cashier keeps the reduced permission set and cannot adjust stock.
     await signInAs('cashierA');
     await expectRejection(
       adjustStockCallable()({
@@ -419,16 +497,19 @@ describe('Inventory callable authorization', () => {
         quantityDeltaBaseUnits: 1,
         reason: 'manual_adjustment',
         idempotencyKey: 'idem-stock-0003',
+        note: 'Kiểm tra phân quyền',
       }),
       'permission-denied',
     );
 
+    // A cross-tenant Owner cannot write into tenant A.
     await signInAs('ownerB');
     await expectRejection(createIngredientCallable()(ingredientInput()), 'permission-denied');
 
+    // Only the Kitchen create landed, and no stock moved.
     expect(
       (await db.collection(`tenants/${TENANT_A}/ingredients`).get()).size,
-    ).toBe(2);
+    ).toBe(3);
     expect(await movementCount()).toBe(0);
   });
 });

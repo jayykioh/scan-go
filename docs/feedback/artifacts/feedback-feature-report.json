@@ -1,0 +1,48 @@
+{
+  "generatedAt": "2026-10-08T11:31:58.790Z",
+  "baseUrl": "http://127.0.0.1:3000",
+  "ownerEmail": "qa.playwright+1791453969001@example.com",
+  "steps": [
+    {
+      "label": "signed in",
+      "detail": "http://127.0.0.1:3000/dashboard"
+    },
+    {
+      "label": "widget dialog visible",
+      "detail": "true"
+    },
+    {
+      "label": "thumbnail rendered after upload",
+      "detail": "1"
+    },
+    {
+      "label": "success toast",
+      "detail": "true"
+    },
+    {
+      "label": "dialog closed after submit",
+      "detail": "true"
+    },
+    {
+      "label": "inbox shows the new report",
+      "detail": "true"
+    },
+    {
+      "label": "inbox image count",
+      "detail": "1"
+    },
+    {
+      "label": "inbox excerpt",
+      "detail": "HỘP THƯ PHẢN HỒI Phản hồi của chủ quán và nhân viên về ScanGo. THỬ LẠI TRẢI NGHIỆM LOW ĐÃ NHẬN OWNER · 18:31 08/10/2026 Kiểm tra tự động: nút Gửi phản hồi hoạt động và ảnh đính kèm tải lên Storage. Đây là phản hồi do harness Playwright tạo, có thể xoá. /DASHBO"
+    },
+    {
+      "label": "status moved to resolved",
+      "detail": "true"
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "failedRequests": [
+    "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=ia_Yy6S32rQ1zqFviZ6lRWfbYQ2OsR5nbI1zcn8-ThBQCHzhGd_A0Q&VER=8&database=projects%2Fscango-8f0 :: net::ERR_ABORTED"
+  ]
+}

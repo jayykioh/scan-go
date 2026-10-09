@@ -66,6 +66,7 @@ import type {
   CatalogCreateInput,
   CatalogSearchResult,
 } from '../../../shared/contracts/catalog.contract.js';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'scango-rules-test';
 const PASSWORD = 'password123';
@@ -73,7 +74,7 @@ const PASSWORD = 'password123';
 const TENANT_A = 'tenant-alpha';
 const TENANT_B = 'tenant-bravo';
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
@@ -232,6 +233,27 @@ function setAvailabilityCallable() {
     { tenantId: string; menuItemId: string; isAvailable: boolean },
     CatalogCommandResult
   >(functions, 'callableCatalogSetAvailability');
+}
+
+function setCategoryAvailabilityCallable() {
+  return httpsCallable<
+    { tenantId: string; category: string; isAvailable: boolean },
+    CatalogCommandResult
+  >(functions, 'callableCatalogSetCategoryAvailability');
+}
+
+function listAvailabilityCallable() {
+  return httpsCallable<
+    { tenantId: string },
+    {
+      items: Array<{
+        menuItemId: string;
+        name: string;
+        category: string;
+        isAvailable: boolean;
+      }>;
+    }
+  >(functions, 'callableCatalogListAvailability');
 }
 
 function input(overrides: Partial<CatalogCreateInput> = {}): CatalogCreateInput {
@@ -447,6 +469,164 @@ describe('callableCatalogApplyTemplate: one Tenant only', () => {
       'invalid-argument',
     );
     expect(await menuItemCount(TENANT_A, 'menuItems')).toBe(0);
+  });
+});
+
+describe('callableCatalogSetCategoryAvailability: one category in one command', () => {
+  it('hides every active item in a category and audits each item', async () => {
+    await signInAs('ownerA');
+    await createCallable()(input({ name: 'Phở bò', category: 'Món chính' }));
+    await createCallable()(input({ name: 'Bún bò', category: 'Món chính' }));
+    await createCallable()(input({ name: 'Cà phê', category: 'Đồ uống' }));
+
+    const applied = await setCategoryAvailabilityCallable()({
+      tenantId: TENANT_A,
+      category: 'Món chính',
+      isAvailable: false,
+    });
+    expect(applied.data.status).toBe('applied');
+    expect(applied.data.affectedItemCount).toBe(2);
+
+    const mains = await db
+      .collection(`tenants/${TENANT_A}/menuItems`)
+      .where('category', '==', 'Món chính')
+      .get();
+    for (const snap of mains.docs) {
+      expect(snap.get('isAvailable')).toBe(false);
+      const publicSnap = await db
+        .doc(`tenants/${TENANT_A}/publicMenuItems/${snap.id}`)
+        .get();
+      expect(publicSnap.exists).toBe(false);
+    }
+    // The untouched category keeps its public projection.
+    expect(await menuItemCount(TENANT_A, 'publicMenuItems')).toBe(1);
+
+    const auditSnap = await db
+      .collection(`tenants/${TENANT_A}/audit`)
+      .get();
+    const categoryEvents = auditSnap.docs.filter((docSnap) => {
+      const metadata = (docSnap.get('metadata') ?? {}) as Record<
+        string,
+        unknown
+      >;
+      return (
+        docSnap.get('targetId') === mains.docs[0]?.id &&
+        metadata.command === 'setCategoryAvailability'
+      );
+    });
+    expect(categoryEvents).toHaveLength(1);
+  });
+
+  it('lets an active Kitchen member change a category', async () => {
+    await signInAs('ownerA');
+    await createCallable()(input({ name: 'Phở bò', category: 'Món chính' }));
+    await signOut(auth);
+
+    await signInAs('staffA');
+    const applied = await setCategoryAvailabilityCallable()({
+      tenantId: TENANT_A,
+      category: 'Món chính',
+      isAvailable: false,
+    });
+    expect(applied.data.status).toBe('applied');
+    expect(applied.data.affectedItemCount).toBe(1);
+  });
+
+  it('is a noop on retry and for an empty category', async () => {
+    await signInAs('ownerA');
+    await createCallable()(input({ name: 'Phở bò', category: 'Món chính' }));
+
+    const first = await setCategoryAvailabilityCallable()({
+      tenantId: TENANT_A,
+      category: 'Món chính',
+      isAvailable: false,
+    });
+    expect(first.data.status).toBe('applied');
+    const auditAfterFirst = await db
+      .collection(`tenants/${TENANT_A}/audit`)
+      .get();
+
+    const retry = await setCategoryAvailabilityCallable()({
+      tenantId: TENANT_A,
+      category: 'Món chính',
+      isAvailable: false,
+    });
+    expect(retry.data.status).toBe('noop');
+    expect(retry.data.affectedItemCount).toBe(0);
+    const auditAfterRetry = await db
+      .collection(`tenants/${TENANT_A}/audit`)
+      .get();
+    expect(auditAfterRetry.size).toBe(auditAfterFirst.size);
+
+    const empty = await setCategoryAvailabilityCallable()({
+      tenantId: TENANT_A,
+      category: 'Không có',
+      isAvailable: false,
+    });
+    expect(empty.data.status).toBe('noop');
+    expect(empty.data.affectedItemCount).toBe(0);
+  });
+
+  it('denies a cross-tenant Owner and an inactive Kitchen member', async () => {
+    await signInAs('ownerA');
+    await createCallable()(input({ name: 'Phở bò', category: 'Món chính' }));
+
+    await signOut(auth);
+    await signInAs('ownerB');
+    await expectRejection(
+      setCategoryAvailabilityCallable()({
+        tenantId: TENANT_A,
+        category: 'Món chính',
+        isAvailable: false,
+      }),
+      'permission-denied',
+    );
+
+    await db
+      .doc(`tenants/${TENANT_A}/members/${USERS.staffA.uid}`)
+      .set({ isActive: false }, { merge: true });
+    await signOut(auth);
+    await signInAs('staffA');
+    await expectRejection(
+      setCategoryAvailabilityCallable()({
+        tenantId: TENANT_A,
+        category: 'Món chính',
+        isAvailable: false,
+      }),
+      'permission-denied',
+    );
+  });
+});
+
+describe('callableCatalogListAvailability: safe Kitchen list', () => {
+  it('lists every active item with safe fields', async () => {
+    await signInAs('ownerA');
+    await createCallable()(input({ name: 'Phở bò', category: 'Món chính' }));
+    await createCallable()(input({ name: 'Cà phê', category: 'Đồ uống' }));
+    await setCategoryAvailabilityCallable()({
+      tenantId: TENANT_A,
+      category: 'Món chính',
+      isAvailable: false,
+    });
+
+    const listed = await listAvailabilityCallable()({ tenantId: TENANT_A });
+    expect(listed.data.items).toHaveLength(2);
+    const pho = listed.data.items.find((row) => row.name === 'Phở bò');
+    expect(pho?.isAvailable).toBe(false);
+    expect(Object.keys(pho ?? {}).sort()).toEqual([
+      'category',
+      'isAvailable',
+      'menuItemId',
+      'name',
+    ]);
+  });
+
+  it('denies a cross-tenant Owner', async () => {
+    await signInAs('ownerB');
+    await expectRejection(
+      listAvailabilityCallable()({ tenantId: TENANT_A }),
+      'permission-denied',
+    );
   });
 });
 

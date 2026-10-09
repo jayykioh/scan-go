@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Order as AppOrder } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -11,15 +11,21 @@ import {
   type NotificationState,
 } from '@contracts/notification.contract';
 import {
+  listKitchenAvailability,
   listKitchenOrders,
   markReady,
   playNotificationTone,
+  setKitchenCategoryAvailability,
   setKitchenItemAvailability,
   startCooking,
   subscribeKitchenAvailability,
   subscribeTenantNotifications,
 } from '../data/adapters/fulfilment.adapter';
-import { toPublicMenuItem, toViewOrder } from '../data/adapters/view-mappers';
+import {
+  toAvailabilityMenuItem,
+  toPublicMenuItem,
+  toViewOrder,
+} from '../data/adapters/view-mappers';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { TenantConfig, Order, MenuItem, TableConfig } from '../types';
 import { 
@@ -59,6 +65,36 @@ export function isKitchenQueueOrder(order: AppOrder): boolean {
   return true;
 }
 
+/**
+ * Merge the live available set with the full active list and group by category.
+ * An unavailable item stays visible so Kitchen can turn it back on. The live
+ * set wins once it has reported at least once (REQ-KDS-002).
+ */
+export function buildKitchenAvailabilityGroups(
+  catalogItems: MenuItem[],
+  availableItems: MenuItem[],
+  availabilityReady: boolean,
+): Array<[string, MenuItem[]]> {
+  const availableIds = new Set(availableItems.map((item) => item.id));
+  const byId = new Map<string, MenuItem>();
+  for (const item of catalogItems) {
+    byId.set(item.id, {
+      ...item,
+      inStock: availabilityReady ? availableIds.has(item.id) : item.inStock,
+    });
+  }
+  for (const item of availableItems) {
+    if (!byId.has(item.id)) byId.set(item.id, item);
+  }
+  const groups = new Map<string, MenuItem[]>();
+  for (const item of byId.values()) {
+    const list = groups.get(item.category) ?? [];
+    list.push(item);
+    groups.set(item.category, list);
+  }
+  return [...groups.entries()];
+}
+
 export default function KitchenView({
   tenantConfig,
   setMenuItems,
@@ -73,6 +109,9 @@ export default function KitchenView({
   const [pinError, setPinError] = useState('');
   const [orders, setOrders] = useState<Order[]>([]);
   const [availability, setAvailability] = useState<MenuItem[]>([]);
+  const [catalogAvailability, setCatalogAvailability] = useState<MenuItem[]>([]);
+  const [availabilityReady, setAvailabilityReady] = useState(false);
+  const [pendingCategory, setPendingCategory] = useState<string | null>(null);
   const [queueError, setQueueError] = useState<string | null>(null);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [notificationState, setNotificationState] = useState<NotificationState>(
@@ -142,10 +181,39 @@ export default function KitchenView({
     if (!tenantId) return;
     const unsubscribe = subscribeKitchenAvailability(
       tenantId,
-      (items) => setAvailability(items.map(toPublicMenuItem)),
+      (items) => {
+        setAvailability(items.map(toPublicMenuItem));
+        setAvailabilityReady(true);
+      },
       (error) => setQueueError(error.message),
     );
     return () => unsubscribe();
+  }, [tenantId]);
+
+  // The live projection only holds available items. This one-shot list adds the
+  // unavailable items, so a category can be turned back on (REQ-KDS-002).
+  useEffect(() => {
+    if (!tenantId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const items = await listKitchenAvailability();
+        if (!cancelled) {
+          setCatalogAvailability(items.map(toAvailabilityMenuItem));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setQueueError(
+            error instanceof Error
+              ? error.message
+              : 'Không tải được tình trạng món.',
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [tenantId]);
 
   const handleKitchenSignIn = (e: React.FormEvent) => {
@@ -183,27 +251,64 @@ export default function KitchenView({
     }
   };
 
-  const handleKitchenDisableStock = async (id: string) => {
-    const current = availability.find((item) => item.id === id);
-    if (!current) return;
+  const handleKitchenToggleItem = async (item: MenuItem) => {
+    const next = !item.inStock;
     try {
-      await setKitchenItemAvailability(id, !current.inStock);
-      setAvailability((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, inStock: !item.inStock } : item,
-        ),
-      );
+      await setKitchenItemAvailability(item.id, next);
       setMenuItems((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, inStock: !item.inStock } : item,
-        ),
+        prev.map((row) => (row.id === item.id ? { ...row, inStock: next } : row)),
       );
+      setCatalogAvailability((prev) =>
+        prev.map((row) => (row.id === item.id ? { ...row, inStock: next } : row)),
+      );
+      setQueueError(null);
     } catch (error) {
       setQueueError(
         error instanceof Error ? error.message : 'Không đổi được tình trạng món.',
       );
     }
   };
+
+  const handleKitchenToggleCategory = async (
+    category: string,
+    nextAvailable: boolean,
+  ) => {
+    setPendingCategory(category);
+    try {
+      await setKitchenCategoryAvailability(category, nextAvailable);
+      setMenuItems((prev) =>
+        prev.map((row) =>
+          row.category === category ? { ...row, inStock: nextAvailable } : row,
+        ),
+      );
+      setCatalogAvailability((prev) =>
+        prev.map((row) =>
+          row.category === category ? { ...row, inStock: nextAvailable } : row,
+        ),
+      );
+      setQueueError(null);
+    } catch (error) {
+      setQueueError(
+        error instanceof Error
+          ? error.message
+          : 'Không đổi được tình trạng danh mục.',
+      );
+    } finally {
+      setPendingCategory(null);
+    }
+  };
+
+  // Merge the live available set with the full active list so a Kitchen user
+  // can turn an item or category off and back on (REQ-KDS-002).
+  const availabilityGroups = useMemo(
+    () =>
+      buildKitchenAvailabilityGroups(
+        catalogAvailability,
+        availability,
+        availabilityReady,
+      ),
+    [availability, availabilityReady, catalogAvailability],
+  );
 
   // Sign in screen matching Apple security design
   if (!embedded && !activeShift) {
@@ -255,8 +360,11 @@ export default function KitchenView({
 
   const kitchenQueue = orders.filter(isKitchenQueueOrder);
 
+  // The role frame can be full width or half of a two-panel desktop, so the
+  // queue/availability split keys off the container width, not the viewport
+  // (REQ-KDS-002).
   return (
-    <div className="flex-grow flex flex-col bg-white font-sans text-[#2D2B30] h-full" id="kitchen-main">
+    <div className="@container flex-grow flex flex-col bg-white font-sans text-[#2D2B30] h-full" id="kitchen-main">
       {/* Header Info */}
       <div className="bg-[#F5F5F7] px-[13px] py-[13px] border-b border-[#B5C7D8]/60 flex justify-between items-center select-none">
         <div className="flex items-center gap-[4px]">
@@ -301,11 +409,12 @@ export default function KitchenView({
         </p>
       )}
 
-      <div className="flex-grow overflow-y-auto p-[13px] space-y-[13px] bg-white">
-        <div className="flex justify-between items-center text-xs font-bold text-[#808080] select-none">
-          <span>Hàng đợi</span>
-          <span className="text-xs text-zinc-900 lowercase">sync</span>
-        </div>
+      <div className="flex-grow overflow-y-auto p-[13px] bg-white @lg:grid @lg:grid-cols-[minmax(0,1fr)_minmax(0,min(340px,45%))] @lg:items-start @lg:gap-[13px]">
+        <div className="min-w-0 space-y-[13px]">
+          <div className="flex justify-between items-center text-xs font-bold text-[#808080] select-none">
+            <span>Hàng đợi</span>
+            <span className="text-xs text-zinc-900 lowercase">sync</span>
+          </div>
 
         {kitchenQueue.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center select-none">
@@ -319,7 +428,7 @@ export default function KitchenView({
           <div className="space-y-[13px]">
             {kitchenQueue.map((order, index) => {
               const isCooking = order.status === 'cooking';
-              const tableName = tables.find(t => t.id === order.tableId)?.name || `Bàn ${order.tableId}`;
+              const tableName = order.tableName ?? tables.find(t => t.id === order.tableId)?.name ?? `Bàn ${order.tableId}`;
               
               return (
                 <div 
@@ -395,31 +504,68 @@ export default function KitchenView({
             })}
           </div>
         )}
+        </div>
 
-        {/* Availability board: Kitchen can stop one item through Catalog. */}
-        {availability.length > 0 && (
-          <div className="mt-[13px] space-y-[4px]">
+        {/* Availability board: Kitchen toggles one item or a whole category. */}
+        {availabilityGroups.length > 0 && (
+          <div className="mt-[13px] min-w-0 space-y-[13px] @lg:mt-0">
             <div className="flex justify-between items-center text-xs font-bold text-[#808080] select-none">
               <span>Tình trạng món</span>
               <span className="text-xs text-zinc-900 lowercase">catalog</span>
             </div>
-            {availability.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => void handleKitchenDisableStock(item.id)}
-                className={`w-full rounded-[21px] border px-4 py-2.5 flex items-center justify-between text-sm transition-colors ${
-                  item.inStock
-                    ? 'border-[#B5C7D8] bg-white text-[#2D2B30]'
-                    : 'border-zinc-300 bg-[#F5F5F7] text-[#808080]'
-                }`}
-              >
-                <span className="font-semibold truncate">{item.name}</span>
-                <span className={`text-[10px] font-bold ${item.inStock ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {item.inStock ? 'ĐANG BÁN' : 'TẠM HẾT'}
-                </span>
-              </button>
-            ))}
+            {availabilityGroups.map(([category, items]) => {
+              const allAvailable = items.every((item) => item.inStock);
+              return (
+                <div key={category} className="space-y-[4px]">
+                  <div className="flex items-center justify-between gap-2 rounded-[21px] bg-[#F5F5F7] px-4 py-2">
+                    <span className="truncate text-xs font-bold text-[#2D2B30]">
+                      {category}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={pendingCategory === category}
+                      onClick={() =>
+                        void handleKitchenToggleCategory(category, !allAvailable)
+                      }
+                      className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold transition-colors disabled:opacity-50 ${
+                        allAvailable
+                          ? 'bg-red-50 text-red-600'
+                          : 'bg-emerald-50 text-emerald-600'
+                      }`}
+                    >
+                      {pendingCategory === category
+                        ? 'Đang lưu'
+                        : allAvailable
+                          ? 'Tắt cả mục'
+                          : 'Bật cả mục'}
+                    </button>
+                  </div>
+                  {items.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      aria-label={`${item.inStock ? 'Tắt' : 'Bật'} món ${item.name}`}
+                      onClick={() => void handleKitchenToggleItem(item)}
+                      className={`w-full rounded-[21px] border px-4 py-2.5 flex items-center justify-between gap-2 text-sm transition-colors ${
+                        item.inStock
+                          ? 'border-[#B5C7D8] bg-white text-[#2D2B30]'
+                          : 'border-zinc-300 bg-[#F5F5F7] text-[#808080]'
+                      }`}
+                    >
+                      <span className="font-semibold truncate">{item.name}</span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className={`text-[10px] font-bold ${item.inStock ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {item.inStock ? 'ĐANG BÁN' : 'TẠM HẾT'}
+                        </span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${item.inStock ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                          {item.inStock ? 'Tắt' : 'Bật'}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         )}
 

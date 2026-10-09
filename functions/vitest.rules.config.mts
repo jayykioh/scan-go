@@ -23,6 +23,7 @@ export default defineConfig({
       'test/rules/ai-usage.rules.test.ts',
       'test/rules/feedback.rules.test.ts',
       'test/rules/feedback-tickets.rules.test.ts',
+      'test/rules/product-feedback.rules.test.ts',
       'test/rules/workforce.rules.test.ts',
       'test/rules/stock-count.rules.test.ts',
       'test/rules/campaign.rules.test.ts',

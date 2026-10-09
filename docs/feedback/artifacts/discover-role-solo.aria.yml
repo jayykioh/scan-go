@@ -1,0 +1,24 @@
+- banner:
+  - link:
+    - /url: /simulator
+  - button "Đơn ảo"
+  - button "Xóa Data"
+- main:
+  - combobox:
+    - option "Solo Operator" [selected]
+    - option "Owner (Quản lý)"
+    - option "Thu Ngân"
+    - option "KDS (Bếp)"
+    - option "Khách hàng"
+    - option "Nhân viên"
+  - text: 18:54 5G
+  - heading "Thiết lập quán" [level=2]
+  - paragraph: Tối ưu hóa quy trình trong 15s.
+  - text: "B1: Thông tin quán"
+  - heading "Tên thương hiệu" [level=3]
+  - text: Tên thương hiệu
+  - textbox "E.g. Phở Kinh Kỳ": Bún Phở Kinh Kỳ
+  - text: Mô hình phân loại
+  - button "Quán ăn / Phở"
+  - button "Cà phê / Trà sữa"
+  - button "Tiếp theo"

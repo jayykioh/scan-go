@@ -19,6 +19,7 @@ export const subscriptionPlans: readonly SubscriptionPlan[] =
 /** A restricted capability the server enforces in trusted code (REQ-SUB-001). */
 export const subscriptionFeatureSchema = z.enum([
   'promotions',
+  'promotionAdvanced',
   'loyalty',
   'nfc',
   'kds',
@@ -33,24 +34,46 @@ export const planEntitlementsSchema = z.strictObject({
   /** `null` means unlimited for the plan. */
   maxTables: positiveIntSchema.nullable(),
   maxOrdersPerDay: positiveIntSchema.nullable(),
+  /** How many Promotions may be `active` at once; `null` is unlimited. */
+  maxActivePromotions: positiveIntSchema.nullable(),
   features: z.array(subscriptionFeatureSchema),
 });
 export type PlanEntitlements = z.infer<typeof planEntitlementsSchema>;
 
 const PLAN_ENTITLEMENT_TABLE: Record<
   SubscriptionPlan,
-  { maxTables: number | null; maxOrdersPerDay: number | null; features: SubscriptionFeature[] }
+  {
+    maxTables: number | null;
+    maxOrdersPerDay: number | null;
+    maxActivePromotions: number | null;
+    features: SubscriptionFeature[];
+  }
 > = {
-  free: { maxTables: 3, maxOrdersPerDay: 15, features: [] },
+  free: {
+    maxTables: 3,
+    maxOrdersPerDay: 15,
+    maxActivePromotions: 1,
+    features: ['promotions'],
+  },
   lite: {
     maxTables: 10,
     maxOrdersPerDay: 200,
-    features: ['promotions', 'loyalty'],
+    maxActivePromotions: null,
+    features: ['promotions', 'promotionAdvanced', 'loyalty'],
   },
   pro: {
     maxTables: null,
     maxOrdersPerDay: null,
-    features: ['promotions', 'loyalty', 'nfc', 'kds', 'ai', 'automaticPayment'],
+    maxActivePromotions: null,
+    features: [
+      'promotions',
+      'promotionAdvanced',
+      'loyalty',
+      'nfc',
+      'kds',
+      'ai',
+      'automaticPayment',
+    ],
   },
 };
 
@@ -68,6 +91,7 @@ export function resolvePlanEntitlements(
     plan,
     maxTables: row.maxTables,
     maxOrdersPerDay: row.maxOrdersPerDay,
+    maxActivePromotions: row.maxActivePromotions,
     features: [...row.features],
   });
 }
@@ -77,6 +101,20 @@ export function planAllowsFeature(
   feature: SubscriptionFeature,
 ): boolean {
   return entitlements.features.includes(feature);
+}
+
+/**
+ * True when the plan may hold one more `active` Promotion. A Free plan holds
+ * exactly one; Lite and Pro are unlimited (REQ-PRO-006, REQ-SUB-001).
+ */
+export function planAllowsAnotherActivePromotion(
+  entitlements: PlanEntitlements,
+  activePromotionCount: number,
+): boolean {
+  if (entitlements.maxActivePromotions === null) {
+    return true;
+  }
+  return activePromotionCount < entitlements.maxActivePromotions;
 }
 
 export function normalizeSubscriptionPlan(value: unknown): SubscriptionPlan {

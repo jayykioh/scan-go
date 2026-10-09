@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Sparkles, X } from 'lucide-react';
 
 interface GuideStep {
@@ -27,7 +28,9 @@ export default function GuideModal({ storageKey, title, eyebrow = 'Hướng dẫ
 
   if (!isOpen) return null;
 
-  return (
+  // Rendered at the document body: the card is `position: fixed`, so it must
+  // never depend on an ancestor's transform (see the fadeIn note in index.css).
+  return createPortal(
     <aside className="fixed bottom-4 right-4 z-[9999] w-[calc(100vw-2rem)] max-w-[380px] animate-fadeIn sm:bottom-6 sm:right-6">
       <div className="overflow-hidden border-hard bg-white shadow-[8px_8px_0_0_#27272a]">
         <div className="flex items-start justify-between gap-3 border-b border-hard bg-zinc-950 p-4 text-white">
@@ -64,6 +67,7 @@ export default function GuideModal({ storageKey, title, eyebrow = 'Hướng dẫ
           </button>
         </div>
       </div>
-    </aside>
+    </aside>,
+    document.body,
   );
 }

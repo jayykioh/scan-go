@@ -13,6 +13,7 @@ import {
   writeAuditEventInTransaction,
   writePlatformAuditEventInTransaction,
 } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import { requirePlatformAdmin } from '../admin/index.js';
 import {
   assertActiveMember,
@@ -33,7 +34,7 @@ import {
   toTenantVisibleResolvedConfig,
 } from './service.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 
 /**
  * Owner command: merge allowed tenant overrides, increment the config version,
@@ -234,16 +235,17 @@ export const callableConfigGetResolved = onCall(
 );
 
 const SCHEDULE_OPTIONS = {
-  region: 'us-central1',
+  region: FUNCTIONS_REGION,
   timeZone: 'Asia/Ho_Chi_Minh',
 } as const;
 
 /**
  * Daily retention and archive job. Config supplies the five-year default; paid
  * Orders and confirmed Payments are archived, never deleted (NFR-RET-001).
+ * Retention is idempotent, so a failed run is retried rather than skipped.
  */
 export const scheduledRetentionArchive = onSchedule(
-  { ...SCHEDULE_OPTIONS, schedule: 'every day 03:00' },
+  { ...SCHEDULE_OPTIONS, schedule: 'every day 03:00', retryCount: 3 },
   async () => {
     await runRetentionArchive(getDb());
   },
@@ -251,10 +253,10 @@ export const scheduledRetentionArchive = onSchedule(
 
 /**
  * Daily Firestore backup job. The deployment configuration retains backups for
- * 30 days (NFR-REL-001).
+ * 30 days (NFR-REL-001). A retried run replaces the same day's backup.
  */
 export const scheduledFirestoreBackup = onSchedule(
-  { ...SCHEDULE_OPTIONS, schedule: 'every day 02:00' },
+  { ...SCHEDULE_OPTIONS, schedule: 'every day 02:00', retryCount: 3 },
   async () => {
     await runScheduledBackup(getDb());
   },

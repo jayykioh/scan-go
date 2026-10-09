@@ -1,4 +1,5 @@
 import type {
+  CatalogAvailabilityItem,
   CatalogMenuItem,
   PublicMenuItem,
 } from '@contracts/catalog.contract';
@@ -35,9 +36,10 @@ function inferType(name: string, category: string, type: string | null): string 
 
 function flattenModifiers(
   groups: CatalogMenuItem['modifierGroups'],
-): { name: string; price: number }[] {
+): { name: string; price: number; optionId: string }[] {
   return groups.flatMap((group) =>
     group.options.map((option) => ({
+      optionId: option.optionId,
       name: option.name,
       price: option.priceDeltaVnd,
     })),
@@ -58,6 +60,24 @@ export function toOwnerMenuItem(item: CatalogMenuItem): MenuItem {
     inStock: item.isAvailable,
     stockCount: item.stockCount ?? 999,
     toppings: flattenModifiers(item.modifierGroups),
+  };
+}
+
+/** Map one Kitchen-safe availability row to the Kitchen view model. */
+export function toAvailabilityMenuItem(
+  item: CatalogAvailabilityItem,
+): MenuItem {
+  return {
+    id: item.menuItemId,
+    name: item.name,
+    price: 0,
+    costPrice: 0,
+    category: item.category,
+    type: inferType(item.name, item.category, null),
+    image: '',
+    description: '',
+    inStock: item.isAvailable,
+    stockCount: 999,
   };
 }
 
@@ -87,11 +107,14 @@ export function toViewOrder(order: OrderSnapshot): Order {
     price: line.unitPriceVnd,
     quantity: line.quantity,
     selectedModifiers: line.modifiers.map((modifier) => modifier.name),
+    selectedOptionIds: line.modifiers.map((modifier) => modifier.optionId),
   }));
 
   return {
     id: order.orderId,
     tableId: order.tableId,
+    tableName: order.tableNameSnapshot,
+    orderType: order.orderType,
     items,
     total: order.totalVnd,
     status: order.status as OrderStatus,
@@ -142,6 +165,8 @@ export function toViewIngredient(ingredient: ContractIngredient): Ingredient {
     costPrice: ingredient.unitCostVnd,
     unit: ingredient.baseUnit,
     stock: ingredient.stockQuantity,
+    purchaseUnit: ingredient.purchaseUnit ?? undefined,
+    purchasePrice: ingredient.purchasePriceVnd ?? undefined,
   };
 }
 

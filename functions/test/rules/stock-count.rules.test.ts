@@ -21,6 +21,7 @@ const TENANT_A = 'tenant-alpha';
 const TENANT_B = 'tenant-bravo';
 const OWNER_UID = 'owner-uid';
 const MEMBER_UID = 'member-uid';
+const CASHIER_UID = 'cashier-uid';
 const OTHER_UID = 'other-uid';
 const COUNT_ID = 'count-001';
 
@@ -56,6 +57,14 @@ async function seed(): Promise<void> {
     });
     await setDoc(doc(db, 'tenants', TENANT_A, 'members', MEMBER_UID), {
       membershipType: 'staff',
+      roles: ['kitchen'],
+      isActive: true,
+    });
+    // A count exposes expected quantity and variance, so it stays out of the
+    // till role's permission set.
+    await setDoc(doc(db, 'tenants', TENANT_A, 'members', CASHIER_UID), {
+      membershipType: 'staff',
+      roles: ['cashier'],
       isActive: true,
     });
     await setDoc(doc(db, 'tenants', TENANT_A, 'stockCounts', COUNT_ID), {
@@ -72,7 +81,7 @@ async function seed(): Promise<void> {
 }
 
 describe('tenant stock count boundary', () => {
-  it('allows an active Owner and member to read a count', async () => {
+  it('allows the Owner and Kitchen to read a count', async () => {
     await seed();
     const owner = testEnv.authenticatedContext(OWNER_UID).firestore();
     const member = testEnv.authenticatedContext(MEMBER_UID).firestore();
@@ -81,6 +90,14 @@ describe('tenant stock count boundary', () => {
     );
     await assertSucceeds(
       getDoc(doc(member, 'tenants', TENANT_A, 'stockCounts', COUNT_ID)),
+    );
+  });
+
+  it('denies a Cashier read of a count', async () => {
+    await seed();
+    const cashier = testEnv.authenticatedContext(CASHIER_UID).firestore();
+    await assertFails(
+      getDoc(doc(cashier, 'tenants', TENANT_A, 'stockCounts', COUNT_ID)),
     );
   });
 

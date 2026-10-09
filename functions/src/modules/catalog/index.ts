@@ -1,8 +1,10 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import type { DocumentReference, Transaction } from 'firebase-admin/firestore';
 import {
+  CATALOG_CATEGORY_LIMIT,
   CATALOG_CONTRACT_VERSION,
   CATALOG_SEARCH_LIMIT,
+  catalogAvailabilityListResultSchema,
   catalogCommandResultSchema,
   catalogSearchResultSchema,
   type CatalogCommand,
@@ -12,6 +14,7 @@ import {
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
+import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   applyMenuItemAvailability,
   applyMenuItemUpdate,
@@ -22,22 +25,26 @@ import {
   CATALOG_ITEM_NOT_FOUND_MESSAGE,
   CATALOG_TEMPLATE_NOT_FOUND_MESSAGE,
   computeNextCatalogVersion,
+  isCategoryAvailabilityTarget,
   isPublicProjectionVisible,
   matchesCatalogSearch,
   nowIso,
   parseCatalogApplyTemplateInput,
   parseCatalogArchiveInput,
+  parseCatalogAvailabilityListInput,
   parseCatalogCreateInput,
   parseCatalogSearchInput,
   parseCatalogSetAvailabilityInput,
+  parseCatalogSetCategoryAvailabilityInput,
   parseCatalogUpdateInput,
   requireUid,
+  toCatalogAvailabilityItem,
   toCatalogMenuItem,
   toPublicMenuItem,
 } from './service.js';
 import { getCatalogTemplate } from './templates.js';
 
-const CALL_OPTIONS = { region: 'us-central1', cors: true } as const;
+const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
 const ITEM_CHANGED_ACTION = 'MenuItemChanged';
 const CATALOG_AVAILABILITY_DENIED_MESSAGE =
   'Chỉ bếp hoặc chủ cửa hàng đổi được tình trạng món.';
@@ -76,7 +83,7 @@ function commandResult(
   return catalogCommandResultSchema.parse({
     schemaVersion: CATALOG_CONTRACT_VERSION,
     command,
-    status: 'applied',
+    status: extra.status ?? 'applied',
     menuItemId,
     publicProjection,
     version,
@@ -307,6 +314,131 @@ export const callableCatalogSetAvailability = onCall(
         ? toPublicMenuItem(outcome.item)
         : null,
     );
+  },
+);
+
+/**
+ * Owner or Kitchen command: change availability for every active item in one
+ * category in a single transaction. An item already at the target is skipped,
+ * so a retry writes nothing and audits nothing (REQ-CAT-003).
+ */
+export const callableCatalogSetCategoryAvailability = onCall(
+  CALL_OPTIONS,
+  async (request) => {
+    const uid = requireUid(request.auth?.uid);
+    assertAppCheck(request);
+    const input = parseCatalogSetCategoryAvailabilityInput(request.data);
+
+    const db = getDb();
+    const memberRef = db.doc(`tenants/${input.tenantId}/members/${uid}`);
+    const itemsQuery = db
+      .collection(itemCollection(input.tenantId))
+      .where('category', '==', input.category)
+      .limit(CATALOG_CATEGORY_LIMIT);
+
+    const outcome = await db.runTransaction(async (transaction) => {
+      const memberSnap = await transaction.get(memberRef);
+      assertActiveMember(memberSnap.data());
+      const member = memberSnap.data() ?? {};
+      const isOwner = member.membershipType === 'owner';
+      const roles: unknown[] = Array.isArray(member.roles) ? member.roles : [];
+      if (!isOwner && !roles.includes('kitchen')) {
+        throw new HttpsError(
+          'permission-denied',
+          CATALOG_AVAILABILITY_DENIED_MESSAGE,
+        );
+      }
+
+      const itemSnaps = await transaction.get(itemsQuery);
+      const now = nowIso();
+      let affectedItemCount = 0;
+      let version = 0;
+      for (const itemSnap of itemSnaps.docs) {
+        const current = toCatalogMenuItem(itemSnap.id, itemSnap.data() ?? {});
+        if (
+          !isCategoryAvailabilityTarget(
+            current,
+            input.category,
+            input.isAvailable,
+          )
+        ) {
+          continue;
+        }
+        const updated = applyMenuItemAvailability(
+          current,
+          input.isAvailable,
+          now,
+        );
+        const nextVersion = computeNextCatalogVersion(itemSnap.get('version'));
+        const publicRef = db.doc(
+          `${publicItemCollection(input.tenantId)}/${itemSnap.id}`,
+        );
+        transaction.set(itemSnap.ref, { ...updated, version: nextVersion });
+        writePublicProjection(transaction, publicRef, updated);
+        writeAuditEventInTransaction(transaction, {
+          tenantId: input.tenantId,
+          actorUid: uid,
+          actorType: isOwner ? 'owner' : 'staff',
+          role: isOwner ? 'owner' : 'kitchen',
+          action: ITEM_CHANGED_ACTION,
+          targetType: 'menu_item',
+          targetId: itemSnap.id,
+          detail: {
+            command: 'setCategoryAvailability',
+            category: input.category,
+            isAvailable: input.isAvailable,
+          },
+        });
+        affectedItemCount += 1;
+        version = Math.max(version, nextVersion);
+      }
+      return { affectedItemCount, version };
+    });
+
+    return commandResult(
+      'setCategoryAvailability',
+      null,
+      outcome.version,
+      null,
+      {
+        affectedItemCount: outcome.affectedItemCount,
+        status: outcome.affectedItemCount === 0 ? 'noop' : 'applied',
+      },
+    );
+  },
+);
+
+/**
+ * Member query: every active item in one bounded list, stripped to the
+ * Kitchen-safe availability fields. It lets the Kitchen board show unavailable
+ * items so they can be turned back on (REQ-KDS-002).
+ */
+export const callableCatalogListAvailability = onCall(
+  CALL_OPTIONS,
+  async (request) => {
+    const uid = requireUid(request.auth?.uid);
+    assertAppCheck(request);
+    const input = parseCatalogAvailabilityListInput(request.data);
+
+    const db = getDb();
+    const memberSnap = await db
+      .doc(`tenants/${input.tenantId}/members/${uid}`)
+      .get();
+    assertActiveMember(memberSnap.data());
+
+    const snap = await db
+      .collection(itemCollection(input.tenantId))
+      .where('archivedAt', '==', null)
+      .limit(CATALOG_CATEGORY_LIMIT)
+      .get();
+    return catalogAvailabilityListResultSchema.parse({
+      schemaVersion: CATALOG_CONTRACT_VERSION,
+      items: snap.docs.map((docSnap) =>
+        toCatalogAvailabilityItem(
+          toCatalogMenuItem(docSnap.id, docSnap.data() ?? {}),
+        ),
+      ),
+    });
   },
 );
 

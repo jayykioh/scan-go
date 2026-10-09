@@ -1,0 +1,678 @@
+{
+  "generatedAt": "2026-10-08T13:18:22.087Z",
+  "baseUrl": "http://127.0.0.1:3000",
+  "ownerAccount": "qa.playwright+1791453969001@example.com",
+  "flows": [
+    {
+      "id": "f1-load-path",
+      "name": "Tải cứng so với điều hướng trong app",
+      "durationMs": 54898,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f2-settings-persistence",
+      "name": "Cấu hình: nơi lưu của \"Lưu thay đổi\"",
+      "durationMs": 37483,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f3-loyalty-gate",
+      "name": "Cấu hình: điều kiện bật Loyalty",
+      "durationMs": 15790,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f4-subscription",
+      "name": "Gói cước: chiều thay đổi gói",
+      "durationMs": 16455,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f5-fixed-containing-block",
+      "name": "position:fixed bị .animate-fadeIn giam",
+      "durationMs": 35564,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f6-catalog-crud",
+      "name": "Thực đơn: tạo, sửa món",
+      "durationMs": 57650,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f7-inventory",
+      "name": "Kho: nguyên liệu, bình quân gia quyền, hao hụt",
+      "durationMs": 50141,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f8-tables",
+      "name": "Sơ đồ bàn: tạo bàn và link QR công khai",
+      "durationMs": 58138,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f16-staff-account",
+      "name": "Nhân sự: chủ quán tạo tài khoản, nhân viên đăng nhập",
+      "durationMs": 48092,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f9-staff-pin-policy",
+      "name": "Nhân sự: độ dài PIN của form so với chính sách",
+      "durationMs": 23212,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f10-reporting",
+      "name": "Doanh thu: các kỳ báo cáo",
+      "durationMs": 24424,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f11-ai-assistant",
+      "name": "Trợ lý AI: hỏi đáp",
+      "durationMs": 31293,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f12-tenant",
+      "name": "Cửa hàng: luồng tạo cửa hàng mới",
+      "durationMs": 16683,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f13-admin-guard",
+      "name": "Khu vực ADMIN: chặn chủ quán thường",
+      "durationMs": 13860,
+      "error": null,
+      "consoleErrors": []
+    },
+    {
+      "id": "f14-offline",
+      "name": "Mất mạng: hành vi khi offline",
+      "durationMs": 31052,
+      "error": null,
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ]
+    },
+    {
+      "id": "f15-reload-sweep",
+      "name": "Tải cứng từng trang dashboard",
+      "durationMs": 57432,
+      "error": null,
+      "consoleErrors": []
+    }
+  ],
+  "findings": [
+    {
+      "flow": "f1-load-path",
+      "kind": "pass",
+      "label": "Điều hướng trong app: danh sách món hiển thị dữ liệu thật",
+      "detail": "SCANGO ASSISTANT Tạo menu sẵn sàng cho khách HƯỚNG DẪN NHANH 1 THÊM MÓN CHÍNH TRƯỚC Nhập tên, giá bán, giá vốn và ảnh. M"
+    },
+    {
+      "flow": "f1-load-path",
+      "kind": "fail",
+      "label": "Tải cứng /dashboard/menu: danh sách món vẫn hiển thị dữ liệu",
+      "detail": "SCANGO ASSISTANT Tạo menu sẵn sàng cho khách HƯỚNG DẪN NHANH 1 THÊM MÓN CHÍNH TRƯỚC Nhập tên, giá bán, giá vốn và ảnh. M"
+    },
+    {
+      "flow": "f1-load-path",
+      "kind": "pass",
+      "label": "Điều hướng trong app: sơ đồ bàn hiển thị dữ liệu thật",
+      "detail": "SCANGO ASSISTANT Tạo link menu cho từng bàn HƯỚNG DẪN NHANH 1 TẠO BÀN Mỗi bàn có một link menu riêng dạng /menu/:tableId"
+    },
+    {
+      "flow": "f1-load-path",
+      "kind": "fail",
+      "label": "Tải cứng /dashboard/tables: sơ đồ bàn vẫn hiển thị dữ liệu",
+      "detail": "SCANGO ASSISTANT Tạo link menu cho từng bàn HƯỚNG DẪN NHANH 1 TẠO BÀN Mỗi bàn có một link menu riêng dạng /menu/:tableId"
+    },
+    {
+      "flow": "f1-load-path",
+      "kind": "pass",
+      "label": "Điều hướng trong app: bảng \"Cấu hình đang áp dụng\" có dữ liệu",
+      "detail": "CẤU HÌNH THIẾT LẬP THÔNG TIN CỬA HÀNG, GÓI VÀ LOYALTY NGÔN NGỮ Chọn ngôn ngữ hiển thị cho giao diện."
+    },
+    {
+      "flow": "f1-load-path",
+      "kind": "fail",
+      "label": "Tải cứng /dashboard/settings: bảng \"Cấu hình đang áp dụng\" vẫn có dữ liệu",
+      "detail": "CẤU HÌNH THIẾT LẬP THÔNG TIN CỬA HÀNG, GÓI VÀ LOYALTY LANGUAGE Choose the interface language. TIẾNG "
+    },
+    {
+      "flow": "f2-settings-persistence",
+      "kind": "note",
+      "label": "Tên cửa hàng trong form cấu hình",
+      "detail": "Bún Phở Kinh Kỳ"
+    },
+    {
+      "flow": "f2-settings-persistence",
+      "kind": "note",
+      "label": "Thông báo sau khi lưu",
+      "detail": "ĐÃ LƯU CẤU HÌNH CỬA HÀNG"
+    },
+    {
+      "flow": "f2-settings-persistence",
+      "kind": "note",
+      "label": "Khoá localStorage của app",
+      "detail": "scango:tenant:v1"
+    },
+    {
+      "flow": "f2-settings-persistence",
+      "kind": "pass",
+      "label": "Cùng trình duyệt: giá trị còn sau khi tải lại",
+      "detail": "Audit Shop 502028"
+    },
+    {
+      "flow": "f2-settings-persistence",
+      "kind": "fail",
+      "label": "Thiết bị khác (profile trống): giá trị đã lưu lên máy chủ",
+      "detail": "thấy \"Bún Phở Kinh Kỳ\""
+    },
+    {
+      "flow": "f3-loyalty-gate",
+      "kind": "note",
+      "label": "Các gói chọn được trong Cấu hình",
+      "detail": "Lite | Pro | Enterprise"
+    },
+    {
+      "flow": "f3-loyalty-gate",
+      "kind": "fail",
+      "label": "Cấu hình không cho chọn gói ngoài phạm vi v1",
+      "detail": "Lite | Pro | Enterprise"
+    },
+    {
+      "flow": "f3-loyalty-gate",
+      "kind": "note",
+      "label": "Gói Lite: loyalty",
+      "detail": "disabled=true · \"BẬT TÍCH ĐIỂM HỘI VIÊN (KHÔNG KHẢ DỤNG Ở LITE)\""
+    },
+    {
+      "flow": "f3-loyalty-gate",
+      "kind": "fail",
+      "label": "Gói Lite bật được Loyalty (bảng entitlement: lite.features có \"loyalty\")",
+      "detail": "disabled=true"
+    },
+    {
+      "flow": "f3-loyalty-gate",
+      "kind": "note",
+      "label": "Gói Pro: loyalty",
+      "detail": "disabled=false · \"BẬT TÍCH ĐIỂM HỘI VIÊN\""
+    },
+    {
+      "flow": "f4-subscription",
+      "kind": "note",
+      "label": "Gói đang dùng",
+      "detail": "FREE"
+    },
+    {
+      "flow": "f4-subscription",
+      "kind": "note",
+      "label": "Nhãn nút Lite / Pro",
+      "detail": "HẠ CẤP LITE | NÂNG CẤP PRO"
+    },
+    {
+      "flow": "f4-subscription",
+      "kind": "fail",
+      "label": "Đang ở gói Free: nút Lite không được ghi \"Hạ cấp\"",
+      "detail": "HẠ CẤP LITE"
+    },
+    {
+      "flow": "f4-subscription",
+      "kind": "fail",
+      "label": "Có lối quay về gói Free sau khi nâng cấp",
+      "detail": "số nút liên quan tới Free: 0"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "note",
+      "label": "/dashboard/menu: thẻ hướng dẫn",
+      "detail": "x=1036 y=16 w=380 h=470"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "pass",
+      "label": "/dashboard/menu: thẻ hướng dẫn nằm trọn trong khung nhìn",
+      "detail": "y=16, đáy=486, khung nhìn cao 900"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "fail",
+      "label": "/dashboard/menu: thẻ hướng dẫn KHÔNG che nút hành động chính",
+      "detail": "chồng 8691 px²"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "note",
+      "label": "/dashboard/menu: diện tích chồng với CTA",
+      "detail": "8691 px²"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "note",
+      "label": "/dashboard/tables: thẻ hướng dẫn",
+      "detail": "x=1036 y=-50 w=380 h=470"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "fail",
+      "label": "/dashboard/tables: thẻ hướng dẫn nằm trọn trong khung nhìn",
+      "detail": "y=-50, đáy=420, khung nhìn cao 900"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "fail",
+      "label": "/dashboard/tables: thẻ hướng dẫn KHÔNG che nút hành động chính",
+      "detail": "chồng 8491 px²"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "note",
+      "label": "/dashboard/tables: diện tích chồng với CTA",
+      "detail": "8491 px²"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "fail",
+      "label": "Modal \"Thêm nguyên liệu\" phủ kín khung nhìn",
+      "detail": "rect={\"x\":272,\"y\":0,\"w\":1152,\"h\":339} vs khung nhìn={\"w\":1440,\"h\":900}"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "fail",
+      "label": "Modal \"Thêm nguyên liệu\" không bị ancestor biến đổi giam",
+      "detail": "{\"className\":\"p-6 md:p-12 w-full max-w-6xl mx-auto animate-fadeIn space-y-6\",\"transform\":\"matrix(1, 0, 0, 1, 0, 0)\",\"animation\":\"fadeIn\",\"fillMode\":\"both\"}"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "pass",
+      "label": "Modal \"Thêm nhân sự\" phủ kín khung nhìn",
+      "detail": "rect={\"x\":0,\"y\":0,\"w\":1440,\"h\":900} vs khung nhìn={\"w\":1440,\"h\":900}"
+    },
+    {
+      "flow": "f5-fixed-containing-block",
+      "kind": "pass",
+      "label": "Modal \"Thêm nhân sự\" không bị ancestor biến đổi giam",
+      "detail": "không có"
+    },
+    {
+      "flow": "f6-catalog-crud",
+      "kind": "pass",
+      "label": "Mở được form thêm món"
+    },
+    {
+      "flow": "f6-catalog-crud",
+      "kind": "pass",
+      "label": "Có thông báo tạo món thành công",
+      "detail": "ĐÃ THÊM MÓN MỚI"
+    },
+    {
+      "flow": "f6-catalog-crud",
+      "kind": "pass",
+      "label": "Món mới có trong danh sách sau khi mount lại",
+      "detail": "QUẢN LÝ THỰC ĐƠN Cấu hình danh mục, món ăn và tùy chọn (Modifier). THÊM MÓN TẤT CẢ MÓN CHÍNH MÓN CHÍNH [AUDIT] Phở 502028 55.000đ CÒN MÓN CH"
+    },
+    {
+      "flow": "f6-catalog-crud",
+      "kind": "note",
+      "label": "Số nút thao tác trên thẻ món",
+      "detail": "2"
+    },
+    {
+      "flow": "f6-catalog-crud",
+      "kind": "fail",
+      "label": "Nút Sửa/Xoá món có tên truy cập được (title hoặc aria-label)",
+      "detail": "title/aria-label count=0"
+    },
+    {
+      "flow": "f6-catalog-crud",
+      "kind": "pass",
+      "label": "Giá sửa được ghi nhận (65.000đ)",
+      "detail": "QUẢN LÝ THỰC ĐƠN Cấu hình danh mục, món ăn và tùy chọn (Modifier). THÊM MÓN TẤT CẢ MÓN CHÍNH MÓN CHÍNH [AUDIT] Phở 502028 65.000đ CÒN MÓN CH"
+    },
+    {
+      "flow": "f6-catalog-crud",
+      "kind": "fail",
+      "label": "Món [AUDIT] đã được xoá khỏi thực đơn",
+      "detail": "QUẢN LÝ THỰC ĐƠN Cấu hình danh mục, món ăn và tùy chọn (Modifier). THÊM MÓN TẤT CẢ MÓN CHÍNH MÓN CHÍNH [AUDIT] Phở 50202"
+    },
+    {
+      "flow": "f7-inventory",
+      "kind": "pass",
+      "label": "Mở được form nguyên liệu"
+    },
+    {
+      "flow": "f7-inventory",
+      "kind": "fail",
+      "label": "Form tạo nguyên liệu ghi rõ đơn vị của \"Tồn ban đầu\"/\"Ngưỡng cảnh báo\"",
+      "detail": "NGƯỠNG CẢNH BÁO | TỒN BAN ĐẦU"
+    },
+    {
+      "flow": "f7-inventory",
+      "kind": "pass",
+      "label": "Nguyên liệu mới có trong bảng",
+      "detail": "KHO NGUYÊN LIỆU QUẢN LÝ VÀ THEO DÕI MỌI THAY ĐỔI BÁO CÁO THAY ĐỔI THÊM NGUYÊN LIỆU NGUYÊN LIỆU ĐƠN VỊ GIÁ NHẬP TỒN KHO TRẠNG THÁI THAO TÁC ["
+    },
+    {
+      "flow": "f7-inventory",
+      "kind": "pass",
+      "label": "Form nhập thêm có ô giá mua đợt này",
+      "detail": "count=1"
+    },
+    {
+      "flow": "f7-inventory",
+      "kind": "pass",
+      "label": "Giá vốn theo bình quân gia quyền (200k + 300k → 250k/kg = 250đ/g)",
+      "detail": "Vốn 250/g"
+    },
+    {
+      "flow": "f7-inventory",
+      "kind": "pass",
+      "label": "Cảnh báo giá nhập tăng trên 10% có xuất hiện như giao diện hứa",
+      "detail": "không có cảnh báo nào"
+    },
+    {
+      "flow": "f7-inventory",
+      "kind": "pass",
+      "label": "Giảm tồn bắt buộc chọn lý do",
+      "detail": "select=1"
+    },
+    {
+      "flow": "f7-inventory",
+      "kind": "pass",
+      "label": "Báo cáo thay đổi kho có bản ghi",
+      "detail": "BÁO CÁO THAY ĐỔI KHO (17)"
+    },
+    {
+      "flow": "f8-tables",
+      "kind": "pass",
+      "label": "Mở được form thêm bàn"
+    },
+    {
+      "flow": "f8-tables",
+      "kind": "pass",
+      "label": "Bàn mới có trên sơ đồ sau khi mount lại",
+      "detail": "QUẢN LÝ BÀN Thiết lập sơ đồ bàn, in mã QR và quản lý thẻ NFC. THÊM BÀN Bàn QA 01 ID: aSXum1V3IFEXmAlsJZR7 NFC chưa nạp Hỗ trợ Tap-to-Order h"
+    },
+    {
+      "flow": "f8-tables",
+      "kind": "note",
+      "label": "Số link menu công khai trên sơ đồ bàn",
+      "detail": "2"
+    },
+    {
+      "flow": "f8-tables",
+      "kind": "note",
+      "label": "Link menu của bàn mới",
+      "detail": "/menu/tAmBEcDipwoCGUnnII0Th1v-k8Mx31-D9tv0PZxowCc"
+    },
+    {
+      "flow": "f8-tables",
+      "kind": "pass",
+      "label": "Link QR mở được menu công khai",
+      "detail": "[AUDIT] BÀN 502028 [AUDIT] Bàn 502028 Member TODAY'S MENU Order quickly, the kitchen gets it now. 1 items Pay later All Đồ ăn Trà đá QA 10.0"
+    },
+    {
+      "flow": "f8-tables",
+      "kind": "pass",
+      "label": "Menu công khai của bàn vừa tạo mở được và hiện đúng tên bàn",
+      "detail": "ok"
+    },
+    {
+      "flow": "f8-tables",
+      "kind": "pass",
+      "label": "Bàn [AUDIT] đã được lưu trữ",
+      "detail": "QUẢN LÝ BÀN Thiết lập sơ đồ bàn, in mã QR và quản lý thẻ NFC. THÊM BÀN Bàn QA 01 ID: aSXum1V3IFEXmAlsJZR7 NFC chưa nạp H"
+    },
+    {
+      "flow": "f16-staff-account",
+      "kind": "pass",
+      "label": "Mở được form thêm nhân sự"
+    },
+    {
+      "flow": "f16-staff-account",
+      "kind": "pass",
+      "label": "Tài khoản nhân sự được tạo",
+      "detail": "NHÂN SỰ TÀI KHOẢN, VAI TRÒ VÀ PIN ĐĂNG NHẬP THÊM NHÂN SỰ Tài khoản do chủ quán tạo Mỗi nhân viên có email, mật khẩu và PIN riêng. PIN chỉ lư"
+    },
+    {
+      "flow": "f16-staff-account",
+      "kind": "fail",
+      "label": "Nhân viên đăng nhập được bằng email + mật khẩu tạm + PIN",
+      "detail": "NHÂN VIÊN Quán QA Playwright THOÁT Nhân viên Nhập mã PIN cá nhân để bắt đầu ca làm việc Mã PIN không đúng định dạng. [400] Đăng nhập"
+    },
+    {
+      "flow": "f9-staff-pin-policy",
+      "kind": "pass",
+      "label": "Cấu hình hiển thị \"Độ dài PIN\" đang áp dụng",
+      "detail": "Độ dài PIN Số chữ số nhân viên phải nhập 6 chữ số"
+    },
+    {
+      "flow": "f9-staff-pin-policy",
+      "kind": "note",
+      "label": "Ô PIN trong form nhân sự",
+      "detail": "placeholder=\"0000\" minlength=null maxlength=10"
+    },
+    {
+      "flow": "f9-staff-pin-policy",
+      "kind": "note",
+      "label": "Nhãn/hướng dẫn về PIN",
+      "detail": "PIN ĐĂNG NHẬP CA"
+    },
+    {
+      "flow": "f9-staff-pin-policy",
+      "kind": "fail",
+      "label": "Form nhân sự nói rõ PIN phải đủ 6 chữ số như máy chủ yêu cầu",
+      "detail": "placeholder=\"0000\", minlength=null, chính sách=6"
+    },
+    {
+      "flow": "f10-reporting",
+      "kind": "note",
+      "label": "Kỳ Hôm nay",
+      "detail": "doanh thu=0 · số đơn=0 · lợi nhuận gộp=0"
+    },
+    {
+      "flow": "f10-reporting",
+      "kind": "pass",
+      "label": "Kỳ Hôm nay: khối doanh thu render",
+      "detail": "ok"
+    },
+    {
+      "flow": "f10-reporting",
+      "kind": "note",
+      "label": "Kỳ Tuần",
+      "detail": "doanh thu=0 · số đơn=0 · lợi nhuận gộp=0"
+    },
+    {
+      "flow": "f10-reporting",
+      "kind": "pass",
+      "label": "Kỳ Tuần: khối doanh thu render",
+      "detail": "ok"
+    },
+    {
+      "flow": "f10-reporting",
+      "kind": "note",
+      "label": "Kỳ Tháng",
+      "detail": "doanh thu=0 · số đơn=0 · lợi nhuận gộp=0"
+    },
+    {
+      "flow": "f10-reporting",
+      "kind": "pass",
+      "label": "Kỳ Tháng: khối doanh thu render",
+      "detail": "ok"
+    },
+    {
+      "flow": "f10-reporting",
+      "kind": "pass",
+      "label": "KPI số đơn hiển thị",
+      "detail": "SỐ ĐƠN 0"
+    },
+    {
+      "flow": "f11-ai-assistant",
+      "kind": "pass",
+      "label": "Mở được trợ lý AI"
+    },
+    {
+      "flow": "f11-ai-assistant",
+      "kind": "note",
+      "label": "Trả lời của trợ lý AI",
+      "detail": "TRỢ LÝ AI GEMINI · GEMINI-3.5-FLASH-LITE Hôm nay doanh thu bao nhiêu? Chào bạn, hôm nay cửa hàng chưa có đơn hàng nào được thanh toán nên tôi chưa thể tổng hợp doanh thu cho bạn nhé. Chưa có đơn đã thanh toán trong kỳ. Không kết luận về lợi nhuận. TRÀ ĐÁ QA [AUDIT] THỊT BÒ 502028 ĐỘ TIN CẬY 30% THIẾU DỮ LIỆU"
+    },
+    {
+      "flow": "f11-ai-assistant",
+      "kind": "pass",
+      "label": "Trợ lý AI trả lời",
+      "detail": "309 ký tự"
+    },
+    {
+      "flow": "f11-ai-assistant",
+      "kind": "pass",
+      "label": "Trả lời không phải lỗi hệ thống thô",
+      "detail": "ok"
+    },
+    {
+      "flow": "f12-tenant",
+      "kind": "pass",
+      "label": "Tạo cửa hàng dùng hộp thoại trình duyệt gốc (window.prompt)",
+      "detail": "prompt: Tên cửa hàng mới"
+    },
+    {
+      "flow": "f13-admin-guard",
+      "kind": "pass",
+      "label": "Chủ quán thường bị từ chối",
+      "detail": "KHU VỰC ADMIN Tài khoản này không có quyền ADMIN. Mọi truy cập đều bị máy chủ từ chối."
+    },
+    {
+      "flow": "f13-admin-guard",
+      "kind": "note",
+      "label": "Số phần tử bấm được trên trang từ chối",
+      "detail": "1"
+    },
+    {
+      "flow": "f14-offline",
+      "kind": "note",
+      "label": "Màn hình khi offline",
+      "detail": ""
+    },
+    {
+      "flow": "f14-offline",
+      "kind": "fail",
+      "label": "Có thông báo hiểu được khi mất mạng",
+      "detail": "không có thông báo nào"
+    },
+    {
+      "flow": "f15-reload-sweep",
+      "kind": "pass",
+      "label": "Tải cứng /dashboard: khung trang render",
+      "detail": "TỔNG QUAN KINH DOANH Số liệu trực tiếp hôm nay.SỐ LIỆU THẬT MỞ MÁY TRẠ"
+    },
+    {
+      "flow": "f15-reload-sweep",
+      "kind": "pass",
+      "label": "Tải cứng /dashboard/menu: khung trang render",
+      "detail": "SCANGO ASSISTANT Tạo menu sẵn sàng cho khách HƯỚNG DẪN NHANH 1 THÊM MÓ"
+    },
+    {
+      "flow": "f15-reload-sweep",
+      "kind": "pass",
+      "label": "Tải cứng /dashboard/inventory: khung trang render",
+      "detail": "KHO NGUYÊN LIỆU QUẢN LÝ VÀ THEO DÕI MỌI THAY ĐỔI BÁO CÁO THAY ĐỔI THÊM"
+    },
+    {
+      "flow": "f15-reload-sweep",
+      "kind": "pass",
+      "label": "Tải cứng /dashboard/tables: khung trang render",
+      "detail": "SCANGO ASSISTANT Tạo link menu cho từng bàn HƯỚNG DẪN NHANH 1 TẠO BÀN "
+    },
+    {
+      "flow": "f15-reload-sweep",
+      "kind": "pass",
+      "label": "Tải cứng /dashboard/staff: khung trang render",
+      "detail": "NHÂN SỰ TÀI KHOẢN, VAI TRÒ VÀ PIN ĐĂNG NHẬP THÊM NHÂN SỰ Tài khoản do "
+    },
+    {
+      "flow": "f15-reload-sweep",
+      "kind": "pass",
+      "label": "Tải cứng /dashboard/subscription: khung trang render",
+      "detail": "GÓI CƯỚC & THANH TOÁN QUẢN LÝ GÓI ĐĂNG KÝ CỦA BẠN. ĐANG DÙNG: FREE LIT"
+    },
+    {
+      "flow": "f15-reload-sweep",
+      "kind": "pass",
+      "label": "Tải cứng /dashboard/settings: khung trang render",
+      "detail": "CẤU HÌNH THIẾT LẬP THÔNG TIN CỬA HÀNG, GÓI VÀ LOYALTY LANGUAGE Choose "
+    },
+    {
+      "flow": "f15-reload-sweep",
+      "kind": "pass",
+      "label": "Tải cứng /dashboard/feedback: khung trang render",
+      "detail": "FEEDBACK INBOX Owner and staff reports about ScanGo. RETRY USABILITY L"
+    }
+  ],
+  "nativeDialogs": [
+    {
+      "flow": "f12-tenant",
+      "type": "prompt",
+      "message": "Tên cửa hàng mới"
+    }
+  ],
+  "screenshots": [
+    "docs/feedback/artifacts/audit-f1-menu-via-nav.png",
+    "docs/feedback/artifacts/audit-f1-menu-via-hardload.png",
+    "docs/feedback/artifacts/audit-f1-tables-via-hardload.png",
+    "docs/feedback/artifacts/audit-f1-settings-via-hardload.png",
+    "docs/feedback/artifacts/audit-f2-settings-saved.png",
+    "docs/feedback/artifacts/audit-f2-settings-other-device.png",
+    "docs/feedback/artifacts/audit-f3-loyalty-gate.png",
+    "docs/feedback/artifacts/audit-f4-subscription.png",
+    "docs/feedback/artifacts/audit-f5-menu-guide.png",
+    "docs/feedback/artifacts/audit-f5-tables-guide.png",
+    "docs/feedback/artifacts/audit-f5-modal-inventory.png",
+    "docs/feedback/artifacts/audit-f5-modal-staff.png",
+    "docs/feedback/artifacts/audit-f6-menu-filled.png",
+    "docs/feedback/artifacts/audit-f6-menu-after-create.png",
+    "docs/feedback/artifacts/audit-f6-menu-listed.png",
+    "docs/feedback/artifacts/audit-f6-menu-edited.png",
+    "docs/feedback/artifacts/audit-f6-menu-delete-dialog.png",
+    "docs/feedback/artifacts/audit-f6-menu-deleted.png",
+    "docs/feedback/artifacts/audit-f7-inventory-filled.png",
+    "docs/feedback/artifacts/audit-f7-inventory-created.png",
+    "docs/feedback/artifacts/audit-f7-inventory-import.png",
+    "docs/feedback/artifacts/audit-f7-inventory-after-import.png",
+    "docs/feedback/artifacts/audit-f7-inventory-waste.png",
+    "docs/feedback/artifacts/audit-f7-inventory-report.png",
+    "docs/feedback/artifacts/audit-f8-table-modal.png",
+    "docs/feedback/artifacts/audit-f8-table-created.png",
+    "docs/feedback/artifacts/audit-f8-table-delete-dialog.png",
+    "docs/feedback/artifacts/audit-f16-staff-modal.png",
+    "docs/feedback/artifacts/audit-f16-staff-created.png",
+    "docs/feedback/artifacts/audit-f16-staff-login.png",
+    "docs/feedback/artifacts/audit-f16-staff-pin-step.png",
+    "docs/feedback/artifacts/audit-f16-staff-signed-in.png",
+    "docs/feedback/artifacts/audit-f9-staff-pin-field.png",
+    "docs/feedback/artifacts/audit-f10-reporting-day.png",
+    "docs/feedback/artifacts/audit-f10-reporting-week.png",
+    "docs/feedback/artifacts/audit-f10-reporting-month.png",
+    "docs/feedback/artifacts/audit-f11-ai-open.png",
+    "docs/feedback/artifacts/audit-f11-ai-answer.png",
+    "docs/feedback/artifacts/audit-f12-tenant-create.png",
+    "docs/feedback/artifacts/audit-f13-admin-guard.png",
+    "docs/feedback/artifacts/audit-f14-offline.png"
+  ]
+}

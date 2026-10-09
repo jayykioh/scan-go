@@ -116,9 +116,17 @@ select {
 }
 
 /* ── Animations ─────────────────────────────────── */
+/*
+ * Opacity only, on purpose. `.animate-fadeIn` uses `animation-fill-mode: both`,
+ * so the final keyframe stays applied for the lifetime of the element: a
+ * `transform: translateY(0)` here would leave every animated container with a
+ * permanent transform matrix. A transformed element becomes the containing
+ * block for its `position: fixed` descendants, which floated the first-run
+ * guide card off-screen and on top of the primary button (IMP-04, F-03).
+ */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes spin-slow {

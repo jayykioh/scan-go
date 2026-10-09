@@ -117,25 +117,41 @@ Stores ingredient, counted base-unit quantity, expected quantity from stock-in, 
 ## 5. Table Access and Ordering
 
 ### `tenants/{tenantId}/tables/{tableId}` — Table Access
-Stores name, active state, token version, active token reference, QR payload metadata, NFC written state, and archive metadata. Secrets do not appear in public tenant reads.
+Stores name, active state, token version, active token reference, QR payload metadata, NFC written state, archive metadata, and the floor-plan layout. Secrets do not appear in public tenant reads.
+
+| Field | Type |
+|---|---|
+| `area` | string (max 60) or null; the room label the Owner typed, e.g. `Sân vườn`. A null area reads as `Khu chính` |
+| `seats` | integer 1–50 or null; null means the Owner has not set a seat count |
+| `position` | `{ x, y }` grid cell or null. `x` is 0–11 and `y` is 0–9 (`TABLE_FLOOR_COLUMNS` × `TABLE_FLOOR_ROWS`); a cell, never a pixel |
+
+Written only by `callableTableConfigure` (`TableConfigured`), or supplied on `callableTableCreate` so a new table lands in its cell in one command. A row written before table contract v2 has none of these fields; `readStoredTableLayout` reads each back as `null` and the plan shows such a table in the first free cell with a dashed border until the Owner saves the arrangement.
+
+Table service state is **not stored**. It is derived from live Orders on demand by `callableOrderListTableStatus`, which returns one entry per busy table: `tableId`, `state` (`free | occupied | foodReady | awaitingPayment`), `activeOrderCount`, `readyOrderCount`, `unsettledOrderCount`, and `oldestActiveOrderAt`. The projection carries no money, Customer identity, or Order line (REQ-TBL-003).
 
 ### `tenants/{tenantId}/orders/{orderId}` — Ordering source
 | Field | Type |
 |---|---|
-| `tableId`, `tableNameSnapshot` | string |
+| `orderType` | `dineIn | takeaway` |
+| `tableId`, `tableNameSnapshot` | string; a takeaway Order uses the reserved `takeaway` id and `Mang về` label |
 | `status` | `pending | cooking | ready | served | paid | cancelled` |
 | `paymentMode` | `payFirst | payLater` |
 | `paymentMethod` | `cash | vietQr` or null |
 | `items` | immutable item snapshots |
-| `subtotalVnd`, `totalVnd` | integer |
-| `promotionSnapshot` | map or null |
+| `subtotalVnd`, `discountVnd`, `totalVnd` | integer; `totalVnd = subtotalVnd - discountVnd` |
+| `promotionSnapshot` | the applied Promotion frozen as `promotionId`, `name`, `benefitType`, `priority`, `discountVnd`, `giftValueVnd`, `code`; or null |
 | `loyaltyMemberId` | string or null |
+| `pointsRedeemed` | integer; Loyalty points this Order spent |
 | `trackingTokenHash` | string |
 | `idempotencyKey` | string |
 | lifecycle timestamps | server timestamps |
 | `cancellationReason` | string or null |
 
-Each item stores `lineId`, `menuItemId`, name, modifiers, `unitPriceVnd`, quantity, `lineTotalVnd`, `unitCostVnd`, and `lineCostVnd`. Order documents never store raw Customer phone values.
+Each item stores `lineId`, `menuItemId`, name, modifiers, `unitPriceVnd`, quantity, `lineTotalVnd`, `lineDiscountVnd`, `isGift`, `unitCostVnd`, and `lineCostVnd`.
+
+`isGift` marks a line the Promotion rewarded. A gift line keeps the menu price in `unitPriceVnd` but stores `lineTotalVnd = 0` and its real Cost, so it adds nothing to the subtotal and Reporting sees zero revenue with a real Cost. Item revenue is `lineTotalVnd - lineDiscountVnd`, so per-item figures add up to the discounted Order total.
+
+Order documents never store raw Customer phone values.
 
 ### `tenants/{tenantId}/orders/{orderId}/statusEvents/{eventId}`
 Append-only status history with actor, previous status, new status, reason, request ID, and timestamp.
@@ -154,8 +170,12 @@ Stores normalized `+84` phone, display name, verified state, point balance, paid
 ### `tenants/{tenantId}/loyaltyTransactions/{transactionId}`
 Append-only earn, redeem, reverse, and configurable welcome-point entries. Welcome points default to zero and Owner can change the allowed tenant setting.
 
+A Promotion of type `pointsRedemption` writes its `redeem` entry (`loyalty_redeem_<idempotencyKey>`) inside the Order transaction. Cancelling that unpaid Order writes a signed `reverse` entry with the deterministic id `loyalty_redeem_reverse_<orderId>`, which differs from `loyalty_reverse_<orderId>` for earned points, so one Order can carry both corrections.
+
 ### `tenants/{tenantId}/promotions/{promotionId}` — Promotion
-Stores active period, eligibility rule, benefit rule, priority, and archive metadata. The server selects one best eligible promotion. v1 never stacks promotions.
+Stores `source` (`manual` or `quick`), status, active period, eligibility rule, benefit rule, priority, and archive metadata. Eligibility carries `minSubtotalVnd`, `minQuantity`, `menuItemIds`, `timeWindow`, `daysOfWeek`, `code`, and `customerSegment`. The benefit is one of `percentOff`, `fixedAmount`, `buyXGetY`, `freeItem`, `bundlePrice`, or `pointsRedemption`. The server selects one best eligible promotion; v1 never stacks promotions.
+
+The reserved document id `quick-discount` with `source: 'quick'` is the single fast discount owned by the Settings page. The Promotion page shows it read-only. A `schemaVersion: 1` document still reads through `mapPromotionV1ToV2`.
 
 ## 7. Reporting and Audit
 
@@ -196,6 +216,12 @@ Stores rating or issue text, optional Order reference, verification state, maske
 ### `tenants/{tenantId}/feedbackTickets/{ticketId}` — Feedback
 Stores state (`received`, `in_progress`, `resolved`), owner, priority, linked feedback IDs, and an append-only history of state, actor, time, and reason.
 
+### `tenants/{tenantId}/productFeedback/{feedbackId}` — Product feedback
+Stores the operator's report about ScanGo itself: category, severity, status, message, up to three screenshot descriptors (`storagePath`, `contentType`, `sizeBytes`), the reporter uid and derived role, the screen the reporter was on, and an append-only history of status, actor, time, and reason. Server-written only; Owner or ADMIN read.
+
+### Storage `tenants/{tenantId}/feedbackAttachments/{uid}/{fileName}` — Product feedback
+One screenshot per object, under the reporter's own tenant and uid prefix. Reads require an active Tenant member or ADMIN; writes require the matching uid, a raster content type from the allowlist, and at most 5 MB; client deletes are denied (REQ-FDB-005).
+
 ### `tenants/{tenantId}/shifts/{shiftId}` — Workforce
 Stores Staff member, date, start and end time, role, and audit metadata. Times store as UTC and render in tenant time. Two overlapping Shifts for one Staff are rejected.
 
@@ -218,9 +244,11 @@ Stores Staff member, clock in and clock out, source, correction state (`none`, `
 | `aiUsage` | `tenantId`, `createdAt desc` |
 | `feedback` | `createdAt desc`, `verificationState` |
 | `feedbackTickets` | `state`, `updatedAt desc` |
+| `productFeedback` | `createdAt desc` |
 | `shifts` | `staffUid`, `date` |
 | `attendance` | `staffUid`, `clockInAt desc` |
 | `stockCounts` | `ingredientId`, `createdAt desc` |
+| `audit` | `action`, `createdAt desc` |
 
 All queries remain tenant-scoped. Public listeners read only one table link, one tracking token, or bounded public menu items.
 

@@ -42,4 +42,22 @@ export default tseslint.config(
       },
     },
   },
+  {
+    // Feedback harness scripts are Node ESM run with `node`, not part of the
+    // Vite bundle: they need Node globals plus browser globals for the code
+    // inside `page.evaluate(...)`, and their deliberate `.catch(() => {})`
+    // guards are empty on purpose.
+    files: ['docs/feedback/harness/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+      },
+    },
+    rules: {
+      'no-empty': 'off',
+    },
+  },
 );

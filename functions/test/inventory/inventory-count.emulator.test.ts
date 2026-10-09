@@ -18,6 +18,7 @@ import {
   expect,
   it,
 } from 'vitest';
+import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 import {
   deleteApp as deleteAdminApp,
   getApps as getAdminApps,
@@ -64,7 +65,7 @@ const INGREDIENT_B = 'ingredient-beef-count';
 const AT = new Date().toISOString();
 const DAY = AT.slice(0, 10).replace(/-/g, '');
 
-const REGION = 'us-central1';
+const REGION = FUNCTIONS_REGION;
 const FUNCTIONS_HOST = '127.0.0.1';
 const FUNCTIONS_PORT = 5001;
 const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';

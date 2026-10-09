@@ -1,0 +1,2442 @@
+[
+  {
+    "id": "page-dashboard",
+    "label": "Dashboard dashboard",
+    "url": "http://127.0.0.1:3000/dashboard",
+    "headings": [
+      "h1: TỔNG QUAN KINH DOANH",
+      "h3: DOANH THU HÔM NAY",
+      "h3: SỐ ĐƠN",
+      "h3: ĐƠN ĐÃ THU",
+      "h3: GÓI DỊCH VỤ",
+      "h3: BIỂU ĐỒ DOANH THU",
+      "h3: MÓN BÁN CHẠY"
+    ],
+    "buttons": [
+      {
+        "name": "[button button]",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUÁN QA PLAYWRIGHT",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THOÁT",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "HÔM NAY",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": "true",
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "TUẦN",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": "false",
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THÁNG",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": "false",
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Mở trợ lý AI",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Send feedback",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "DOANH THU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "VẬN HÀNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUẢN LÝ QUÁN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THỰC ĐƠN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "KHO NGUYÊN LIỆU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "SƠ ĐỒ BÀN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NHÂN SỰ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "GÓI DỊCH VỤ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "CẤU HÌNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "PHẢN HỒI",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "MỞ MÁY TRẠM (SIMULATOR)",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Quản lý gói",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NÂNG CẤP AI BÁO CÁO",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [],
+    "bodyText": "SCANGO_ DOANH THU VẬN HÀNH QUẢN LÝ QUÁN THỰC ĐƠN KHO NGUYÊN LIỆU SƠ ĐỒ BÀN NHÂN SỰ GÓI DỊCH VỤ CẤU HÌNH PHẢN HỒI G43H5HGNC4RJ0FJRYHXMD3G7QXL1 LOCAL CỬA HÀNG QUÁN QA PLAYWRIGHT BỐI CẢNH: QUÁN QA PLAYWRIGHT THOÁT TỔNG QUAN KINH DOANH Số liệu trực tiếp hôm nay.SỐ LIỆU THẬT MỞ MÁY TRẠM (SIMULATOR) HÔM NAY TUẦN THÁNG DOANH THU HÔM NAY 0đ Lợi nhuận gộp: 0đ SỐ ĐƠN 0 ĐƠN ĐÃ THU 0 GÓI DỊCH VỤ Free Quản lý gói CHƯA CÓ SỐ LIỆU BÁO CÁO CHO HÔM NAY. BIỂU ĐỒ DOANH THU Hôm nay CHƯA CÓ DOANH THU ĐÃ THU HÔM NAY. MÓN BÁN CHẠY CHƯA CÓ ĐƠN ĐÃ THU. NÂNG CẤP AI BÁO CÁO SEND FEEDBACK",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failed": []
+  },
+  {
+    "id": "page-manage",
+    "label": "Dashboard manage",
+    "url": "http://127.0.0.1:3000/dashboard/manage",
+    "headings": [
+      "h1: KHU VỰC ADMIN"
+    ],
+    "buttons": [
+      {
+        "name": "[button button]",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUÁN QA PLAYWRIGHT",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THOÁT",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Mở trợ lý AI",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Send feedback",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "DOANH THU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "VẬN HÀNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUẢN LÝ QUÁN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THỰC ĐƠN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "KHO NGUYÊN LIỆU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "SƠ ĐỒ BÀN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NHÂN SỰ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "GÓI DỊCH VỤ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "CẤU HÌNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "PHẢN HỒI",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [],
+    "bodyText": "SCANGO_ DOANH THU VẬN HÀNH QUẢN LÝ QUÁN THỰC ĐƠN KHO NGUYÊN LIỆU SƠ ĐỒ BÀN NHÂN SỰ GÓI DỊCH VỤ CẤU HÌNH PHẢN HỒI G43H5HGNC4RJ0FJRYHXMD3G7QXL1 LOCAL CỬA HÀNG QUÁN QA PLAYWRIGHT BỐI CẢNH: QUÁN QA PLAYWRIGHT THOÁT KHU VỰC ADMIN Tài khoản này không có quyền ADMIN. Mọi truy cập đều bị máy chủ từ chối. SEND FEEDBACK",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failed": []
+  },
+  {
+    "id": "page-menu",
+    "label": "Dashboard menu",
+    "url": "http://127.0.0.1:3000/dashboard/menu",
+    "headings": [
+      "h1: QUẢN LÝ THỰC ĐƠN"
+    ],
+    "buttons": [
+      {
+        "name": "[button button]",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUÁN QA PLAYWRIGHT",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THOÁT",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THÊM MÓN",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "TẤT CẢ",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Mở trợ lý AI",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Send feedback",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "DOANH THU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "VẬN HÀNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUẢN LÝ QUÁN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THỰC ĐƠN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "KHO NGUYÊN LIỆU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "SƠ ĐỒ BÀN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NHÂN SỰ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "GÓI DỊCH VỤ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "CẤU HÌNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "PHẢN HỒI",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [
+      {
+        "name": "[placeholder] Tìm kiếm món ăn...",
+        "tag": "input",
+        "type": "text",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "bodyText": "SCANGO_ DOANH THU VẬN HÀNH QUẢN LÝ QUÁN THỰC ĐƠN KHO NGUYÊN LIỆU SƠ ĐỒ BÀN NHÂN SỰ GÓI DỊCH VỤ CẤU HÌNH PHẢN HỒI G43H5HGNC4RJ0FJRYHXMD3G7QXL1 LOCAL CỬA HÀNG QUÁN QA PLAYWRIGHT BỐI CẢNH: QUÁN QA PLAYWRIGHT THOÁT QUẢN LÝ THỰC ĐƠN Cấu hình danh mục, món ăn và tùy chọn (Modifier). THÊM MÓN TẤT CẢ Chưa có món ăn nào. SEND FEEDBACK",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failed": []
+  },
+  {
+    "id": "page-inventory",
+    "label": "Dashboard inventory",
+    "url": "http://127.0.0.1:3000/dashboard/inventory",
+    "headings": [
+      "h1: KHO NGUYÊN LIỆU"
+    ],
+    "buttons": [
+      {
+        "name": "[button button]",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUÁN QA PLAYWRIGHT",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THOÁT",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "BÁO CÁO THAY ĐỔI",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THÊM NGUYÊN LIỆU",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Mở trợ lý AI",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Send feedback",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "DOANH THU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "VẬN HÀNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUẢN LÝ QUÁN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THỰC ĐƠN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "KHO NGUYÊN LIỆU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "SƠ ĐỒ BÀN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NHÂN SỰ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "GÓI DỊCH VỤ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "CẤU HÌNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "PHẢN HỒI",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [],
+    "bodyText": "SCANGO_ DOANH THU VẬN HÀNH QUẢN LÝ QUÁN THỰC ĐƠN KHO NGUYÊN LIỆU SƠ ĐỒ BÀN NHÂN SỰ GÓI DỊCH VỤ CẤU HÌNH PHẢN HỒI G43H5HGNC4RJ0FJRYHXMD3G7QXL1 LOCAL CỬA HÀNG QUÁN QA PLAYWRIGHT BỐI CẢNH: QUÁN QA PLAYWRIGHT THOÁT KHO NGUYÊN LIỆU QUẢN LÝ VÀ THEO DÕI MỌI THAY ĐỔI BÁO CÁO THAY ĐỔI THÊM NGUYÊN LIỆU NGUYÊN LIỆU ĐƠN VỊ GIÁ NHẬP TỒN KHO TRẠNG THÁI THAO TÁC CHƯA CÓ NGUYÊN LIỆU. BẤM \"THÊM NGUYÊN LIỆU\". SEND FEEDBACK",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failed": []
+  },
+  {
+    "id": "page-tables",
+    "label": "Dashboard tables",
+    "url": "http://127.0.0.1:3000/dashboard/tables",
+    "headings": [
+      "h1: QUẢN LÝ BÀN"
+    ],
+    "buttons": [
+      {
+        "name": "[button button]",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUÁN QA PLAYWRIGHT",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THOÁT",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THÊM BÀN",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Mở trợ lý AI",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Send feedback",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "DOANH THU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "VẬN HÀNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUẢN LÝ QUÁN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THỰC ĐƠN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "KHO NGUYÊN LIỆU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "SƠ ĐỒ BÀN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NHÂN SỰ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "GÓI DỊCH VỤ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "CẤU HÌNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "PHẢN HỒI",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [],
+    "bodyText": "SCANGO_ DOANH THU VẬN HÀNH QUẢN LÝ QUÁN THỰC ĐƠN KHO NGUYÊN LIỆU SƠ ĐỒ BÀN NHÂN SỰ GÓI DỊCH VỤ CẤU HÌNH PHẢN HỒI G43H5HGNC4RJ0FJRYHXMD3G7QXL1 LOCAL CỬA HÀNG QUÁN QA PLAYWRIGHT BỐI CẢNH: QUÁN QA PLAYWRIGHT THOÁT QUẢN LÝ BÀN Thiết lập sơ đồ bàn, in mã QR và quản lý thẻ NFC. THÊM BÀN Chưa có bàn nào được thiết lập. SEND FEEDBACK",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failed": []
+  },
+  {
+    "id": "page-staff",
+    "label": "Dashboard staff",
+    "url": "http://127.0.0.1:3000/dashboard/staff",
+    "headings": [
+      "h1: NHÂN SỰ"
+    ],
+    "buttons": [
+      {
+        "name": "[button button]",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUÁN QA PLAYWRIGHT",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THOÁT",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THÊM NHÂN SỰ",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Mở trợ lý AI",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Send feedback",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "DOANH THU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "VẬN HÀNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUẢN LÝ QUÁN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THỰC ĐƠN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "KHO NGUYÊN LIỆU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "SƠ ĐỒ BÀN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NHÂN SỰ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "GÓI DỊCH VỤ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "CẤU HÌNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "PHẢN HỒI",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [],
+    "bodyText": "SCANGO_ DOANH THU VẬN HÀNH QUẢN LÝ QUÁN THỰC ĐƠN KHO NGUYÊN LIỆU SƠ ĐỒ BÀN NHÂN SỰ GÓI DỊCH VỤ CẤU HÌNH PHẢN HỒI G43H5HGNC4RJ0FJRYHXMD3G7QXL1 LOCAL CỬA HÀNG QUÁN QA PLAYWRIGHT BỐI CẢNH: QUÁN QA PLAYWRIGHT THOÁT NHÂN SỰ TÀI KHOẢN, VAI TRÒ VÀ PIN ĐĂNG NHẬP THÊM NHÂN SỰ Tài khoản do chủ quán tạo Mỗi nhân viên có email, mật khẩu và PIN riêng. PIN chỉ lưu dạng băm. 0/0 ACTIVE NHÂN SỰ EMAIL VAI TRÒ TRẠNG THÁI THAO TÁC CHƯA CÓ NHÂN SỰ NÀO. BẤM \"THÊM NHÂN SỰ\" ĐỂ TẠO TÀI KHOẢN. Nhân viên đăng nhập tại màn hình đăng nhập bằng email và mật khẩu tạm, sau đó nhập PIN ca. Chủ quán nên đổi mật khẩu tạm cho nhân viên khi bàn giao. SEND FEEDBACK",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failed": []
+  },
+  {
+    "id": "page-subscription",
+    "label": "Dashboard subscription",
+    "url": "http://127.0.0.1:3000/dashboard/subscription",
+    "headings": [
+      "h1: GÓI CƯỚC & THANH TOÁN",
+      "h3: LITE",
+      "h3: PRO",
+      "h3: ENTERPRISE"
+    ],
+    "buttons": [
+      {
+        "name": "[button button]",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUÁN QA PLAYWRIGHT",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THOÁT",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "HẠ CẤP LITE",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NÂNG CẤP PRO",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NHẬN TƯ VẤN",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Mở trợ lý AI",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Send feedback",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "DOANH THU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "VẬN HÀNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUẢN LÝ QUÁN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THỰC ĐƠN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "KHO NGUYÊN LIỆU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "SƠ ĐỒ BÀN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NHÂN SỰ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "GÓI DỊCH VỤ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "CẤU HÌNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "PHẢN HỒI",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [],
+    "bodyText": "SCANGO_ DOANH THU VẬN HÀNH QUẢN LÝ QUÁN THỰC ĐƠN KHO NGUYÊN LIỆU SƠ ĐỒ BÀN NHÂN SỰ GÓI DỊCH VỤ CẤU HÌNH PHẢN HỒI G43H5HGNC4RJ0FJRYHXMD3G7QXL1 LOCAL CỬA HÀNG QUÁN QA PLAYWRIGHT BỐI CẢNH: QUÁN QA PLAYWRIGHT THOÁT GÓI CƯỚC & THANH TOÁN QUẢN LÝ GÓI ĐĂNG KÝ CỦA BẠN. ĐANG DÙNG: FREE LITE Dành cho quán siêu nhỏ DÙNG THỬ 7 NGÀY 0đ /tháng 3 bàn / 15 đơn/ngày QR menu cơ bản Theo dõi trạng thái món real-time Chạm NFC Order & thanh toán AI phân tích lời/lỗ HẠ CẤP LITE KHUYÊN DÙNG PRO Đầy đủ vận hành tiêu chuẩn 199k /tháng Mọi tính năng của gói Lite Giới hạn bàn & đơn theo gói Chạm NFC Order & thanh toán Màn hình Kitchen Display (KDS) AI Rule-based & LLM hỏi-đáp NÂNG CẤP PRO ENTERPRISE Trợ lý AI & Quản trị nâng cao Liên hệ (ĐÃ BAO GỒM THIẾT BỊ THẺ CHẠM NFC) Mọi tính năng của gói Pro Split Bill (chia tiền) Đổi template ngành linh hoạt Loyalty: Gợi ý ưu đãi tự động API tích hợp ERP & Chuỗi NHẬN TƯ VẤN ",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failed": []
+  },
+  {
+    "id": "page-settings",
+    "label": "Dashboard settings",
+    "url": "http://127.0.0.1:3000/dashboard/settings",
+    "headings": [
+      "h1: CẤU HÌNH",
+      "h2: LANGUAGE",
+      "h2: CẤU HÌNH ĐANG ÁP DỤNG",
+      "h2: THÔNG TIN VẬN HÀNH",
+      "h2: THANH TOÁN",
+      "h2: LOYALTY & ƯU ĐÃI"
+    ],
+    "buttons": [
+      {
+        "name": "[button button]",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUÁN QA PLAYWRIGHT",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THOÁT",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "TIẾNG VIỆT",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": "false",
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "ENGLISH",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": "true",
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "LƯU THAY ĐỔI",
+        "tag": "button",
+        "type": "submit",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Mở trợ lý AI",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Send feedback",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "DOANH THU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "VẬN HÀNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUẢN LÝ QUÁN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THỰC ĐƠN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "KHO NGUYÊN LIỆU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "SƠ ĐỒ BÀN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NHÂN SỰ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "GÓI DỊCH VỤ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "CẤU HÌNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "PHẢN HỒI",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [
+      {
+        "name": "[input text]",
+        "tag": "input",
+        "type": "text",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "Bún Phở Kinh Kỳ"
+      },
+      {
+        "name": "Quán ăn / Phở Quán Café Nhà hàng / Quán nhậu Tiệm bánh Trà sữa Boba",
+        "tag": "select",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "quan_an"
+      },
+      {
+        "name": "Lite Pro Enterprise",
+        "tag": "select",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "Pro"
+      },
+      {
+        "name": "[input radio]",
+        "tag": "input",
+        "type": "radio",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "on"
+      },
+      {
+        "name": "[input radio]",
+        "tag": "input",
+        "type": "radio",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "on"
+      },
+      {
+        "name": "[input checkbox]",
+        "tag": "input",
+        "type": "checkbox",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "on"
+      },
+      {
+        "name": "[input number]",
+        "tag": "input",
+        "type": "number",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "1"
+      },
+      {
+        "name": "[input checkbox]",
+        "tag": "input",
+        "type": "checkbox",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "on"
+      },
+      {
+        "name": "[input text]",
+        "tag": "input",
+        "type": "text",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "MUANHIEU15K"
+      },
+      {
+        "name": "Tự động Khách nhập mã",
+        "tag": "select",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "auto"
+      },
+      {
+        "name": "Số món Số tiền Cả hai",
+        "tag": "select",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "quantity"
+      },
+      {
+        "name": "[input number]",
+        "tag": "input",
+        "type": "number",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "3"
+      },
+      {
+        "name": "[input number]",
+        "tag": "input",
+        "type": "number",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "150000"
+      },
+      {
+        "name": "[input number]",
+        "tag": "input",
+        "type": "number",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "15000"
+      }
+    ],
+    "bodyText": "SCANGO_ DOANH THU VẬN HÀNH QUẢN LÝ QUÁN THỰC ĐƠN KHO NGUYÊN LIỆU SƠ ĐỒ BÀN NHÂN SỰ GÓI DỊCH VỤ CẤU HÌNH PHẢN HỒI G43H5HGNC4RJ0FJRYHXMD3G7QXL1 LOCAL CỬA HÀNG QUÁN QA PLAYWRIGHT BỐI CẢNH: QUÁN QA PLAYWRIGHT THOÁT CẤU HÌNH THIẾT LẬP THÔNG TIN CỬA HÀNG, GÓI VÀ LOYALTY LANGUAGE Choose the interface language. TIẾNG VIỆT ENGLISH CẤU HÌNH ĐANG ÁP DỤNG Giá trị thật đang chạy cho cửa hàng. Mỗi dòng ghi rõ ai đặt giá trị đó. THÔNG TIN VẬN HÀNH Các giá trị này đồng bộ với dashboard và simulator. TÊN CỬA HÀNG LOẠI HÌNH KINH DOANH Quán ăn / Phở Quán Café Nhà hàng / Quán nhậu Tiệm bánh Trà sữa Boba GÓI SẢN PHẨM Lite Pro Enterprise THANH TOÁN TRẢ SAU (ĂN XONG TÍNH) TRẢ TRƯỚC (THANH TOÁN ĐỂ NẤU) LOYALTY & ƯU ĐÃI BẬT TÍCH ĐIỂM HỘI VIÊN ĐIỂM MỖI 10.000Đ BẬT MÃ ƯU ĐÃI MÃ ƯU ĐÃI CÁCH ÁP DỤNG Tự động Khách nhập mã ĐIỀU KIỆN Số món Số tiền Cả hai TỐI THIỂU MÓN TỐI THIỂU TIỀN SỐ TIỀN GIẢM LƯU THAY ĐỔI SEND FEED",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failed": []
+  },
+  {
+    "id": "page-feedback",
+    "label": "Dashboard feedback",
+    "url": "http://127.0.0.1:3000/dashboard/feedback",
+    "headings": [
+      "h1: FEEDBACK INBOX"
+    ],
+    "buttons": [
+      {
+        "name": "[button button]",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUÁN QA PLAYWRIGHT",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THOÁT",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "RETRY",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "START WORKING",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "MARK RESOLVED",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Mở trợ lý AI",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Send feedback",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "DOANH THU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "VẬN HÀNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QUẢN LÝ QUÁN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "THỰC ĐƠN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "KHO NGUYÊN LIỆU",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "SƠ ĐỒ BÀN",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "NHÂN SỰ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "GÓI DỊCH VỤ",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "CẤU HÌNH",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "PHẢN HỒI",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [],
+    "bodyText": "SCANGO_ DOANH THU VẬN HÀNH QUẢN LÝ QUÁN THỰC ĐƠN KHO NGUYÊN LIỆU SƠ ĐỒ BÀN NHÂN SỰ GÓI DỊCH VỤ CẤU HÌNH PHẢN HỒI G43H5HGNC4RJ0FJRYHXMD3G7QXL1 LOCAL CỬA HÀNG QUÁN QA PLAYWRIGHT BỐI CẢNH: QUÁN QA PLAYWRIGHT THOÁT FEEDBACK INBOX Owner and staff reports about ScanGo. RETRY USABILITY LOW RECEIVED OWNER · 17:51 08/10/2026 Kiểm tra trực tiếp callable từ script Node để đọc lỗi thật. /DASHBOARD START WORKING MARK RESOLVED 1 HISTORY SEND FEEDBACK",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failed": []
+  },
+  {
+    "id": "role-solo",
+    "label": "Simulator solo",
+    "url": "http://127.0.0.1:3000/simulator/solo",
+    "headings": [
+      "h2: Thiết lập quán",
+      "h3: Tên thương hiệu"
+    ],
+    "buttons": [
+      {
+        "name": "Đơn ảo",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Xóa Data",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Quán ăn / Phở",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Cà phê / Trà sữa",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Tiếp theo",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "[href] /simulator",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [
+      {
+        "name": "Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên",
+        "tag": "select",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "solo"
+      },
+      {
+        "name": "[placeholder] E.g. Phở Kinh Kỳ",
+        "tag": "input",
+        "type": "text",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "Bún Phở Kinh Kỳ"
+      }
+    ],
+    "bodyText": "Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên 18:54 5G Thiết lập quán Tối ưu hóa quy trình trong 15s. B1: Thông tin quán Tên thương hiệu Tên thương hiệu Mô hình phân loại Quán ăn / Phở Cà phê / Trà sữa Tiếp theo"
+  },
+  {
+    "id": "role-owner",
+    "label": "Simulator owner",
+    "url": "http://127.0.0.1:3000/simulator/owner",
+    "headings": [
+      "h3: Bún Phở Kinh Kỳ"
+    ],
+    "buttons": [
+      {
+        "name": "Đơn ảo",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Xóa Data",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Reset setup",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Report",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Dishes",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Inventory",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "QR tables",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Staff",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "AI assistant",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "[href] /simulator",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [
+      {
+        "name": "Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên",
+        "tag": "select",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "owner"
+      }
+    ],
+    "bodyText": "Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên 18:54 5G LIVE PLATFORM MANAGEMENT Bún Phở Kinh Kỳ Type: Restaurant / Pho Plan PRO Owner workspace Reset setup Report Dishes Inventory QR tables Staff AI assistant Actual revenue 0đ ✓ Real-time POS Profit margin 0đ Ingredient cost: 0đ Most popular dishes Live chart 1 Bún Chả Tre Thạch Thất (Món ăn) 2 orders 2 Phở Bò Tái Lăn Kinh Kỳ (Món ăn) 1 orders 3 Trà Sâm Dứa Hương Lài (Món ăn) 1 orders Member loyalty (4 people) Order growth Nguyễn Văn Hùng Phone: 0987654321 • Visits: 12 times 340 points ✓ OTP verified Trần Thị Mai Phone: 0901234567 • Visits: 5 times 120 points ✓ OTP verified Lê Hoàng Minh Phone: 0933344455 • Visits: 2 times 55 points Pending Phạm Thanh Thảo Phone: 0977888999 • Visits: 0 times 0 points Pending"
+  },
+  {
+    "id": "role-cashier",
+    "label": "Simulator cashier",
+    "url": "http://127.0.0.1:3000/simulator/cashier",
+    "headings": [
+      "h3: Thu Ngân"
+    ],
+    "buttons": [
+      {
+        "name": "Đơn ảo",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Xóa Data",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Đăng nhập",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "[href] /simulator",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [
+      {
+        "name": "Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên",
+        "tag": "select",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "cashier"
+      },
+      {
+        "name": "[placeholder] ••••",
+        "tag": "input",
+        "type": "password",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "bodyText": "Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên 18:54 Wi-Fi Thu Ngân Vui lòng nhập mã PIN. Nhập số bất kỳ để trải nghiệm thử Đăng nhập"
+  },
+  {
+    "id": "role-kitchen",
+    "label": "Simulator kitchen",
+    "url": "http://127.0.0.1:3000/simulator/kitchen",
+    "headings": [
+      "h3: KDS Nhà Bếp"
+    ],
+    "buttons": [
+      {
+        "name": "Đơn ảo",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Xóa Data",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Đăng nhập",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "[href] /simulator",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [
+      {
+        "name": "Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên",
+        "tag": "select",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "kitchen"
+      },
+      {
+        "name": "[placeholder] ••••",
+        "tag": "input",
+        "type": "password",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "bodyText": "Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên 18:55 Wi-Fi KDS Nhà Bếp Vui lòng nhập mã PIN. Nhập mã PIN 4 số để bắt đầu Đăng nhập"
+  },
+  {
+    "id": "role-customer",
+    "label": "Simulator customer",
+    "url": "http://127.0.0.1:3000/simulator/customer",
+    "headings": [
+      "h1: Choose a table to open the menu."
+    ],
+    "buttons": [
+      {
+        "name": "Đơn ảo",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Xóa Data",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Bàn 01 Open menu",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Bàn 02 Open menu",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Bàn 03 Open menu",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Bàn 04 Open menu",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Bàn 05 Open menu",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Bàn 06 Open menu",
+        "tag": "button",
+        "type": "button",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "[href] /simulator",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [
+      {
+        "name": "Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên",
+        "tag": "select",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "customer"
+      }
+    ],
+    "bodyText": "Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên 18:55 5G ScanGo ready Choose a table to open the menu. QR/NFC simulation. A public link opens the menu for its table. Bàn 01 Open menu Bàn 02 Open menu Bàn 03 Open menu Bàn 04 Open menu Bàn 05 Open menu Bàn 06 Open menu"
+  },
+  {
+    "id": "role-staff",
+    "label": "Simulator staff",
+    "url": "http://127.0.0.1:3000/simulator/staff",
+    "headings": [
+      "h3: Nhân viên"
+    ],
+    "buttons": [
+      {
+        "name": "Đơn ảo",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Xóa Data",
+        "tag": "button",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      },
+      {
+        "name": "Đăng nhập",
+        "tag": "button",
+        "type": "submit",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "links": [
+      {
+        "name": "[href] /simulator",
+        "tag": "a",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "fields": [
+      {
+        "name": "Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên",
+        "tag": "select",
+        "type": null,
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": "staff"
+      },
+      {
+        "name": "[placeholder] Mã PIN",
+        "tag": "input",
+        "type": "password",
+        "disabled": false,
+        "pressed": null,
+        "checked": null,
+        "selected": null,
+        "value": null
+      }
+    ],
+    "bodyText": "Đơn ảo Xóa Data Solo Operator Owner (Quản lý) Thu Ngân KDS (Bếp) Khách hàng Nhân viên 18:55 5G Nhân viên Nhập mã PIN cá nhân để bắt đầu ca làm việc Đăng nhập"
+  }
+]

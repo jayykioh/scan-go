@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, Check, ChevronLeft, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Ticket, X } from 'lucide-react';
 import { INDUSTRY_TEMPLATES } from '../mockData';
 import { LoyaltyMember, MenuItem, Order, OrderItem, TableConfig, TenantConfig } from '../types';
 import type { PublicOrderTracking } from '@contracts/order.contract';
+import type { PromotionEvaluationResult } from '@contracts/promotion.contract';
 import type { I18nMessageKey } from '@contracts/i18n.contract';
 import { resolveInterfaceLocale, translate } from '../data/adapters/i18n.adapter';
 
@@ -22,7 +23,24 @@ interface CustomerProps {
    * callable; there is no browser fallback (REQ-ORD-004, NFR-SEC-002). The
    * demo simulator passes no handler and the submit control stays disabled.
    */
-  onSubmitOrder?: (cart: OrderItem[], paymentMode: 'Pay-First' | 'Pay-Later') => Promise<void>;
+  onSubmitOrder?: (
+    cart: OrderItem[],
+    paymentMode: 'Pay-First' | 'Pay-Later',
+    promotionCode: string | null,
+  ) => Promise<void>;
+  /**
+   * Server promotion evaluation (REQ-PRO-001). The page owns the callable so
+   * this view holds no pricing rule; without it the cart simply shows no
+   * promotion, and no client-invented discount is ever displayed.
+   */
+  onEvaluatePromotion?: (
+    lines: Array<{
+      menuItemId: string;
+      quantity: number;
+      selectedOptionIds: string[];
+    }>,
+    code: string | null,
+  ) => Promise<PromotionEvaluationResult>;
   /** Browser connection state. Defaults to online for the demo simulator. */
   isOnline?: boolean;
   /** Adapter error surfaced from the menu or tracking listener. */
@@ -52,6 +70,7 @@ export default function CustomerView({
   tables,
   directMenu = false,
   onSubmitOrder,
+  onEvaluatePromotion,
   isOnline = true,
   menuError = null,
 }: CustomerProps) {
@@ -91,23 +110,57 @@ export default function CustomerView({
 
   const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const isTargetSpecificDish = tenantConfig.discountTargetDishId && tenantConfig.discountTargetDishId !== 'all';
-  const targetItemInCart = isTargetSpecificDish ? cart.find(item => item.menuId === tenantConfig.discountTargetDishId) : null;
-  const qualifyingQuantity = isTargetSpecificDish ? targetItemInCart?.quantity || 0 : totalQuantity;
-  const qualifyingAmount = isTargetSpecificDish ? (targetItemInCart?.price || 0) * (targetItemInCart?.quantity || 0) : cartTotal;
+  // The Promotion is server-authoritative: the cart shows exactly what the
+  // server calculated, so the amount a Customer reads is the amount the Order
+  // records (REQ-PRO-001).
+  const [promotion, setPromotion] = useState<PromotionEvaluationResult | null>(null);
+  const [promotionCode, setPromotionCode] = useState('');
+  const [promotionError, setPromotionError] = useState<string | null>(null);
+  const evaluationIdRef = useRef(0);
 
-  const promoConditionMet = (() => {
-    if (!tenantConfig.discountEnabled) return false;
-    const minItems = tenantConfig.discountMinItems ?? 3;
-    const minAmount = tenantConfig.discountMinAmount ?? 150000;
-    if (tenantConfig.discountConditionType === 'amount') return qualifyingAmount >= minAmount;
-    if (tenantConfig.discountConditionType === 'both') return qualifyingAmount >= minAmount && qualifyingQuantity >= minItems;
-    return qualifyingQuantity >= minItems;
-  })();
+  const cartSignature = cart
+    .map((item) => `${item.menuId}:${item.quantity}:${[...(item.selectedModifiers ?? [])].sort().join('|')}`)
+    .sort()
+    .join(',');
 
-  const promoDiscount = promoConditionMet ? tenantConfig.discountAmount || 0 : 0;
-  const loyaltyDiscount = redeemedPoints ? 20000 : 0;
-  const finalTotal = Math.max(0, cartTotal - promoDiscount - loyaltyDiscount);
+  useEffect(() => {
+    if (!onEvaluatePromotion || cart.length === 0) {
+      setPromotion(null);
+      setPromotionError(null);
+      return;
+    }
+    const evaluationId = evaluationIdRef.current + 1;
+    evaluationIdRef.current = evaluationId;
+    const timer = setTimeout(() => {
+      void onEvaluatePromotion(
+        cart.map((item) => ({
+          menuItemId: item.menuId,
+          quantity: item.quantity,
+          selectedOptionIds: item.selectedOptionIds ?? [],
+        })),
+        promotionCode.trim().length > 0 ? promotionCode.trim() : null,
+      )
+        .then((result) => {
+          if (evaluationIdRef.current !== evaluationId) return;
+          setPromotion(result);
+          setPromotionError(null);
+        })
+        .catch((error: Error) => {
+          if (evaluationIdRef.current !== evaluationId) return;
+          setPromotion(null);
+          setPromotionError(error.message);
+        });
+    }, 300);
+    return () => clearTimeout(timer);
+    // `cartSignature` captures every field the server prices on, so the effect
+    // re-runs exactly when the authoritative cart changes.
+  }, [cartSignature, promotionCode, cart, onEvaluatePromotion]);
+
+  const promoDiscount = promotion?.discountVnd ?? 0;
+  const finalTotal = promotion ? promotion.totalVnd : cartTotal;
+  const giftLines = promotion?.giftLines ?? [];
+  const codeRequired = promotion?.codeRequired ?? false;
+  const appliedPromotionName = promotion?.appliedPromotion?.name ?? null;
 
   const openItem = (item: MenuItem) => {
     if (!item.inStock) return;
@@ -128,15 +181,17 @@ export default function CustomerView({
 
   const addActiveItemToCart = () => {
     if (!activeItem) return;
-    const modifiers = [...selectedModifiers].sort();
-    const id = `${activeItem.id}-${modifiers.join('|')}`;
+    const modifierKeys = [...selectedModifiers].sort();
+    const modifiers = modifierKeys.map(key => activeItem.toppings?.find(option => option.optionId === key)?.name ?? key);
+    const selectedOptionIds = modifierKeys.filter(key => activeItem.toppings?.some(option => option.optionId === key));
+    const id = `${activeItem.id}-${modifierKeys.join('|')}`;
     const price = activeItem.price + modifierPrice;
     setCart(prev => {
       const existing = prev.find(item => item.id === id);
       if (existing) {
         return prev.map(item => item.id === id ? { ...item, quantity: item.quantity + 1 } : item);
       }
-      return [...prev, { id, menuId: activeItem.id, name: activeItem.name, price, quantity: 1, selectedModifiers: modifiers }];
+      return [...prev, { id, menuId: activeItem.id, name: activeItem.name, price, quantity: 1, selectedModifiers: modifiers, selectedOptionIds }];
     });
     setActiveItem(null);
   };
@@ -207,7 +262,11 @@ export default function CustomerView({
 
     setIsSubmitting(true);
     try {
-      await onSubmitOrder(cart, tenantConfig.paymentMode);
+      await onSubmitOrder(
+        cart,
+        tenantConfig.paymentMode,
+        promotionCode.trim().length > 0 ? promotionCode.trim() : null,
+      );
     } catch (error) {
       setSubmitError((error as Error)?.message || t('customer.submit.failed'));
       setIsSubmitting(false);
@@ -287,14 +346,20 @@ export default function CustomerView({
                 </div>
               </div>
 
-              {tenantConfig.discountEnabled && (
+              {promotion && (promotion.appliedPromotion || promotion.codeRequired) && (
                 <div className="rounded-[24px] bg-white p-4 shadow-sm border border-zinc-100 flex items-center gap-3">
                   <div className="h-10 w-10 rounded-2xl bg-orange-100 flex items-center justify-center"><Ticket className="h-5 w-5 text-orange-600" /></div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-black text-zinc-950">{t('customer.promo.codePrefix')} {tenantConfig.discountCode}</p>
-                    <p className="text-xs text-zinc-500 truncate">{t('customer.promo.condition').replace('{amount}', money(tenantConfig.discountAmount || 0))}</p>
+                    <p className="text-sm font-black text-zinc-950">
+                      {promotion.appliedPromotion?.name ?? t('customer.cart.promoCode')}
+                    </p>
+                    <p className="text-xs text-zinc-500 truncate">
+                      {promotion.appliedPromotion
+                        ? t('customer.promo.saved').replace('{amount}', money(promotion.discountVnd))
+                        : t('customer.cart.promoCodeHint')}
+                    </p>
                   </div>
-                  {promoConditionMet && <Check className="h-5 w-5 text-emerald-600" />}
+                  {promotion.appliedPromotion && <Check className="h-5 w-5 text-emerald-600" />}
                 </div>
               )}
 
@@ -394,10 +459,10 @@ export default function CustomerView({
 
       <AnimatePresence>
         {activeItem && (
-          <ItemSheet locale={locale} item={activeItem} template={template} selectedModifiers={selectedModifiers} modifierPrice={modifierPrice} onToggleModifier={toggleModifier} onClose={() => setActiveItem(null)} onAdd={addActiveItemToCart} />
+          <ItemSheet locale={locale} item={activeItem} template={template} useTemplateModifiers={!directMenu} selectedModifiers={selectedModifiers} modifierPrice={modifierPrice} onToggleModifier={toggleModifier} onClose={() => setActiveItem(null)} onAdd={addActiveItemToCart} />
         )}
         {showCart && (
-          <CartSheet locale={locale} cart={cart} cartTotal={cartTotal} finalTotal={finalTotal} promoDiscount={promoDiscount} loyaltyDiscount={loyaltyDiscount} paymentMode={tenantConfig.paymentMode} onQty={updateCartQty} onClose={() => setShowCart(false)} onSubmit={submitOrder} isOnline={isOnline} isSubmitting={isSubmitting} errorMessage={connectionProblem || submitError} />
+          <CartSheet locale={locale} cart={cart} cartTotal={cartTotal} finalTotal={finalTotal} promoDiscount={promoDiscount} giftLines={giftLines} appliedPromotionName={appliedPromotionName} codeRequired={codeRequired} promotionCode={promotionCode} onPromotionCode={setPromotionCode} promotionError={promotionError} paymentMode={tenantConfig.paymentMode} onQty={updateCartQty} onClose={() => setShowCart(false)} onSubmit={submitOrder} isOnline={isOnline} isSubmitting={isSubmitting} errorMessage={connectionProblem || submitError} />
         )}
         {showLoyalty && (
           <LoyaltySheet profile={loyaltyProfile} phone={phoneNumber} name={customerName} otp={otpCode} otpError={otpError} redeemed={redeemedPoints} onPhone={setPhoneNumber} onName={setCustomerName} onOtp={(value: string) => { setOtpCode(value.replace(/\D/g, '')); setOtpError(''); }} onSave={saveLoyaltyProfile} onRedeem={redeemWithOtp} onClose={() => setShowLoyalty(false)} />
@@ -452,9 +517,9 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
   );
 }
 
-function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleModifier, onClose, onAdd, locale = 'vi' }: any) {
+function ItemSheet({ item, template, useTemplateModifiers = true, selectedModifiers, modifierPrice, onToggleModifier, onClose, onAdd, locale = 'vi' }: any) {
   const t = (key: I18nMessageKey) => translate(locale, key);
-  const groups = [...template.modifier_groups, ...(item.toppings?.length ? [{ name: 'Topping', required: false, options: item.toppings }] : [])];
+  const groups = [...(useTemplateModifiers ? template.modifier_groups : []), ...(item.toppings?.length ? [{ name: 'Topping', required: false, options: item.toppings }] : [])];
   return (
     <Sheet onClose={onClose}>
       <div className="space-y-4">
@@ -474,9 +539,10 @@ function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleM
               <span className="text-[11px] font-bold text-zinc-400">{group.required ? t('customer.item.required') : t('customer.item.optional')}</span>
             </div>
             {group.options.map((option: any) => {
-              const checked = selectedModifiers.includes(option.name);
+              const optionKey = option.optionId ?? option.name;
+              const checked = selectedModifiers.includes(optionKey);
               return (
-                <button key={option.name} type="button" onClick={() => onToggleModifier(option.name, option.price)} className={`w-full rounded-[20px] px-4 py-3 flex items-center justify-between border ${checked ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-zinc-50 text-zinc-900 border-zinc-100'}`}>
+                <button key={optionKey} type="button" onClick={() => onToggleModifier(optionKey, option.price)} className={`w-full rounded-[20px] px-4 py-3 flex items-center justify-between border ${checked ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-zinc-50 text-zinc-900 border-zinc-100'}`}>
                   <span className="text-sm font-bold">{option.name}</span>
                   <span className="text-sm font-black">{option.price ? `+${money(option.price)}` : t('customer.item.free')}</span>
                 </button>
@@ -494,7 +560,7 @@ function ItemSheet({ item, template, selectedModifiers, modifierPrice, onToggleM
   );
 }
 
-function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, loyaltyDiscount, paymentMode, onQty, onClose, onSubmit, isOnline = true, isSubmitting = false, errorMessage = null, locale = 'vi' }: any) {
+function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, giftLines = [], appliedPromotionName = null, codeRequired = false, promotionCode = '', onPromotionCode, promotionError = null, paymentMode, onQty, onClose, onSubmit, isOnline = true, isSubmitting = false, errorMessage = null, locale = 'vi' }: any) {
   const t = (key: I18nMessageKey) => translate(locale, key);
   return (
     <Sheet onClose={onClose}>
@@ -521,10 +587,33 @@ function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, loyaltyDiscount
         </div>
         <div className="rounded-[26px] bg-zinc-950 text-white p-4 space-y-2">
           <div className="flex justify-between text-sm text-zinc-300"><span>{t('customer.cart.subtotal')}</span><span>{money(cartTotal)}</span></div>
-          {promoDiscount > 0 && <div className="flex justify-between text-sm text-emerald-300"><span>{t('customer.cart.promo')}</span><span>-{money(promoDiscount)}</span></div>}
-          {loyaltyDiscount > 0 && <div className="flex justify-between text-sm text-emerald-300"><span>{t('customer.cart.redeemPoints')}</span><span>-{money(loyaltyDiscount)}</span></div>}
+          {promoDiscount > 0 && <div className="flex justify-between text-sm text-emerald-300"><span>{appliedPromotionName ? `${t('customer.cart.promo')} · ${appliedPromotionName}` : t('customer.cart.promo')}</span><span>-{money(promoDiscount)}</span></div>}
+          {giftLines.length > 0 && (
+            <div className="space-y-1 border-t border-white/10 pt-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-orange-300">{t('customer.cart.gift')}</p>
+              {giftLines.map((gift: { menuItemId: string; name: string; quantity: number }) => (
+                <div key={gift.menuItemId} className="flex justify-between text-sm text-orange-200"><span>{gift.quantity}x {gift.name}</span><span>{t('customer.cart.free')}</span></div>
+              ))}
+            </div>
+          )}
           <div className="flex justify-between border-t border-white/10 pt-3 text-lg font-black"><span>{t('customer.cart.totalShort')}</span><span>{money(finalTotal)}</span></div>
         </div>
+        {codeRequired && (
+          <div className="space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500" htmlFor="promotion-code">{t('customer.cart.promoCode')}</label>
+            <input
+              id="promotion-code"
+              value={promotionCode}
+              onChange={(event) => onPromotionCode?.(event.target.value.toUpperCase())}
+              placeholder={t('customer.cart.promoCodePlaceholder')}
+              className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 font-bold uppercase outline-none border border-zinc-100"
+            />
+            <p className="text-xs text-zinc-500">{t('customer.cart.promoCodeHint')}</p>
+          </div>
+        )}
+        {promotionError && (
+          <p role="alert" className="rounded-[18px] bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800">{promotionError}</p>
+        )}
         <p className="flex items-start gap-2 text-xs text-zinc-500"><AlertCircle className="h-4 w-4 shrink-0 text-zinc-400" /> {paymentMode === 'Pay-First' ? t('customer.cart.payFirstCounter') : t('customer.cart.payLaterAfterMeal')}</p>
         {errorMessage && (
           <p role="alert" className="rounded-[18px] bg-red-50 px-4 py-3 text-xs font-bold text-red-700">{errorMessage}</p>
@@ -557,6 +646,7 @@ function LoyaltySheet({ profile, phone, name, otp, otpError, redeemed, onPhone, 
             <input value={otp} onChange={e => onOtp(e.target.value)} inputMode="numeric" maxLength={4} placeholder={t('customer.loyalty.sheet.otpPlaceholder')} className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 text-center font-black tracking-[0.3em] outline-none border border-zinc-100" />
             {otpError && <p className="text-xs font-bold text-red-600">{otpError}</p>}
             <button type="submit" disabled={redeemed} className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black disabled:opacity-50">{redeemed ? t('customer.loyalty.sheet.redeemedOffer') : t('customer.loyalty.sheet.redeemOffer')}</button>
+            <p className="text-xs text-zinc-500">{t('customer.loyalty.sheet.redeemNote')}</p>
           </form>
         ) : (
           <form onSubmit={onSave} className="space-y-3">

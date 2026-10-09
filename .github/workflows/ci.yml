@@ -4,7 +4,16 @@ on:
   push:
   pull_request:
 
+# A superseded run on the same ref has no value once a newer commit lands.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
+  # Fast feedback: static analysis, contracts, and the pure unit suites.
   build:
     runs-on: ubuntu-latest
     steps:
@@ -30,11 +39,42 @@ jobs:
       - name: Typecheck functions
         run: npm run typecheck:functions
 
-      - name: Unit tests
+      - name: Unit tests web and shared
         run: npm run test
+
+      - name: Unit tests functions
+        run: npm --workspace functions run test
 
       - name: Build functions
         run: npm run build:functions
 
       - name: Build web
         run: npm run build
+
+  # Correctness evidence that needs the Firebase emulators. Java is required by
+  # the Firestore emulator, so this job installs a JDK before running either
+  # suite. Both suites are hermetic: no provider secret is present, and the AI
+  # tests pin the deterministic provider in their own seed.
+  emulator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Security Rules tests
+        run: npm run test:rules
+
+      - name: Functions Emulator tests
+        run: npm run test:emulator

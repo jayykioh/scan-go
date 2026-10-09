@@ -30,7 +30,9 @@ import {
   isRetentionEligible,
 } from '../../../../shared/config/retention.js';
 import {
+  ORDER_CONTRACT_VERSION,
   orderSnapshotSchema,
+  type OrderLineSnapshot,
   type OrderSnapshot,
 } from '../../../../shared/contracts/order.contract.js';
 import { stableRequestHash } from '../../shared/idempotency.js';
@@ -164,7 +166,7 @@ export function mapPaymentOrder(
   data: DocumentData,
 ): OrderSnapshot {
   return orderSnapshotSchema.parse({
-    schemaVersion: data.schemaVersion ?? 1,
+    schemaVersion: ORDER_CONTRACT_VERSION,
     orderId,
     tenantId: data.tenantId,
     orderType: data.orderType ?? 'dineIn',
@@ -172,8 +174,16 @@ export function mapPaymentOrder(
     tableNameSnapshot: data.tableNameSnapshot,
     status: data.status,
     paymentMode: data.paymentMode,
-    items: data.items ?? [],
+    items: (data.items ?? []).map((line: DocumentData) => ({
+      ...line,
+      lineDiscountVnd: line.lineDiscountVnd ?? 0,
+      isGift: line.isGift ?? false,
+    })) as OrderLineSnapshot[],
     subtotalVnd: data.subtotalVnd,
+    discountVnd: data.discountVnd ?? 0,
+    promotionSnapshot: data.promotionSnapshot ?? null,
+    loyaltyMemberId: data.loyaltyMemberId ?? null,
+    pointsRedeemed: data.pointsRedeemed ?? 0,
     totalVnd: data.totalVnd,
     trackingToken: data.trackingToken,
     idempotencyKey: data.idempotencyKey,

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Nfc } from 'lucide-react';
@@ -6,27 +6,30 @@ import RootLayout from './layouts/RootLayout';
 import AuthLayout from './layouts/AuthLayout';
 import SimulatorLayout from './layouts/SimulatorLayout';
 import DashboardLayout from './layouts/DashboardLayout';
+import RouteErrorBoundary from './components/RouteErrorBoundary';
+import { lazyRetry } from './utils/lazyRetry';
+import { ToastProvider } from './contexts/ToastContext';
 
-const LandingPage = lazy(() => import('./pages/LandingPage'));
-const IntroducePage = lazy(() => import('./pages/IntroducePage'));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
-const StaffLoginPage = lazy(() => import('./pages/StaffLoginPage'));
+const LandingPage = lazyRetry(() => import('./pages/LandingPage'), 'LandingPage');
+const IntroducePage = lazyRetry(() => import('./pages/IntroducePage'), 'IntroducePage');
+const LoginPage = lazyRetry(() => import('./pages/LoginPage'), 'LoginPage');
+const RegisterPage = lazyRetry(() => import('./pages/RegisterPage'), 'RegisterPage');
+const StaffLoginPage = lazyRetry(() => import('./pages/StaffLoginPage'), 'StaffLoginPage');
 
-const OverviewPage = lazy(() => import('./pages/dashboard/OverviewPage'));
-const ManagementPage = lazy(() => import('./pages/dashboard/ManagementPage'));
-const StaffPage = lazy(() => import('./pages/dashboard/StaffPage'));
-const SettingsPage = lazy(() => import('./pages/dashboard/SettingsPage'));
-const MenuPage = lazy(() => import('./pages/dashboard/MenuPage'));
-const InventoryPage = lazy(() => import('./pages/dashboard/InventoryPage'));
-const TablesPage = lazy(() => import('./pages/dashboard/TablesPage'));
-const SubscriptionPage = lazy(() => import('./pages/dashboard/SubscriptionPage'));
-const FeedbackPage = lazy(() => import('./pages/dashboard/FeedbackPage'));
-const PromotionsPage = lazy(() => import('./pages/dashboard/PromotionsPage'));
+const OverviewPage = lazyRetry(() => import('./pages/dashboard/OverviewPage'), 'OverviewPage');
+const ManagementPage = lazyRetry(() => import('./pages/dashboard/ManagementPage'), 'ManagementPage');
+const StaffPage = lazyRetry(() => import('./pages/dashboard/StaffPage'), 'StaffPage');
+const SettingsPage = lazyRetry(() => import('./pages/dashboard/SettingsPage'), 'SettingsPage');
+const MenuPage = lazyRetry(() => import('./pages/dashboard/MenuPage'), 'MenuPage');
+const InventoryPage = lazyRetry(() => import('./pages/dashboard/InventoryPage'), 'InventoryPage');
+const TablesPage = lazyRetry(() => import('./pages/dashboard/TablesPage'), 'TablesPage');
+const SubscriptionPage = lazyRetry(() => import('./pages/dashboard/SubscriptionPage'), 'SubscriptionPage');
+const FeedbackPage = lazyRetry(() => import('./pages/dashboard/FeedbackPage'), 'FeedbackPage');
+const PromotionsPage = lazyRetry(() => import('./pages/dashboard/PromotionsPage'), 'PromotionsPage');
 
-const SimulatorIndex = lazy(() => import('./pages/SimulatorIndex'));
-const SimulatorRole = lazy(() => import('./pages/SimulatorRole'));
-const PublicMenuPage = lazy(() => import('./pages/PublicMenuPage'));
+const SimulatorIndex = lazyRetry(() => import('./pages/SimulatorIndex'), 'SimulatorIndex');
+const SimulatorRole = lazyRetry(() => import('./pages/SimulatorRole'), 'SimulatorRole');
+const PublicMenuPage = lazyRetry(() => import('./pages/PublicMenuPage'), 'PublicMenuPage');
 
 const FallbackLoader = () => (
   <div className="min-h-dvh w-full flex items-center justify-center bg-zinc-50 relative overflow-hidden">
@@ -83,6 +86,7 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <RootLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         index: true,
@@ -95,6 +99,7 @@ const router = createBrowserRouter([
       {
         path: 'dashboard',
         element: <DashboardLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [
           { index: true, element: <OverviewPage /> },
           { path: 'manage', element: <ManagementPage /> },
@@ -111,6 +116,7 @@ const router = createBrowserRouter([
       {
         path: 'simulator',
         element: <SimulatorLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [
           {
             index: true,
@@ -126,15 +132,18 @@ const router = createBrowserRouter([
   },
   {
     path: '/menu/:tableId',
-    element: <PublicMenuPage />
+    element: <PublicMenuPage />,
+    errorElement: <RouteErrorBoundary />
   },
   {
     path: '/staff',
-    element: <StaffLoginPage />
+    element: <StaffLoginPage />,
+    errorElement: <RouteErrorBoundary />
   },
   {
     path: '/',
     element: <AuthLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         path: 'login',
@@ -147,8 +156,6 @@ const router = createBrowserRouter([
     ]
   }
 ]);
-
-import { ToastProvider } from './contexts/ToastContext';
 
 export default function App() {
   const [initialLoading, setInitialLoading] = React.useState(true);

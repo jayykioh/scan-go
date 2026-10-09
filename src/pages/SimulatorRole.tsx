@@ -1,16 +1,17 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSimulator } from '../layouts/SimulatorLayout';
 import { useToast } from '../contexts/ToastContext';
 import PhoneSimulator from '../components/PhoneSimulator';
 import { ArrowLeft, Plus, X } from 'lucide-react';
+import { lazyRetry } from '../utils/lazyRetry';
 
-const OwnerView = lazy(() => import('../components/OwnerView'));
-const CashierView = lazy(() => import('../components/CashierView'));
-const KitchenView = lazy(() => import('../components/KitchenView'));
-const CustomerView = lazy(() => import('../components/CustomerView'));
-const SoloOperatorView = lazy(() => import('../components/SoloOperatorView'));
-const StaffView = lazy(() => import('../components/StaffView'));
+const OwnerView = lazyRetry(() => import('../components/OwnerView'), 'OwnerView');
+const CashierView = lazyRetry(() => import('../components/CashierView'), 'CashierView');
+const KitchenView = lazyRetry(() => import('../components/KitchenView'), 'KitchenView');
+const CustomerView = lazyRetry(() => import('../components/CustomerView'), 'CustomerView');
+const SoloOperatorView = lazyRetry(() => import('../components/SoloOperatorView'), 'SoloOperatorView');
+const StaffView = lazyRetry(() => import('../components/StaffView'), 'StaffView');
 
 function RoleLoading() {
   return (

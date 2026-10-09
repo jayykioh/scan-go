@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 import { captureMonitoringError } from '../services/monitoring';
+import { isChunkLoadError } from '../utils/chunkError';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -18,6 +19,15 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    if (isChunkLoadError(error)) {
+      const storageKey = 'scango:chunk-retry:root-boundary';
+      if (!sessionStorage.getItem(storageKey)) {
+        sessionStorage.setItem(storageKey, 'true');
+        window.location.reload();
+        return;
+      }
+    }
+
     // No-op without a configured DSN; secret-like values are scrubbed.
     captureMonitoringError(error, { componentStack: info.componentStack });
     if (import.meta.env.DEV) {

@@ -1,0 +1,110 @@
+{
+  "generatedAt": "2026-10-08T15:46:50.997Z",
+  "tenantId": "first-g43h5hgnc4RJ0FJrYHxmd3g7qXl1",
+  "passedOrderId": "yuVJqcXB1oPh6jsFOBQC",
+  "totals": {
+    "pass": 21,
+    "fail": 0
+  },
+  "findings": [
+    {
+      "kind": "pass",
+      "label": "Danh sách khuyến mãi qua callable trả về bản ghi đang chạy",
+      "detail": "[AUDIT] KM 306712 · percentOff"
+    },
+    {
+      "kind": "pass",
+      "label": "Bản ghi đọc ra đúng hợp đồng v2 và có trường source"
+    },
+    {
+      "kind": "pass",
+      "label": "Máy chủ chọn đúng khuyến mãi đang chạy",
+      "detail": "[AUDIT] KM 306712"
+    },
+    {
+      "kind": "pass",
+      "label": "Số tiền giảm là số nguyên VND đúng công thức",
+      "detail": "1000 = floor(10000 × 10%)"
+    },
+    {
+      "kind": "pass",
+      "label": "Tổng = tạm tính − giảm giá",
+      "detail": "10000 − 1000 = 9000"
+    },
+    {
+      "kind": "pass",
+      "label": "Giảm giá theo dòng là số nguyên VND"
+    },
+    {
+      "kind": "pass",
+      "label": "Đơn ghi đúng số tiền giảm mà khách đã thấy",
+      "detail": "1000 = 1000"
+    },
+    {
+      "kind": "pass",
+      "label": "Tổng tiền đơn = tạm tính − giảm giá",
+      "detail": "10000 − 1000 = 9000"
+    },
+    {
+      "kind": "pass",
+      "label": "Đơn lưu ảnh chụp khuyến mãi đã áp dụng",
+      "detail": "[AUDIT] KM 306712"
+    },
+    {
+      "kind": "pass",
+      "label": "Ảnh chụp ghi rõ loại quyền lợi",
+      "detail": "percentOff"
+    },
+    {
+      "kind": "pass",
+      "label": "Trang theo dõi công khai cũng hiện số tiền giảm"
+    },
+    {
+      "kind": "pass",
+      "label": "Mỗi dòng đơn có lineDiscountVnd và isGift"
+    },
+    {
+      "kind": "pass",
+      "label": "Firestore thật lưu đúng discountVnd và promotionSnapshot",
+      "detail": "orders/yuVJqcXB1oPh6jsFOBQC"
+    },
+    {
+      "kind": "pass",
+      "label": "Gửi lại cùng khoá không tạo đơn thứ hai",
+      "detail": "yuVJqcXB1oPh6jsFOBQC"
+    },
+    {
+      "kind": "pass",
+      "label": "Cùng khoá nhưng khác mã ưu đãi bị từ chối",
+      "detail": "Yêu cầu đã được gửi trước đó. Vui lòng thử lại."
+    },
+    {
+      "kind": "pass",
+      "label": "Máy chủ chặn khuyến mãi đang chạy thứ hai ở gói Free",
+      "detail": "Gói Free chỉ cho phép 1 khuyến mãi đang chạy. Hãy tạm dừng khuyến mãi khác hoặc nâng lên Lite."
+    },
+    {
+      "kind": "pass",
+      "label": "Bản ghi bị chặn vẫn ở trạng thái tạm dừng"
+    },
+    {
+      "kind": "pass",
+      "label": "Máy chủ chặn quyền lợi nâng cao ở gói Free",
+      "detail": "Gói hiện tại chỉ dùng được khuyến mãi giảm % hoặc giảm tiền. Nâng lên Lite để mở giờ vàng, mã ưu đãi, tặng món và đổi đi"
+    },
+    {
+      "kind": "pass",
+      "label": "Đơn kiểm thử được huỷ qua vòng đời thật",
+      "detail": "yuVJqcXB1oPh6jsFOBQC"
+    },
+    {
+      "kind": "pass",
+      "label": "Đơn đã huỷ vẫn giữ nguyên số tiền giảm đã ghi"
+    },
+    {
+      "kind": "pass",
+      "label": "Đã lưu trữ toàn bộ khuyến mãi kiểm thử",
+      "detail": "còn 0 bản ghi chưa lưu trữ"
+    }
+  ]
+}

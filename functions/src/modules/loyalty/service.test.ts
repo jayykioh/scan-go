@@ -3,6 +3,7 @@ import {
   buildLoyaltyEarnPlan,
   buildLoyaltyMemberDocument,
   buildLoyaltyRedeemPlan,
+  buildLoyaltyRedeemReversalPlan,
   buildLoyaltyRequestHash,
   buildLoyaltyReversePlan,
   hashLoyaltyVerificationCode,
@@ -167,6 +168,68 @@ describe('loyalty service helpers', () => {
     });
     expect(plan.transaction.points).toBe(-3);
     expect(plan.nextMember.pointBalance).toBe(0);
+  });
+
+  it('restores the points a cancelled Order redeemed (REQ-PRO-004)', () => {
+    const plan = buildLoyaltyRedeemReversalPlan({
+      tenantId: 'tenant-a',
+      member: member({ isVerified: true, pointBalance: 6 }),
+      orderId: 'order-9',
+      pointsRedeemed: 4,
+      reason: 'Khách đổi ý',
+      idempotencyKey: 'idem-cancel',
+      requestHash: buildLoyaltyRequestHash({
+        tenantId: 'tenant-a',
+        memberId: 'member_84901234567',
+        action: 'reverse',
+        points: 4,
+        amountVnd: 0,
+      }),
+      actorUid: 'uid-cashier',
+      now: NOW,
+    });
+    // The correction is signed positive: the Order spent points.
+    expect(plan.transaction.points).toBe(4);
+    expect(plan.transaction.kind).toBe('reverse');
+    expect(plan.nextMember.pointBalance).toBe(10);
+    expect(plan.transaction.transactionId).toBe('loyalty_redeem_reverse_order-9');
+    // A deterministic id means a retried cancellation cannot credit twice.
+    const again = buildLoyaltyRedeemReversalPlan({
+      tenantId: 'tenant-a',
+      member: member({ isVerified: true, pointBalance: 6 }),
+      orderId: 'order-9',
+      pointsRedeemed: 4,
+      reason: 'Khách đổi ý',
+      idempotencyKey: 'idem-cancel',
+      requestHash: buildLoyaltyRequestHash({
+        tenantId: 'tenant-a',
+        memberId: 'member_84901234567',
+        action: 'reverse',
+        points: 4,
+        amountVnd: 0,
+      }),
+      actorUid: 'uid-cashier',
+      now: NOW,
+    });
+    expect(again.transaction.transactionId).toBe(
+      plan.transaction.transactionId,
+    );
+  });
+
+  it('never reverses a negative redeemed count', () => {
+    const plan = buildLoyaltyRedeemReversalPlan({
+      tenantId: 'tenant-a',
+      member: member({ isVerified: true, pointBalance: 6 }),
+      orderId: 'order-10',
+      pointsRedeemed: -5,
+      reason: null,
+      idempotencyKey: 'idem-cancel-2',
+      requestHash: 'hash',
+      actorUid: null,
+      now: NOW,
+    });
+    expect(plan.transaction.points).toBe(0);
+    expect(plan.nextMember.pointBalance).toBe(6);
   });
 
   it('merges a partial config update over the defaults', () => {

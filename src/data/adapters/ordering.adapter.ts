@@ -69,6 +69,10 @@ export interface SubmitOrderRequest {
   paymentMode: OrderPaymentMode;
   idempotencyKey: string;
   lines: OrderCartLineInput[];
+  /** The Promotion code the Customer typed, when the cart asked for one. */
+  promotionCode?: string | null;
+  /** The verified Loyalty member, needed by a redemption or a segment. */
+  loyaltyMemberId?: string | null;
 }
 
 /** Preserve the option IDs selected in the cart for server-side price validation. */
@@ -174,6 +178,7 @@ export function mapStoredTracking(
     tableName: data.tableName,
     itemSummary: data.itemSummary,
     totalVnd: data.totalVnd,
+    discountVnd: data.discountVnd ?? 0,
     status: data.status,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,

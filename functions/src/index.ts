@@ -71,6 +71,7 @@ export {
   callableOrderCancelUnpaid,
   callableOrderGetTracking,
   callableOrderListKitchen,
+  callableOrderListTableStatus,
   callableOrderListUnpaid,
   callableOrderStaffCreate,
   callableOrderSubmit,
@@ -86,6 +87,11 @@ export {
 } from './modules/payment/index.js';
 
 export {
+  callablePromotionAiAnswer,
+  callablePromotionAiConfirm,
+  callablePromotionAiDiscard,
+  callablePromotionAiGet,
+  callablePromotionAiStart,
   callablePromotionApproveCampaign,
   callablePromotionEvaluate,
   callablePromotionList,
@@ -139,6 +145,7 @@ export {
 
 export {
   callableTableArchive,
+  callableTableConfigure,
   callableTableCreate,
   callableTableNfcResolve,
   callableTableProvisionNfc,

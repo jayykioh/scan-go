@@ -15,6 +15,7 @@ import {
   loyaltyMemberSchema,
   loyaltyMemberViewSchema,
   loyaltyRedeemInputSchema,
+  loyaltyRedeemReversalTransactionId,
   loyaltyRegisterInputSchema,
   loyaltyReverseInputSchema,
   loyaltyTransactionSchema,
@@ -463,6 +464,51 @@ export function buildLoyaltyRedeemPlan(input: {
     balanceAfter: nextBalance,
     orderId: input.orderId,
     reason: null,
+    idempotencyKey: input.idempotencyKey,
+    requestHash: input.requestHash,
+    actorUid: input.actorUid,
+    now: input.now,
+  });
+  return {
+    memberId: input.member.memberId,
+    transaction,
+    nextMember: {
+      ...input.member,
+      pointBalance: nextBalance,
+      updatedAt: input.now,
+    },
+  };
+}
+
+/**
+ * Restore the points one Order redeemed, when that unpaid Order is cancelled.
+ *
+ * The correction is a signed `reverse` entry with a deterministic id, so a
+ * retried cancellation restores the balance exactly once (REQ-PRO-004,
+ * REQ-CAS-002).
+ */
+export function buildLoyaltyRedeemReversalPlan(input: {
+  tenantId: string;
+  member: LoyaltyMember;
+  orderId: string;
+  pointsRedeemed: number;
+  reason: string | null;
+  idempotencyKey: string;
+  requestHash: string;
+  actorUid: string | null;
+  now: string;
+}): LoyaltyPointPlan {
+  const restored = Math.max(Math.trunc(input.pointsRedeemed), 0);
+  const nextBalance = input.member.pointBalance + restored;
+  const transaction = buildTransaction({
+    transactionId: loyaltyRedeemReversalTransactionId(input.orderId),
+    tenantId: input.tenantId,
+    memberId: input.member.memberId,
+    kind: 'reverse',
+    points: restored,
+    balanceAfter: nextBalance,
+    orderId: input.orderId,
+    reason: input.reason,
     idempotencyKey: input.idempotencyKey,
     requestHash: input.requestHash,
     actorUid: input.actorUid,

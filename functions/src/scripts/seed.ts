@@ -422,6 +422,8 @@ export function generateOrder(
         unitPriceVnd: item.priceVnd,
         quantity,
         lineTotalVnd: item.priceVnd * quantity,
+        lineDiscountVnd: 0,
+        isGift: false,
         unitCostVnd,
         lineCostVnd: unitCostVnd * quantity,
       };
@@ -491,6 +493,7 @@ export function generateOrder(
       '',
     ),
     totalVnd,
+    discountVnd: 0,
     status,
     createdAt,
     updatedAt,
@@ -533,6 +536,8 @@ export function generateOrder(
       name: line.name,
       quantity: line.quantity,
       lineTotalVnd: line.lineTotalVnd,
+      lineDiscountVnd: line.lineDiscountVnd,
+      isGift: line.isGift,
       lineCostVnd: line.lineCostVnd,
     })),
   };

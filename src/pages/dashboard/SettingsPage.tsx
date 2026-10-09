@@ -21,6 +21,15 @@ import {
   getResolvedConfig,
   updateTenantConfig,
 } from '../../data/adapters/config.adapter';
+import {
+  changePromotionStatus,
+  upsertPromotion,
+} from '../../data/adapters/promotion.adapter';
+import { getActiveTenantId } from '../../data/adapters/tenant.adapter';
+import {
+  QUICK_DISCOUNT_PROMOTION_ID,
+  type PromotionEligibility,
+} from '@contracts/promotion.contract';
 import type { I18nLocale } from '@contracts/i18n.contract';
 import {
   fetchRemoteLocale,
@@ -331,7 +340,78 @@ export default function SettingsPage() {
     }));
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  /**
+   * Map the quick discount onto the one reserved Promotion record, so the
+   * discount the Customer is shown is the discount the Order records
+   * (REQ-PRO-002). The fast editor stays here; every other promotion type
+   * lives on the Promotion page.
+   */
+  const saveQuickDiscount = useCallback(
+    async (config: TenantConfig) => {
+      const tenantId = await getActiveTenantId();
+      if (!tenantId) {
+        return;
+      }
+      const condition = config.discountConditionType ?? 'quantity';
+      const eligibility: PromotionEligibility = {
+        minSubtotalVnd:
+          condition === 'amount' || condition === 'both'
+            ? Math.max(0, Number(config.discountMinAmount) || 0) || null
+            : null,
+        minQuantity:
+          condition === 'quantity' || condition === 'both'
+            ? Math.max(1, Number(config.discountMinItems) || 1)
+            : null,
+        menuItemIds:
+          config.discountTargetDishId && config.discountTargetDishId !== 'all'
+            ? [config.discountTargetDishId]
+            : null,
+        timeWindow: null,
+        daysOfWeek: null,
+        code:
+          (config.discountTriggerType ?? 'auto') === 'manual' &&
+          config.discountCode
+            ? config.discountCode.trim().toUpperCase()
+            : null,
+        customerSegment: null,
+      };
+      const saved = await upsertPromotion({
+        tenantId,
+        promotionId: QUICK_DISCOUNT_PROMOTION_ID,
+        name: 'Ưu đãi nhanh',
+        // A full Promotion on the Promotion page always outbids this one.
+        priority: 0,
+        startsAt: null,
+        endsAt: null,
+        eligibility,
+        benefit: {
+          type: 'fixedAmount',
+          amountVnd: Math.max(1, Number(config.discountAmount) || 10000),
+        },
+        source: 'quick',
+      });
+      if (!saved.promotion) {
+        return;
+      }
+      try {
+        await changePromotionStatus(
+          tenantId,
+          saved.promotion.promotionId,
+          config.discountEnabled === false ? 'inactive' : 'active',
+        );
+      } catch (error) {
+        // Hitting the plan cap must not lose the saved configuration.
+        toast.info(
+          error instanceof Error
+            ? `Đã lưu cấu hình, nhưng ưu đãi nhanh chưa bật được: ${error.message}`
+            : 'Đã lưu cấu hình, nhưng ưu đãi nhanh chưa bật được.',
+        );
+      }
+    },
+    [toast],
+  );
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalized: TenantConfig = {
       ...draft,
@@ -346,6 +426,18 @@ export default function SettingsPage() {
     };
     setTenantConfig(normalized);
     setDraft(normalized);
+    if (configured) {
+      try {
+        await saveQuickDiscount(normalized);
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Không lưu được ưu đãi nhanh lên máy chủ.',
+        );
+        return;
+      }
+    }
     toast.success('Đã lưu cấu hình cửa hàng');
   };
 
@@ -681,8 +773,15 @@ export default function SettingsPage() {
 
             <label className="flex items-center gap-3 p-4 border-hard cursor-pointer hover:bg-zinc-50 self-end">
               <input type="checkbox" checked={draft.discountEnabled !== false} onChange={e => updateDraft('discountEnabled', e.target.checked)} className="w-4 h-4 accent-orange-600" />
-              <span className="font-mono text-xs font-bold uppercase tracking-widest">Bật mã ưu đãi</span>
+              <span className="font-mono text-xs font-bold uppercase tracking-widest">Bật ưu đãi nhanh</span>
             </label>
+
+            <p className="md:col-span-2 text-xs text-zinc-600 bg-zinc-50 border-hard p-3">
+              Đây là <strong>một</strong> ưu đãi giảm tiền duy nhất, lưu lên máy chủ để
+              khách thấy đúng số tiền mà đơn ghi nhận. Cần giờ vàng, mã khách nhập,
+              mua 1 tặng 1, tặng món, combo hay đổi điểm thì mở trang{' '}
+              <strong>Khuyến mãi</strong>.
+            </p>
 
             <div className="space-y-3">
               <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500 block">Mã ưu đãi</label>

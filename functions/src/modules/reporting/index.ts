@@ -127,6 +127,8 @@ export function mapStoredOrderSource(
             name: item.name,
             quantity,
             lineTotalVnd: item.lineTotalVnd ?? unitPriceVnd * quantity,
+            lineDiscountVnd: item.lineDiscountVnd ?? 0,
+            isGift: item.isGift ?? false,
             lineCostVnd:
               item.lineCostVnd ??
               (item.unitCostVnd != null ? item.unitCostVnd * quantity : 0),

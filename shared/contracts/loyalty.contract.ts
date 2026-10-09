@@ -286,6 +286,15 @@ export function loyaltyReverseTransactionId(orderId: string): string {
   return `loyalty_reverse_${orderId}`;
 }
 
+/**
+ * Deterministic id for restoring the points an Order redeemed. It differs from
+ * `loyaltyReverseTransactionId`, which reverses the points an Order *earned*,
+ * so one Order can carry both corrections without a collision (REQ-PRO-004).
+ */
+export function loyaltyRedeemReversalTransactionId(orderId: string): string {
+  return `loyalty_redeem_reverse_${orderId}`;
+}
+
 export function loyaltyMemberIdFor(phone: string): string {
   return `member_${phone.replace('+', '')}`;
 }

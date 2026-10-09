@@ -66,6 +66,7 @@ present on a developer machine cannot change a result or incur provider spend.
 | PWA | Manifest | Service worker and offline caching |
 | AI live | Adapter and evaluation | Live provider secret; default stays deterministic |
 | Deploy pipeline | Manual scripts for rules, storage, indexes, and functions | No staged/production promotion or rollback gate |
+| App Check | Server gate implemented and unit-tested; enforcement temporarily off in `scango-8f0e9` (ADR 0017) | Web client `initializeAppCheck` plus a registered reCAPTCHA v3 provider |
 | NFR-RT-001 | Bounded listeners and a two-second contract | No measured end-to-end latency harness |
 
 ## Not implemented (out of scope)

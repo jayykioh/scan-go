@@ -19,6 +19,7 @@ import {
   Menu,
   MessageSquarePlus,
   MonitorPlay,
+  BadgePercent,
   X,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -246,6 +247,10 @@ export default function DashboardLayout() {
           <NavLink to="/dashboard/menu" className={navLinkClass}>
             <UtensilsCrossed className="w-4 h-4" />
             Thực đơn
+          </NavLink>
+          <NavLink to="/dashboard/promotions" className={navLinkClass}>
+            <BadgePercent className="w-4 h-4" />
+            Khuyến mãi
           </NavLink>
           <NavLink to="/dashboard/inventory" className={navLinkClass}>
             <Boxes className="w-4 h-4" />

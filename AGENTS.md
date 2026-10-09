@@ -20,9 +20,12 @@
 - [Frontend UI integration map](docs/frontend-ui-integration.md)
 - [Demo runbook](docs/demo-runbook.md)
 - [Market price survey](docs/market-price-survey.md)
+- [Bộ tổng hợp cần cải thiện: 40 việc IMP-01…IMP-40](docs/feedback/improvement-backlog-2026-10.md)
 - [Playwright review and competitor comparison](docs/feedback/comparative-review-2026-10.md)
 - [Feature audit: catalog, inventory, staff, config, subscription, simulator](docs/feedback/feature-audit-2026-10/README.md)
 - [Competitor survey 2026-10](docs/feedback/competitor-report-2026-10.md)
+- [Promotion feature verification harness](docs/feedback/harness/run-promotion-verification.mjs)
+- [Table floor plan verification harness](docs/feedback/harness/verify-tables-page.mjs)
 - [Initial P0 ticket plan](docs/plan/initial-p0-ticket-plan.md)
 - [Week 1 sprint plan](docs/plan/week-1-sprint.md)
 - [P0 parallel skeleton](docs/plan/p0-parallel-skeleton.md)
@@ -49,6 +52,9 @@
 - [ADR 0013: Kitchen manages inventory with a change report](docs/adr/0013-kitchen-manages-inventory-with-report.md)
 - [ADR 0014: Weighted-average ingredient cost](docs/adr/0014-weighted-average-ingredient-cost.md)
 - [ADR 0015: Direct Firestore reads](docs/adr/0015-direct-firestore-reads.md)
+- [ADR 0016: Promotion engine and Order snapshot](docs/adr/0016-promotion-engine-and-order-snapshot.md)
+- [ADR 0017: Temporarily disable App Check enforcement](docs/adr/0017-temporarily-disable-app-check-enforcement.md)
+- [ADR 0018: Table floor plan and live table status](docs/adr/0018-table-floor-plan-and-live-table-status.md)
 - [Firestore research](research/firestore-foundation.md)
 
 ## Agent constraints

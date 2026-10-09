@@ -1,0 +1,181 @@
+{
+  "generatedAt": "2026-10-08T17:12:52.840Z",
+  "base": "http://127.0.0.1:3000",
+  "tenantId": "first-g43h5hgnc4RJ0FJrYHxmd3g7qXl1",
+  "expectedNames": [
+    "Bàn QA 01"
+  ],
+  "passed": 27,
+  "failed": 0,
+  "screenshots": [
+    "docs/feedback/artifacts/tables-t1-hard-load.png",
+    "docs/feedback/artifacts/tables-t3-guide-overlay.png",
+    "docs/feedback/artifacts/tables-t4-a11y.png",
+    "docs/feedback/artifacts/tables-t5-crud-loop.png",
+    "docs/feedback/artifacts/tables-t6-drag-position.png",
+    "docs/feedback/artifacts/tables-t7-list-view.png"
+  ],
+  "consoleErrors": [],
+  "findings": [
+    {
+      "flow": "t1-hard-load",
+      "kind": "pass",
+      "label": "Không hiện \"Chưa có bàn nào\" trong lúc chờ dữ liệu",
+      "detail": "không thấy trạng thái trống giả"
+    },
+    {
+      "flow": "t1-hard-load",
+      "kind": "pass",
+      "label": "Tải cứng hiện đủ bàn từ Firestore",
+      "detail": "hiển thị: Bàn QA 01"
+    },
+    {
+      "flow": "t2-reload-and-nav",
+      "kind": "pass",
+      "label": "F5 tại chỗ vẫn hiện đủ bàn",
+      "detail": "Bàn QA 01"
+    },
+    {
+      "flow": "t2-reload-and-nav",
+      "kind": "pass",
+      "label": "Điều hướng trong app hiện đủ bàn",
+      "detail": "Bàn QA 01"
+    },
+    {
+      "flow": "t3-guide-overlay",
+      "kind": "pass",
+      "label": "Thấy thẻ hướng dẫn và nút \"Thêm Bàn\""
+    },
+    {
+      "flow": "t3-guide-overlay",
+      "kind": "pass",
+      "label": "Thẻ hướng dẫn nằm trong khung nhìn",
+      "detail": "{\"top\":329,\"left\":1030,\"width\":380,\"height\":547}"
+    },
+    {
+      "flow": "t3-guide-overlay",
+      "kind": "pass",
+      "label": "Thẻ neo đúng góc dưới phải",
+      "detail": "cách đáy 24px"
+    },
+    {
+      "flow": "t3-guide-overlay",
+      "kind": "pass",
+      "label": "Thẻ không che nút \"Thêm Bàn\"",
+      "detail": "diện tích chồng 0 px²"
+    },
+    {
+      "flow": "t3-guide-overlay",
+      "kind": "pass",
+      "label": "Nút \"Thêm Bàn\" nhận được click (hit test)",
+      "detail": "điểm giữa nút thuộc nút"
+    },
+    {
+      "flow": "t4-a11y",
+      "kind": "pass",
+      "label": "Mọi nút chỉ-icon đều có tên",
+      "detail": "1 nút chỉ-icon"
+    },
+    {
+      "flow": "t4-a11y",
+      "kind": "pass",
+      "label": "Vùng bấm đạt tối thiểu 44px",
+      "detail": "tất cả đạt"
+    },
+    {
+      "flow": "t5-crud-loop",
+      "kind": "pass",
+      "label": "Bàn mới xuất hiện trên sơ đồ (không tải lại)",
+      "detail": "[QA] Bàn 560448"
+    },
+    {
+      "flow": "t5-crud-loop",
+      "kind": "pass",
+      "label": "Khu vực và số ghế được lưu cùng lệnh tạo bàn",
+      "detail": "area=Khu kiểm thử, seats=4"
+    },
+    {
+      "flow": "t5-crud-loop",
+      "kind": "pass",
+      "label": "Bàn mới có vị trí trên lưới ngay từ đầu",
+      "detail": "{\"x\":1,\"y\":0}"
+    },
+    {
+      "flow": "t5-crud-loop",
+      "kind": "pass",
+      "label": "Đổi tên cập nhật ngay trên sơ đồ",
+      "detail": "[QA] Bàn 560448 đổi tên"
+    },
+    {
+      "flow": "t5-crud-loop",
+      "kind": "pass",
+      "label": "Số ghế sửa được ghi xuống Firestore",
+      "detail": "6 ghế"
+    },
+    {
+      "flow": "t5-crud-loop",
+      "kind": "pass",
+      "label": "Bàn đã lưu trữ biến mất khỏi sơ đồ",
+      "detail": "[QA] Bàn 560448 đổi tên"
+    },
+    {
+      "flow": "t5-crud-loop",
+      "kind": "pass",
+      "label": "Firestore ghi archivedAt cho bàn kiểm thử",
+      "detail": "1 bản ghi"
+    },
+    {
+      "flow": "t6-drag-position",
+      "kind": "pass",
+      "label": "Kéo bàn ghi vị trí mới xuống Firestore",
+      "detail": "{\"x\":0,\"y\":0} → {\"x\":1,\"y\":1}"
+    },
+    {
+      "flow": "t6-drag-position",
+      "kind": "pass",
+      "label": "Vị trí lưu nằm trong lưới 12×10",
+      "detail": "{\"x\":1,\"y\":1}"
+    },
+    {
+      "flow": "t6-drag-position",
+      "kind": "pass",
+      "label": "Phím mũi tên dịch bàn được (không chỉ kéo chuột)",
+      "detail": "{\"x\":1,\"y\":1} → x-1"
+    },
+    {
+      "flow": "t7-plan-tools",
+      "kind": "pass",
+      "label": "Sơ đồ vẽ được ô bàn",
+      "detail": "1 ô"
+    },
+    {
+      "flow": "t7-plan-tools",
+      "kind": "pass",
+      "label": "Mỗi ô bàn in ra trạng thái phục vụ bằng chữ",
+      "detail": "Bàn QA 01, 4 ghế, khu Khu chính, Trống, cột 1 hàng 2"
+    },
+    {
+      "flow": "t7-plan-tools",
+      "kind": "pass",
+      "label": "Dải tổng quan có đủ 5 chỉ số",
+      "detail": "5 chỉ số"
+    },
+    {
+      "flow": "t7-plan-tools",
+      "kind": "pass",
+      "label": "Chế độ Danh sách nhóm bàn theo khu vực",
+      "detail": "2 tiêu đề"
+    },
+    {
+      "flow": "t7-plan-tools",
+      "kind": "pass",
+      "label": "Quay lại được chế độ Sơ đồ"
+    },
+    {
+      "flow": "t7-plan-tools",
+      "kind": "pass",
+      "label": "Không có lỗi console",
+      "detail": ""
+    }
+  ]
+}

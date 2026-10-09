@@ -1,6 +1,6 @@
 # Loyalty Module
 
-- Serves: REQ-LOY-001, NFR-PRIV-001
+- Serves: REQ-LOY-001, REQ-PRO-004, NFR-PRIV-001
 - Owns: Verified members, point balance, and append-only point transactions
 - Does not own: Payment confirmation or Order totals
 
@@ -11,6 +11,14 @@
 - Reverse point effects after reversal or refund.
 
 ## Rules
+- A Promotion of type `pointsRedemption` spends points inside the Order
+  transaction (`buildLoyaltyRedeemPlan`), not in a separate call.
+- Cancelling an unpaid Order restores redeemed points through
+  `loyalty_redeem_reverse_<orderId>`. That id differs from
+  `loyalty_reverse_<orderId>`, which reverses earned points, so one Order can
+  carry both corrections without a collision (REQ-PRO-004).
+- The member balance is re-read inside the Order transaction, so two Orders
+  racing for the same points cannot overdraw the member.
 - Default earning rate is one point per 10,000 VND.
 - Default welcome points are zero; Owner can configure the allowed value.
 - Every balance change has one append-only transaction.

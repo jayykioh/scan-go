@@ -3,6 +3,7 @@ import type { Ingredient, Recipe } from '@contracts/inventory.contract';
 import type { CatalogMenuItem } from '@contracts/catalog.contract';
 import type { TenantTable } from './adapters/table.adapter';
 import type { Promotion } from '@contracts/promotion.contract';
+import type { CampaignSuggestion } from '@contracts/campaign.contract';
 import type { LoyaltyConfig } from '@contracts/loyalty.contract';
 import { getFirebaseAuth } from '../services/firebase/client';
 import { getActiveTenantId } from './adapters/tenant.adapter';
@@ -13,6 +14,7 @@ import {
 } from './adapters/inventory.adapter';
 import { subscribeTenantTables } from './adapters/table.adapter';
 import { listPromotions } from './adapters/promotion.adapter';
+import { readCampaignSuggestions } from './firestoreRead';
 import { getLoyaltyConfig } from './adapters/loyalty.adapter';
 
 /**
@@ -31,6 +33,7 @@ export interface TenantStoreState {
   recipes: Recipe[];
   tables: TenantTable[];
   promotions: Promotion[];
+  campaignSuggestions: CampaignSuggestion[];
   loyaltyConfig: LoyaltyConfig | null;
   loading: {
     menuItems: boolean;
@@ -38,6 +41,7 @@ export interface TenantStoreState {
     recipes: boolean;
     tables: boolean;
     promotions: boolean;
+    campaignSuggestions: boolean;
     loyaltyConfig: boolean;
   };
   errors: Partial<Record<keyof TenantStoreState['loading'], string>>;
@@ -49,6 +53,7 @@ type SliceKey =
   | 'recipes'
   | 'tables'
   | 'promotions'
+  | 'campaignSuggestions'
   | 'loyaltyConfig';
 
 type Listener = () => void;
@@ -65,6 +70,7 @@ const EMPTY_LOADING = {
   recipes: false,
   tables: false,
   promotions: false,
+  campaignSuggestions: false,
   loyaltyConfig: false,
 } as const;
 
@@ -75,6 +81,7 @@ let state: TenantStoreState = {
   recipes: [],
   tables: [],
   promotions: [],
+  campaignSuggestions: [],
   loyaltyConfig: null,
   loading: { ...EMPTY_LOADING },
   errors: {},
@@ -122,6 +129,8 @@ function slice(key: SliceKey): Slice {
 function clearSliceData(key: SliceKey): void {
   if (key === 'promotions') {
     setState({ promotions: [] });
+  } else if (key === 'campaignSuggestions') {
+    setState({ campaignSuggestions: [] });
   } else if (key === 'loyaltyConfig') {
     setState({ loyaltyConfig: null });
   } else {
@@ -214,6 +223,27 @@ function startSlice(key: SliceKey, tenantId: string): void {
     return;
   }
 
+  if (key === 'campaignSuggestions') {
+    let cancelled = false;
+    entry.unsubscribe = () => {
+      cancelled = true;
+    };
+    void readCampaignSuggestions()
+      .then((items) => {
+        if (!cancelled) {
+          setState({ campaignSuggestions: items });
+          setLoading(key, false);
+        }
+      })
+      .catch((error: Error) => {
+        if (!cancelled) {
+          setError(key, error.message);
+          setLoading(key, false);
+        }
+      });
+    return;
+  }
+
   if (key === 'loyaltyConfig') {
     let cancelled = false;
     entry.unsubscribe = () => {
@@ -291,6 +321,7 @@ function resetForTenant(tenantId: string | null): void {
     recipes: [],
     tables: [],
     promotions: [],
+    campaignSuggestions: [],
     loyaltyConfig: null,
     loading: { ...EMPTY_LOADING },
     errors: {},
@@ -326,6 +357,21 @@ export function acquireSlice(key: SliceKey): () => void {
 
 export function getStoreState(): TenantStoreState {
   return state;
+}
+
+/**
+ * Re-run one slice's fetch after a server command changed its data. Writes go
+ * through callables, so the store has no optimistic update to reconcile; it
+ * simply reloads the authoritative list.
+ */
+export function refreshSlice(key: SliceKey): void {
+  const entry = slices.get(key);
+  if (!entry || !state.tenantId) {
+    return;
+  }
+  entry.unsubscribe?.();
+  entry.unsubscribe = null;
+  startSlice(key, state.tenantId);
 }
 
 function subscribe(listener: Listener): () => void {

@@ -29,9 +29,13 @@ import {
   type LoyaltyConfig,
 } from '@contracts/loyalty.contract';
 import {
-  promotionSchema,
+  parseStoredPromotion,
   type Promotion,
 } from '@contracts/promotion.contract';
+import {
+  campaignSuggestionSchema,
+  type CampaignSuggestion,
+} from '@contracts/campaign.contract';
 import {
   getFirebaseAuth,
   getFirebaseFirestore,
@@ -47,6 +51,7 @@ const MAX_PERIOD_DAYS = 62;
 const MAX_ITEMS_PER_DAY = 100;
 const MAX_TABLES_PER_DAY = 100;
 const PROMOTION_READ_LIMIT = 100;
+const CAMPAIGN_SUGGESTION_READ_LIMIT = 20;
 const DEFAULT_TIMEZONE = 'Asia/Ho_Chi_Minh';
 
 function requireDb(): Firestore {
@@ -403,25 +408,35 @@ export async function readReportingSummary(
   });
 }
 
-/** Read the tenant Promotion definitions directly (REQ-PRO-001). */
+/**
+ * Read the tenant Promotion definitions directly (REQ-PRO-001). Archived
+ * promotions are excluded here so every screen that lists promotions agrees
+ * with the server, which never evaluates an archived record.
+ *
+ * The priority order is applied after the read: a single equality filter needs
+ * only the automatic single-field index, so the list works on a project where
+ * no composite index has been deployed. The result is bounded, so sorting in
+ * the browser costs nothing.
+ */
 export async function readPromotions(): Promise<Promotion[]> {
   const db = requireDb();
   const tenantId = await requireTenantId();
   const snapshot = await getDocs(
     query(
       collection(db, 'tenants', tenantId, 'promotions'),
-      orderBy('priority', 'desc'),
+      where('archivedAt', '==', null),
       limit(PROMOTION_READ_LIMIT),
     ),
   );
-  return snapshot.docs.map((docSnap) =>
-    promotionSchema.parse({
-      schemaVersion: 1,
-      promotionId: docSnap.id,
-      tenantId,
-      ...docSnap.data(),
-    }),
-  );
+  return snapshot.docs
+    .map((docSnap) =>
+      parseStoredPromotion(docSnap.data(), docSnap.id, tenantId),
+    )
+    .sort(
+      (left, right) =>
+        right.priority - left.priority ||
+        (left.name < right.name ? -1 : left.name > right.name ? 1 : 0),
+    );
 }
 
 /** Read the tenant Loyalty configuration directly (REQ-LOY-001). */
@@ -453,4 +468,28 @@ export async function readLoyaltyConfig(): Promise<LoyaltyConfig> {
       updatedAt: toIsoTimestamp(snapshot.get('updatedAt')),
     },
   }).config;
+}
+
+/**
+ * Read the tenant campaign suggestions directly. The rules grant an active
+ * member read access and deny every write, so an approval still goes through
+ * the server callable (REQ-PRO-001, NFR-SEC-003).
+ */
+export async function readCampaignSuggestions(): Promise<CampaignSuggestion[]> {
+  const db = requireDb();
+  const tenantId = await requireTenantId();
+  const snapshot = await getDocs(
+    query(
+      collection(db, 'tenants', tenantId, 'campaignSuggestions'),
+      orderBy('generatedAt', 'desc'),
+      limit(CAMPAIGN_SUGGESTION_READ_LIMIT),
+    ),
+  );
+  return snapshot.docs.map((docSnap) =>
+    campaignSuggestionSchema.parse({
+      ...docSnap.data(),
+      suggestionId: docSnap.id,
+      tenantId,
+    }),
+  );
 }

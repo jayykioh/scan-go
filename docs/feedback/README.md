@@ -7,10 +7,11 @@ Thư mục này giữ bằng chứng đánh giá ScanGo từ góc nhìn người
 
 | Tài liệu | Nội dung |
 |---|---|
+| [improvement-backlog-2026-10.md](improvement-backlog-2026-10.md) | **Bộ tổng hợp cần cải thiện — đọc cái này trước.** Gom cả ba nguồn thành 40 việc có mã `IMP-01…IMP-40`, xếp theo thứ tự nên làm, kèm Top 10 làm trước, việc KHÔNG nên làm, điểm mạnh phải giữ, và bảng truy vết về nguồn |
 | [feature-audit-2026-10/](feature-audit-2026-10/README.md) | **Đợt 2 — báo cáo tính năng, tách theo từng phát hiện.** Mở [README.md](feature-audit-2026-10/README.md) để xem mục lục; mỗi lỗi (F-01…F-19) nằm trong một file riêng, kèm [điểm mạnh](feature-audit-2026-10/strengths.md), [bản đồ yêu cầu "Done nhưng không tới được người dùng"](feature-audit-2026-10/reachability.md), [khuyến nghị](feature-audit-2026-10/recommendations.md) và [phụ lục](feature-audit-2026-10/appendix.md) |
 | [comparative-review-2026-10.md](comparative-review-2026-10.md) | **Đợt 1 — báo cáo chính.** 11 lỗi theo mức độ (kèm cách tái hiện, nguyên nhân gốc, hướng sửa), điểm mạnh, so sánh đối thủ, 18 khuyến nghị ưu tiên |
 | [competitor-report-2026-10.md](competitor-report-2026-10.md) | Khảo sát 8 đối thủ × 11 tiêu chí với URL nguồn, bảng so sánh, danh sách "không nên sao chép", ghi rõ chỗ `chưa xác minh` |
-| [artifacts/](artifacts/) | Ảnh chụp, snapshot ARIA và 5 file JSON kết quả của mọi bước chạy |
+| [artifacts/](artifacts/) | Ảnh chụp, snapshot ARIA và các file JSON kết quả của mọi bước chạy, kể cả `promotion-verification-report.json`, `promotion-server-verification-report.json`, `tables-page-verification-report.json` và `table-plan-server-verification-report.json` |
 
 ## Kênh phản hồi trong ứng dụng (REQ-FDB-004..006)
 
@@ -32,8 +33,13 @@ Thư mục này giữ bằng chứng đánh giá ScanGo từ góc nhìn người
 | `harness/run-workflows.mjs` | Khảo sát 24 trang: ảnh chụp, snapshot ARIA, lỗi console/mạng, số đo thời gian, audit a11y nhẹ |
 | `harness/run-workflows-interactive.mjs` | 7 workflow tương tác: khách gọi món, bếp, thu ngân, chủ quán tạo bàn, tạo món, đăng xuất/đăng nhập, **đặt món thật qua `/menu/<token>`** |
 | `harness/run-feedback-feature.mjs` | Kiểm tra tính năng phản hồi: mở widget, đính kèm ảnh, gửi, mở hộp thư, đổi trạng thái |
+| `harness/run-promotion-verification.mjs` | 5 luồng kiểm chứng khuyến mãi: trang riêng + hộp thoại + tên nút cho trình đọc màn hình, tạo và bật khuyến mãi, cổng giới hạn gói Free, mục AI gợi ý/duyệt/đo lường, và giỏ khách hiện đúng số tiền giảm do máy chủ tính |
+| `harness/verify-promotion-server.mjs` | 21 phép kiểm ở tầng máy chủ trên Firestore thật: số tiền giảm là số nguyên VND, đơn ghi `discountVnd` + `promotionSnapshot`, gửi lại không tạo đơn thứ hai, cổng gói và cổng loại nâng cao bị máy chủ chặn, huỷ đơn giữ nguyên số tiền giảm, và dọn sạch fixture |
+| `harness/cleanup-promotions.mjs` | Lưu trữ mọi khuyến mãi chưa lưu trữ của tenant QA và xoá gợi ý chiến dịch do harness tạo, để lần chạy sau bắt đầu từ trạng thái sạch |
 | `harness/inspect-firestore.mjs` | Chỉ đọc Firestore thật để đối chiếu "UI nói gì" với "dữ liệu thật có gì" |
 | `harness/seed-emulator.mjs` | Ghi tenant + member vào Firestore emulator để Storage Rules đánh giá được |
+| `harness/verify-table-plan-server.mjs` | 12 phép kiểm ở tầng máy chủ trên Firestore thật: lệnh `configure` ghi khu vực/số ghế/ô lưới và ghi audit, máy chủ từ chối ô ngoài lưới 12×10 mà không làm hỏng vị trí đang lưu, người chưa đăng nhập bị từ chối, và trạng thái bàn đi đúng vòng đời một đơn thật `pending → ready → served → cancelled` (trống → có khách → món sẵn sàng → chờ thanh toán → trống) |
+| `harness/verify-tables-page.mjs` | 16 phép kiểm cho Sơ đồ bàn: mở bằng URL và F5 phải hiện đủ bàn đọc từ Firestore thật, không được hiện màn "trống" giả, thẻ hướng dẫn phải nằm trong khung nhìn và không che nút "Thêm Bàn" (đo diện tích chồng + hit test), nút chỉ-icon phải có tên và vùng bấm ≥44 px, và vòng thêm/đổi tên/lưu trữ bàn phải cập nhật ngay không cần tải lại (tự dọn fixture `[QA]`) |
 | `harness/run-feature-verification.sh` | Bọc `seed-emulator` + `run-feedback-feature` cho `firebase emulators:exec` |
 | `harness/fixture-screenshot.png` | Ảnh 64×64 dùng cho bước upload |
 

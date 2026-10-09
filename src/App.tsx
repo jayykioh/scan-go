@@ -22,6 +22,7 @@ const InventoryPage = lazy(() => import('./pages/dashboard/InventoryPage'));
 const TablesPage = lazy(() => import('./pages/dashboard/TablesPage'));
 const SubscriptionPage = lazy(() => import('./pages/dashboard/SubscriptionPage'));
 const FeedbackPage = lazy(() => import('./pages/dashboard/FeedbackPage'));
+const PromotionsPage = lazy(() => import('./pages/dashboard/PromotionsPage'));
 
 const SimulatorIndex = lazy(() => import('./pages/SimulatorIndex'));
 const SimulatorRole = lazy(() => import('./pages/SimulatorRole'));
@@ -98,6 +99,7 @@ const router = createBrowserRouter([
           { index: true, element: <OverviewPage /> },
           { path: 'manage', element: <ManagementPage /> },
           { path: 'menu', element: <MenuPage /> },
+          { path: 'promotions', element: <PromotionsPage /> },
           { path: 'inventory', element: <InventoryPage /> },
           { path: 'tables', element: <TablesPage /> },
           { path: 'staff', element: <StaffPage /> },

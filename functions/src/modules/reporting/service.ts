@@ -146,8 +146,24 @@ const orderItemSourceSchema = z.strictObject({
   name: z.string().min(1),
   quantity: nonNegativeIntSchema,
   lineTotalVnd: vndSchema,
+  /**
+   * The Promotion discount on this line. Item revenue is net of it, so the
+   * per-item figures add up to the discounted Order total. An Order written
+   * before the Promotion snapshot existed carries zero (REQ-PRO-003).
+   */
+  lineDiscountVnd: vndSchema.default(0),
   lineCostVnd: vndSchema,
+  /** True for a Promotion gift line: zero revenue, real Cost. */
+  isGift: z.boolean().default(false),
 });
+
+/** Integer VND this line actually earned after its Promotion discount. */
+function netLineRevenueVnd(item: {
+  lineTotalVnd: number;
+  lineDiscountVnd: number;
+}): number {
+  return Math.max(item.lineTotalVnd - item.lineDiscountVnd, 0);
+}
 
 export const reportingOrderSourceSchema = z.strictObject({
   orderId: z.string().min(1),
@@ -499,7 +515,7 @@ export function rebuildDailyStats(
         for (const item of order.items) {
           const itemAcc = itemAccumulatorFor(acc, item.menuItemId, item.name);
           itemAcc.paidQuantity += item.quantity;
-          itemAcc.revenueVnd += item.lineTotalVnd;
+          itemAcc.revenueVnd += netLineRevenueVnd(item);
           itemAcc.costVnd += item.lineCostVnd;
         }
       }
@@ -528,9 +544,9 @@ export function rebuildDailyStats(
       for (const item of order.items) {
         const itemAcc = itemAccumulatorFor(acc, item.menuItemId, item.name);
         if (payment.status === 'reversed') {
-          itemAcc.reversedVnd += item.lineTotalVnd;
+          itemAcc.reversedVnd += netLineRevenueVnd(item);
         } else {
-          itemAcc.refundedVnd += item.lineTotalVnd;
+          itemAcc.refundedVnd += netLineRevenueVnd(item);
         }
       }
     }

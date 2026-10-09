@@ -1,0 +1,70 @@
+{
+  "generatedAt": "2026-10-08T17:11:50.737Z",
+  "tenantId": "first-g43h5hgnc4RJ0FJrYHxmd3g7qXl1",
+  "tableId": "aSXum1V3IFEXmAlsJZR7",
+  "orderId": "2YtDBanEfsIpUtjFTOOe",
+  "passed": 12,
+  "failed": 0,
+  "findings": [
+    {
+      "kind": "pass",
+      "label": "Lệnh configure ghi khu vực, số ghế và ô lưới xuống Firestore",
+      "detail": "{\"area\":\"Sân vườn QA\",\"seats\":6,\"position\":{\"x\":4,\"y\":3}}"
+    },
+    {
+      "kind": "pass",
+      "label": "Ghi một sự kiện audit TableConfigured",
+      "detail": "14 sự kiện gần nhất"
+    },
+    {
+      "kind": "pass",
+      "label": "Máy chủ từ chối ô nằm ngoài lưới 12×10",
+      "detail": "y = 99"
+    },
+    {
+      "kind": "pass",
+      "label": "Lệnh bị từ chối không làm hỏng vị trí đang lưu",
+      "detail": "{\"x\":4,\"y\":3}"
+    },
+    {
+      "kind": "pass",
+      "label": "Lệnh configure từ người chưa đăng nhập bị từ chối",
+      "detail": "UNAUTHENTICATED"
+    },
+    {
+      "kind": "pass",
+      "label": "Bàn không có đơn nào được báo là trống",
+      "detail": "null"
+    },
+    {
+      "kind": "pass",
+      "label": "Đơn đang mở làm bàn chuyển sang \"có khách\"",
+      "detail": "{\"tableId\":\"aSXum1V3IFEXmAlsJZR7\",\"state\":\"occupied\",\"activeOrderCount\":1,\"readyOrderCount\":0,\"unsettledOrderCount\":0,\"oldestActiveOrderAt\":\"2026-10-08T17:11:46.825Z\"}"
+    },
+    {
+      "kind": "pass",
+      "label": "Đếm đúng số đơn đang mở của bàn",
+      "detail": "activeOrderCount = 1"
+    },
+    {
+      "kind": "pass",
+      "label": "Đơn ở trạng thái ready làm bàn hiện \"món sẵn sàng\"",
+      "detail": "{\"tableId\":\"aSXum1V3IFEXmAlsJZR7\",\"state\":\"foodReady\",\"activeOrderCount\":1,\"readyOrderCount\":1,\"unsettledOrderCount\":0,\"oldestActiveOrderAt\":\"2026-10-08T17:11:46.825Z\"}"
+    },
+    {
+      "kind": "pass",
+      "label": "Đơn đã phục vụ nhưng chưa thu tiền làm bàn hiện \"chờ thanh toán\"",
+      "detail": "{\"tableId\":\"aSXum1V3IFEXmAlsJZR7\",\"state\":\"awaitingPayment\",\"activeOrderCount\":1,\"readyOrderCount\":0,\"unsettledOrderCount\":1,\"oldestActiveOrderAt\":\"2026-10-08T17:11:46.825Z\"}"
+    },
+    {
+      "kind": "pass",
+      "label": "Projection chỉ chứa trạng thái, không chứa tiền hay dữ liệu khách",
+      "detail": "activeOrderCount, oldestActiveOrderAt, readyOrderCount, state, tableId, unsettledOrderCount"
+    },
+    {
+      "kind": "pass",
+      "label": "Huỷ đơn trả bàn về \"trống\"",
+      "detail": "null"
+    }
+  ]
+}

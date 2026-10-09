@@ -24,7 +24,13 @@ This glossary follows `docs/context.md` and the approved SRS.
 | Owner | A user who owns or manages one or more tenants. |
 | Pay-First | Payment confirmation is required before Kitchen receives the order. |
 | Pay-Later | Kitchen receives the order before Cashier settles payment. |
-| Promotion | A configured rule that changes an eligible cart total deterministically. |
+| Promotion | A configured rule that changes an eligible cart total deterministically, or gives a free item. |
+| Promotion benefit | What a Promotion gives: `percentOff`, `fixedAmount`, `buyXGetY`, `freeItem`, `bundlePrice`, or `pointsRedemption`. |
+| Buy X get Y | A Promotion that charges `buyQuantity` units normally and rewards `getQuantity` units. Mua 1 tặng 1 is the same-item case. |
+| Bundle price | A Promotion that charges every group of N units from a set at one fixed price (combo). |
+| Gift line | An Order line a Promotion rewarded: zero line total, the menu price recorded, and a real Cost. |
+| Happy hour | A Promotion condition that applies only inside a tenant-local time window, which may cross midnight. |
+| Quick discount | The single reserved Promotion (`quick-discount`, `source: quick`) that the Settings page edits as a one-field shortcut. |
 | Public menu item | A public-safe active menu projection without Cost, recipe, or private metadata. |
 | Public table link | The minimal public token projection that resolves one active tenant table. |
 | Reversal | A linked compensating record that corrects a paid transaction without deleting it. |
@@ -33,6 +39,12 @@ This glossary follows `docs/context.md` and the approved SRS.
 | Subscription | The Free, Lite, or Pro plan that controls tenant feature access. |
 | Table Access | The module that issues, validates, revokes, and regenerates table links. |
 | Table link | A revocable public link used by QR and NFC for one tenant table. |
+| Floor plan (sơ đồ bàn) | The Owner screen that places every table on a 12×10 grid, grouped and filtered by area, and shows each table's service state. |
+| Area (khu vực) | A free-text room label on a table, such as `Tầng 1` or `Sân vườn`. A label for grouping and filtering, not a container the table is trapped in. |
+| Seats (số ghế) | The seat count the Owner sets on a table. Presentation only; it never affects pricing or capacity limits. |
+| Table position | A table's cell on the floor grid, stored as integer `x`/`y` rather than pixels, so the same arrangement renders the same on every screen. |
+| Table service state | One state per table derived from live Orders: `free` (trống), `occupied` (có khách), `foodReady` (món sẵn sàng), or `awaitingPayment` (chờ thanh toán), in that order of urgency. |
+| Awaiting payment | A table whose Order is `served` but not settled. The most urgent state on the floor plan. |
 | Tenant | One isolated shop workspace and its data. |
 | Tracking token | An opaque Order-specific token that lets Customer read only one tracking projection. |
 | VietQR | The QR payment payload used for bank-transfer instructions. |

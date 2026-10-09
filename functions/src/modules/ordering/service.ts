@@ -34,6 +34,10 @@ import {
   publicMenuItemSchema,
   type PublicMenuItem,
 } from '../../../../shared/contracts/catalog.contract.js';
+import type {
+  PromotionEvaluationResult,
+  PromotionSnapshot,
+} from '../../../../shared/contracts/promotion.contract.js';
 
 export const ORDER_INVALID_CART_MESSAGE = 'Giỏ hàng không hợp lệ.';
 export const ORDER_INVALID_TOKEN_MESSAGE = 'Link bàn không còn khả dụng.';
@@ -95,6 +99,9 @@ export function buildOrderStaffCreateRequestHash(
     tableId: input.orderType === 'takeaway' ? TAKEAWAY_TABLE_ID : input.tableId,
     paymentMode: input.paymentMode,
     lines: input.lines,
+    // A retry with a different code is a different request, not a replay.
+    promotionCode: input.promotionCode ?? null,
+    loyaltyMemberId: input.loyaltyMemberId ?? null,
   });
 }
 
@@ -256,10 +263,68 @@ export function buildOrderLines(input: BuildCartInput): OrderLineSnapshot[] {
       unitPriceVnd,
       quantity: line.quantity,
       lineTotalVnd,
+      lineDiscountVnd: 0,
+      isGift: false,
       unitCostVnd,
       lineCostVnd,
     };
   });
+}
+
+/**
+ * Apply a server Promotion evaluation to the immutable Order lines
+ * (REQ-PRO-001, REQ-PRO-003).
+ *
+ * Cash discounts land on the paid lines. A gift line is appended with a zero
+ * line total and its real Cost, so the Kitchen makes it and Reporting sees
+ * zero revenue with a real Cost. The Customer never paid the gift, so it is
+ * never added to the subtotal.
+ */
+export function applyPromotionToOrderLines(
+  input: {
+    lines: OrderLineSnapshot[];
+    evaluation: PromotionEvaluationResult;
+    publicItems: Map<string, PublicMenuItem>;
+    costByMenuItemId?: Map<string, number>;
+  },
+): OrderLineSnapshot[] {
+  const discountByMenuItemId = new Map(
+    input.evaluation.lines.map((line) => [line.menuItemId, line.lineDiscountVnd]),
+  );
+  const discounted = input.lines.map((line) => ({
+    ...line,
+    lineDiscountVnd: Math.min(
+      discountByMenuItemId.get(line.menuItemId) ?? 0,
+      line.lineTotalVnd,
+    ),
+  }));
+  if (input.evaluation.giftLines.length === 0) {
+    return discounted;
+  }
+  const giftLines = input.evaluation.giftLines.map((gift, index) => {
+    const item = input.publicItems.get(gift.menuItemId);
+    if (!item || !item.isAvailable) {
+      throw new HttpsError(
+        'failed-precondition',
+        ORDER_ITEM_CHANGED_MESSAGE,
+      );
+    }
+    const unitCostVnd = input.costByMenuItemId?.get(gift.menuItemId) ?? 0;
+    return {
+      lineId: `gift-${gift.menuItemId}-${index}`,
+      menuItemId: gift.menuItemId,
+      name: item.name,
+      modifiers: [],
+      unitPriceVnd: item.priceVnd,
+      quantity: gift.quantity,
+      lineTotalVnd: 0,
+      lineDiscountVnd: 0,
+      isGift: true,
+      unitCostVnd,
+      lineCostVnd: unitCostVnd * gift.quantity,
+    } satisfies OrderLineSnapshot;
+  });
+  return [...discounted, ...giftLines];
 }
 
 /** Sum line totals with integer VND arithmetic. */
@@ -290,10 +355,23 @@ export interface BuildOrderInput {
   trackingToken: string;
   idempotencyKey: string;
   now: string;
+  /** The applied Promotion, when the server evaluated one (REQ-PRO-001). */
+  promotion?: {
+    discountVnd: number;
+    promotionSnapshot: PromotionSnapshot | null;
+    loyaltyMemberId: string | null;
+    pointsRedeemed: number;
+  };
 }
 
+/**
+ * Build the immutable Order snapshot. `subtotalVnd` sums the line totals, a
+ * gift line contributing zero; `totalVnd` subtracts the Promotion discount so
+ * the recorded total is exactly what the Customer was told (REQ-PRO-001).
+ */
 export function buildOrderSnapshot(input: BuildOrderInput): OrderSnapshot {
-  const totalVnd = computeOrderTotal(input.lines);
+  const subtotalVnd = computeOrderTotal(input.lines);
+  const discountVnd = Math.min(input.promotion?.discountVnd ?? 0, subtotalVnd);
   return orderSnapshotSchema.parse({
     schemaVersion: ORDER_CONTRACT_VERSION,
     orderId: input.orderId,
@@ -304,8 +382,12 @@ export function buildOrderSnapshot(input: BuildOrderInput): OrderSnapshot {
     status: 'pending',
     paymentMode: input.paymentMode,
     items: input.lines,
-    subtotalVnd: totalVnd,
-    totalVnd,
+    subtotalVnd,
+    discountVnd,
+    promotionSnapshot: input.promotion?.promotionSnapshot ?? null,
+    loyaltyMemberId: input.promotion?.loyaltyMemberId ?? null,
+    pointsRedeemed: input.promotion?.pointsRedeemed ?? 0,
+    totalVnd: subtotalVnd - discountVnd,
     trackingToken: input.trackingToken,
     idempotencyKey: input.idempotencyKey,
     createdAt: input.now,
@@ -327,6 +409,7 @@ export function buildPublicOrderTracking(
     tableName: order.tableNameSnapshot,
     itemSummary: summarizeItems(order.items),
     totalVnd: order.totalVnd,
+    discountVnd: order.discountVnd,
     status: order.status,
     createdAt: order.createdAt,
     updatedAt,

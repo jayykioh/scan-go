@@ -29,6 +29,7 @@ import {
   buildPublicNfcLinkDocument,
   buildPublicTableLinkDocument,
   buildTableDocument,
+  buildTableLayoutPatch,
   computeNextTokenVersion,
   generateTableToken,
   nowIso,
@@ -36,6 +37,7 @@ import {
   parseNfcResolveInput,
   parseNfcRevokeInput,
   parseTableArchiveInput,
+  parseTableConfigureInput,
   parseTableCreateInput,
   parseTableRegenerateInput,
   parseTableRenameInput,
@@ -96,7 +98,17 @@ export const callableTableCreate = onCall(CALL_OPTIONS, async (request) => {
     const memberSnap = await transaction.get(memberRef);
     assertActiveOwnerMember(memberSnap.data());
 
-    transaction.set(tableRef, buildTableDocument({ name: input.name, token, now }));
+    transaction.set(
+      tableRef,
+      buildTableDocument({
+        name: input.name,
+        token,
+        now,
+        area: input.area,
+        seats: input.seats,
+        position: input.position,
+      }),
+    );
     transaction.set(
       linkRef,
       buildPublicTableLinkDocument({
@@ -115,7 +127,12 @@ export const callableTableCreate = onCall(CALL_OPTIONS, async (request) => {
       action: 'TableCreated',
       targetType: 'table',
       targetId: tableRef.id,
-      detail: { tokenVersion: 1 },
+      detail: {
+        tokenVersion: 1,
+        area: input.area,
+        seats: input.seats,
+        position: input.position,
+      },
     });
     return toTableLinkContext(token, {
       tenantId: input.tenantId,
@@ -213,6 +230,62 @@ export const callableTableRename = onCall(CALL_OPTIONS, async (request) => {
     rotation: null,
     version:
       typeof outcome.tokenVersion === 'number' ? outcome.tokenVersion : 1,
+  });
+});
+
+/**
+ * Owner command: replace one table's floor-plan layout — area, seat count, and
+ * grid position (REQ-TBL-002). Presentation only: the public link, the token,
+ * and the Order path are untouched.
+ */
+export const callableTableConfigure = onCall(CALL_OPTIONS, async (request) => {
+  const uid = requireUid(request.auth?.uid);
+  assertAppCheck(request);
+  const input = parseTableConfigureInput(request.data);
+
+  const db = getDb();
+  const tableRef = db.doc(tablePath(input.tenantId, input.tableId));
+  const memberRef = db.doc(`tenants/${input.tenantId}/members/${uid}`);
+  const now = nowIso();
+
+  const outcome = await db.runTransaction(async (transaction) => {
+    const memberSnap = await transaction.get(memberRef);
+    const tableSnap = await transaction.get(tableRef);
+    assertActiveOwnerMember(memberSnap.data());
+    if (!tableSnap.exists) {
+      throw new HttpsError('not-found', TABLE_NOT_FOUND_MESSAGE);
+    }
+
+    transaction.set(tableRef, buildTableLayoutPatch(input, now), {
+      merge: true,
+    });
+    writeAuditEventInTransaction(transaction, {
+      tenantId: input.tenantId,
+      actorUid: uid,
+      actorType: 'owner',
+      role: 'owner',
+      action: 'TableConfigured',
+      targetType: 'table',
+      targetId: input.tableId,
+      detail: {
+        area: input.area,
+        seats: input.seats,
+        position: input.position,
+      },
+    });
+    const tokenVersion = tableSnap.get('tokenVersion');
+    return {
+      tokenVersion:
+        typeof tokenVersion === 'number' ? tokenVersion : 1,
+    };
+  });
+
+  return commandResult({
+    command: 'configure',
+    tableId: input.tableId,
+    context: null,
+    rotation: null,
+    version: outcome.tokenVersion,
   });
 });
 

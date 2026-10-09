@@ -74,11 +74,16 @@ Run the flow in this order. It follows one Order from scan to revenue.
 - Say: one change reaches the Customer menu in under two seconds.
 - Feature: Catalog, REQ-CAT-001 and REQ-CAT-002.
 
-### 2.4 Tables and QR — 1 min
+### 2.4 Tables and QR — 2 min
 - Screen: `/dashboard/tables`.
+- Drag a table to a new cell, set its area and seat count, and show that the plan
+  keeps the arrangement. Point out the summary strip and each tile's service
+  state: trống, có khách, món sẵn sàng, chờ thanh toán — read from live Orders,
+  not typed in by hand.
+- Open "Danh sách" to show the same tables grouped by area.
 - Generate or show a table QR link.
 - Say: each table link is an opaque token and can be revoked.
-- Feature: Table Access, REQ-TBL-001.
+- Feature: Table Access and the floor plan, REQ-TBL-001, REQ-TBL-002, REQ-TBL-003.
 
 ### 2.5 Inventory and change report — 2 min
 - Screen: `/dashboard/inventory`.
@@ -158,7 +163,7 @@ Run the flow in this order. It follows one Order from scan to revenue.
 | ADMIN audit | REQ-ADM-001 | `/dashboard/manage` |
 | AI assistant | REQ-AI-001/003 | `/dashboard` widget |
 | AI revenue warning | REQ-AI-007 | `/dashboard` widget |
-| Table QR link | REQ-TBL-001 | `/dashboard/tables` |
+| Table QR link and floor plan | REQ-TBL-001, REQ-TBL-002, REQ-TBL-003 | `/dashboard/tables` |
 | Workforce and attendance | REQ-HRM-001/002 | Dashboard Staff and Simulator |
 | Feedback and loyalty | REQ-FDB-001, REQ-LOY-001 | Customer and Owner views |
 
@@ -168,6 +173,8 @@ Run the flow in this order. It follows one Order from scan to revenue.
 - NFC needs a physical NDEF device step (REQ-NFC-001 is partial).
 - Loyalty phone delivery provider is not live (REQ-LOY-001).
 - Payment provider secret and live transport are not configured (REQ-PAY-002).
+- The floor plan shows table state from a ten-second poll, not a realtime push; printing a real QR
+  sheet is still open (IMP-15), so the plan copies or opens the link instead.
 - PWA service worker and offline caching are not finished.
 - AI default reply is deterministic without a live provider key.
 

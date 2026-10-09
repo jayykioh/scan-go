@@ -13,7 +13,9 @@ import {
   type ServedTransitionTarget,
 } from '../../../../shared/contracts/fulfilment.contract.js';
 import {
+  ORDER_CONTRACT_VERSION,
   orderSnapshotSchema,
+  type OrderLineSnapshot,
   type OrderSnapshot,
   type OrderStatus,
 } from '../../../../shared/contracts/order.contract.js';
@@ -193,13 +195,16 @@ export function assertFulfilmentIdempotencyMatch(
  * Rebuild the frozen Order contract from a stored document. The mutation plan
  * adds server lifecycle timestamps (`cookingAt`, `readyAt`, ...) that are not
  * part of the snapshot contract, so this projection drops unknown fields.
+ *
+ * An Order written before the Promotion snapshot existed carries no discount
+ * fields, so it normalizes to zero discount and no gift line (REQ-PRO-001).
  */
 export function mapStoredOrder(
   orderId: string,
   data: DocumentData,
 ): OrderSnapshot {
   return orderSnapshotSchema.parse({
-    schemaVersion: data.schemaVersion ?? 1,
+    schemaVersion: ORDER_CONTRACT_VERSION,
     orderId,
     tenantId: data.tenantId,
     orderType: data.orderType ?? 'dineIn',
@@ -207,8 +212,16 @@ export function mapStoredOrder(
     tableNameSnapshot: data.tableNameSnapshot,
     status: data.status,
     paymentMode: data.paymentMode,
-    items: data.items ?? [],
+    items: (data.items ?? []).map((line: DocumentData) => ({
+      ...line,
+      lineDiscountVnd: line.lineDiscountVnd ?? 0,
+      isGift: line.isGift ?? false,
+    })) as OrderLineSnapshot[],
     subtotalVnd: data.subtotalVnd,
+    discountVnd: data.discountVnd ?? 0,
+    promotionSnapshot: data.promotionSnapshot ?? null,
+    loyaltyMemberId: data.loyaltyMemberId ?? null,
+    pointsRedeemed: data.pointsRedeemed ?? 0,
     totalVnd: data.totalVnd,
     trackingToken: data.trackingToken,
     idempotencyKey: data.idempotencyKey,

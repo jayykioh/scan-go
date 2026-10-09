@@ -6,8 +6,9 @@ import {
   vndSchema,
 } from '../validation.js';
 import { paymentMethodSchema } from './payment.contract.js';
+import { promotionSnapshotSchema } from './promotion.contract.js';
 
-export const ORDER_CONTRACT_VERSION = 1;
+export const ORDER_CONTRACT_VERSION = 2;
 
 /** Server-authoritative Order lifecycle statuses (docs/module/ordering.md). */
 export const orderStatusSchema = z.enum([
@@ -57,6 +58,15 @@ export const orderLineSnapshotSchema = z.strictObject({
   unitPriceVnd: vndSchema,
   quantity: positiveIntSchema,
   lineTotalVnd: vndSchema,
+  /** Integer VND of the applied Promotion discount on this line. */
+  lineDiscountVnd: vndSchema,
+  /**
+   * True for a line the Promotion added for free, such as a buy-X-get-Y or
+   * free-item reward. A gift line keeps the menu price in `unitPriceVnd` and
+   * discounts it fully, so Reporting sees real revenue of zero and a real Cost
+   * (REQ-PRO-003).
+   */
+  isGift: z.boolean(),
   unitCostVnd: vndSchema,
   lineCostVnd: vndSchema,
 });
@@ -80,6 +90,10 @@ export const orderSubmitInputSchema = z.strictObject({
   paymentMode: orderPaymentModeSchema,
   idempotencyKey: z.string().min(8).max(128),
   lines: z.array(orderCartLineInputSchema).min(1).max(100),
+  /** The Promotion code the Customer typed, when the cart asked for one. */
+  promotionCode: z.string().trim().min(1).max(32).nullable().optional(),
+  /** The verified Loyalty member, needed by a redemption or a segment. */
+  loyaltyMemberId: z.string().min(1).nullable().optional(),
 });
 
 export type OrderSubmitInput = z.infer<typeof orderSubmitInputSchema>;
@@ -96,6 +110,8 @@ export const orderStaffCreateInputSchema = z
     paymentMode: orderPaymentModeSchema,
     idempotencyKey: z.string().min(8).max(128),
     lines: z.array(orderCartLineInputSchema).min(1).max(100),
+    promotionCode: z.string().trim().min(1).max(32).nullable().optional(),
+    loyaltyMemberId: z.string().min(1).nullable().optional(),
   })
   .refine(
     (input) => input.orderType !== 'dineIn' || input.tableId !== null,
@@ -115,6 +131,14 @@ export const orderSnapshotSchema = z.strictObject({
   paymentMode: orderPaymentModeSchema,
   items: z.array(orderLineSnapshotSchema).min(1),
   subtotalVnd: vndSchema,
+  /** Integer VND of the single applied Promotion, zero when none applied. */
+  discountVnd: vndSchema,
+  /** The applied Promotion, frozen so a later edit cannot rewrite history. */
+  promotionSnapshot: promotionSnapshotSchema.nullable(),
+  /** The verified Loyalty member this Order belongs to, when known. */
+  loyaltyMemberId: z.string().min(1).nullable(),
+  /** Loyalty points this Order consumed; reversed when it is cancelled. */
+  pointsRedeemed: nonNegativeIntSchema,
   totalVnd: vndSchema,
   trackingToken: z.string().min(1),
   idempotencyKey: z.string().min(1),
@@ -151,6 +175,8 @@ export const publicOrderTrackingSchema = z.strictObject({
   tableName: z.string().min(1),
   itemSummary: z.string().min(1),
   totalVnd: vndSchema,
+  /** Public-safe: the discount the Customer was told about. */
+  discountVnd: vndSchema,
   status: orderStatusSchema,
   createdAt: isoUtcTimestampSchema,
   updatedAt: isoUtcTimestampSchema,

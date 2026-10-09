@@ -1,0 +1,59 @@
+{
+  "generatedAt": "2026-10-08T15:53:46.412Z",
+  "base": "http://127.0.0.1:3000",
+  "flows": [
+    "p4"
+  ],
+  "totals": {
+    "pass": 8,
+    "fail": 0,
+    "note": 0
+  },
+  "findings": [
+    {
+      "flow": "p4",
+      "kind": "pass",
+      "label": "Trang có mục AI gợi ý chiến dịch"
+    },
+    {
+      "flow": "p4",
+      "kind": "pass",
+      "label": "Có nút gọi AI gợi ý"
+    },
+    {
+      "flow": "p4",
+      "kind": "pass",
+      "label": "AI tạo được một gợi ý chiến dịch"
+    },
+    {
+      "flow": "p4",
+      "kind": "pass",
+      "label": "Gợi ý chiến dịch không trả lỗi kỹ thuật thô"
+    },
+    {
+      "flow": "p4",
+      "kind": "pass",
+      "label": "Gợi ý nói rõ khi còn thiếu dữ liệu",
+      "detail": "có nêu thiếu dữ liệu"
+    },
+    {
+      "flow": "p4",
+      "kind": "pass",
+      "label": "Thẻ gợi ý có nút Đo lường"
+    },
+    {
+      "flow": "p4",
+      "kind": "pass",
+      "label": "Chủ quán duyệt được chiến dịch và trạng thái đổi thành Đã duyệt"
+    },
+    {
+      "flow": "p4",
+      "kind": "pass",
+      "label": "Đo lường chiến dịch trả về số liệu thật"
+    }
+  ],
+  "screenshots": [
+    "docs/feedback/artifacts/promotion-p4-campaign.png"
+  ],
+  "consoleErrors": []
+}

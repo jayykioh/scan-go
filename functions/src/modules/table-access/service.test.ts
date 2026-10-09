@@ -3,8 +3,10 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import {
   buildPublicTableLinkDocument,
   buildTableDocument,
+  buildTableLayoutPatch,
   computeNextTokenVersion,
   generateTableToken,
+  parseTableConfigureInput,
   parseTableCreateInput,
   parseTableResolveInput,
   toTableLinkContext,
@@ -132,6 +134,75 @@ describe('table input validation', () => {
     expect(
       parseTableResolveInput({ token: NEW_TABLE_TOKEN_FIXTURE, tenantId: null }),
     ).toEqual({ token: NEW_TABLE_TOKEN_FIXTURE, tenantId: null });
+  });
+
+  it('parses a floor-plan layout and rejects one outside the grid', () => {
+    expect(
+      parseTableConfigureInput({
+        tenantId: TENANT_A_FIXTURE,
+        tableId: 'table-1',
+        area: 'Sân vườn',
+        seats: 4,
+        position: { x: 2, y: 3 },
+      }),
+    ).toEqual({
+      tenantId: TENANT_A_FIXTURE,
+      tableId: 'table-1',
+      area: 'Sân vườn',
+      seats: 4,
+      position: { x: 2, y: 3 },
+    });
+    expect(() =>
+      parseTableConfigureInput({
+        tenantId: TENANT_A_FIXTURE,
+        tableId: 'table-1',
+        area: null,
+        seats: 4,
+        position: { x: 0, y: 99 },
+      }),
+    ).toThrow(HttpsError);
+  });
+});
+
+describe('buildTableLayoutPatch (REQ-TBL-002)', () => {
+  it('replaces all three layout fields and stamps updatedAt', () => {
+    expect(
+      buildTableLayoutPatch(
+        {
+          tenantId: TENANT_A_FIXTURE,
+          tableId: 'table-1',
+          area: 'Tầng 2',
+          seats: 6,
+          position: { x: 1, y: 1 },
+        },
+        '2026-10-08T10:00:00.000Z',
+      ),
+    ).toEqual({
+      area: 'Tầng 2',
+      seats: 6,
+      position: { x: 1, y: 1 },
+      updatedAt: '2026-10-08T10:00:00.000Z',
+    });
+  });
+
+  it('clears a value with an explicit null instead of leaving a stale one', () => {
+    expect(
+      buildTableLayoutPatch(
+        {
+          tenantId: TENANT_A_FIXTURE,
+          tableId: 'table-1',
+          area: null,
+          seats: null,
+          position: null,
+        },
+        '2026-10-08T10:00:00.000Z',
+      ),
+    ).toEqual({
+      area: null,
+      seats: null,
+      position: null,
+      updatedAt: '2026-10-08T10:00:00.000Z',
+    });
   });
 });
 

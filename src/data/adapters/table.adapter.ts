@@ -12,16 +12,24 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import {
+  readStoredTableLayout,
   tableCommandResultSchema,
   tableLinkContextSchema,
   type TableArchiveInput,
   type TableCommandResult,
+  type TableConfigureInput,
   type TableCreateInput,
+  type TableLayout,
   type TableLinkContext,
+  type TablePosition,
   type TableRegenerateInput,
   type TableRenameInput,
   type TableResolveInput,
 } from '@contracts/table.contract';
+import {
+  tableStatusListResultSchema,
+  type TableServiceStatus,
+} from '@contracts/tableStatus.contract';
 import {
   nfcProvisionResultSchema,
   nfcResolveResultSchema,
@@ -52,12 +60,17 @@ export interface TenantTable {
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Floor-plan layout (REQ-TBL-002); null until the Owner arranges the table. */
+  area: string | null;
+  seats: number | null;
+  position: TablePosition | null;
 }
 
 export function mapStoredTable(
   tableId: string,
   data: DocumentData,
 ): TenantTable {
+  const layout: TableLayout = readStoredTableLayout(data);
   return {
     tableId,
     name: String(data.name ?? ''),
@@ -70,6 +83,9 @@ export function mapStoredTable(
     archivedAt: typeof data.archivedAt === 'string' ? data.archivedAt : null,
     createdAt: String(data.createdAt ?? ''),
     updatedAt: String(data.updatedAt ?? ''),
+    area: layout.area,
+    seats: layout.seats,
+    position: layout.position,
   };
 }
 
@@ -89,13 +105,20 @@ async function requireFunctions() {
 export async function createTenantTable(
   tenantId: string,
   name: string,
+  layout: TableLayout = { area: null, seats: null, position: null },
 ): Promise<TableCommandResult> {
   const functions = await requireFunctions();
   const callable = httpsCallable<TableCreateInput, TableCommandResult>(
     functions,
     'callableTableCreate',
   );
-  const result = await callable({ tenantId, name });
+  const result = await callable({
+    tenantId,
+    name,
+    area: layout.area,
+    seats: layout.seats,
+    position: layout.position,
+  });
   return tableCommandResultSchema.parse(result.data);
 }
 
@@ -138,6 +161,50 @@ export async function regenerateTableToken(
   );
   const result = await callable({ tenantId, tableId });
   return tableCommandResultSchema.parse(result.data);
+}
+
+/**
+ * Owner command: replace one table's floor-plan layout — area, seat count, and
+ * grid position (REQ-TBL-002). Presentation only: the public link, the token,
+ * and the Order path are untouched.
+ */
+export async function configureTenantTable(
+  tenantId: string,
+  tableId: string,
+  layout: TableLayout,
+): Promise<TableCommandResult> {
+  const functions = await requireFunctions();
+  const callable = httpsCallable<TableConfigureInput, TableCommandResult>(
+    functions,
+    'callableTableConfigure',
+  );
+  const result = await callable({
+    tenantId,
+    tableId,
+    area: layout.area,
+    seats: layout.seats,
+    position: layout.position,
+  });
+  return tableCommandResultSchema.parse(result.data);
+}
+
+/**
+ * Floor-plan service state per busy table (REQ-TBL-003). A snapshot rather than
+ * a listener: it is folded from live Orders on every call, so it cannot drift
+ * the way a server-maintained projection could. The screen polls it.
+ */
+export async function listTableServiceStatus(
+  tenantId: string,
+): Promise<TableServiceStatus[]> {
+  const functions = await requireFunctions();
+  const callable = httpsCallable<{ tenantId: string }, unknown>(
+    functions,
+    'callableOrderListTableStatus',
+  );
+  const result = tableStatusListResultSchema.parse(
+    (await callable({ tenantId })).data,
+  );
+  return result.tables;
 }
 
 /** Public resolver: no sign-in is required, but App Check and limits apply. */

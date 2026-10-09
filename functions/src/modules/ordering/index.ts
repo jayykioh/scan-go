@@ -28,6 +28,14 @@ import {
 } from '../../../../shared/contracts/order.contract.js';
 import type { Ingredient } from '../../../../shared/contracts/inventory.contract.js';
 import {
+  TABLE_STATUS_CONTRACT_VERSION,
+  tableStatusListResultSchema,
+} from '../../../../shared/contracts/tableStatus.contract.js';
+import {
+  ACTIVE_TABLE_ORDER_STATUSES,
+  aggregateTableServiceStatus,
+} from './tableStatus.js';
+import {
   applyInventoryRestorationPlan,
   buildInventoryRestorationPlan,
   ingredientCollectionPath,
@@ -46,6 +54,7 @@ import {
 import {
   assertIdempotencyMatch,
   assertUnpaidCancellableOrder,
+  applyPromotionToOrderLines,
   buildOrderCancelRequestHash,
   buildOrderLines,
   buildOrderSnapshot,
@@ -64,6 +73,26 @@ import {
   resolveStaffOrderTable,
   type IdempotencyRecord,
 } from './service.js';
+import {
+  evaluatePromotionForCart,
+  loadActivePromotions,
+  type PromotionEvaluationOutcome,
+  loadPromotionFacts,
+  requiredPromotionMenuItemIds,
+  resolveTenantTimezone,
+} from '../promotion/service.js';
+import { loadSubscriptionState } from '../subscription/service.js';
+import type { PromotionCartLine } from '../../../../shared/contracts/promotion.contract.js';
+import {
+  buildLoyaltyRedeemPlan,
+  buildLoyaltyRedeemReversalPlan,
+  buildLoyaltyRequestHash,
+  loyaltyMemberPath,
+  loyaltyTransactionPath,
+  mapStoredLoyaltyMember,
+} from '../loyalty/service.js';
+import { loyaltyRedeemReversalTransactionId } from '../../../../shared/contracts/loyalty.contract.js';
+import type { PublicMenuItem } from '../../../../shared/contracts/catalog.contract.js';
 
 // Module public API: Config's scheduled retention job composes the archive plan
 // through Ordering, and Payment composes the linked correction plan through
@@ -89,6 +118,8 @@ const ORDERING_CASHIER_DENIED_MESSAGE =
 const ORDERING_KITCHEN_DENIED_MESSAGE =
   'Chỉ bếp hoặc chủ cửa hàng xem được danh sách này.';
 const ORDERING_INVALID_MESSAGE = 'Yêu cầu không hợp lệ.';
+const ORDER_PROMOTION_MEMBER_MISSING_MESSAGE =
+  'Không tìm thấy hội viên để trừ điểm.';
 
 function requireUid(uid: string | undefined): string {
   if (!uid) {
@@ -161,6 +192,192 @@ function generateTrackingToken(): string {
 }
 
 /**
+ * Evaluate the tenant Promotion for one cart before the Order transaction.
+ *
+ * Every read happens here, outside the transaction, so the transaction stays a
+ * pure write (RULES_FIREBASE §4). The evaluation result is frozen and becomes
+ * part of the immutable Order snapshot (REQ-PRO-001).
+ */
+async function evaluateOrderPromotion(params: {
+  db: Firestore;
+  tenantId: string;
+  lines: readonly PromotionCartLine[];
+  promotionCode: string | null;
+  loyaltyMemberId: string | null;
+  now: string;
+  publicItems: Map<string, PublicMenuItem>;
+  costByMenuItemId: Map<string, number>;
+}): Promise<PromotionEvaluationOutcome> {
+  const { db, tenantId, lines, now } = params;
+  const entitlements = (await loadSubscriptionState(db, tenantId)).entitlements;
+  const promotions = entitlements.features.includes('promotions')
+    ? await loadActivePromotions(db, tenantId)
+    : [];
+
+  // A gift candidate is usually not in the cart, so resolve it here with its
+  // private Cost before the transaction (REQ-PRO-003).
+  const missingIds = requiredPromotionMenuItemIds(lines, promotions).filter(
+    (menuItemId) => !params.publicItems.has(menuItemId),
+  );
+  if (missingIds.length > 0) {
+    const publicSnaps = await db.getAll(
+      ...missingIds.map((menuItemId) =>
+        db.doc(`tenants/${tenantId}/publicMenuItems/${menuItemId}`),
+      ),
+    );
+    const privateSnaps = await db.getAll(
+      ...missingIds.map((menuItemId) =>
+        db.doc(`tenants/${tenantId}/menuItems/${menuItemId}`),
+      ),
+    );
+    publicSnaps.forEach((snap, index) => {
+      const parsed = parsePublicMenuItem(missingIds[index], snap.data() ?? {});
+      if (parsed) {
+        params.publicItems.set(missingIds[index], parsed);
+      }
+    });
+    privateSnaps.forEach((snap, index) => {
+      const cost = readCostVnd(snap);
+      if (cost !== null) {
+        params.costByMenuItemId.set(missingIds[index], cost);
+      }
+    });
+  }
+
+  const timezone = resolveTenantTimezone(
+    (await db.doc(`tenants/${tenantId}`).get()).get('timezone'),
+  );
+  const facts = await loadPromotionFacts(db, {
+    tenantId,
+    lines,
+    promotions,
+    loyaltyMemberId: params.loyaltyMemberId,
+    now,
+    timezone,
+    publicItems: params.publicItems,
+  });
+  return evaluatePromotionForCart(db, tenantId, lines, {
+    code: params.promotionCode,
+    loyaltyMemberId: params.loyaltyMemberId,
+    now,
+    facts,
+    promotions,
+    entitlements,
+  });
+}
+
+/**
+ * Spend the Loyalty points a Promotion redeemed, inside the Order transaction.
+ *
+ * The member is re-read inside the transaction and the plan re-checks the
+ * balance, so two Orders racing for the same points cannot overdraw the member
+ * (REQ-PRO-004). A replayed Order returns before this runs.
+ */
+async function applyLoyaltyRedemptionPlan(
+  transaction: Transaction,
+  db: Firestore,
+  tenantId: string,
+  outcome: PromotionEvaluationOutcome,
+  idempotencyKey: string,
+  now: string,
+): Promise<void> {
+  const memberId = outcome.loyaltyMemberId;
+  if (memberId === null) {
+    return;
+  }
+  const memberRef = db.doc(loyaltyMemberPath(tenantId, memberId));
+  const memberSnap = await transaction.get(memberRef);
+  if (!memberSnap.exists) {
+    throw new HttpsError('not-found', ORDER_PROMOTION_MEMBER_MISSING_MESSAGE);
+  }
+  const member = mapStoredLoyaltyMember(
+    memberId,
+    tenantId,
+    memberSnap.data() ?? {},
+  );
+  const plan = buildLoyaltyRedeemPlan({
+    tenantId,
+    member,
+    points: outcome.result.pointsRedeemed,
+    orderId: null,
+    idempotencyKey,
+    requestHash: buildLoyaltyRequestHash({
+      tenantId,
+      memberId,
+      action: 'redeem',
+      points: outcome.result.pointsRedeemed,
+      amountVnd: 0,
+    }),
+    actorUid: null,
+    now,
+  });
+  transaction.set(
+    db.doc(loyaltyTransactionPath(tenantId, plan.transaction.transactionId)),
+    plan.transaction,
+  );
+  transaction.set(memberRef, plan.nextMember);
+}
+
+/**
+ * Restore the points one cancelled Order redeemed. The deterministic ledger id
+ * means a retried cancellation can never credit the member twice
+ * (REQ-PRO-004, REQ-CAS-002).
+ */
+async function applyLoyaltyRedeemReversalPlan(
+  transaction: Transaction,
+  db: Firestore,
+  tenantId: string,
+  order: OrderSnapshot,
+  reason: string,
+  idempotencyKey: string,
+  actorUid: string,
+  now: string,
+): Promise<void> {
+  if (order.pointsRedeemed <= 0 || order.loyaltyMemberId === null) {
+    return;
+  }
+  const reversalRef = db.doc(
+    loyaltyTransactionPath(
+      tenantId,
+      loyaltyRedeemReversalTransactionId(order.orderId),
+    ),
+  );
+  const existingSnap = await transaction.get(reversalRef);
+  if (existingSnap.exists) {
+    return;
+  }
+  const memberRef = db.doc(loyaltyMemberPath(tenantId, order.loyaltyMemberId));
+  const memberSnap = await transaction.get(memberRef);
+  if (!memberSnap.exists) {
+    return;
+  }
+  const member = mapStoredLoyaltyMember(
+    order.loyaltyMemberId,
+    tenantId,
+    memberSnap.data() ?? {},
+  );
+  const plan = buildLoyaltyRedeemReversalPlan({
+    tenantId,
+    member,
+    orderId: order.orderId,
+    pointsRedeemed: order.pointsRedeemed,
+    reason,
+    idempotencyKey,
+    requestHash: buildLoyaltyRequestHash({
+      tenantId,
+      memberId: order.loyaltyMemberId,
+      action: 'reverse',
+      points: order.pointsRedeemed,
+      amountVnd: 0,
+    }),
+    actorUid,
+    now,
+  });
+  transaction.set(reversalRef, plan.transaction);
+  transaction.set(memberRef, plan.nextMember);
+}
+
+/**
  * Public callable: create one Pay-First or Pay-Later Order from an active Table
  * link and the current public menu. The server owns prices, costs, totals,
  * status, and idempotency (REQ-ORD-001, REQ-ORD-002, NFR-SEC-002).
@@ -197,6 +414,9 @@ export const callableOrderSubmit = onCall(CALL_OPTIONS, async (request) => {
     paymentMode: input.paymentMode,
     lines: input.lines,
     tokenVersion: linkSnap.get('tokenVersion'),
+    // A retry with a different code is a different request, not a replay.
+    promotionCode: input.promotionCode ?? null,
+    loyaltyMemberId: input.loyaltyMemberId ?? null,
   });
 
   const orderRef = db.collection(`tenants/${tenantId}/orders`).doc();
@@ -244,6 +464,19 @@ export const callableOrderSubmit = onCall(CALL_OPTIONS, async (request) => {
     }
   });
 
+  // The Promotion is evaluated once, before the transaction, and frozen into
+  // the Order snapshot so the recorded total is the total the Customer saw.
+  const promotionOutcome = await evaluateOrderPromotion({
+    db,
+    tenantId,
+    lines: input.lines,
+    promotionCode: input.promotionCode ?? null,
+    loyaltyMemberId: input.loyaltyMemberId ?? null,
+    now: nowIso(),
+    publicItems,
+    costByMenuItemId,
+  });
+
   const result = await db.runTransaction<OrderSubmitResult>(
     async (transaction) => {
       // All reads precede all writes (RULES_FIREBASE §4).
@@ -274,11 +507,30 @@ export const callableOrderSubmit = onCall(CALL_OPTIONS, async (request) => {
       }
 
       const now = nowIso();
-      const lines = buildOrderLines({
+      const baseLines = buildOrderLines({
         publicItems,
         lines: input.lines,
         costByMenuItemId,
       });
+      const lines = applyPromotionToOrderLines({
+        lines: baseLines,
+        evaluation: promotionOutcome.result,
+        publicItems,
+        costByMenuItemId,
+      });
+      // A point redemption spends Loyalty points in the same transaction that
+      // creates the Order, so an Order can never exist without its deduction
+      // (REQ-PRO-004, REQ-LOY-001).
+      if (promotionOutcome.result.pointsRedeemed > 0) {
+        applyLoyaltyRedemptionPlan(
+          transaction,
+          db,
+          tenantId,
+          promotionOutcome,
+          input.idempotencyKey,
+          now,
+        );
+      }
       const order = buildOrderSnapshot({
         orderId: orderRef.id,
         tenantId,
@@ -289,6 +541,12 @@ export const callableOrderSubmit = onCall(CALL_OPTIONS, async (request) => {
         trackingToken,
         idempotencyKey: input.idempotencyKey,
         now,
+        promotion: {
+          discountVnd: promotionOutcome.result.discountVnd,
+          promotionSnapshot: promotionOutcome.result.appliedPromotion,
+          loyaltyMemberId: promotionOutcome.loyaltyMemberId,
+          pointsRedeemed: promotionOutcome.result.pointsRedeemed,
+        },
       });
       const tracking = buildPublicOrderTracking(order, now);
 
@@ -435,6 +693,19 @@ export const callableOrderStaffCreate = onCall(
       }
     });
 
+    // Staff order entry applies the same server evaluation as the Customer
+    // path, so a promotion never depends on who typed the order.
+    const promotionOutcome = await evaluateOrderPromotion({
+      db,
+      tenantId: input.tenantId,
+      lines: input.lines,
+      promotionCode: input.promotionCode ?? null,
+      loyaltyMemberId: input.loyaltyMemberId ?? null,
+      now: nowIso(),
+      publicItems,
+      costByMenuItemId,
+    });
+
     const result = await db.runTransaction<OrderSubmitResult>(
       async (transaction) => {
         // All reads precede all writes (RULES_FIREBASE §4).
@@ -472,11 +743,27 @@ export const callableOrderStaffCreate = onCall(
         }
 
         const now = nowIso();
-        const lines = buildOrderLines({
+        const baseLines = buildOrderLines({
           publicItems,
           lines: input.lines,
           costByMenuItemId,
         });
+        const lines = applyPromotionToOrderLines({
+          lines: baseLines,
+          evaluation: promotionOutcome.result,
+          publicItems,
+          costByMenuItemId,
+        });
+        if (promotionOutcome.result.pointsRedeemed > 0) {
+          applyLoyaltyRedemptionPlan(
+            transaction,
+            db,
+            input.tenantId,
+            promotionOutcome,
+            input.idempotencyKey,
+            now,
+          );
+        }
         const order = buildOrderSnapshot({
           orderId: orderRef.id,
           tenantId: input.tenantId,
@@ -488,6 +775,12 @@ export const callableOrderStaffCreate = onCall(
           trackingToken,
           idempotencyKey: input.idempotencyKey,
           now,
+          promotion: {
+            discountVnd: promotionOutcome.result.discountVnd,
+            promotionSnapshot: promotionOutcome.result.appliedPromotion,
+            loyaltyMemberId: promotionOutcome.loyaltyMemberId,
+            pointsRedeemed: promotionOutcome.result.pointsRedeemed,
+          },
         });
         const tracking = buildPublicOrderTracking(order, now);
 
@@ -905,6 +1198,47 @@ export const callableOrderListUnpaid = onCall(CALL_OPTIONS, async (request) => {
 });
 
 /**
+ * Floor-plan query: one service state per busy table, folded from live Orders
+ * (REQ-TBL-003). Any active member may read it because the projection carries
+ * no money, no Customer identity, and no Order line; the screen polls it, so it
+ * is always computed from source instead of from a projection that could drift.
+ */
+export const callableOrderListTableStatus = onCall(
+  CALL_OPTIONS,
+  async (request) => {
+    const uid = requireUid(request.auth?.uid);
+    assertAppCheck(request);
+    const input = parseOrderTenantListInput(request.data);
+    const db = getDb();
+    const memberSnap = await db
+      .doc(`tenants/${input.tenantId}/members/${uid}`)
+      .get();
+    assertActiveOrderingMember(memberSnap.data());
+
+    const snap = await db
+      .collection(`tenants/${input.tenantId}/orders`)
+      .where('status', 'in', ACTIVE_TABLE_ORDER_STATUSES)
+      .orderBy('createdAt', 'desc')
+      .limit(ORDER_LIST_LIMIT)
+      .get();
+
+    return tableStatusListResultSchema.parse({
+      schemaVersion: TABLE_STATUS_CONTRACT_VERSION,
+      tenantId: input.tenantId,
+      generatedAt: nowIso(),
+      tables: aggregateTableServiceStatus(
+        snap.docs.map((docSnap) => ({
+          tableId: docSnap.get('tableId'),
+          status: docSnap.get('status'),
+          paidAt: docSnap.get('paidAt'),
+          createdAt: docSnap.get('createdAt'),
+        })),
+      ),
+    });
+  },
+);
+
+/**
  * Kitchen query: bounded pending/cooking queue. Pay-First Orders without a
  * confirmed Payment never appear (REQ-ORD-002, Pay-First gate).
  */
@@ -1060,6 +1394,19 @@ export const callableOrderCancelUnpaid = onCall(
         now,
         order,
       });
+
+      // Restoring redeemed points is a read-then-write, so it must run before
+      // the Inventory restoration writes anything (RULES_FIREBASE §4).
+      await applyLoyaltyRedeemReversalPlan(
+        transaction,
+        db,
+        tenantId,
+        order,
+        input.reason,
+        input.idempotencyKey,
+        uid,
+        now,
+      );
 
       applyInventoryRestorationPlan(transaction, db, restoration, uid);
       applyOrderStatusMutationPlan(transaction, db, plan);

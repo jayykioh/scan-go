@@ -107,14 +107,23 @@ describe('readPromotions', () => {
     mocks.getDocs.mockResolvedValueOnce({
       docs: [
         docSnapshot('p1', {
-          schemaVersion: 1,
+          schemaVersion: 2,
+          source: 'manual',
           tenantId: 't1',
           name: 'Giảm 10%',
           status: 'active',
           priority: 1,
           startsAt: null,
           endsAt: null,
-          eligibility: { minSubtotalVnd: null, menuItemIds: null },
+          eligibility: {
+            minSubtotalVnd: null,
+            minQuantity: null,
+            menuItemIds: null,
+            timeWindow: null,
+            daysOfWeek: null,
+            code: null,
+            customerSegment: null,
+          },
           benefit: { type: 'percentOff', percent: 10, maxDiscountVnd: null },
           createdAt: '2026-09-01T00:00:00.000Z',
           updatedAt: '2026-09-01T00:00:00.000Z',

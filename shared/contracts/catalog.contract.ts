@@ -28,6 +28,28 @@ export const catalogModifierGroupSchema = z.strictObject({
 
 export type CatalogModifierGroup = z.infer<typeof catalogModifierGroupSchema>;
 
+/**
+ * Integer VND of the selected modifier options on one menu item. It sums only
+ * option ids that exist on the item, so the same selection always resolves to
+ * the same price whether Ordering or Promotion asks (REQ-ORD-001,
+ * REQ-PRO-001). Ordering still owns the required/min/max group validation.
+ */
+export function sumModifierDeltaVnd(
+  modifierGroups: readonly CatalogModifierGroup[],
+  selectedOptionIds: readonly string[],
+): number {
+  const requested = new Set(selectedOptionIds);
+  let total = 0;
+  for (const group of modifierGroups) {
+    for (const option of group.options) {
+      if (requested.has(option.optionId)) {
+        total += option.priceDeltaVnd;
+      }
+    }
+  }
+  return total;
+}
+
 export const catalogMenuItemSchema = z.strictObject({
   schemaVersion: z.literal(CATALOG_CONTRACT_VERSION),
   menuItemId: z.string().min(1),

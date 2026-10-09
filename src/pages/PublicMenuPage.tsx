@@ -9,12 +9,17 @@ import {
   toOrderCartLines,
 } from '../data/adapters/ordering.adapter';
 import { subscribePublicMenu } from '../data/adapters/catalog.adapter';
+import { evaluatePromotions } from '../data/adapters/promotion.adapter';
 import { buildQrPayload, resolvePublicTable } from '../data/adapters/table.adapter';
 import { toPublicMenuItem, toTrackingOrder } from '../data/adapters/view-mappers';
 import { resolveInterfaceLocale, translate } from '../data/adapters/i18n.adapter';
 import type { TableLinkContext } from '@contracts/table.contract';
 import type { I18nMessageKey } from '@contracts/i18n.contract';
 import type { PublicOrderTracking } from '@contracts/order.contract';
+import type {
+  PromotionCartLine,
+  PromotionEvaluationResult,
+} from '@contracts/promotion.contract';
 import { MenuItem, OrderItem, TableConfig, TenantConfig } from '../types';
 
 const IDEMPOTENCY_STORAGE_PREFIX = 'scango:order:idempotency:v1:';
@@ -155,8 +160,32 @@ export default function PublicMenuPage() {
   const [activeTableId, setActiveTableId] = useState(tableId);
   useEffect(() => setActiveTableId(tableId), [tableId]);
 
+  /**
+   * The server evaluates the Promotion. The page owns the callable so the cart
+   * never prices itself (REQ-PRO-001, NFR-DATA-001).
+   */
+  const handleEvaluatePromotion = useCallback(
+    async (
+      lines: PromotionCartLine[],
+      code: string | null,
+    ): Promise<PromotionEvaluationResult> => {
+      if (!linkContext) {
+        throw new Error(t('publicMenu.tableUnknown'));
+      }
+      return evaluatePromotions(lines, {
+        tenantId: linkContext.tenantId,
+        code,
+      });
+    },
+    [linkContext, t],
+  );
+
   const handleSubmitOrder = useCallback(
-    async (cart: OrderItem[], paymentMode: 'Pay-First' | 'Pay-Later') => {
+    async (
+      cart: OrderItem[],
+      paymentMode: 'Pay-First' | 'Pay-Later',
+      promotionCode: string | null,
+    ) => {
       if (!linkContext) {
         throw new Error(t('publicMenu.tableUnknown'));
       }
@@ -167,6 +196,7 @@ export default function PublicMenuPage() {
           paymentMode: paymentMode === 'Pay-First' ? 'payFirst' : 'payLater',
           idempotencyKey: readIdempotencyKey(linkContext.token),
           lines: toOrderCartLines(cart),
+          promotionCode,
         });
       } catch (error) {
         throw new Error(
@@ -178,7 +208,7 @@ export default function PublicMenuPage() {
       setTracking(result.tracking);
       setTrackingToken(result.tracking.trackingToken);
     },
-    [linkContext],
+    [linkContext, t],
   );
 
   const customerOrders = tracking ? [toTrackingOrder(tracking)] : [];
@@ -206,6 +236,7 @@ export default function PublicMenuPage() {
             directMenu
             isOnline={isOnline}
             onSubmitOrder={handleSubmitOrder}
+            onEvaluatePromotion={handleEvaluatePromotion}
             menuError={menuError}
             tracking={tracking}
           />

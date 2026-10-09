@@ -270,6 +270,13 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Promotion AI sessions contain structured Owner requirements only. The
+      // server owns all writes; Owner reads are allowed for resume (REQ-PRO-007).
+      match /promotionAiSessions/{sessionId} {
+        allow read: if isActiveOwner(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
       // Promotion definitions are server-written only. Active tenant members
       // and ADMIN read; cross-tenant reads stay denied (REQ-PRO-001).
       match /promotions/{promotionId} {

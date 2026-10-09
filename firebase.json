@@ -11,7 +11,7 @@
     "codebase": "default",
     "runtime": "nodejs22",
     "predeploy": [
-      "npm --workspace functions run build"
+      "npm --workspace functions run build --if-present"
     ]
   },
   "emulators": {

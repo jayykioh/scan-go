@@ -155,7 +155,7 @@ export const promotionAiAnswerInputSchema = z.strictObject({
     z.number(),
     z.boolean(),
     z.array(z.string().min(1).max(120)).max(50),
-    z.object({}).strict(),
+    z.record(z.string(), z.unknown()),
   ]),
 });
 export type PromotionAiAnswerInput = z.infer<typeof promotionAiAnswerInputSchema>;

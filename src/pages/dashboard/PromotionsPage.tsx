@@ -43,7 +43,13 @@ import {
   measureCampaign,
   suggestCampaign,
   upsertPromotion,
+  startPromotionAi,
+  answerPromotionAi,
+  confirmPromotionAi,
+  discardPromotionAi,
+  getPromotionAi,
 } from '../../data/adapters/promotion.adapter';
+import type { PromotionAiSession } from '@contracts/promotionAi.contract';
 import { getSubscription } from '../../data/adapters/subscription.adapter';
 import {
   refreshSlice,
@@ -556,9 +562,10 @@ export default function PromotionsPage() {
   const [goal, setGoal] = useState<CampaignGoal>('increaseOrderValue');
   const [suggesting, setSuggesting] = useState(false);
   const [measuringId, setMeasuringId] = useState<string | null>(null);
-  const [measurements, setMeasurements] = useState<
-    Record<string, string>
-  >({});
+  const [measurements, setMeasurements] = useState<Record<string, string>>({});
+  const [aiSession, setAiSession] = useState<PromotionAiSession | null>(null);
+  const [aiAnswer, setAiAnswer] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
 
   const entitlements = useMemo(() => resolvePlanEntitlements(plan), [plan]);
   const canUseAdvanced = entitlements.features.includes('promotionAdvanced');
@@ -601,6 +608,52 @@ export default function PromotionsPage() {
 
   const toggleIn = (list: string[], id: string): string[] =>
     list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id];
+
+  const handleAiStart = useCallback(async () => {
+    if (!tenantId) return;
+    setAiBusy(true);
+    try {
+      const result = await startPromotionAi({ tenantId });
+      setAiSession(result.session);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không mở được trợ lý.');
+    } finally {
+      setAiBusy(false);
+    }
+  }, [tenantId, toast]);
+
+  const handleAiAnswer = useCallback(async () => {
+    if (!tenantId || !aiSession || !aiAnswer.trim()) return;
+    setAiBusy(true);
+    try {
+      const parsed = aiSession.step === 'goal' ? { goal: aiAnswer.trim() }
+        : aiSession.step === 'benefitType' ? { benefitType: aiAnswer.trim() }
+        : aiSession.step === 'identity' ? { name: aiAnswer.trim() }
+        : { name: aiAnswer.trim() };
+      const result = await answerPromotionAi({ tenantId, sessionId: aiSession.sessionId, step: aiSession.step, answer: parsed });
+      setAiSession(result.session);
+      setAiAnswer('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không lưu được câu trả lời.');
+    } finally {
+      setAiBusy(false);
+    }
+  }, [tenantId, aiSession, aiAnswer, toast]);
+
+  const handleAiConfirm = useCallback(async () => {
+    if (!tenantId || !aiSession) return;
+    setAiBusy(true);
+    try {
+      const result = await confirmPromotionAi({ tenantId, sessionId: aiSession.sessionId, idempotencyKey: `promotion-ai-${aiSession.sessionId}` });
+      setAiSession(result.session);
+      toast.success('Đã tạo bản nháp khuyến mãi ở trạng thái tạm dừng.');
+      reload();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không xác nhận được.');
+    } finally {
+      setAiBusy(false);
+    }
+  }, [tenantId, aiSession, toast, reload]);
 
   const handleSave = useCallback(async () => {
     if (!draft || !tenantId) {
@@ -768,6 +821,14 @@ export default function PromotionsPage() {
         </div>
         <button
           type="button"
+          onClick={() => void handleAiStart()}
+          disabled={aiBusy}
+          className="inline-flex items-center gap-2 bg-violet-600 text-white border-hard px-5 py-3 font-mono text-xs font-bold uppercase tracking-widest hover:bg-violet-700 transition-colors cursor-pointer disabled:opacity-50"
+        >
+          <Sparkles className="w-4 h-4" /> Trợ lý tạo khuyến mãi
+        </button>
+        <button
+          type="button"
           onClick={() => setDraft(emptyDraft())}
           className="inline-flex items-center gap-2 bg-orange-600 text-white border-hard px-5 py-3 font-mono text-xs font-bold uppercase tracking-widest hover:bg-orange-700 transition-colors cursor-pointer"
         >
@@ -775,6 +836,31 @@ export default function PromotionsPage() {
           Thêm khuyến mãi
         </button>
       </header>
+
+      {aiSession && (
+        <section className="mb-8 border-hard bg-violet-50 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-lg">Trợ lý tạo khuyến mãi</h2>
+              <p className="text-sm text-zinc-600">Câu trả lời được lưu dạng cấu trúc để bạn có thể tiếp tục sau.</p>
+            </div>
+            <button type="button" className="text-zinc-500" onClick={() => setAiSession(null)} aria-label="Đóng trợ lý"><X className="w-5 h-5" /></button>
+          </div>
+          <p className="mt-4 font-medium">{aiSession.messages.at(-1)?.text}</p>
+          {aiSession.status === 'ready' && aiSession.draft ? (
+            <div className="mt-4 bg-white border p-4">
+              <p className="font-bold">{aiSession.draft.name}</p>
+              <p className="text-sm">Loại ưu đãi: {aiSession.draft.benefit.type}</p>
+              <button type="button" onClick={() => void handleAiConfirm()} disabled={aiBusy} className="mt-4 bg-emerald-600 text-white px-4 py-2 font-bold disabled:opacity-50">Xác nhận tạo ở trạng thái tạm dừng</button>
+            </div>
+          ) : aiSession.status === 'collecting' ? (
+            <div className="mt-4 flex gap-2">
+              <input value={aiAnswer} onChange={(event) => setAiAnswer(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void handleAiAnswer(); }} className="flex-1 border px-3 py-2" placeholder="Nhập câu trả lời..." />
+              <button type="button" onClick={() => void handleAiAnswer()} disabled={aiBusy || !aiAnswer.trim()} className="bg-zinc-900 text-white px-4 py-2 font-bold disabled:opacity-50">Gửi</button>
+            </div>
+          ) : <p className="mt-4 text-sm text-zinc-600">Phiên đã hoàn tất.</p>}
+        </section>
+      )}
 
       <section
         className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8"

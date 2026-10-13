@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   onboardingStepIds,
   type OnboardingChecklist,
@@ -12,7 +12,6 @@ import {
   archiveMenuItem,
   createMenuItem,
   setMenuAvailability,
-  subscribeOwnerMenu,
   updateMenuItem,
   type CatalogItemCommandFields,
 } from '../data/adapters/catalog.adapter';
@@ -21,11 +20,9 @@ import {
   createTenantTable,
   regenerateTableToken,
   renameTenantTable,
-  subscribeTenantTables,
 } from '../data/adapters/table.adapter';
 import {
   createIngredient,
-  subscribeIngredients,
   updateIngredient,
 } from '../data/adapters/inventory.adapter';
 import {
@@ -33,8 +30,8 @@ import {
   toTableConfig,
   toViewIngredient,
 } from '../data/adapters/view-mappers';
+import { useStoreSlice, useStoreTenantId } from '../data/tenantStore';
 import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount, Ingredient, RecipeItem } from '../types';
-import { useActiveTenantId } from '../hooks/useActiveTenantId';
 import { resolveInterfaceLocale, translate } from '../data/adapters/i18n.adapter';
 import type { I18nMessageKey } from '@contracts/i18n.contract';
 import { 
@@ -123,11 +120,25 @@ export default function OwnerView({
   const t = (key: I18nMessageKey) => translate(locale, key);
   const [activeTab, setActiveTab] = useState<'kpi' | 'menu' | 'nfc' | 'ai' | 'staff' | 'kho'>('kpi');
   const [onboardingChecklist, setOnboardingChecklist] = useState<OnboardingChecklist | null>(null);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [tables, setTables] = useState<TableConfig[]>([]);
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
-  const [dataError, setDataError] = useState<string | null>(null);
-  const activeTenantId = useActiveTenantId();
+  const [storedMenuItems, menuState] = useStoreSlice('menuItems');
+  const [storedTables, tableState] = useStoreSlice('tables');
+  const [storedIngredients, inventoryState] = useStoreSlice('ingredients');
+  const menuItems = useMemo(
+    () => storedMenuItems.map(toOwnerMenuItem),
+    [storedMenuItems],
+  );
+  const tables = useMemo(
+    () => storedTables.map(toTableConfig),
+    [storedTables],
+  );
+  const ingredients = useMemo(
+    () => storedIngredients.map(toViewIngredient),
+    [storedIngredients],
+  );
+  const [actionError, setActionError] = useState<string | null>(null);
+  const dataError =
+    actionError ?? menuState.error ?? tableState.error ?? inventoryState.error ?? null;
+  const activeTenantId = useStoreTenantId();
 
   const activeTenantIdOrThrow = useCallback((): string => {
     if (!activeTenantId) {
@@ -157,33 +168,8 @@ export default function OwnerView({
     [],
   );
 
-  // Owner business state comes from bounded realtime listeners. The browser
-  // never writes these collections directly (docs/RULES_FIREBASE.md §1).
-  useEffect(() => {
-    const unsubscribe = subscribeOwnerMenu(
-      (items) => setMenuItems(items.map(toOwnerMenuItem)),
-      (error) => setDataError(error.message),
-    );
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = subscribeTenantTables(
-      (rows) => setTables(rows.map(toTableConfig)),
-      (error) => setDataError(error.message),
-    );
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = subscribeIngredients(
-      (rows) => setIngredients(rows.map(toViewIngredient)),
-      (error) => setDataError(error.message),
-    );
-    return () => unsubscribe();
-  }, []);
-
-
+  // Tenant business reads come from the shared app-lifetime store; writes stay
+  // server-authoritative (REQ-CACHE-001, docs/RULES_FIREBASE.md §1).
   useEffect(() => {
     void refreshOnboarding();
   }, [refreshOnboarding]);
@@ -333,7 +319,7 @@ export default function OwnerView({
         }
         resetIngForm();
       } catch (error) {
-        setDataError(
+        setActionError(
           error instanceof Error ? error.message : 'Không lưu được nguyên liệu.',
         );
       }
@@ -342,7 +328,7 @@ export default function OwnerView({
 
   const handleDeleteIng = (_id: string) => {
     // Inventory archive is a P1 command; M1 keeps the visible list read-only.
-    setDataError('Lưu trữ nguyên liệu chưa hỗ trợ ở M1.');
+    setActionError('Lưu trữ nguyên liệu chưa hỗ trợ ở M1.');
   };
 
   const handleAddTableSubmit = (e: React.FormEvent) => {
@@ -354,7 +340,7 @@ export default function OwnerView({
         setNewTableName('');
         void markOnboardingStep('tables');
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : 'Không thêm được bàn.');
+        setActionError(error instanceof Error ? error.message : 'Không thêm được bàn.');
       }
     })();
   };
@@ -372,7 +358,7 @@ export default function OwnerView({
         setEditingTableId(null);
         setEditingTableOriginalName('');
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : 'Không sửa được bàn.');
+        setActionError(error instanceof Error ? error.message : 'Không sửa được bàn.');
       }
     })();
   };
@@ -385,7 +371,7 @@ export default function OwnerView({
       try {
         await archiveTenantTable(activeTenantIdOrThrow(), id, null);
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : 'Không lưu trữ được bàn.');
+        setActionError(error instanceof Error ? error.message : 'Không lưu trữ được bàn.');
       }
     })();
   };
@@ -548,7 +534,7 @@ export default function OwnerView({
       try {
         await setMenuAvailability(id, !current.inStock);
       } catch (error) {
-        setDataError(
+        setActionError(
           error instanceof Error ? error.message : 'Không đổi được tình trạng món.',
         );
       }
@@ -589,7 +575,7 @@ export default function OwnerView({
         resetForm();
         void markOnboardingStep('menu');
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : 'Không thêm được món.');
+        setActionError(error instanceof Error ? error.message : 'Không thêm được món.');
       }
     })();
   };
@@ -623,7 +609,7 @@ export default function OwnerView({
         setEditingItem(null);
         resetForm();
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : 'Không sửa được món.');
+        setActionError(error instanceof Error ? error.message : 'Không sửa được món.');
       }
     })();
   };
@@ -633,7 +619,7 @@ export default function OwnerView({
       try {
         await archiveMenuItem(id, null);
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : 'Không lưu trữ được món.');
+        setActionError(error instanceof Error ? error.message : 'Không lưu trữ được món.');
       }
     })();
   };

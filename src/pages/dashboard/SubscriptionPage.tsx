@@ -1,51 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useToast } from '../../contexts/ToastContext';
 import { Check, Zap, Star, Shield, ArrowRight, CreditCard } from 'lucide-react';
-import type { SubscriptionState } from '@contracts/subscription.contract';
-import { changeSubscriptionPlan, getSubscription } from '../../data/adapters/subscription.adapter';
+import { changeSubscriptionPlan } from '../../data/adapters/subscription.adapter';
+import {
+  refreshSlice,
+  useStoreSlice,
+  useStoreTenantId,
+} from '../../data/tenantStore';
 import {
   allowsFeature,
   formatPlanLabel,
   formatPlanLimit,
 } from '../../data/adapters/subscription-view';
-import { useActiveTenantId } from '../../hooks/useActiveTenantId';
 
 export default function SubscriptionPage() {
-  const tenantId = useActiveTenantId();
-  const [subscription, setSubscription] = useState<SubscriptionState | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const tenantId = useStoreTenantId();
+  const [subscription, subscriptionState] = useStoreSlice('subscription');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = actionError ?? subscriptionState.error;
+  const loading = subscriptionState.loading;
   const toast = useToast();
-
-  useEffect(() => {
-    if (!tenantId) {
-      setSubscription(null);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    void getSubscription()
-      .then((state) => {
-        if (!cancelled) setSubscription(state);
-      })
-      .catch((cause: unknown) => {
-        if (!cancelled) {
-          setSubscription(null);
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : 'Không tải được gói dịch vụ.',
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId]);
 
   const currentPlan = subscription ? formatPlanLabel(subscription.plan) : '—';
   const entitlements = subscription?.entitlements ?? null;
@@ -65,16 +39,19 @@ export default function SubscriptionPage() {
     // The server owns plan and entitlements. A failure leaves the shown plan
     // unchanged and surfaces the error (REQ-SUB-001).
     try {
-      const state = await changeSubscriptionPlan(tier === 'Pro' ? 'pro' : 'lite');
+      const state = await changeSubscriptionPlan(
+        tier === 'Pro' ? 'pro' : 'lite',
+        tenantId ?? undefined,
+      );
       if (!state) {
-        setError('Không thay đổi được gói dịch vụ.');
+        setActionError('Không thay đổi được gói dịch vụ.');
         return;
       }
-      setSubscription(state);
-      setError(null);
+      refreshSlice('subscription');
+      setActionError(null);
       toast.success(`Đã thay đổi sang gói ${tier}!`);
     } catch (cause: unknown) {
-      setError(
+      setActionError(
         cause instanceof Error ? cause.message : 'Không thay đổi được gói dịch vụ.',
       );
     }

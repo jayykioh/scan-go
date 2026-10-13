@@ -1,21 +1,31 @@
+import {
+  collection,
+  limit,
+  onSnapshot,
+  query,
+  type Unsubscribe,
+} from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import {
   staffCommandResultSchema,
-  staffListResultSchema,
+  staffDirectoryEntrySchema,
   type StaffAccount,
   type StaffCommandResult,
   type StaffCreateInput,
-  type StaffListResult,
+  type StaffDirectoryEntry,
   type StaffResetPinInput,
   type StaffSetActiveInput,
   type StaffUpdateInput,
 } from '@contracts/staff.contract';
-import { getFirebaseFunctions } from '../../services/firebase/client';
+import {
+  getFirebaseFirestore,
+  getFirebaseFunctions,
+} from '../../services/firebase/client';
 
 /**
- * Owner-only Staff account commands. Memberships are private to their user, so
- * every read and write goes through a server callable; the client never reads
- * or writes `tenants/{tenantId}/members` directly (docs/RULES_FIREBASE.md §1).
+ * Owner-only Staff reads use a server-written, PIN-free directory projection;
+ * account mutations remain callable commands. The client never reads or writes
+ * `tenants/{tenantId}/members` directly (docs/RULES_FIREBASE.md §1).
  */
 async function requireFunctions() {
   const functions = getFirebaseFunctions();
@@ -25,14 +35,40 @@ async function requireFunctions() {
   return functions;
 }
 
-export async function listStaff(tenantId: string): Promise<StaffAccount[]> {
-  const functions = await requireFunctions();
-  const callable = httpsCallable<
-    { tenantId: string },
-    StaffListResult
-  >(functions, 'callableStaffList');
-  const result = await callable({ tenantId });
-  return staffListResultSchema.parse(result.data).staff;
+export const STAFF_DIRECTORY_LISTENER_LIMIT = 100;
+
+/** Read the Owner-only, PIN-free directory projection through Firestore Rules. */
+export function subscribeStaffDirectory(
+  tenantId: string,
+  onChange: (staff: StaffDirectoryEntry[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const db = getFirebaseFirestore();
+  if (!db) {
+    onChange([]);
+    onError?.(new Error('Firebase chưa được cấu hình.'));
+    return () => undefined;
+  }
+  return onSnapshot(
+    query(
+      collection(db, 'tenants', tenantId, 'staffDirectory'),
+      limit(STAFF_DIRECTORY_LISTENER_LIMIT),
+    ),
+    (snapshot) => {
+      const rows = snapshot.docs.map((docSnap) =>
+        staffDirectoryEntrySchema.parse({
+          ...docSnap.data(),
+          tenantId,
+          uid: docSnap.id,
+        }),
+      );
+      rows.sort((left, right) =>
+        (left.displayName ?? '').localeCompare(right.displayName ?? ''),
+      );
+      onChange(rows);
+    },
+    (error) => onError?.(error),
+  );
 }
 
 export async function createStaff(

@@ -5,34 +5,18 @@ import type {
   Firestore,
   QueryDocumentSnapshot,
 } from 'firebase-admin/firestore';
-import { FieldPath } from 'firebase-admin/firestore';
 import {
   REPORTING_CONTRACT_VERSION,
-  dailyItemStatsSchema,
-  dailyStatsSchema,
-  dailyTableStatsSchema,
   reportingRebuildInputSchema,
   reportingRebuildResultSchema,
-  reportingSummaryInputSchema,
-  reportingSummaryResultSchema,
-  type DailyItemStats,
-  type DailyStats,
-  type DailyTableStats,
-  type PopularItem,
-  type PopularTable,
   type ReportingRebuildInput,
   type ReportingRebuildResult,
-  type ReportingSummaryInput,
-  type ReportingSummaryResult,
 } from '../../../../shared/contracts/reporting.contract.js';
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { runPerTenant } from '../../shared/scheduled.js';
 import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
-  aggregateTotals,
-  dayTotalsFromStats,
-  assertReportingMember,
   assertReportingOwner,
   dayKeyFromIso,
   nowIso,
@@ -42,7 +26,6 @@ import {
   rebuildDailyStats,
   REPORTING_INVALID_MESSAGE,
   REPORTING_REBUILD_TRUNCATED_MESSAGE,
-  resolvePeriodRange,
   shiftDayKey,
   type DailyStatsBundle,
   type ReportingOrderSource,
@@ -60,9 +43,6 @@ const DEFAULT_TIMEZONE = 'Asia/Ho_Chi_Minh';
 export const MAX_REBUILD_RECORDS = 5000;
 /** Page size for the source traversal; one document is fetched past the cap. */
 export const REBUILD_PAGE_SIZE = 1000;
-const MAX_PERIOD_DAYS = 62;
-const MAX_ITEMS_PER_DAY = 100;
-const MAX_TABLES_PER_DAY = 100;
 
 function requireUid(uid: string | undefined): string {
   if (!uid) {
@@ -227,227 +207,6 @@ async function readSources(
     truncated: ordersRead.truncated || paymentsRead.truncated,
   };
 }
-
-function mapStoredDailyStats(
-  tenantId: string,
-  dayKey: string,
-  data: DocumentData,
-): DailyStats {
-  return dailyStatsSchema.parse({
-    schemaVersion: REPORTING_CONTRACT_VERSION,
-    tenantId,
-    dayKey,
-    createdOrderCount: data.createdOrderCount ?? 0,
-    cancelledOrderCount: data.cancelledOrderCount ?? 0,
-    paidOrderCount: data.paidOrderCount ?? 0,
-    reversedOrderCount: data.reversedOrderCount ?? 0,
-    refundedOrderCount: data.refundedOrderCount ?? 0,
-    revenueVnd: data.revenueVnd ?? 0,
-    costVnd: data.costVnd ?? 0,
-    grossProfitVnd: data.grossProfitVnd ?? 0,
-    reversedVnd: data.reversedVnd ?? 0,
-    refundedVnd: data.refundedVnd ?? 0,
-    version: data.version ?? 1,
-    updatedAt: data.updatedAt == null ? nowIso() : toIsoTimestamp(data.updatedAt),
-  });
-}
-
-function mapStoredItemStats(
-  tenantId: string,
-  dayKey: string,
-  itemId: string,
-  data: DocumentData,
-): DailyItemStats {
-  return dailyItemStatsSchema.parse({
-    schemaVersion: REPORTING_CONTRACT_VERSION,
-    tenantId,
-    dayKey,
-    itemId,
-    itemName: data.itemName ?? itemId,
-    paidQuantity: data.paidQuantity ?? 0,
-    revenueVnd: data.revenueVnd ?? 0,
-    costVnd: data.costVnd ?? 0,
-    grossProfitVnd: data.grossProfitVnd ?? 0,
-    reversedVnd: data.reversedVnd ?? 0,
-    refundedVnd: data.refundedVnd ?? 0,
-  });
-}
-
-function mapStoredTableStats(
-  tenantId: string,
-  dayKey: string,
-  tableId: string,
-  data: DocumentData,
-): DailyTableStats {
-  return dailyTableStatsSchema.parse({
-    schemaVersion: REPORTING_CONTRACT_VERSION,
-    tenantId,
-    dayKey,
-    tableId,
-    tableName: data.tableName ?? tableId,
-    createdOrderCount: data.createdOrderCount ?? 0,
-    cancelledOrderCount: data.cancelledOrderCount ?? 0,
-    paidOrderCount: data.paidOrderCount ?? 0,
-    revenueVnd: data.revenueVnd ?? 0,
-    costVnd: data.costVnd ?? 0,
-    grossProfitVnd: data.grossProfitVnd ?? 0,
-    reversedVnd: data.reversedVnd ?? 0,
-    refundedVnd: data.refundedVnd ?? 0,
-  });
-}
-
-function mergePopularItems(items: DailyItemStats[]): PopularItem[] {
-  const byId = new Map<string, PopularItem>();
-  for (const item of items) {
-    const existing = byId.get(item.itemId);
-    if (existing) {
-      existing.paidQuantity += item.paidQuantity;
-      existing.revenueVnd += item.revenueVnd;
-      existing.costVnd += item.costVnd;
-      existing.grossProfitVnd += item.grossProfitVnd;
-    } else {
-      byId.set(item.itemId, {
-        itemId: item.itemId,
-        itemName: item.itemName,
-        paidQuantity: item.paidQuantity,
-        revenueVnd: item.revenueVnd,
-        costVnd: item.costVnd,
-        grossProfitVnd: item.grossProfitVnd,
-      });
-    }
-  }
-  return [...byId.values()]
-    .sort((a, b) => b.revenueVnd - a.revenueVnd || b.paidQuantity - a.paidQuantity)
-    .slice(0, 20);
-}
-
-function mergePopularTables(tables: DailyTableStats[]): PopularTable[] {
-  const byId = new Map<string, PopularTable>();
-  for (const table of tables) {
-    const existing = byId.get(table.tableId);
-    if (existing) {
-      existing.createdOrderCount += table.createdOrderCount;
-      existing.cancelledOrderCount += table.cancelledOrderCount;
-      existing.paidOrderCount += table.paidOrderCount;
-      existing.revenueVnd += table.revenueVnd;
-      existing.costVnd += table.costVnd;
-      existing.grossProfitVnd += table.grossProfitVnd;
-      existing.reversedVnd += table.reversedVnd;
-      existing.refundedVnd += table.refundedVnd;
-    } else {
-      byId.set(table.tableId, {
-        tableId: table.tableId,
-        tableName: table.tableName,
-        createdOrderCount: table.createdOrderCount,
-        cancelledOrderCount: table.cancelledOrderCount,
-        paidOrderCount: table.paidOrderCount,
-        revenueVnd: table.revenueVnd,
-        costVnd: table.costVnd,
-        grossProfitVnd: table.grossProfitVnd,
-        reversedVnd: table.reversedVnd,
-        refundedVnd: table.refundedVnd,
-      });
-    }
-  }
-  return [...byId.values()]
-    .sort((a, b) => b.revenueVnd - a.revenueVnd)
-    .slice(0, 50);
-}
-
-/**
- * Owner Reporting query (REQ-RPT-001). Reads the bounded daily materialization
- * and returns day, week, or month totals with popular items and table stats.
- * The caller must be an active tenant member.
- */
-export const callableReportingGetSummary = onCall(
-  CALL_OPTIONS,
-  async (request): Promise<ReportingSummaryResult> => {
-    const uid = requireUid(request.auth?.uid);
-    assertAppCheck(request);
-    const input = parseOrInvalid<ReportingSummaryInput>(
-      reportingSummaryInputSchema,
-      request.data,
-    );
-    const db = getDb();
-
-    const memberSnap = await db
-      .doc(`tenants/${input.tenantId}/members/${uid}`)
-      .get();
-    assertReportingMember(memberSnap.exists ? memberSnap.data() : undefined);
-
-    const timezone = await readTenantTimezone(db, input.tenantId);
-    const anchorDay = input.anchorDay ?? dayKeyFromIso(nowIso(), timezone);
-    const { fromDay, toDay } = resolvePeriodRange(input.period, anchorDay);
-
-    const dailySnap = await db
-      .collection(`tenants/${input.tenantId}/dailyStats`)
-      .where(FieldPath.documentId(), '>=', fromDay)
-      .where(FieldPath.documentId(), '<=', toDay)
-      .limit(MAX_PERIOD_DAYS)
-      .get();
-
-    const days = dailySnap.docs.map((docSnap) =>
-      mapStoredDailyStats(input.tenantId, docSnap.id, docSnap.data()),
-    );
-
-    const items: DailyItemStats[] = [];
-    const tables: DailyTableStats[] = [];
-    for (const day of days) {
-      const [itemsSnap, tablesSnap] = await Promise.all([
-        db
-          .collection(
-            `tenants/${input.tenantId}/dailyStats/${day.dayKey}/items`,
-          )
-          .limit(MAX_ITEMS_PER_DAY)
-          .get(),
-        db
-          .collection(
-            `tenants/${input.tenantId}/dailyStats/${day.dayKey}/tables`,
-          )
-          .limit(MAX_TABLES_PER_DAY)
-          .get(),
-      ]);
-      for (const snap of itemsSnap.docs) {
-        items.push(
-          mapStoredItemStats(
-            input.tenantId,
-            day.dayKey,
-            snap.id,
-            snap.data(),
-          ),
-        );
-      }
-      for (const snap of tablesSnap.docs) {
-        tables.push(
-          mapStoredTableStats(
-            input.tenantId,
-            day.dayKey,
-            snap.id,
-            snap.data(),
-          ),
-        );
-      }
-    }
-
-    return reportingSummaryResultSchema.parse({
-      schemaVersion: REPORTING_CONTRACT_VERSION,
-      tenantId: input.tenantId,
-      period: input.period,
-      fromDay,
-      toDay,
-      dayCount: days.length,
-      totals: aggregateTotals(days),
-      dailyBreakdown: [...days]
-        .sort((a, b) => a.dayKey.localeCompare(b.dayKey))
-        .map((day) => ({
-          dayKey: day.dayKey,
-          totals: dayTotalsFromStats(day),
-        })),
-      popularItems: mergePopularItems(items),
-      tables: mergePopularTables(tables),
-    });
-  },
-);
 
 async function applyRebuildBundles(
   db: Firestore,

@@ -11,9 +11,9 @@
 | M2 / P1 | Solo, Reporting, dailyStats, AI assistant, phân tích tuần, hỏi đáp, feedback khách, Sentry. | Owner dùng báo cáo và AI assistant. |
 | M3 / P2 | NFC, Promotion, Loyalty, Subscription, tự động xác nhận Payment, feedback ticket, ca làm, chấm công, kiểm kê. | Mở rộng cách dùng và kế hoạch. |
 | Roadmap / P3 | Chỉ yêu cầu P3 hoặc sửa đổi SRS đã duyệt. | Không có REQ P3 đã duyệt để thực hiện. |
-| Deferred | Reservations (SRS §4.11, ADR 0009). | Không nằm trong M1–M3. |
+| Deferred | Customer reservations/pre-ordering (SRS §4.11, ADR 0009). | Staff-entered table bookings are a separate approved P1 amendment (REQ-TBL-005..007). |
 
-Không thuộc các pha: Enterprise, delivery, printers, tax invoices, payroll, ingredient purchasing, native application, và reservations.
+Không thuộc các pha: Enterprise, delivery, printers, tax invoices, payroll, ingredient purchasing, native application, Customer reservations, deposits, and pre-orders.
 
 Chi tiết ticket M2/M3 mới: `docs/plan/insight-growth-plan.md`.
 

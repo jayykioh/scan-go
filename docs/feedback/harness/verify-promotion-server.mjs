@@ -96,13 +96,19 @@ if (!tenantId) {
 info('Cửa hàng đang hoạt động', tenantId);
 
 // ---------------------------------------------------------------------------
-// 1. Owner lists promotions through the callable.
+// 1. Owner lists promotions. The fetch-only callable was removed (ADR 0015),
+//    so the harness reads the same tenant collection with the Admin SDK.
 // ---------------------------------------------------------------------------
-const list = await callCallable('callablePromotionList', { tenantId }, idToken);
+const listSnap = await db
+  .collection(`tenants/${tenantId}/promotions`)
+  .where('archivedAt', '==', null)
+  .limit(100)
+  .get();
+const list = { promotions: listSnap.docs.map((d) => ({ promotionId: d.id, ...d.data() })) };
 const activePromotion = list.promotions.find((p) => p.status === 'active');
 check(
   Boolean(activePromotion),
-  'Danh sách khuyến mãi qua callable trả về bản ghi đang chạy',
+  'Danh sách khuyến mãi đọc trực tiếp trả về bản ghi đang chạy',
   activePromotion ? `${activePromotion.name} · ${activePromotion.benefit.type}` : 'không có',
 );
 check(

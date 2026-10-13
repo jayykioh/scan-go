@@ -1,12 +1,14 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Users, Plus, Pencil, X, AlertTriangle, ShieldCheck, KeyRound, Loader2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import type { StaffAccount, StaffRole } from '@contracts/staff.contract';
+import type {
+  StaffDirectoryEntry,
+  StaffRole,
+} from '@contracts/staff.contract';
 import { useToast } from '../../contexts/ToastContext';
-import { useActiveTenantId } from '../../hooks/useActiveTenantId';
+import { useStoreSlice, useStoreTenantId } from '../../data/tenantStore';
 import {
   createStaff,
-  listStaff,
   resetStaffPin,
   setStaffActive,
   updateStaff,
@@ -56,7 +58,7 @@ function booleansToRoles(roles: RoleBooleans): StaffRole[] {
   return selected;
 }
 
-function roleLabel(staff: StaffAccount): string {
+function roleLabel(staff: StaffDirectoryEntry): string {
   const labels = staff.roles.map((role) => ROLE_LABELS[role]);
   return labels.join(', ') || 'Chưa cấp quyền';
 }
@@ -71,7 +73,7 @@ const emptyForm = (): StaffForm => ({
   roles: { isKitchen: false, isWaiter: false, isCashier: true },
 });
 
-const editForm = (staff: StaffAccount): StaffForm => ({
+const editForm = (staff: StaffDirectoryEntry): StaffForm => ({
   mode: 'edit',
   uid: staff.uid,
   displayName: staff.displayName ?? '',
@@ -89,30 +91,13 @@ function errorMessage(error: unknown): string {
 }
 
 export default function StaffPage() {
-  const tenantId = useActiveTenantId();
+  const tenantId = useStoreTenantId();
   const toast = useToast();
-  const [staffList, setStaffList] = useState<StaffAccount[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [staffList, staffState] = useStoreSlice('staffDirectory');
+  const loading = staffState.loading;
+  const error = staffState.error;
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [editingStaff, setEditingStaff] = useState<StaffForm | null>(null);
-
-  const refresh = useCallback(async () => {
-    if (!tenantId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      setStaffList(await listStaff(tenantId));
-    } catch (caught) {
-      setError(errorMessage(caught));
-    } finally {
-      setLoading(false);
-    }
-  }, [tenantId]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,7 +153,6 @@ export default function StaffPage() {
         toast.success('Đã cập nhật nhân sự');
       }
       setEditingStaff(null);
-      await refresh();
     } catch (caught) {
       toast.error(errorMessage(caught));
     } finally {
@@ -176,7 +160,7 @@ export default function StaffPage() {
     }
   };
 
-  const handleToggleActive = async (staff: StaffAccount) => {
+  const handleToggleActive = async (staff: StaffDirectoryEntry) => {
     if (!tenantId) return;
     try {
       await setStaffActive({
@@ -185,7 +169,6 @@ export default function StaffPage() {
         isActive: !staff.isActive,
       });
       toast.success(staff.isActive ? 'Đã tạm ngưng nhân sự' : 'Đã kích hoạt nhân sự');
-      await refresh();
     } catch (caught) {
       toast.error(errorMessage(caught));
     }

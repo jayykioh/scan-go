@@ -4,7 +4,6 @@ import {
   EMPTY_PROMOTION_ELIGIBILITY,
   PROMOTION_CONTRACT_VERSION,
   promotionCommandResultSchema,
-  promotionListResultSchema,
   type Promotion,
 } from '../../../../shared/contracts/promotion.contract.js';
 import {
@@ -64,10 +63,8 @@ import {
   mapStoredPromotion,
   nowIso,
   parsePromotionEvaluateInput,
-  parsePromotionListInput,
   parsePromotionSetStatusInput,
   parsePromotionUpsertInput,
-  PROMOTION_LIST_LIMIT,
   PROMOTION_NOT_FOUND_MESSAGE,
   PROMOTION_QUICK_SOURCE_MESSAGE,
 } from './service.js';
@@ -270,39 +267,6 @@ export const callablePromotionEvaluate = onCall(
     return result;
   },
 );
-
-/** Active member query: every non-archived Promotion of the Tenant, bounded. */
-export const callablePromotionList = onCall(CALL_OPTIONS, async (request) => {
-  const uid = request.auth?.uid;
-  if (!uid) {
-    throw new HttpsError('unauthenticated', 'Cần đăng nhập để xem khuyến mãi.');
-  }
-  assertAppCheck(request);
-  const input = parsePromotionListInput(request.data);
-  const db = getDb();
-
-  const memberSnap = await db
-    .doc(`tenants/${input.tenantId}/members/${uid}`)
-    .get();
-  if (!memberSnap.exists || memberSnap.get('isActive') === false) {
-    throw new HttpsError(
-      'permission-denied',
-      'Bạn không thuộc cửa hàng này.',
-    );
-  }
-
-  const snapshot = await db
-    .collection(promotionCollection(input.tenantId))
-    .where('archivedAt', '==', null)
-    .limit(PROMOTION_LIST_LIMIT)
-    .get();
-  return promotionListResultSchema.parse({
-    schemaVersion: PROMOTION_CONTRACT_VERSION,
-    promotions: snapshot.docs.map((docSnap) =>
-      mapStoredPromotion(docSnap.id, input.tenantId, docSnap.data()),
-    ),
-  });
-});
 
 /** Owner command: create or update a Promotion. */
 export const callablePromotionUpsert = onCall(CALL_OPTIONS, async (request) => {

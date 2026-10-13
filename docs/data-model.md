@@ -75,6 +75,17 @@ Contains only `tenantId`, `orderId`, table label, item summary, total, status, a
 
 ADMIN identity is a server-verified platform claim. ADMIN is not copied into each membership.
 
+### `tenants/{tenantId}/staffDirectory/{uid}` — Owner-only Staff projection
+| Field | Type |
+|---|---|
+| `schemaVersion`, `tenantId`, `uid` | version and tenant/member identifiers |
+| `email`, `displayName` | string or null |
+| `roles` | array of named roles |
+| `isActive`, `hasPin` | boolean |
+| `createdAt`, `updatedAt` | ISO timestamp strings |
+
+Server commands maintain this projection alongside Staff account changes. It omits `staffPinHash`, lockout state, session version, and permission internals; Firestore Rules allow reads only by the active Owner.
+
 ## 4. Catalog and Inventory
 
 ### `tenants/{tenantId}/menuItems/{itemId}` — Catalog private source
@@ -127,7 +138,12 @@ Stores name, active state, token version, active token reference, QR payload met
 
 Written only by `callableTableConfigure` (`TableConfigured`), or supplied on `callableTableCreate` so a new table lands in its cell in one command. A row written before table contract v2 has none of these fields; `readStoredTableLayout` reads each back as `null` and the plan shows such a table in the first free cell with a dashed border until the Owner saves the arrangement.
 
-Table service state is **not stored**. It is derived from live Orders on demand by `callableOrderListTableStatus`, which returns one entry per busy table: `tableId`, `state` (`free | occupied | foodReady | awaitingPayment`), `activeOrderCount`, `readyOrderCount`, `unsettledOrderCount`, and `oldestActiveOrderAt`. The projection carries no money, Customer identity, or Order line (REQ-TBL-003).
+Area assignments are tenant-owned and keyed by the normalized area label; each stores zero or more active Waiter UIDs. The server validates each UID against active membership and the Waiter role. Names are resolved from the Staff directory for display, not used as identity keys (REQ-TBL-004).
+
+### `tenants/{tenantId}/reservations/{reservationId}` — Table Access / Reservations
+Stores one table booking separately from Orders and Payments. Fields: `tableId`, `startsAt`, `endsAt` (UTC timestamps interpreted/displayed in tenant timezone), `partySize`, `status` (`booked | arrived | cancelled | completed | no_show`), optional `customerName`/`customerPhone`, `version`, `createdAt`, `updatedAt`, and transition history with actor/time. Reads of contact fields are Owner/authorized-Staff-only; the shared floor status and Waiter projection exclude them. Only Cloud Functions write bookings. Active `booked` intervals for the same table cannot overlap, enforced atomically. `arrived` marks current occupancy until completion; terminal states release the table. A booking never creates or mutates an Order, Payment, or Inventory movement (REQ-TBL-005..007).
+
+Table service state is **not stored**. It is derived from live Orders and effective reservations on demand by the table-status query. The Order portion returns the existing `free | occupied | foodReady | awaitingPayment` state and counts/timestamp; the combined plan may show a separate `reserved` state with party size. The projection carries no money, Customer identity, contact fields, or Order line (REQ-TBL-003, REQ-TBL-007).
 
 ### `tenants/{tenantId}/orders/{orderId}` — Ordering source
 | Field | Type |

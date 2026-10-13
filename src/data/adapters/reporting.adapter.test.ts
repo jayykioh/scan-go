@@ -50,7 +50,11 @@ describe('getReportingSummary', () => {
       period: 'day',
     });
 
-    expect(mocks.readReportingSummary).toHaveBeenCalledWith('day', undefined);
+    expect(mocks.readReportingSummary).toHaveBeenCalledWith(
+      'day',
+      undefined,
+      'tenant-alpha',
+    );
     expect(result.totals.revenueVnd).toBe(200000);
     expect(Number.isInteger(result.totals.grossProfitVnd)).toBe(true);
   });

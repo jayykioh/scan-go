@@ -12,8 +12,9 @@
   `callablePromotionMeasureCampaign`). AI suggests; only Owner approval applies.
 
 ## Queries
-- List non-archived tenant Promotions (`callablePromotionList`, and the direct
-  read in `src/data/firestoreRead.ts`).
+- List non-archived tenant Promotions through the direct, Rules-scoped read in
+  `src/data/firestoreRead.ts` (`readPromotions`). The former fetch-only
+  `callablePromotionList` was removed under ADR 0015 / REQ-CACHE-001.
 - Evaluate one cart (`callablePromotionEvaluate`) for the Customer cart.
 
 ## Screens

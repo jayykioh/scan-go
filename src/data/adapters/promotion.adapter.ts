@@ -2,12 +2,10 @@ import { httpsCallable } from 'firebase/functions';
 import {
   promotionCommandResultSchema,
   promotionEvaluationResultSchema,
-  promotionListResultSchema,
   type Promotion,
   type PromotionCartLine,
   type PromotionCommandResult,
   type PromotionEvaluationResult,
-  type PromotionListResult,
   type PromotionSetStatusInput,
   type PromotionStatus,
   type PromotionUpsertInput,
@@ -70,30 +68,12 @@ export async function evaluatePromotions(
 }
 
 /** Read the tenant Promotion definitions directly (REQ-PRO-001). */
-export async function listPromotions(): Promise<Promotion[]> {
-  return readPromotions();
-}
-
 /**
- * Read the tenant Promotion definitions through the callable. It is the same
- * bounded list as the direct read, but it is the path a non-member token must
- * use (REQ-PRO-002).
+ * Read the tenant Promotion definitions directly. Firestore Rules scope the
+ * read to active members, so no fetch-only callable remains (ADR 0015).
  */
-export async function fetchPromotions(
-  tenantId?: string,
-): Promise<PromotionListResult> {
-  const functions = getFirebaseFunctions();
-  if (!functions) {
-    throw new Error('Firebase chưa được cấu hình.');
-  }
-  const resolvedTenantId = tenantId ?? (await getActiveTenantId());
-  if (!resolvedTenantId) {
-    throw new Error('Chưa chọn cửa hàng.');
-  }
-  const callable = httpsCallable(functions, 'callablePromotionList');
-  return promotionListResultSchema.parse(
-    (await callable({ tenantId: resolvedTenantId })).data,
-  );
+export async function listPromotions(tenantId?: string): Promise<Promotion[]> {
+  return readPromotions(tenantId);
 }
 
 /** Owner command: create or update one Promotion (REQ-PRO-002). */

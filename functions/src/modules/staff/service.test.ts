@@ -6,6 +6,7 @@ import {
   parseStaffCreateInput,
   parseStaffResetPinInput,
   toStaffAccount,
+  toStaffDirectoryEntry,
 } from './service.js';
 
 const NOW = '2026-10-02T03:00:00.000Z';
@@ -54,6 +55,33 @@ describe('toStaffAccount', () => {
     expect(staff.hasPin).toBe(false);
     expect(staff.roles).toEqual(['cashier']);
     expect(staff.isActive).toBe(true);
+  });
+});
+
+describe('toStaffDirectoryEntry', () => {
+  it('exposes only the Owner-safe directory projection', () => {
+    const directoryEntry = toStaffDirectoryEntry('tenant-a', 'uid-1', {
+      email: 'kitchen@shop.vn',
+      displayName: 'Bếp Minh',
+      roles: ['kitchen'],
+      permissions: ['order.read'],
+      isActive: true,
+      staffPinHash: 'scrypt$abc$def',
+      lastLoginAt: NOW,
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+
+    expect(directoryEntry).toMatchObject({
+      tenantId: 'tenant-a',
+      uid: 'uid-1',
+      email: 'kitchen@shop.vn',
+      roles: ['kitchen'],
+      hasPin: true,
+    });
+    expect(directoryEntry).not.toHaveProperty('staffPinHash');
+    expect(directoryEntry).not.toHaveProperty('permissions');
+    expect(directoryEntry).not.toHaveProperty('lastLoginAt');
   });
 });
 

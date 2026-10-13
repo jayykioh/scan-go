@@ -42,7 +42,7 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[ADR 0006](adr/0006-use-real-firestore-and-defer-emulator-tests.md)** | Real Firestore and deferred Emulator tests | Bootstrap and test setup |
 | **[ADR 0007](adr/0007-switch-owner-auth-to-email-password.md)** | Email/password Owner auth | Auth changes |
 | **[ADR 0008](adr/0008-ai-provider-adapter-and-jev-evaluation.md)** | AI provider adapter and Jev evaluation | AI provider changes |
-| **[ADR 0009](adr/0009-defer-reservations-and-separate-payment-state.md)** | Reservations deferred; payment and preparation state separated | Scope changes |
+| **[ADR 0009](adr/0009-defer-reservations-and-separate-payment-state.md)** | Customer reservations deferred; staff table bookings approved; payment and preparation remain separate | Scope changes |
 | **[ADR 0010](adr/0010-do-not-audit-read-access.md)** | Audit records changes only; read access is not audited | Audit and privacy changes |
 | **[ADR 0011](adr/0011-deploy-cloud-functions-in-asia-southeast1.md)** | Cloud Functions deploy in asia-southeast1 | Region and deployment changes |
 | **[ADR 0012](adr/0012-owner-managed-staff-accounts.md)** | Owner-managed Staff accounts | Auth and Staff account changes |

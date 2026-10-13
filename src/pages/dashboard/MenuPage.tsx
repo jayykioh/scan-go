@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { MenuItem } from '../../types';
 import { Plus, Search, Edit2, Trash2, Image as ImageIcon, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
@@ -8,15 +8,19 @@ import {
   archiveMenuItem,
   createMenuItem,
   setMenuAvailability,
-  subscribeOwnerMenu,
   updateMenuItem,
 } from '../../data/adapters/catalog.adapter';
 import { toOwnerMenuItem } from '../../data/adapters/view-mappers';
+import { useStoreSlice } from '../../data/tenantStore';
 
 const defaultCategories = ['Món chính', 'Đồ uống', 'Tráng miệng', 'Ăn vặt'];
 
 export default function MenuPage() {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [storedMenuItems, menuState] = useStoreSlice('menuItems');
+  const menuItems = useMemo(
+    () => storedMenuItems.map(toOwnerMenuItem),
+    [storedMenuItems],
+  );
   const [dataError, setDataError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -28,16 +32,10 @@ export default function MenuPage() {
   const [newToppingPrice, setNewToppingPrice] = useState(0);
   
   const toast = useToast();
+  const readError = menuState.error;
 
-  // Private menu comes from the bounded Catalog listener; every write goes
-  // through a Catalog callable (REQ-CAT-001, docs/RULES_FIREBASE.md §1).
-  useEffect(() => {
-    const unsubscribe = subscribeOwnerMenu(
-      (items) => setMenuItems(items.map(toOwnerMenuItem)),
-      (error) => setDataError(error.message),
-    );
-    return () => unsubscribe();
-  }, []);
+  // Private menu comes from the app-wide tenant read store; writes still go
+  // through Catalog callables (REQ-CACHE-001, REQ-CAT-001).
 
   const handleOpenModal = (item?: MenuItem) => {
     if (item) {
@@ -185,9 +183,9 @@ export default function MenuPage() {
         </button>
       </div>
 
-      {dataError && (
+      {(dataError ?? readError) && (
         <p role="alert" className="mb-6 border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-          {dataError}
+          {dataError ?? readError}
         </p>
       )}
 

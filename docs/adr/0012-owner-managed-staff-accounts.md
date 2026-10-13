@@ -21,8 +21,11 @@ module exposes Owner-only callables:
 - `callableStaffCreate` creates the Firebase Auth user and writes the Staff
   membership with the Owner-assigned roles, the reduced permission set, and a
   scrypt PIN hash.
-- `callableStaffList` returns a bounded Staff list for one Tenant, because a
-  membership stays private to its user in Security Rules.
+- `callableStaffList` returned a bounded Staff list for one Tenant, because a
+  membership stays private to its user in Security Rules. **Superseded by ADR
+  0015 / REQ-CACHE-001:** the list read is now a direct Firestore listener on
+  the server-written, PIN-free `tenants/{tenantId}/staffDirectory` projection,
+  which is readable only by the active Owner.
 - `callableStaffUpdate`, `callableStaffSetActive`, and `callableStaffResetPin`
   manage roles, name, active state, and the PIN.
 - Disabling a Staff member or resetting the PIN increments `sessionVersion`, so

@@ -29,6 +29,7 @@ export default defineConfig({
       'test/rules/campaign.rules.test.ts',
       'test/rules/storage.rules.test.ts',
       'test/rules/loyalty.rules.test.ts',
+      'test/rules/staff-directory.rules.test.ts',
     ],
     passWithNoTests: false,
     testTimeout: 20000,

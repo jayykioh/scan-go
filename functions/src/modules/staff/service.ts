@@ -4,14 +4,14 @@ import type { ZodType } from 'zod';
 import {
   STAFF_CONTRACT_VERSION,
   staffAccountSchema,
+  staffDirectoryEntrySchema,
   staffCreateInputSchema,
-  staffListInputSchema,
   staffResetPinInputSchema,
   staffSetActiveInputSchema,
   staffUpdateInputSchema,
   type StaffAccount,
+  type StaffDirectoryEntry,
   type StaffCreateInput,
-  type StaffListInput,
   type StaffResetPinInput,
   type StaffSetActiveInput,
   type StaffUpdateInput,
@@ -26,9 +26,6 @@ export const STAFF_EMAIL_IN_USE_MESSAGE =
   'Email này đã được dùng cho tài khoản khác.';
 export const STAFF_ALREADY_MEMBER_MESSAGE =
   'Tài khoản này đã là thành viên của cửa hàng.';
-
-/** Bounded Staff list per Tenant (docs/RULES_FIREBASE.md §6). */
-export const STAFF_LIST_LIMIT = 100;
 
 export function nowIso(): string {
   return new Date().toISOString();
@@ -65,10 +62,6 @@ function parseOrInvalid<T>(schema: ZodType<T>, data: unknown): T {
     throw new HttpsError('invalid-argument', STAFF_INVALID_MESSAGE);
   }
   return parsed.data;
-}
-
-export function parseStaffListInput(data: unknown): StaffListInput {
-  return parseOrInvalid<StaffListInput>(staffListInputSchema, data);
 }
 
 export function parseStaffCreateInput(data: unknown): StaffCreateInput {
@@ -161,5 +154,26 @@ export function toStaffAccount(
       typeof data.lastLoginAt === 'string' ? data.lastLoginAt : null,
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : nowIso(),
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : nowIso(),
+  });
+}
+
+/** Build the least-privilege Owner directory row, excluding PIN/permission data. */
+export function toStaffDirectoryEntry(
+  tenantId: string,
+  uid: string,
+  data: DocumentData,
+): StaffDirectoryEntry {
+  const account = toStaffAccount(tenantId, uid, data);
+  return staffDirectoryEntrySchema.parse({
+    schemaVersion: STAFF_CONTRACT_VERSION,
+    tenantId,
+    uid,
+    email: account.email,
+    displayName: account.displayName,
+    roles: account.roles,
+    isActive: account.isActive,
+    hasPin: account.hasPin,
+    createdAt: account.createdAt,
+    updatedAt: account.updatedAt,
   });
 }

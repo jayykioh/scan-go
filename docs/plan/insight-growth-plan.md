@@ -1,7 +1,7 @@
 # Kế hoạch M2/M3 — Insight, Feedback, Workforce, Inventory count
 
 **Nguồn:** SRS 1.2, ADR 0008, ADR 0009, `PRODUCT_OBJECTIVES.md`.
-**Phạm vi:** P1 và P2 mới. P0 không đổi. Reservations §4.11 DEFERRED.
+**Phạm vi:** P1 và P2 mới. P0 không đổi. Đặt trước do khách tự yêu cầu/gọi món trước vẫn hoãn; đặt bàn do nhân viên nhập được duyệt riêng tại REQ-TBL-005..007.
 **Điều kiện vào:** M1 đã đạt P0 acceptance. Không bắt đầu ticket nào khi M1 còn thiếu bằng chứng.
 
 ## Nguyên tắc

@@ -9,7 +9,6 @@ import {
   computeEarnedPoints,
   loyaltyConfigSchema,
   loyaltyEarnInputSchema,
-  loyaltyGetConfigInputSchema,
   loyaltyListInputSchema,
   loyaltyMemberIdFor,
   loyaltyMemberSchema,
@@ -24,7 +23,6 @@ import {
   normalizeLoyaltyPhone,
   type LoyaltyConfig,
   type LoyaltyEarnInput,
-  type LoyaltyGetConfigInput,
   type LoyaltyListInput,
   type LoyaltyMember,
   type LoyaltyMemberView,
@@ -116,15 +114,6 @@ export function parseLoyaltyReverseInput(data: unknown): LoyaltyReverseInput {
 
 export function parseLoyaltyListInput(data: unknown): LoyaltyListInput {
   return parseOrInvalid<LoyaltyListInput>(loyaltyListInputSchema, data);
-}
-
-export function parseLoyaltyGetConfigInput(
-  data: unknown,
-): LoyaltyGetConfigInput {
-  return parseOrInvalid<LoyaltyGetConfigInput>(
-    loyaltyGetConfigInputSchema,
-    data,
-  );
 }
 
 export function parseLoyaltyUpdateConfigInput(

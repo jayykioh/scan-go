@@ -54,6 +54,7 @@ import {
   type ReportingPaymentSource,
 } from '../modules/reporting/service.js';
 import { hashPin } from '../modules/auth/service.js';
+import { toStaffDirectoryEntry } from '../modules/staff/service.js';
 import {
   SEED_INGREDIENTS,
   SEED_INGREDIENT_PRICE_SOURCES,
@@ -732,24 +733,30 @@ async function run(): Promise<void> {
     const staffUid =
       auth === null ? staff.uid : await provisionStaffAuthUser(auth, staff);
     resolvedStaff.push({ ...staff, uid: staffUid });
+    const staffMembership = {
+      uid: staffUid,
+      email: staff.email,
+      displayName: staff.displayName,
+      membershipType: 'staff',
+      roles: [...staff.roles],
+      permissions: [...staff.permissions],
+      isActive: true,
+      staffPinHash: await hashPin(staff.pin),
+      pinFailedAttempts: 0,
+      pinLockedUntil: null,
+      sessionVersion: 1,
+      lastLoginAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
     writes.push({
       path: `tenants/${tenantId}/members/${staffUid}`,
-      data: {
-        uid: staffUid,
-        email: staff.email,
-        displayName: staff.displayName,
-        membershipType: 'staff',
-        roles: [...staff.roles],
-        permissions: [...staff.permissions],
-        isActive: true,
-        staffPinHash: await hashPin(staff.pin),
-        pinFailedAttempts: 0,
-        pinLockedUntil: null,
-        sessionVersion: 1,
-        lastLoginAt: null,
-        createdAt: now,
-        updatedAt: now,
-      },
+      data: staffMembership,
+    });
+    // The Owner-only Staff list reads this PIN-free projection, not `members`.
+    writes.push({
+      path: `tenants/${tenantId}/staffDirectory/${staffUid}`,
+      data: toStaffDirectoryEntry(tenantId, staffUid, staffMembership),
     });
     // A previous seed run created a membership under a synthetic uid. When the
     // real Auth uid is available, deactivate the legacy record so the Staff
@@ -758,6 +765,15 @@ async function run(): Promise<void> {
       writes.push({
         path: `tenants/${tenantId}/members/${staff.uid}`,
         data: { isActive: false, updatedAt: now },
+      });
+      // Keep the projection a complete document; the Owner list parses it strictly.
+      writes.push({
+        path: `tenants/${tenantId}/staffDirectory/${staff.uid}`,
+        data: toStaffDirectoryEntry(tenantId, staff.uid, {
+          ...staffMembership,
+          uid: staff.uid,
+          isActive: false,
+        }),
       });
     }
   }

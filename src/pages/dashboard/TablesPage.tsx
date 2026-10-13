@@ -34,7 +34,6 @@ import {
   useStoreSlice,
   useStoreTenantId,
 } from '../../data/tenantStore';
-import { useActiveTenantId } from '../../hooks/useActiveTenantId';
 import { resolveTableListView } from './tableListView';
 import TableDetailPanel from './tables/TableDetailPanel';
 import TablePlanCanvas from './tables/TablePlanCanvas';
@@ -96,7 +95,6 @@ export default function TablesPage() {
   // directly by URL no longer shows an empty shop (IMP-01, F-01).
   const [rows, { loading, error: loadError }] = useStoreSlice('tables');
   const tenantId = useStoreTenantId();
-  const activeTenantId = useActiveTenantId();
   const toast = useToast();
 
   const [viewMode, setViewMode] = useState<ViewMode>('plan');
@@ -204,10 +202,10 @@ export default function TablesPage() {
     `${window.location.origin}${menuPath(token)}`;
 
   const requireTenant = (): string => {
-    if (!activeTenantId) {
+    if (!tenantId) {
       throw new Error('Chưa chọn cửa hàng.');
     }
-    return activeTenantId;
+    return tenantId;
   };
 
   const reportError = (error: unknown, fallback: string) => {

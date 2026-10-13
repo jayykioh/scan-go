@@ -20,10 +20,10 @@ import {
   archiveIngredient,
   createIngredient,
   getInventoryChangeReport,
-  subscribeIngredients,
   updateIngredient,
 } from '../data/adapters/inventory.adapter';
 import { useToast } from '../contexts/ToastContext';
+import { useStoreSlice } from '../data/tenantStore';
 
 interface InventoryPanelProps {
   /** When true the panel hides its own title (embedded in a tabbed view). */
@@ -136,11 +136,11 @@ function isUnitCompatible(unit: UnitInput, baseUnit: Ingredient['baseUnit']): bo
 
 export default function InventoryPanel({ embedded = false }: InventoryPanelProps) {
   const toast = useToast();
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [ingredients, inventoryState] = useStoreSlice('ingredients');
+  const listError = inventoryState.error;
   const [report, setReport] = useState<InventoryChangeEntry[]>([]);
   const [showReport, setShowReport] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
-  const [listError, setListError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<IngredientForm | null>(null);
   const [archiving, setArchiving] = useState<Ingredient | null>(null);
@@ -152,14 +152,6 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
   const [adjustNote, setAdjustNote] = useState('');
   const [adjustLotPrice, setAdjustLotPrice] = useState('');
   const [adjustLotUnit, setAdjustLotUnit] = useState<UnitInput>('g');
-
-  useEffect(() => {
-    const unsubscribe = subscribeIngredients(
-      (list) => setIngredients(list),
-      (error) => setListError(error.message),
-    );
-    return () => unsubscribe();
-  }, []);
 
   const activeIngredients = useMemo(
     () => ingredients.filter((item) => item.archivedAt === null),

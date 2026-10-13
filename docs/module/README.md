@@ -19,7 +19,7 @@ Each module owns its writes and exposes explicit commands, queries, and events. 
 | AI | [ai.md](ai.md) | Provider adapter, weekly analysis, warnings, cost records |
 | Feedback | [feedback.md](feedback.md) | Reviews, issues, Feedback tickets, and product feedback with screenshots |
 | Workforce | [workforce.md](workforce.md) | Shifts and attendance |
-| Reservation | [reservation.md](reservation.md) | DEFERRED by ADR 0009; no data owner |
+| Reservation | [reservation.md](reservation.md) | Staff-entered table booking scope approved (REQ-TBL-005..007); implementation pending; Customer flow deferred |
 | Subscription | [subscription.md](subscription.md) | Free, Lite, and Pro entitlements |
 | ADMIN | [admin.md](admin.md) | Platform operations and unrestricted access |
 

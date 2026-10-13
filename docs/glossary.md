@@ -43,7 +43,9 @@ This glossary follows `docs/context.md` and the approved SRS.
 | Area (khu vực) | A free-text room label on a table, such as `Tầng 1` or `Sân vườn`. A label for grouping and filtering, not a container the table is trapped in. |
 | Seats (số ghế) | The seat count the Owner sets on a table. Presentation only; it never affects pricing or capacity limits. |
 | Table position | A table's cell on the floor grid, stored as integer `x`/`y` rather than pixels, so the same arrangement renders the same on every screen. |
-| Table service state | One state per table derived from live Orders: `free` (trống), `occupied` (có khách), `foodReady` (món sẵn sàng), or `awaitingPayment` (chờ thanh toán), in that order of urgency. |
+| Table service state | A table's display state combines live Order state with effective reservations: `reserved` means a future booking, not current occupancy; an arrived booking or open Order shows current occupancy, while `foodReady` and `awaitingPayment` keep their existing urgency. |
+| Reservation | A staff-entered booking for one table and a tenant-local time interval, separate from Order, Payment, and preparation; Customer self-service, deposits, and pre-orders remain deferred. |
+| Waiter area assignment | One or more active Waiter UIDs assigned by the Owner to an area; it helps show service responsibility but does not grant or change permissions. |
 | Awaiting payment | A table whose Order is `served` but not settled. The most urgent state on the floor plan. |
 | Tenant | One isolated shop workspace and its data. |
 | Tracking token | An opaque Order-specific token that lets Customer read only one tracking projection. |

@@ -35,12 +35,14 @@ import {
   readReportingSummary,
   resolvePeriodRange,
 } from './firestoreRead';
+import { clearReadCache } from './readCache';
 
 function docSnapshot(id: string, data: Record<string, unknown>) {
   return { id, exists: () => true, data: () => data, get: (key: string) => data[key] };
 }
 
 afterEach(() => {
+  clearReadCache();
   vi.resetAllMocks();
 });
 
@@ -86,6 +88,23 @@ describe('readReportingSummary', () => {
     expect(result.totals.revenueVnd).toBe(dailyStatsFixture.revenueVnd);
     expect(result.popularItems[0]?.itemId).toBe('i1');
     expect(result.tables[0]?.tableId).toBe('tb1');
+  });
+
+  it('reuses the same user/tenant/query summary without repeated Firestore reads', async () => {
+    mocks.getFirebaseFirestore.mockReturnValue({});
+    mocks.getFirebaseAuth.mockReturnValue({ currentUser: { uid: 'u1' } });
+    mocks.getDoc.mockResolvedValueOnce(docSnapshot('u1', { activeTenantId: 't1' }));
+    mocks.getDocs
+      .mockResolvedValueOnce({ docs: [docSnapshot(REPORTING_DAY_FIXTURE, dailyStatsFixture)] })
+      .mockResolvedValueOnce({ docs: [docSnapshot('i1', dailyItemStatsFixture)] })
+      .mockResolvedValueOnce({ docs: [docSnapshot('tb1', dailyTableStatsFixture)] });
+
+    const first = await readReportingSummary('day', REPORTING_DAY_FIXTURE);
+    const second = await readReportingSummary('day', REPORTING_DAY_FIXTURE);
+
+    expect(second).toEqual(first);
+    expect(mocks.getDocs).toHaveBeenCalledTimes(3);
+    expect(mocks.getDoc).toHaveBeenCalledTimes(1);
   });
 
   it('rejects when no tenant is selected', async () => {

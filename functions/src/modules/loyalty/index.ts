@@ -55,7 +55,6 @@ import {
   normalizeLoyaltyPhoneOrThrow,
   nowIso,
   parseLoyaltyEarnInput,
-  parseLoyaltyGetConfigInput,
   parseLoyaltyListInput,
   parseLoyaltyRedeemInput,
   parseLoyaltyRegisterInput,
@@ -674,25 +673,6 @@ export const callableLoyaltyListMembers = onCall(
     return loyaltyListResultSchema.parse({
       schemaVersion: LOYALTY_CONTRACT_VERSION,
       members: members.map((member) => toLoyaltyMemberView(member, visible)),
-    });
-  },
-);
-
-/** Active member query: the resolved Loyalty configuration. */
-export const callableLoyaltyGetConfig = onCall(
-  CALL_OPTIONS,
-  async (request) => {
-    const uid = requireUid(request.auth?.uid);
-    assertAppCheck(request);
-    const input = parseLoyaltyGetConfigInput(request.data);
-    const db = getDb();
-    const callerSnap = await db
-      .doc(`tenants/${input.tenantId}/members/${uid}`)
-      .get();
-    assertActiveMember(callerSnap.data());
-    return loyaltyConfigResultSchema.parse({
-      schemaVersion: LOYALTY_CONTRACT_VERSION,
-      config: await resolveLoyaltyConfig(db, input.tenantId),
     });
   },
 );

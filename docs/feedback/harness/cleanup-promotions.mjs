@@ -79,7 +79,13 @@ if (!tenantId) {
   throw new Error('QA owner has no active tenant');
 }
 
-const list = await callCallable('callablePromotionList', { tenantId });
+// The fetch-only callable was removed (ADR 0015); read the collection directly.
+const listSnap = await db
+  .collection(`tenants/${tenantId}/promotions`)
+  .where('archivedAt', '==', null)
+  .limit(100)
+  .get();
+const list = { promotions: listSnap.docs.map((d) => ({ promotionId: d.id, ...d.data() })) };
 console.log(`Found ${list.promotions.length} non-archived promotion(s) in ${tenantId}`);
 
 for (const promotion of list.promotions) {

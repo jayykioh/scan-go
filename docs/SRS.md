@@ -31,7 +31,7 @@ ScanGo is a contactless ordering and shop-management product for Vietnamese F&B 
 | Inventory count (M3) | Stock count, waste and adjustment recording, variance review for loss analysis |
 | Growth | Loyalty, promotions, Free, Lite, and Pro subscription |
 | Platform operations | ADMIN tenant access and global configuration |
-| Reservations (deferred) | Not in M1–M3. See §4.11. |
+| Staff-entered table bookings | Approved narrow P1 slice under REQ-TBL-005..007; Customer reservations/pre-ordering remain deferred. See §4.11 and ADR 0009. |
 
 **Pilot segments:** the first pilots are coffee and tea shops and kitchen shops. Other F&B models stay in scope but are not first.
 
@@ -162,6 +162,10 @@ Use independent Auth, Tenant, Config, Catalog, Inventory, Table Access, Ordering
 - **REQ-TBL-001 (P0) MUST** let Owner create, rename, archive, and regenerate tenant tables and QR table links. **Acceptance:** Given a regenerated link, when Customer opens the old link, then access fails; the new link opens only its table menu.
 - **REQ-TBL-002 (P1) MUST** let Owner arrange tables on a floor plan by area, seat count, and position, and switch between a plan view and a list view. **Acceptance:** Given an Owner session, when Owner moves a table, names its area, or sets its seat count, then the server stores the layout and the next visit to the plan shows the same arrangement; given a table outside the floor grid or a seat count outside the allowed range, then the server rejects the command; given another role, then the command stays denied.
 - **REQ-TBL-003 (P1) MUST** show the service state of every table on the floor plan, derived from live Orders. **Acceptance:** Given a served, unsettled Order on a table, when the plan refreshes, then that table shows "chờ thanh toán" and no other table changes state; given an open Order, then the table shows "có khách"; given a ready Order, then the table shows "món sẵn sàng"; given no open Order, then "trống"; and the projection carries no money, customer, or Order line data.
+- **REQ-TBL-004 (P1) MUST** let the Owner assign zero or more active Waiter Staff to each table area. **Acceptance:** Given an area, when the Owner saves active Waiter UIDs, then floor-plan and list headers show every assigned Waiter name; inactive members and members without the Waiter role are rejected; unassigned areas remain valid. Area labels remain grouping labels, and assignments use UIDs without changing roles or permissions.
+- **REQ-TBL-005 (P1) MUST** let authorized shop Staff create and manage table reservations as records separate from Orders. A reservation MUST identify one table, a tenant-local start and end time, party size, and a lifecycle state; the implementation MUST NOT create or mutate an Order, Payment, or Inventory movement as a side effect. **Acceptance:** Given an authorized user and a valid future time interval, when they create a reservation, then the server stores it for that tenant and table and the floor plan shows "Đã đặt" with party size without showing the table as occupied; given an invalid time range, party size outside 1–50, a different tenant, or unauthorized caller, then the server rejects the request; overlapping active reservations are rejected atomically.
+- **REQ-TBL-006 (P1) MUST** let authorized Staff confirm arrival, cancel a reservation, and mark it no-show, with each valid transition audited. The reservation MUST stop blocking its table when cancelled, completed, or no-show; an arrived reservation MUST display as occupied until its visit is completed. **Acceptance:** Given a confirmed reservation, when Staff records arrival, then the table shows "Có khách"; given a cancellation, completion, or no-show, when the plan refreshes and no open Order or other effective reservation exists, then the table shows its underlying Order state or "Trống"; invalid transitions are rejected and history is retained.
+- **REQ-TBL-007 (P1) MUST** show the applicable reservation state on the table plan and detail view without confusing future reservations with current occupancy. **Acceptance:** Given a future active reservation, then the table shows "Đã đặt" and party size; given an arrived reservation or an open Order, then current occupancy/order state takes precedence; given a reservation with minimal Customer contact data, then only authorized Owner/Staff can read that data and Waiter views receive no Customer contact fields.
 - **REQ-NFC-001 (P2) SHOULD** let the same table link open through a programmed NFC tag. **Acceptance:** Given a supported NFC device, when Customer taps the tag, then the same menu and table context open as QR.
 
 ### 4.5 Customer ordering
@@ -226,16 +230,22 @@ REQ-FDB-001, which is the Customer's report about the shop.
 - **REQ-INV-003 (P2) MUST** let Owner record stock-in, a Stock count, waste, and a manual adjustment with a reason. **Acceptance:** Given a Stock count, when saved, then the system computes expected quantity from stock-in, deduction, and restoration, and stores the variance with an audit event.
 - **REQ-INV-004 (P2) SHOULD** attribute an unexplained variance to ingredient, item, shift, or time window for AI review. **Acceptance:** Given complete counts, when loss review runs, then each finding cites the count, movements, and period; given missing counts, then the finding states the limitation.
 
-### 4.11 Reservations — DEFERRED
-Reservations and pre-ordering are deferred by ADR 0009. They are outside M1–M3 and must not change the v1 Order lifecycle. "Cọc full" means the Customer paid the full value of the ordered items.
+### 4.11 Reservations — staff-entered table bookings (P1 amendment, 2026-10-13)
 
-| REQ | Phase | Requirement direction |
-|---|---|---|
-| REQ-RSV-001 | DEFERRED | Customer requests an arrival time, party size, and pre-ordered items. |
-| REQ-RSV-002 | DEFERRED | Shop confirms capacity and ingredient availability before the request is accepted. |
-| REQ-RSV-003 | DEFERRED | Reservation state, payment state, and preparation state are separate. Payment alone never starts preparation. |
+This amendment approves a deliberately small reservation workflow for the floor plan. Reservations are entered by authorized shop Staff for one specific table; Customer self-service, pre-ordering, deposits/payments, table combinations, and automated seating are excluded. The reservation is separate from Order, Payment, and preparation state. No reservation creates an Order or authorizes Kitchen preparation. The legacy `REQ-RSV-001..003` remain deferred for Customer requests, capacity/ingredient approval, and pre-ordering; the approved staff booking requirements are `REQ-TBL-005..007`.
 
-Each deferred REQ needs an approved amendment, acceptance criteria, and a refund and late-arrival policy before any code.
+Product policy for this slice: a booking has a table, tenant-local start/end time, party size, and state `booked | arrived | cancelled | completed | no_show`; arrival is explicit, and an arrived visit remains occupied until completed. Active `booked` intervals block overlapping bookings on the same table. No deposit is collected. Store Customer name/phone only when needed by the shop; contact fields are optional and private to Owner/authorized Staff, never included in the general table-status or Waiter projection. No automatic grace period or inferred no-show: Staff explicitly marks no-show. An active booking makes the table show `Đã đặt` before arrival; arrival or an open Order takes precedence and shows `Có khách` (or its more urgent Order state). `foodReady` and `awaitingPayment` retain their existing urgency. Terminal reservation states no longer hold the table.
+
+- **REQ-TBL-005 (P1) MUST** let authorized shop Staff create, view, and edit a reservation for one table, with tenant-local start/end time, party size, and lifecycle state, stored separately from Orders. **Acceptance:** Given an authorized user and a valid future interval, when they save a booking, then the server stores it for the same tenant/table and the floor plan shows `Đã đặt` and party size without showing occupancy; reservation writes never create or mutate an Order, Payment, or Inventory movement. Given an interval where end is not after start, a party size outside 1–TABLE_MAX_SEATS, a different tenant, or an unauthorized caller, then the server rejects the request.
+- **REQ-TBL-006 (P1) MUST** prevent two active bookings from overlapping on the same table and support explicit arrival, cancellation, completion, and no-show transitions. **Acceptance:** Given an overlapping `booked` interval, when a concurrent create/edit is committed, then at most one booking succeeds; given a valid transition, then the server records actor/time and retains history; given cancelled, completed, or no-show state, then the booking no longer blocks the table; an arrived booking remains occupied until completed.
+- **REQ-TBL-007 (P1) MUST** combine reservations with live Order state on the plan without treating a future booking as current occupancy. **Acceptance:** Given a future active booking, then the table shows `Đã đặt` and party size; given an arrived booking or open Order, then occupancy/Order state takes precedence; given no effective booking and no open Order, then existing Order-derived state or `Trống` is shown; the general status result contains no Customer contact fields.
+
+### 4.11.1 Waiter coverage by area
+
+- **REQ-TBL-004 (P1) MUST** let the Owner assign zero or more active Waiter Staff to each table area. **Acceptance:** Given one area, when the Owner saves one or more active Waiter UIDs, then the floor-plan and list show all assigned Waiter names for that area; a Staff member without the Waiter role or who is inactive is rejected; unassigned areas remain valid. Area labels remain grouping labels, not geometric constraints. Assignments use UIDs and do not affect Staff roles or permissions.
+
+### 4.12 Data reads and shared client cache
+- **REQ-CACHE-001 (P1) MUST** route non-ADMIN data-only reads through direct, tenant-scoped Firestore client adapters backed by Security Rules and audience-safe projections; ADMIN reads remain server-side. **Acceptance:** Given an authorized non-ADMIN user, when the application retrieves stored data without a trusted server-side computation, then the client reads the authorized document/query or safe server-written projection directly and does not call a Cloud Function whose only purpose is to fetch and return that data; given a screen unmounts and remounts in the same authenticated user/tenant/query context while its cache entry is valid, then it immediately displays the cached value without creating a duplicate read or listener; live queries update through one shared listener; given a successful relevant server command, explicit refresh, sign-out, tenant switch, or role/session revocation, then affected entries are invalidated or cleared before another context can display them; cross-tenant/unauthorized reads and direct client business writes remain denied.
 
 ---
 
@@ -336,7 +346,7 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 | M1 | All P0 requirements: safe ordering and operations | Unscheduled |
 | M2 | All P1 requirements: reporting, weekly analysis, open Q&A, customer feedback | Unscheduled |
 | M3 | All P2 requirements: promotion, loyalty, feedback tickets, workforce, inventory count | Unscheduled |
-| Deferred | Reservations §4.11, outside M1–M3 until an approved amendment | Not scheduled |
+| Deferred | Customer self-service reservations/pre-ordering §4.11; staff-entered table bookings are separate approved P1 scope | Not scheduled |
 | Roadmap | P3 and approved amendments | Unscheduled |
 
 ## 12. Verification and Acceptance
@@ -365,13 +375,13 @@ Every tenant document carries or inherits `tenantId`. Cloud Functions use transa
 | R-009 | AI provider cost or quality falls short | Replaceable adapter, per-tenant budget, recorded evaluation | REQ-AI-004, NFR-AI-002 |
 | R-010 | AI advice drives a wrong business action | Read-only AI and human approval before any change | REQ-AI-006, NFR-SEC-003 |
 | R-011 | Feedback leaks personal data into AI | Mask personal data before AI input | NFR-PRIV-002 |
-| R-012 | Reservation scope expands into v1 | ADR 0009 deferral and separate reservation, payment, and preparation states | REQ-RSV-003 |
+| R-012 | Reservation scope expands beyond staff-entered bookings | ADR 0009 amendment keeps Customer self-service, deposits, and pre-ordering deferred; booking, payment, and preparation remain separate | REQ-TBL-005..007, REQ-RSV-003 |
 
 ## 14. Open Questions
 
 | State | Decision |
 |---|---|
-| Q-1 RESOLVED 2026-09-30 | "Cọc full" means the Customer paid the full value of the ordered items, not only a shop deposit. Reservations are deferred (ADR 0009). |
+| Q-1 RESOLVED 2026-09-30; amended 2026-10-13 | "Cọc full" means the Customer paid the full value of the ordered items, not only a shop deposit. Customer reservations/pre-orders remain deferred; staff-entered table bookings are approved without deposits under REQ-TBL-005..007 (ADR 0009). |
 | Q-2 RESOLVED 2026-09-30 | First pilot segments are coffee and tea shops and kitchen shops. |
 | Q-3 RESOLVED 2026-09-30 | Keep Gemini as the default AI provider. Evaluate TypeSafe Jev behind the adapter and do not switch yet (ADR 0008). |
 | Q-4 OPEN | TypeSafe contract terms, Vietnamese answer quality, and zero-retention availability. Owner: Founder. |
@@ -386,7 +396,7 @@ Open questions must be answered before the related extension enters a release ph
 | REQ-AUTH-001 | Done | P0-002A: email/password register and sign-in with `callableAuthRegisterOwner`, App Check, Zod boundaries, and idempotent first Tenant. Web 79, functions 87, Rules 27, Functions Emulator 47 pass. |
 | REQ-TEN-001 | Done | P0-002B and P0-003: first Tenant bootstrap, additional Tenant, membership list, active select and switch, bounded listener with disposal, `TenantCreated` and `ActiveTenantChanged` audit. Emulator and Rules evidence pass. |
 | REQ-AUTH-002 | Done | P0-004: hashed tenant-scoped Staff PIN, Config policy (six digits, five attempts, 15-minute lock), sessionVersion revocation, audit events, and server-issued sessions. No plaintext PIN in server storage or client state. Emulator evidence pass. |
-| REQ-AUTH-003 | Done | Staff module: `callableStaffList/Create/Update/SetActive/ResetPin`, Owner gate, hashed PIN, `sessionVersion` revocation on disable, private memberships, and a Staff sign-in page that resolves the Tenant then verifies the PIN. Unit evidence pass; emulator test pending. |
+| REQ-AUTH-003 | Done | Staff module: `callableStaffCreate/Update/SetActive/ResetPin`, Owner gate, hashed PIN, `sessionVersion` revocation on disable, private memberships, and a Staff sign-in page that resolves the Tenant then verifies the PIN. The Owner Staff list now reads the PIN-free `staffDirectory` projection directly (ADR 0015, REQ-CACHE-001) and the former `callableStaffList` was removed. Unit and Rules evidence pass. |
 | REQ-ACL-001 | Done | P0-003 and P0-004: server membership gate, navigation-only `activeTenantId`, and server role/reduced-permission/tenant/sessionVersion checks independent of UI. Emulator matrix pass. |
 | REQ-ADM-001 | Done | P0-L01: claim-verified delegated ADMIN commands and queries, an ADMIN route with a CUD audit view, and non-ADMIN denial. Read-access audit was removed by ADR 0010. Emulator and Rules evidence pass. |
 | REQ-ONB-001 | Done | P0-010: server onboarding checklist for shop name, industry, plan, payment mode, Tables, and menu, with next incomplete step. Dashboard navigation now remains available on narrow screens for the Table/Menu setup steps. Emulator evidence pass. |
@@ -408,6 +418,7 @@ Open questions must be answered before the related extension enters a release ph
 | REQ-TBL-001 | Done | P0-006: Table Access callables (create/rename/archive/regenerate) with App Check and Zod, opaque random token, atomic old-link revocation, minimal public resolver, QR payload rotation. Emulator and Rules evidence pass. The Owner screen now reads the `tables` slice of the shared tenant store, so opening or reloading `/dashboard/tables` by URL shows the real tables instead of a false empty shop, and loading, empty, and error are three distinct states. `docs/feedback/harness/verify-tables-page.mjs` passes 27/27 checks against the real tenant. |
 | REQ-TBL-002 | Done | Table contract v2 adds nullable `area`, `seats`, and `position` to the table document, written only by `callableTableConfigure` (Owner-only, audited as `TableConfigured`); `callableTableCreate` accepts the same fields so a new table lands in its cell in one command. Positions are validated grid cells (12×10) in the contract, so the server rejects a cell outside the floor and a rejected command leaves the stored layout untouched. The screen draws the plan on a scaled grid, drags or arrow-key moves a tile, filters and groups by area, and switches between plan and list. Evidence: `docs/feedback/harness/verify-table-plan-server.mjs` 12/12 and `verify-tables-page.mjs` 27/27 on the real tenant; 19 unit tests for the plan geometry. |
 | REQ-TBL-003 | Done | `callableOrderListTableStatus` folds the tenant's open Orders into one state per table (`awaitingPayment` > `foodReady` > `occupied` > `free`), from a pure `deriveTableServiceState` rule. The projection carries no money, Customer identity, or Order line, so any active member may read it. The plan polls it every ten seconds, pauses while the tab is hidden, and prints the state as text on every tile plus a five-figure summary strip. Evidence: `verify-table-plan-server.mjs` drives a real Order through `pending → ready → served → cancelled` and observes all four states; 7 unit tests for the fold and the precedence rule. |
+| REQ-TBL-004..007 | Approved amendment; implementation pending | SRS amendment 2026-10-13 and amended ADR 0009 approve multiple Waiter assignments per area plus staff-entered table bookings. TODO: area assignment contract/command/UI; tenant reservation collection and validated/audited callable lifecycle; atomic overlap protection; combined Order/reservation plan state with PII-safe projections; contract, unit, Functions Emulator, Rules, and floor-plan UI evidence. Customer self-service, deposits, pre-ordering, grouped tables, and automatic no-show/grace-period behavior remain out of scope. |
 | REQ-NFC-001 | PARTIAL | M3: server-verified NFC provision, revoke, and resolve with opaque tokens and Rules. The physical NDEF device write/read step remains a client task. |
 | REQ-ORD-001 | Done | P0-007: server validates the active Table link and current `publicMenuItems`, and computes integer VND totals from modifiers. Customer cart now sends selected option IDs to server pricing. Emulator evidence pass. The cart also sends one optional trimmed `customerNote` (200 characters) that Kitchen reads on the ticket. |
 | REQ-ORD-002 | Done | P0-007 and P0-009: Pay-Later creates `pending`; Pay-First stays hidden from Kitchen until confirmed Payment. Emulator evidence pass. |
@@ -439,6 +450,7 @@ Open questions must be answered before the related extension enters a release ph
 | REQ-I18N-001 | PARTIAL | P0-L05: typed `vi`/`en` catalogs, server locale profile, and Customer/Settings wiring. OwnerView and PublicMenuPage strings are not yet migrated. |
 | NFR-PERF-001 | Done | P0-L06: bounded-query and aggregation tests plus a 100-load menu resolver budget (p95 467 ms on a modeled 4G profile, budget 2000 ms). |
 | NFR-RT-001 | Done | P0-007..P0-010: bounded Firestore listeners for Ordering, Fulfilment, Catalog, Payment, and notification, with a two-second update harness. Emulator evidence pass. |
+| REQ-CACHE-001 | In Progress | Approved scope: direct non-ADMIN data reads through Rules-authorized projections and a shared cache keyed by user, tenant, path, and query. App-lifetime tenant slices reuse menu/public menu, inventory, tables, promotions, campaign suggestions, Loyalty config, subscription, and the Owner-only Staff directory across remounts; identity/tenant/role isolation is covered by unit tests and the private-menu/Staff projection boundaries by 122 passing Rules tests. Removed the fetch-only `callableStaffList`, `callablePromotionList`, `callableLoyaltyGetConfig`, and `callableReportingGetSummary`. Remaining callable reads are the explicit exceptions recorded in ADR 0015 (Orders, Loyalty phones, resolved Config, inventory report, memberships/onboarding, feedback). |
 | NFR-UX-001 | PARTIAL | P0-007 offline problem UI and P0-010 notification and onboarding flows exist. A dedicated usability timing report is still required. |
 | NFR-SEC-001 | PARTIAL | P0-001 proves the Config boundary: `firestore.rules` deny-by-default with ADMIN-only platform read and active-member scope, plus server authorization. Other modules remain TODO. |
 | NFR-SEC-002 | Done | P0-006 and P0-007: App Check on public writes, Order rate limits, and opaque revocable Table tokens. Emulator and Rules evidence pass. App Check enforcement is temporarily off in `scango-8f0e9` because the web client does not send a token yet (ADR 0017). |
@@ -466,9 +478,11 @@ Open questions must be answered before the related extension enters a release ph
 | REQ-HRM-003 | Done | G3-03: attendance summaries are minutes only and produce no payroll figure; a no-payroll test proves it. |
 | REQ-INV-003 | Done | G3-04: Stock count computes expected quantity from stock-in, deduction, and restoration, and stores variance with audit. Emulator evidence pass. |
 | REQ-INV-004 | Done | G3-05: loss review cites count, movement, and period, and states the limitation when counts are missing. Emulator evidence pass. |
-| REQ-RSV-001 | DEFERRED | ADR 0009. No reservation requirement is approved for a release phase. |
+| REQ-RSV-001 | DEFERRED | ADR 0009. Customer self-service reservation and pre-ordering remain deferred; see approved staff-entered REQ-TBL-005..007. |
 | REQ-RSV-002 | DEFERRED | ADR 0009. Requires an approved amendment. |
 | REQ-RSV-003 | DEFERRED | ADR 0009. Separate reservation, payment, and preparation states. |
+
+The deferral applies to customer-requested reservations and pre-ordering only; the approved staff-entered table booking slice is tracked under REQ-TBL-004..007 and ADR 0009.
 
 ---
 

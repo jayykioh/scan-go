@@ -22,8 +22,9 @@
 - Never perform direct Firestore business writes from the client.
 - Never invent callable names. Search existing exports and client usage first.
 - Every write validates authentication, App Check, tenant, role, permission, payload, and idempotency.
-- Read directly when the rules grant an active tenant member read on the whole collection and no field needs permission filtering. Put these reads in `src/data/firestoreRead.ts` (ADR 0015).
-- Keep a read on the callable when it joins or filters sensitive data, or reads a collection the rules deny to clients.
+- Direct Firestore reads through approved client adapters are the default for non-ADMIN data retrieval. Do not retain a non-ADMIN callable whose only purpose is fetching and returning stored data (ADR 0015, REQ-CACHE-001).
+- Never weaken Rules to enable a direct read. For permission-filtered or joined sensitive data, create a server-written, tenant-scoped, audience-safe projection and authorize that exact projection by role before the client reads it.
+- Keep ADMIN reads server-side. A callable may remain for a trusted mutation, provider integration, or domain computation that must remain server-authoritative; it must not be a thin data-fetch proxy.
 
 ## 2. Callable Naming
 
@@ -34,10 +35,10 @@
 ## 3. Security Rules — Never Weaken
 
 - Deny access by default.
-- Scope tenant reads through `tenants/{tenantId}/members/{uid}`.
+- Scope tenant reads through active-membership Rules. A Staff membership document is private to its user; Owner Staff listings read only the bounded `staffDirectory` projection, which excludes PIN hashes and permission internals.
 - Treat `users/{uid}.activeTenantId` as navigation state, not authorization proof.
 - Permit table-link reads only at `publicTableLinks/{token}`.
-- Permit Customer menu reads only from tenant `publicMenuItems` projections.
+- Permit Customer and cashier menu reads only from tenant `publicMenuItems` projections; private `menuItems` carrying cost/recipe/stock fields are Owner/Kitchen-only.
 - Permit Customer tracking reads only at `publicOrderTracking/{trackingToken}`.
 - Never add unconditional business-data reads or writes.
 - UI gates and server gates must match. Server gates remain authoritative.
@@ -53,13 +54,13 @@
 - Every tenant-owned path starts below `tenants/{tenantId}`.
 - Every callable derives and validates the active membership independently.
 - ADMIN bypass is explicit, server-verified, and automatically audited by the application.
-- Do not add global mutable state with tenant data.
+- A shared in-memory client read cache is permitted only when keys include authenticated UID, tenant ID, path, and query; clear or isolate it on sign-out, account/role/session changes, and tenant switch. The cache is never authorization evidence.
 
 ## 6. Client Constraints
 
 - Keep the approved React and TypeScript stack.
-- Use bounded Firestore listeners and unsubscribe on view disposal.
-- Keep cached offline access read-only for Customer menu viewing.
+- Use bounded Firestore listeners owned and deduplicated by the shared client store; preserve them across route changes and dispose them when auth/tenant context becomes invalid.
+- Client cache is in-memory, read-only, identity/tenant scoped, and invalidated after relevant writes or explicit refresh. Cached values may render immediately but never authorize access.
 - Never put Firebase Admin credentials, Gemini secrets, or payment secrets in the web client.
 
 ## 7. Anti-Patterns — Tester Must Reject

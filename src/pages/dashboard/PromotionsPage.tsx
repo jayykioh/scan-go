@@ -36,7 +36,7 @@ import type {
 import { resolvePlanEntitlements } from '@contracts/subscription.contract';
 import type { SubscriptionPlan } from '@contracts/subscription.contract';
 import { useToast } from '../../contexts/ToastContext';
-import { useActiveTenantId } from '../../hooks/useActiveTenantId';
+
 import {
   approveCampaign,
   changePromotionStatus,
@@ -50,10 +50,10 @@ import {
   getPromotionAi,
 } from '../../data/adapters/promotion.adapter';
 import type { PromotionAiSession } from '@contracts/promotionAi.contract';
-import { getSubscription } from '../../data/adapters/subscription.adapter';
 import {
   refreshSlice,
   useStoreSlice,
+  useStoreTenantId,
 } from '../../data/tenantStore';
 
 /** The six benefit kinds the page offers, with their Vietnamese labels. */
@@ -549,12 +549,12 @@ function MenuItemPicker({
 
 export default function PromotionsPage() {
   const toast = useToast();
-  const tenantId = useActiveTenantId();
+  const tenantId = useStoreTenantId();
   const [promotions, promotionsState] = useStoreSlice('promotions');
   const [suggestions, suggestionsState] = useStoreSlice('campaignSuggestions');
   const [menuItems] = useStoreSlice('menuItems');
-
-  const [plan, setPlan] = useState<SubscriptionPlan>('free');
+  const [subscription] = useStoreSlice('subscription');
+  const plan: SubscriptionPlan = subscription?.plan ?? 'free';
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -570,22 +570,6 @@ export default function PromotionsPage() {
   const entitlements = useMemo(() => resolvePlanEntitlements(plan), [plan]);
   const canUseAdvanced = entitlements.features.includes('promotionAdvanced');
   const maxActivePromotions = entitlements.maxActivePromotions;
-
-  useEffect(() => {
-    let cancelled = false;
-    void getSubscription()
-      .then((state) => {
-        if (!cancelled && state) {
-          setPlan(state.plan);
-        }
-      })
-      .catch(() => {
-        // A missing subscription read leaves the conservative Free limits.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId]);
 
   const activeCount = promotions.filter(
     (promotion) => promotion.status === 'active',

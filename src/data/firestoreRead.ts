@@ -40,6 +40,7 @@ import {
   getFirebaseAuth,
   getFirebaseFirestore,
 } from '../services/firebase/client';
+import { readCached } from './readCache';
 
 /**
  * Direct Firestore reads for surfaces where the security rules already grant
@@ -62,17 +63,34 @@ function requireDb(): Firestore {
   return db;
 }
 
-async function requireTenantId(): Promise<string> {
+function requireUserId(): string {
   const uid = getFirebaseAuth()?.currentUser?.uid;
   if (!uid) {
     throw new Error('Chưa đăng nhập.');
   }
-  const snapshot = await getDoc(doc(requireDb(), 'users', uid));
-  const activeTenantId = snapshot.exists() ? snapshot.get('activeTenantId') : null;
-  if (typeof activeTenantId !== 'string' || activeTenantId.length === 0) {
-    throw new Error('Chưa chọn cửa hàng.');
-  }
-  return activeTenantId;
+  return uid;
+}
+
+async function requireTenantId(userId = requireUserId()): Promise<string> {
+  const db = requireDb();
+  return readCached(
+    {
+      userId,
+      tenantId: '__identity__',
+      path: `users/${userId}`,
+      query: 'activeTenantId',
+    },
+    async () => {
+      const snapshot = await getDoc(doc(db, 'users', userId));
+      const activeTenantId = snapshot.exists()
+        ? snapshot.get('activeTenantId')
+        : null;
+      if (typeof activeTenantId !== 'string' || activeTenantId.length === 0) {
+        throw new Error('Chưa chọn cửa hàng.');
+      }
+      return activeTenantId;
+    },
+  );
 }
 
 /** Tenant-local `yyyymmdd` day key for the current instant. */
@@ -89,14 +107,22 @@ function tenantToday(timezone: string): string {
 async function readTenantToday(
   db: Firestore,
   tenantId: string,
+  userId: string,
 ): Promise<string> {
-  const snap = await getDoc(doc(db, 'tenants', tenantId));
-  const timezone = snap.exists() ? snap.get('timezone') : null;
-  return tenantToday(
-    typeof timezone === 'string' && timezone.length > 0
-      ? timezone
-      : DEFAULT_TIMEZONE,
+  const timezone = await readCached<string | null>(
+    {
+      userId,
+      tenantId,
+      path: `tenants/${tenantId}`,
+      query: 'timezone',
+    },
+    async () => {
+      const snap = await getDoc(doc(db, 'tenants', tenantId));
+      const value = snap.exists() ? snap.get('timezone') : null;
+      return typeof value === 'string' && value.length > 0 ? value : null;
+    },
   );
+  return tenantToday(timezone ?? DEFAULT_TIMEZONE);
 }
 
 function toIsoTimestamp(value: unknown): string {
@@ -336,76 +362,98 @@ function mergePopularTables(tables: DailyTableStats[]): PopularTable[] {
 export async function readReportingSummary(
   period: ReportingPeriod,
   anchorDay?: string,
+  requestedTenantId?: string,
 ): Promise<ReportingSummaryResult> {
   const db = requireDb();
-  const tenantId = await requireTenantId();
-  const resolvedAnchor = anchorDay ?? (await readTenantToday(db, tenantId));
+  const userId = requireUserId();
+  const tenantId = requestedTenantId ?? (await requireTenantId(userId));
+  const resolvedAnchor =
+    anchorDay ?? (await readTenantToday(db, tenantId, userId));
   const { fromDay, toDay } = resolvePeriodRange(period, resolvedAnchor);
 
-  const dailySnap = await getDocs(
-    query(
-      collection(db, 'tenants', tenantId, 'dailyStats'),
-      where('__name__', '>=', fromDay),
-      where('__name__', '<=', toDay),
-      limit(MAX_PERIOD_DAYS),
-    ),
-  );
-
-  const days = dailySnap.docs.map((docSnap) =>
-    mapStoredDailyStats(tenantId, docSnap.id, docSnap.data()),
-  );
-
-  const items: DailyItemStats[] = [];
-  const tables: DailyTableStats[] = [];
-  for (const day of days) {
-    const [itemsSnap, tablesSnap] = await Promise.all([
-      getDocs(
+  return readCached(
+    {
+      userId,
+      tenantId,
+      path: `tenants/${tenantId}/dailyStats`,
+      query: `period=${period};from=${fromDay};to=${toDay};days=${MAX_PERIOD_DAYS};items=${MAX_ITEMS_PER_DAY};tables=${MAX_TABLES_PER_DAY}`,
+    },
+    async () => {
+      const dailySnap = await getDocs(
         query(
-          collection(db, 'tenants', tenantId, 'dailyStats', day.dayKey, 'items'),
-          limit(MAX_ITEMS_PER_DAY),
+          collection(db, 'tenants', tenantId, 'dailyStats'),
+          where('__name__', '>=', fromDay),
+          where('__name__', '<=', toDay),
+          limit(MAX_PERIOD_DAYS),
         ),
-      ),
-      getDocs(
-        query(
-          collection(
-            db,
-            'tenants',
-            tenantId,
-            'dailyStats',
-            day.dayKey,
-            'tables',
-          ),
-          limit(MAX_TABLES_PER_DAY),
-        ),
-      ),
-    ]);
-    for (const snap of itemsSnap.docs) {
-      items.push(mapStoredItemStats(tenantId, day.dayKey, snap.id, snap.data()));
-    }
-    for (const snap of tablesSnap.docs) {
-      tables.push(
-        mapStoredTableStats(tenantId, day.dayKey, snap.id, snap.data()),
       );
-    }
-  }
 
-  return reportingSummaryResultSchema.parse({
-    schemaVersion: REPORTING_CONTRACT_VERSION,
-    tenantId,
-    period,
-    fromDay,
-    toDay,
-    dayCount: days.length,
-    totals: aggregateTotals(days),
-    dailyBreakdown: [...days]
-      .sort((a, b) => a.dayKey.localeCompare(b.dayKey))
-      .map((day) => ({
-        dayKey: day.dayKey,
-        totals: pickTotals(day),
-      })),
-    popularItems: mergePopularItems(items),
-    tables: mergePopularTables(tables),
-  });
+      const days = dailySnap.docs.map((docSnap) =>
+        mapStoredDailyStats(tenantId, docSnap.id, docSnap.data()),
+      );
+
+      const items: DailyItemStats[] = [];
+      const tables: DailyTableStats[] = [];
+      for (const day of days) {
+        const [itemsSnap, tablesSnap] = await Promise.all([
+          getDocs(
+            query(
+              collection(
+                db,
+                'tenants',
+                tenantId,
+                'dailyStats',
+                day.dayKey,
+                'items',
+              ),
+              limit(MAX_ITEMS_PER_DAY),
+            ),
+          ),
+          getDocs(
+            query(
+              collection(
+                db,
+                'tenants',
+                tenantId,
+                'dailyStats',
+                day.dayKey,
+                'tables',
+              ),
+              limit(MAX_TABLES_PER_DAY),
+            ),
+          ),
+        ]);
+        for (const snap of itemsSnap.docs) {
+          items.push(
+            mapStoredItemStats(tenantId, day.dayKey, snap.id, snap.data()),
+          );
+        }
+        for (const snap of tablesSnap.docs) {
+          tables.push(
+            mapStoredTableStats(tenantId, day.dayKey, snap.id, snap.data()),
+          );
+        }
+      }
+
+      return reportingSummaryResultSchema.parse({
+        schemaVersion: REPORTING_CONTRACT_VERSION,
+        tenantId,
+        period,
+        fromDay,
+        toDay,
+        dayCount: days.length,
+        totals: aggregateTotals(days),
+        dailyBreakdown: [...days]
+          .sort((a, b) => a.dayKey.localeCompare(b.dayKey))
+          .map((day) => ({
+            dayKey: day.dayKey,
+            totals: pickTotals(day),
+          })),
+        popularItems: mergePopularItems(items),
+        tables: mergePopularTables(tables),
+      });
+    },
+  );
 }
 
 /**
@@ -418,56 +466,82 @@ export async function readReportingSummary(
  * no composite index has been deployed. The result is bounded, so sorting in
  * the browser costs nothing.
  */
-export async function readPromotions(): Promise<Promotion[]> {
+export async function readPromotions(
+  requestedTenantId?: string,
+): Promise<Promotion[]> {
   const db = requireDb();
-  const tenantId = await requireTenantId();
-  const snapshot = await getDocs(
-    query(
-      collection(db, 'tenants', tenantId, 'promotions'),
-      where('archivedAt', '==', null),
-      limit(PROMOTION_READ_LIMIT),
-    ),
+  const userId = requireUserId();
+  const tenantId = requestedTenantId ?? (await requireTenantId(userId));
+  return readCached(
+    {
+      userId,
+      tenantId,
+      path: `tenants/${tenantId}/promotions`,
+      query: `archivedAt=null;limit=${PROMOTION_READ_LIMIT};sort=priority-desc,name-asc`,
+    },
+    async () => {
+      const snapshot = await getDocs(
+        query(
+          collection(db, 'tenants', tenantId, 'promotions'),
+          where('archivedAt', '==', null),
+          limit(PROMOTION_READ_LIMIT),
+        ),
+      );
+      return snapshot.docs
+        .map((docSnap) =>
+          parseStoredPromotion(docSnap.data(), docSnap.id, tenantId),
+        )
+        .sort(
+          (left, right) =>
+            right.priority - left.priority ||
+            (left.name < right.name ? -1 : left.name > right.name ? 1 : 0),
+        );
+    },
   );
-  return snapshot.docs
-    .map((docSnap) =>
-      parseStoredPromotion(docSnap.data(), docSnap.id, tenantId),
-    )
-    .sort(
-      (left, right) =>
-        right.priority - left.priority ||
-        (left.name < right.name ? -1 : left.name > right.name ? 1 : 0),
-    );
 }
 
 /** Read the tenant Loyalty configuration directly (REQ-LOY-001). */
-export async function readLoyaltyConfig(): Promise<LoyaltyConfig> {
+export async function readLoyaltyConfig(
+  requestedTenantId?: string,
+): Promise<LoyaltyConfig> {
   const db = requireDb();
-  const tenantId = await requireTenantId();
-  const snapshot = await getDoc(
-    doc(db, 'tenants', tenantId, 'loyaltyConfig', 'default'),
-  );
-  if (!snapshot.exists()) {
-    return loyaltyConfigResultSchema.parse({
-      schemaVersion: 1,
-      config: {
-        schemaVersion: 1,
-        tenantId,
-        earnRateVnd: 10000,
-        pointsPerEarnRate: 1,
-        welcomePoints: 0,
-        updatedAt: new Date(0).toISOString(),
-      },
-    }).config;
-  }
-  return loyaltyConfigResultSchema.parse({
-    schemaVersion: 1,
-    config: {
-      schemaVersion: 1,
+  const userId = requireUserId();
+  const tenantId = requestedTenantId ?? (await requireTenantId(userId));
+  return readCached(
+    {
+      userId,
       tenantId,
-      ...snapshot.data(),
-      updatedAt: toIsoTimestamp(snapshot.get('updatedAt')),
+      path: `tenants/${tenantId}/loyaltyConfig/default`,
+      query: 'get',
     },
-  }).config;
+    async () => {
+      const snapshot = await getDoc(
+        doc(db, 'tenants', tenantId, 'loyaltyConfig', 'default'),
+      );
+      if (!snapshot.exists()) {
+        return loyaltyConfigResultSchema.parse({
+          schemaVersion: 1,
+          config: {
+            schemaVersion: 1,
+            tenantId,
+            earnRateVnd: 10000,
+            pointsPerEarnRate: 1,
+            welcomePoints: 0,
+            updatedAt: new Date(0).toISOString(),
+          },
+        }).config;
+      }
+      return loyaltyConfigResultSchema.parse({
+        schemaVersion: 1,
+        config: {
+          schemaVersion: 1,
+          tenantId,
+          ...snapshot.data(),
+          updatedAt: toIsoTimestamp(snapshot.get('updatedAt')),
+        },
+      }).config;
+    },
+  );
 }
 
 /**
@@ -475,21 +549,34 @@ export async function readLoyaltyConfig(): Promise<LoyaltyConfig> {
  * member read access and deny every write, so an approval still goes through
  * the server callable (REQ-PRO-001, NFR-SEC-003).
  */
-export async function readCampaignSuggestions(): Promise<CampaignSuggestion[]> {
+export async function readCampaignSuggestions(
+  requestedTenantId?: string,
+): Promise<CampaignSuggestion[]> {
   const db = requireDb();
-  const tenantId = await requireTenantId();
-  const snapshot = await getDocs(
-    query(
-      collection(db, 'tenants', tenantId, 'campaignSuggestions'),
-      orderBy('generatedAt', 'desc'),
-      limit(CAMPAIGN_SUGGESTION_READ_LIMIT),
-    ),
-  );
-  return snapshot.docs.map((docSnap) =>
-    campaignSuggestionSchema.parse({
-      ...docSnap.data(),
-      suggestionId: docSnap.id,
+  const userId = requireUserId();
+  const tenantId = requestedTenantId ?? (await requireTenantId(userId));
+  return readCached(
+    {
+      userId,
       tenantId,
-    }),
+      path: `tenants/${tenantId}/campaignSuggestions`,
+      query: `orderBy=generatedAt:desc;limit=${CAMPAIGN_SUGGESTION_READ_LIMIT}`,
+    },
+    async () => {
+      const snapshot = await getDocs(
+        query(
+          collection(db, 'tenants', tenantId, 'campaignSuggestions'),
+          orderBy('generatedAt', 'desc'),
+          limit(CAMPAIGN_SUGGESTION_READ_LIMIT),
+        ),
+      );
+      return snapshot.docs.map((docSnap) =>
+        campaignSuggestionSchema.parse({
+          ...docSnap.data(),
+          suggestionId: docSnap.id,
+          tenantId,
+        }),
+      );
+    },
   );
 }

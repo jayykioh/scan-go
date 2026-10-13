@@ -259,86 +259,60 @@ export async function getInventoryChangeReport(
   return inventoryChangeReportResultSchema.parse(result.data);
 }
 
-/** Bounded ingredient listener for the Owner stock page. */
+/** Bounded ingredient listener for the active Tenant stock page. */
 export function subscribeIngredients(
+  tenantId: string,
   onChange: (ingredients: Ingredient[]) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
   const db = getFirebaseFirestore();
-  const uid = getFirebaseAuth()?.currentUser?.uid;
-  if (!db || !uid) {
+  if (!db) {
     onChange([]);
     return () => undefined;
   }
 
-  let unsubscribe: Unsubscribe | null = null;
-  let cancelled = false;
-
-  void readActiveTenantId(db, uid).then((tenantId) => {
-    if (cancelled || !tenantId) {
-      return;
-    }
-    const ingredientQuery = query(
-      collection(db, 'tenants', tenantId, 'ingredients'),
-      orderBy('name'),
-      limit(INGREDIENT_LISTENER_LIMIT),
-    );
-    unsubscribe = onSnapshot(
-      ingredientQuery,
-      (snap) => {
-        onChange(
-          snap.docs.map((docSnap) =>
-            mapStoredIngredient(docSnap.id, docSnap.data()),
-          ),
-        );
-      },
-      (error) => onError?.(error),
-    );
-  });
-
-  return () => {
-    cancelled = true;
-    unsubscribe?.();
-  };
+  const ingredientQuery = query(
+    collection(db, 'tenants', tenantId, 'ingredients'),
+    orderBy('name'),
+    limit(INGREDIENT_LISTENER_LIMIT),
+  );
+  return onSnapshot(
+    ingredientQuery,
+    (snap) => {
+      onChange(
+        snap.docs.map((docSnap) =>
+          mapStoredIngredient(docSnap.id, docSnap.data()),
+        ),
+      );
+    },
+    (error) => onError?.(error),
+  );
 }
 
-/** Bounded recipe listener for the Owner recipe page. */
+/** Bounded recipe listener for the active Tenant recipe page. */
 export function subscribeRecipes(
+  tenantId: string,
   onChange: (recipes: Recipe[]) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
   const db = getFirebaseFirestore();
-  const uid = getFirebaseAuth()?.currentUser?.uid;
-  if (!db || !uid) {
+  if (!db) {
     onChange([]);
     return () => undefined;
   }
 
-  let unsubscribe: Unsubscribe | null = null;
-  let cancelled = false;
-
-  void readActiveTenantId(db, uid).then((tenantId) => {
-    if (cancelled || !tenantId) {
-      return;
-    }
-    const recipeQuery = query(
-      collection(db, 'tenants', tenantId, 'recipes'),
-      orderBy('menuItemId'),
-      limit(RECIPE_LISTENER_LIMIT),
-    );
-    unsubscribe = onSnapshot(
-      recipeQuery,
-      (snap) => {
-        onChange(
-          snap.docs.map((docSnap) => mapStoredRecipe(docSnap.id, docSnap.data())),
-        );
-      },
-      (error) => onError?.(error),
-    );
-  });
-
-  return () => {
-    cancelled = true;
-    unsubscribe?.();
-  };
+  const recipeQuery = query(
+    collection(db, 'tenants', tenantId, 'recipes'),
+    orderBy('menuItemId'),
+    limit(RECIPE_LISTENER_LIMIT),
+  );
+  return onSnapshot(
+    recipeQuery,
+    (snap) => {
+      onChange(
+        snap.docs.map((docSnap) => mapStoredRecipe(docSnap.id, docSnap.data())),
+      );
+    },
+    (error) => onError?.(error),
+  );
 }

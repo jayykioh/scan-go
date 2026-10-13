@@ -1,4 +1,7 @@
+import './shared/firestore.js';
 import { initFunctionsMonitoring } from './shared/monitoring.js';
+
+// Importing the shared Firestore module initializes Admin before the exports.
 
 // Server error monitoring stays disabled without SENTRY_DSN (NFR-OBS-001).
 initFunctionsMonitoring();
@@ -94,7 +97,6 @@ export {
   callablePromotionAiStart,
   callablePromotionApproveCampaign,
   callablePromotionEvaluate,
-  callablePromotionList,
   callablePromotionMeasureCampaign,
   callablePromotionSetStatus,
   callablePromotionSuggestCampaign,
@@ -103,7 +105,6 @@ export {
 
 export {
   callableLoyaltyEarnPoints,
-  callableLoyaltyGetConfig,
   callableLoyaltyListMembers,
   callableLoyaltyRedeemPoints,
   callableLoyaltyRegisterMember,
@@ -118,7 +119,6 @@ export {
 } from './modules/subscription/index.js';
 
 export {
-  callableReportingGetSummary,
   callableReportingRebuildDailyStats,
   scheduledReportingRebuildDailyStats,
 } from './modules/reporting/index.js';
@@ -167,7 +167,6 @@ export {
 
 export {
   callableStaffCreate,
-  callableStaffList,
   callableStaffResetPin,
   callableStaffSetActive,
   callableStaffUpdate,

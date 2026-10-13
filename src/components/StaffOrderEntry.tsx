@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Plus, Minus, X, ShoppingBag, Check, AlertCircle } from 'lucide-react';
-import type { CatalogMenuItem } from '@contracts/catalog.contract';
+import type { PublicMenuItem } from '@contracts/catalog.contract';
 import type {
   OrderCartLineInput,
   OrderPaymentMode,
 } from '@contracts/order.contract';
-import { subscribeOwnerMenu } from '../data/adapters/catalog.adapter';
+import {
+  useStoreSlice,
+  useStoreTenantId,
+} from '../data/tenantStore';
 import {
   createOrderIdempotencyKey,
   createStaffOrder,
@@ -33,7 +36,7 @@ function selectionKey(menuItemId: string, optionIds: string[]): string {
 }
 
 function modifierLabelFor(
-  item: CatalogMenuItem,
+  item: PublicMenuItem,
   optionIds: string[],
 ): string {
   const names: string[] = [];
@@ -47,7 +50,7 @@ function modifierLabelFor(
   return names.join(', ');
 }
 
-function unitPriceFor(item: CatalogMenuItem, optionIds: string[]): number {
+function unitPriceFor(item: PublicMenuItem, optionIds: string[]): number {
   let price = item.priceVnd;
   for (const group of item.modifierGroups) {
     for (const option of group.options) {
@@ -64,28 +67,24 @@ export default function StaffOrderEntry({
   tenantConfig,
   tables,
 }: StaffOrderEntryProps) {
-  const [menuItems, setMenuItems] = useState<CatalogMenuItem[]>([]);
+  const [publicMenuItems, menuState] = useStoreSlice('publicMenu');
+  const storeTenantId = useStoreTenantId();
+  const menuItems = useMemo(
+    () => (storeTenantId === tenantId ? publicMenuItems : []),
+    [publicMenuItems, storeTenantId, tenantId],
+  );
   const [orderType, setOrderType] = useState<'dineIn' | 'takeaway'>('dineIn');
   const [tableId, setTableId] = useState('');
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [picker, setPicker] = useState<CatalogMenuItem | null>(null);
+  const [picker, setPicker] = useState<PublicMenuItem | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const idempotencyKeyRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!tenantId) return;
-    const unsubscribe = subscribeOwnerMenu(
-      (items) => setMenuItems(items),
-      (err) => setError(err.message),
-    );
-    return () => unsubscribe();
-  }, [tenantId]);
-
   const availableItems = useMemo(
-    () => menuItems.filter((item) => item.isAvailable && item.archivedAt === null),
+    () => menuItems.filter((item) => item.isAvailable),
     [menuItems],
   );
 
@@ -94,7 +93,7 @@ export default function StaffOrderEntry({
     [cart],
   );
 
-  const openPicker = (item: CatalogMenuItem) => {
+  const openPicker = (item: PublicMenuItem) => {
     if (item.modifierGroups.length === 0) {
       addLine(item, []);
       return;
@@ -104,7 +103,7 @@ export default function StaffOrderEntry({
     setError(null);
   };
 
-  const toggleOption = (item: CatalogMenuItem, groupId: string, optionId: string) => {
+  const toggleOption = (item: PublicMenuItem, groupId: string, optionId: string) => {
     const group = item.modifierGroups.find((entry) => entry.groupId === groupId);
     if (!group) return;
     setPicked((prev) => {
@@ -149,7 +148,7 @@ export default function StaffOrderEntry({
     setError(null);
   };
 
-  const addLine = (item: CatalogMenuItem, optionIds: string[]) => {
+  const addLine = (item: PublicMenuItem, optionIds: string[]) => {
     const key = selectionKey(item.menuItemId, optionIds);
     setCart((prev) => {
       const existing = prev.find((line) => line.key === key);
@@ -235,9 +234,9 @@ export default function StaffOrderEntry({
         </h3>
       </div>
 
-      {error && (
+      {(error ?? menuState.error) && (
         <p role="alert" className="flex items-center gap-1.5 text-red-600 text-[11px]">
-          <AlertCircle className="w-3.5 h-3.5" /> {error}
+          <AlertCircle className="w-3.5 h-3.5" /> {error ?? menuState.error}
         </p>
       )}
       {message && (

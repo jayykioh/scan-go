@@ -78,14 +78,22 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Owner-only Staff directory projection; PIN hashes and permission internals
+      // remain exclusively in the private membership documents.
+      match /staffDirectory/{staffUid} {
+        allow read: if isActiveOwner(tenantId);
+        allow write: if false;
+      }
+
       // Authentication and lockout audit events are server-written only.
       match /audit/{eventId} {
         allow read, write: if false;
       }
 
-      // Catalog private source: active members and ADMIN read; server writes.
+      // Catalog private source includes Cost/recipe/stock fields; only Owner,
+      // Kitchen-role members, and ADMIN may read it. Cashiers use publicMenuItems.
       match /menuItems/{itemId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isOwnerOrRole(tenantId, 'kitchen') || isAdmin();
         allow write: if false;
       }
 

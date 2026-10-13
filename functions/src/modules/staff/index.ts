@@ -2,7 +2,6 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { getAuth } from 'firebase-admin/auth';
 import {
   staffCommandResultSchema,
-  staffListResultSchema,
   STAFF_CONTRACT_VERSION,
 } from '../../../../shared/contracts/staff.contract.js';
 import { getDb } from '../../shared/firestore.js';
@@ -12,7 +11,6 @@ import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import { hashPin } from '../auth/service.js';
 import {
   STAFF_EMAIL_IN_USE_MESSAGE,
-  STAFF_LIST_LIMIT,
   STAFF_NOT_FOUND_MESSAGE,
   assertActiveOwnerMember,
   buildStaffMembershipDocument,
@@ -20,12 +18,12 @@ import {
   memberCollectionPath,
   nowIso,
   parseStaffCreateInput,
-  parseStaffListInput,
   parseStaffResetPinInput,
   parseStaffSetActiveInput,
   parseStaffUpdateInput,
   requireUid,
   toStaffAccount,
+  toStaffDirectoryEntry,
 } from './service.js';
 
 const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
@@ -39,33 +37,6 @@ async function requireActiveOwner(
     .get();
   assertActiveOwnerMember(memberSnap.exists ? memberSnap.data() : undefined);
 }
-
-/**
- * Owner query: bounded Staff list for one Tenant. Memberships are private to
- * their user, so the client can never read the collection directly
- * (docs/RULES_FIREBASE.md §1, REQ-AUTH-003).
- */
-export const callableStaffList = onCall(CALL_OPTIONS, async (request) => {
-  const uid = requireUid(request.auth?.uid);
-  assertAppCheck(request);
-  const input = parseStaffListInput(request.data);
-  await requireActiveOwner(input.tenantId, uid);
-
-  const db = getDb();
-  const snap = await db
-    .collection(memberCollectionPath(input.tenantId))
-    .where('membershipType', '==', 'staff')
-    .limit(STAFF_LIST_LIMIT)
-    .get();
-
-  return staffListResultSchema.parse({
-    schemaVersion: STAFF_CONTRACT_VERSION,
-    tenantId: input.tenantId,
-    staff: snap.docs.map((doc) =>
-      toStaffAccount(input.tenantId, doc.id, doc.data()),
-    ),
-  });
-});
 
 /**
  * Owner command: create one Firebase Auth account plus its Staff membership.
@@ -112,9 +83,19 @@ export const callableStaffCreate = onCall(CALL_OPTIONS, async (request) => {
     pinHash,
     now,
   });
-  await db
-    .doc(`${memberCollectionPath(input.tenantId)}/${created.uid}`)
-    .set(staff);
+  const memberRef = db.doc(
+    `${memberCollectionPath(input.tenantId)}/${created.uid}`,
+  );
+  const directoryRef = db.doc(
+    `tenants/${input.tenantId}/staffDirectory/${created.uid}`,
+  );
+  const batch = db.batch();
+  batch.set(memberRef, staff);
+  batch.set(
+    directoryRef,
+    toStaffDirectoryEntry(input.tenantId, created.uid, staff),
+  );
+  await batch.commit();
 
   await writeAuditEvent({
     tenantId: input.tenantId,
@@ -151,15 +132,20 @@ export const callableStaffUpdate = onCall(CALL_OPTIONS, async (request) => {
   }
 
   const now = nowIso();
-  await memberRef.set(
-    {
-      displayName: input.displayName,
-      roles: [...input.roles],
-      permissions: [...input.permissions],
-      updatedAt: now,
-    },
-    { merge: true },
+  const update = {
+    displayName: input.displayName,
+    roles: [...input.roles],
+    permissions: [...input.permissions],
+    updatedAt: now,
+  };
+  const updatedData = { ...(snap.data() ?? {}), ...update };
+  const batch = db.batch();
+  batch.set(memberRef, update, { merge: true });
+  batch.set(
+    db.doc(`tenants/${input.tenantId}/staffDirectory/${input.uid}`),
+    toStaffDirectoryEntry(input.tenantId, input.uid, updatedData),
   );
+  await batch.commit();
 
   await writeAuditEvent({
     tenantId: input.tenantId,
@@ -172,11 +158,10 @@ export const callableStaffUpdate = onCall(CALL_OPTIONS, async (request) => {
     detail: { roles: input.roles },
   }).catch(() => undefined);
 
-  const updated = await memberRef.get();
   return staffCommandResultSchema.parse({
     schemaVersion: STAFF_CONTRACT_VERSION,
     status: 'applied',
-    staff: toStaffAccount(input.tenantId, input.uid, updated.data() ?? {}),
+    staff: toStaffAccount(input.tenantId, input.uid, updatedData),
   });
 });
 
@@ -210,7 +195,14 @@ export const callableStaffSetActive = onCall(CALL_OPTIONS, async (request) => {
       snap.get('sessionVersion'),
     );
   }
-  await memberRef.set(update, { merge: true });
+  const updatedData = { ...(snap.data() ?? {}), ...update };
+  const batch = db.batch();
+  batch.set(memberRef, update, { merge: true });
+  batch.set(
+    db.doc(`tenants/${input.tenantId}/staffDirectory/${input.uid}`),
+    toStaffDirectoryEntry(input.tenantId, input.uid, updatedData),
+  );
+  await batch.commit();
 
   await writeAuditEvent({
     tenantId: input.tenantId,
@@ -222,11 +214,10 @@ export const callableStaffSetActive = onCall(CALL_OPTIONS, async (request) => {
     targetId: input.uid,
   }).catch(() => undefined);
 
-  const updated = await memberRef.get();
   return staffCommandResultSchema.parse({
     schemaVersion: STAFF_CONTRACT_VERSION,
     status: 'applied',
-    staff: toStaffAccount(input.tenantId, input.uid, updated.data() ?? {}),
+    staff: toStaffAccount(input.tenantId, input.uid, updatedData),
   });
 });
 
@@ -248,16 +239,21 @@ export const callableStaffResetPin = onCall(CALL_OPTIONS, async (request) => {
 
   const now = nowIso();
   const pinHash = await hashPin(input.pin);
-  await memberRef.set(
-    {
-      staffPinHash: pinHash,
-      pinFailedAttempts: 0,
-      pinLockedUntil: null,
-      sessionVersion: computeNextSessionVersion(snap.get('sessionVersion')),
-      updatedAt: now,
-    },
-    { merge: true },
+  const update = {
+    staffPinHash: pinHash,
+    pinFailedAttempts: 0,
+    pinLockedUntil: null,
+    sessionVersion: computeNextSessionVersion(snap.get('sessionVersion')),
+    updatedAt: now,
+  };
+  const updatedData = { ...(snap.data() ?? {}), ...update };
+  const batch = db.batch();
+  batch.set(memberRef, update, { merge: true });
+  batch.set(
+    db.doc(`tenants/${input.tenantId}/staffDirectory/${input.uid}`),
+    toStaffDirectoryEntry(input.tenantId, input.uid, updatedData),
   );
+  await batch.commit();
 
   await writeAuditEvent({
     tenantId: input.tenantId,
@@ -269,10 +265,9 @@ export const callableStaffResetPin = onCall(CALL_OPTIONS, async (request) => {
     targetId: input.uid,
   }).catch(() => undefined);
 
-  const updated = await memberRef.get();
   return staffCommandResultSchema.parse({
     schemaVersion: STAFF_CONTRACT_VERSION,
     status: 'applied',
-    staff: toStaffAccount(input.tenantId, input.uid, updated.data() ?? {}),
+    staff: toStaffAccount(input.tenantId, input.uid, updatedData),
   });
 });

@@ -1,7 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TenantConfig, TableConfig, Order, MenuItem, LoyaltyMember } from '../types';
-import { useActiveTenantId } from '../hooks/useActiveTenantId';
+import {
+  refreshSlice,
+  useStoreSlice,
+  useStoreTenantId,
+} from '../data/tenantStore';
 import {
   runSoloAvailability,
   runSoloOrderAction,
@@ -10,12 +14,9 @@ import {
   soloOrderPorts,
 } from '../data/adapters/solo.adapter';
 import { listUnpaidOrders } from '../data/adapters/payment.adapter';
-import { subscribeTenantTables } from '../data/adapters/table.adapter';
-import { subscribeOwnerMenu } from '../data/adapters/catalog.adapter';
+
 import {
   createIngredient,
-  subscribeIngredients,
-  subscribeRecipes,
   updateRecipe,
   type RecipeUpdateFields,
 } from '../data/adapters/inventory.adapter';
@@ -23,13 +24,9 @@ import {
   listLoyaltyMembers,
   registerLoyaltyMember,
 } from '../data/adapters/loyalty.adapter';
-import {
-  changeSubscriptionPlan,
-  getSubscription,
-} from '../data/adapters/subscription.adapter';
+import { changeSubscriptionPlan } from '../data/adapters/subscription.adapter';
 import { formatPlanLabel } from '../data/adapters/subscription-view';
-import type { Ingredient as ContractIngredient, Recipe, UnitInput } from '@contracts/inventory.contract';
-import type { SubscriptionState } from '@contracts/subscription.contract';
+import type { Recipe, UnitInput } from '@contracts/inventory.contract';
 import {
   toOwnerMenuItem,
   toTableConfig,
@@ -106,14 +103,35 @@ export default function SoloOperatorView({
   // Solo reads and writes through the same shared server modules as the
   // dedicated views. The view owns only UI state; business state comes from
   // the server (REQ-SOLO-001, docs/RULES_FIREBASE.md §1).
-  const activeTenantId = useActiveTenantId();
-  const [serverTables, setServerTables] = useState<TableConfig[]>([]);
+  const activeTenantId = useStoreTenantId();
+  const [storedTables] = useStoreSlice('tables');
+  const [storedMenuItems] = useStoreSlice('menuItems');
+  const [serverIngredients] = useStoreSlice('ingredients');
+  const [storedRecipes] = useStoreSlice('recipes');
+  const serverTables = useMemo(
+    () => storedTables.map(toTableConfig),
+    [storedTables],
+  );
+  const serverMenuItems = useMemo(
+    () => storedMenuItems.map(toOwnerMenuItem),
+    [storedMenuItems],
+  );
+  const dishRecipes = useMemo(
+    () =>
+      storedRecipes.map((recipe: Recipe) => ({
+        recipeId: recipe.recipeId,
+        menuId: recipe.menuItemId,
+        recipes: recipe.lines.map((line) => ({
+          ingredientId: line.ingredientId,
+          quantity: line.quantityBaseUnits,
+          wasteQuantity: line.wasteBaseUnits,
+        })),
+      })),
+    [storedRecipes],
+  );
   const [soloError, setSoloError] = useState<string | null>(null);
-  const [subscription, setSubscription] = useState<SubscriptionState | null>(null);
-  const [serverIngredients, setServerIngredients] = useState<ContractIngredient[]>([]);
-  const [dishRecipes, setDishRecipes] = useState<DishRecipe[]>([]);
+  const [subscription, subscriptionState] = useStoreSlice('subscription');
   const [serverLoyaltyMembers, setServerLoyaltyMembers] = useState<LoyaltyMember[]>([]);
-  const [serverMenuItems, setServerMenuItems] = useState<MenuItem[]>([]);
 
   // Navigation tabs simplified and organized exactly as requested for 40-50yo users:
   // Tab 1: "home" - Đơn hàng & Lịch sử revert, doanh thu hôm nay
@@ -187,53 +205,15 @@ export default function SoloOperatorView({
     }
   }, [activeTenantId]);
 
-  // Solo keeps the server queue in sync; every listener is disposed on unmount.
+  // Solo keeps the server queue fresh; tenant catalog and inventory data come
+  // from the shared store and survive route remounts (REQ-CACHE-001).
   useEffect(() => {
     if (!activeTenantId) {
       setServerOrders([]);
       return;
     }
     void refreshSoloOrders();
-    const unsubscribeTables = subscribeTenantTables(
-      (rows) => setServerTables(rows.map(toTableConfig)),
-      (error) => setSoloError(error.message),
-    );
-    return () => unsubscribeTables();
   }, [activeTenantId, refreshSoloOrders]);
-
-  // Inventory: server ingredient and recipe projections.
-  useEffect(() => {
-    if (!activeTenantId) return;
-    const unsubscribeMenu = subscribeOwnerMenu(
-      (items) => setServerMenuItems(items.map(toOwnerMenuItem)),
-      (error) => setSoloError(error.message),
-    );
-    const unsubscribeIngredients = subscribeIngredients(
-      (rows) => setServerIngredients(rows),
-      (error) => setSoloError(error.message),
-    );
-    const unsubscribeRecipes = subscribeRecipes(
-      (rows) => {
-        setDishRecipes(
-          rows.map((recipe: Recipe) => ({
-            recipeId: recipe.recipeId,
-            menuId: recipe.menuItemId,
-            recipes: recipe.lines.map((line) => ({
-              ingredientId: line.ingredientId,
-              quantity: line.quantityBaseUnits,
-              wasteQuantity: line.wasteBaseUnits,
-            })),
-          })),
-        );
-      },
-      (error) => setSoloError(error.message),
-    );
-    return () => {
-      unsubscribeMenu();
-      unsubscribeIngredients();
-      unsubscribeRecipes();
-    };
-  }, [activeTenantId]);
 
   // Loyalty members and the current plan come from the server.
   useEffect(() => {
@@ -247,17 +227,6 @@ export default function SoloOperatorView({
         if (!cancelled) {
           setSoloError(
             error instanceof Error ? error.message : 'Không tải được hội viên.',
-          );
-        }
-      });
-    void getSubscription()
-      .then((state) => {
-        if (!cancelled) setSubscription(state);
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setSoloError(
-            error instanceof Error ? error.message : 'Không tải được gói dịch vụ.',
           );
         }
       });
@@ -319,12 +288,15 @@ export default function SoloOperatorView({
       return;
     }
     try {
-      const state = await changeSubscriptionPlan(tier === 'Pro' ? 'pro' : 'lite');
+      const state = await changeSubscriptionPlan(
+        tier === 'Pro' ? 'pro' : 'lite',
+        activeTenantId ?? undefined,
+      );
       if (!state) {
         setSoloError('Không thay đổi được gói dịch vụ.');
         return;
       }
-      setSubscription(state);
+      refreshSlice('subscription');
       setSoloError(null);
       triggerPulseText(`⚡ ĐÃ ĐỔI APP SANG GÓI: [ hạng ${tier.toUpperCase()} ]\n${
         tier === 'Lite' ? '• Giới hạn chức năng cơ bản' :
@@ -809,9 +781,9 @@ export default function SoloOperatorView({
       </AnimatePresence>
 
       {/* Server command feedback */}
-      {soloError && (
+      {(soloError ?? subscriptionState.error) && (
         <div role="alert" className="mx-3 mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-center text-xs font-semibold text-red-700">
-          {soloError}
+          {soloError ?? subscriptionState.error}
         </div>
       )}
 

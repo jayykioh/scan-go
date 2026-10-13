@@ -10,6 +10,7 @@ import {
   getFirebaseFirestore,
   getFirebaseFunctions,
 } from '../../services/firebase/client';
+import { invalidateReadCache } from '../readCache';
 
 async function call<T>(
   name: string,
@@ -43,12 +44,18 @@ export function listMemberships(): Promise<ListMembershipsResult> {
   return call<ListMembershipsResult>('callableTenantListMemberships');
 }
 
-export function selectActiveTenant(
+export async function selectActiveTenant(
   tenantId: string,
 ): Promise<SelectActiveTenantResult> {
-  return call<SelectActiveTenantResult>('callableTenantSelectActive', {
-    tenantId,
-  });
+  const result = await call<SelectActiveTenantResult>(
+    'callableTenantSelectActive',
+    { tenantId },
+  );
+  const uid = getFirebaseAuth()?.currentUser?.uid;
+  if (uid) {
+    invalidateReadCache({ userId: uid, pathPrefix: `users/${uid}` });
+  }
+  return result;
 }
 
 export type Unsubscribe = () => void;
@@ -69,6 +76,72 @@ export async function getActiveTenantId(): Promise<string | null> {
   return typeof activeTenantId === 'string' && activeTenantId.length > 0
     ? activeTenantId
     : null;
+}
+
+/** Observe the signed-in user's navigation-only active Tenant field. */
+export function subscribeActiveTenantId(
+  uid: string,
+  onChange: (tenantId: string | null) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const db = getFirebaseFirestore();
+  if (!db) {
+    onChange(null);
+    onError?.(new Error('Firebase chưa được cấu hình.'));
+    return () => undefined;
+  }
+  return onSnapshot(
+    doc(db, 'users', uid),
+    (snapshot) => {
+      const value = snapshot.exists() ? snapshot.get('activeTenantId') : null;
+      onChange(typeof value === 'string' && value.length > 0 ? value : null);
+    },
+    (error) => onError?.(error),
+  );
+}
+
+export interface ActiveMembershipReadContext {
+  isActive: boolean;
+  membershipType: string | null;
+  roles: string[];
+  sessionVersion: number | null;
+}
+
+/** Observe the caller's own membership so role revocation clears cached reads. */
+export function subscribeCurrentMembership(
+  tenantId: string,
+  uid: string,
+  onChange: (membership: ActiveMembershipReadContext | null) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const db = getFirebaseFirestore();
+  if (!db) {
+    onChange(null);
+    onError?.(new Error('Firebase chưa được cấu hình.'));
+    return () => undefined;
+  }
+  return onSnapshot(
+    doc(db, 'tenants', tenantId, 'members', uid),
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        onChange(null);
+        return;
+      }
+      const roles = snapshot.get('roles');
+      const sessionVersion = snapshot.get('sessionVersion');
+      onChange({
+        isActive: snapshot.get('isActive') !== false,
+        membershipType:
+          typeof snapshot.get('membershipType') === 'string'
+            ? snapshot.get('membershipType')
+            : null,
+        roles: Array.isArray(roles) ? roles.map(String).sort() : [],
+        sessionVersion:
+          typeof sessionVersion === 'number' ? sessionVersion : null,
+      });
+    },
+    (error) => onError?.(error),
+  );
 }
 
 export interface ActiveTenantContext {

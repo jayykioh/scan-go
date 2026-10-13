@@ -20,6 +20,7 @@ const TENANT_B = 'tenant-bravo';
 
 const OWNER_UID = 'owner-uid';
 const STAFF_UID = 'staff-uid';
+const KITCHEN_UID = 'kitchen-uid';
 const INACTIVE_UID = 'inactive-uid';
 const OTHER_UID = 'other-uid';
 
@@ -58,11 +59,19 @@ async function seed(): Promise<void> {
       uid: STAFF_UID,
       membershipType: 'staff',
       isActive: true,
+      roles: ['cashier'],
+    });
+    await setDoc(doc(db, 'tenants', TENANT_A, 'members', KITCHEN_UID), {
+      uid: KITCHEN_UID,
+      membershipType: 'staff',
+      isActive: true,
+      roles: ['kitchen'],
     });
     await setDoc(doc(db, 'tenants', TENANT_A, 'members', INACTIVE_UID), {
       uid: INACTIVE_UID,
       membershipType: 'staff',
       isActive: false,
+      roles: ['kitchen'],
     });
 
     await setDoc(doc(db, 'tenants', TENANT_A, 'menuItems', 'item-1'), {
@@ -100,6 +109,10 @@ function staffDb() {
   return testEnv.authenticatedContext(STAFF_UID).firestore();
 }
 
+function kitchenDb() {
+  return testEnv.authenticatedContext(KITCHEN_UID).firestore();
+}
+
 function otherDb() {
   return testEnv.authenticatedContext(OTHER_UID).firestore();
 }
@@ -109,13 +122,16 @@ function unauthDb() {
 }
 
 describe('private menuItems read boundary', () => {
-  it('allows active members and denies cross-tenant, inactive, and anonymous reads', async () => {
+  it('allows Owner and Kitchen reads but denies Cashier, cross-tenant, inactive, and anonymous reads', async () => {
     await seed();
 
     await assertSucceeds(
       getDoc(doc(ownerDb(), 'tenants', TENANT_A, 'menuItems', 'item-1')),
     );
     await assertSucceeds(
+      getDoc(doc(kitchenDb(), 'tenants', TENANT_A, 'menuItems', 'item-1')),
+    );
+    await assertFails(
       getDoc(doc(staffDb(), 'tenants', TENANT_A, 'menuItems', 'item-1')),
     );
     await assertFails(

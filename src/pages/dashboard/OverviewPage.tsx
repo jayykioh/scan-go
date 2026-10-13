@@ -2,11 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, TrendingUp, DollarSign, Users, ShoppingBag, CreditCard, Flame } from 'lucide-react';
 import type { ReportingPeriod, ReportingSummaryResult } from '@contracts/reporting.contract';
-import type { SubscriptionState } from '@contracts/subscription.contract';
 import { formatVnd, getReportingSummary } from '../../data/adapters/reporting.adapter';
-import { getSubscription } from '../../data/adapters/subscription.adapter';
+import { useStoreSlice } from '../../data/tenantStore';
 import { formatPlanLabel } from '../../data/adapters/subscription-view';
-import { useActiveTenantId } from '../../hooks/useActiveTenantId';
+import { useStoreTenantId } from '../../data/tenantStore';
 
 interface TopItem {
   name: string;
@@ -34,12 +33,12 @@ function formatDayLabel(dayKey: string): string {
 }
 
 export default function OverviewPage() {
-  const tenantId = useActiveTenantId();
+  const tenantId = useStoreTenantId();
   const [period, setPeriod] = useState<ReportingPeriod>('day');
   const [summary, setSummary] = useState<ReportingSummaryResult | null>(null);
-  const [subscription, setSubscription] = useState<SubscriptionState | null>(null);
+  const [subscription, subscriptionState] = useStoreSlice('subscription');
   const [reportError, setReportError] = useState<string | null>(null);
-  const [planError, setPlanError] = useState<string | null>(null);
+  const planError = subscriptionState.error;
 
   useEffect(() => {
     if (!tenantId) {
@@ -65,31 +64,6 @@ export default function OverviewPage() {
       cancelled = true;
     };
   }, [tenantId, period]);
-
-  useEffect(() => {
-    if (!tenantId) {
-      setSubscription(null);
-      setPlanError(null);
-      return;
-    }
-    let cancelled = false;
-    setPlanError(null);
-    void getSubscription()
-      .then((state) => {
-        if (!cancelled) setSubscription(state);
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setSubscription(null);
-          setPlanError(
-            error instanceof Error ? error.message : 'Không tải được gói dịch vụ.',
-          );
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId]);
 
   const currentPlan = subscription ? formatPlanLabel(subscription.plan) : '—';
   const hasLiveData = summary !== null;

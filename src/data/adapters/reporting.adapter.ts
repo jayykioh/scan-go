@@ -28,7 +28,11 @@ export function formatVnd(amountVnd: number): string {
 export async function getReportingSummary(
   request: ReportingSummaryRequest,
 ): Promise<ReportingSummaryResult> {
-  return readReportingSummary(request.period, request.anchorDay);
+  return readReportingSummary(
+    request.period,
+    request.anchorDay,
+    request.tenantId,
+  );
 }
 
 /**

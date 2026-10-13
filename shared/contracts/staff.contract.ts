@@ -32,19 +32,20 @@ export const staffAccountSchema = z.strictObject({
 
 export type StaffAccount = z.infer<typeof staffAccountSchema>;
 
-export const staffListInputSchema = z.strictObject({
-  tenantId: z.string().min(1),
-});
-
-export type StaffListInput = z.infer<typeof staffListInputSchema>;
-
-export const staffListResultSchema = z.strictObject({
+/** Owner-only directory projection; never includes a PIN hash or permission internals. */
+export const staffDirectoryEntrySchema = z.strictObject({
   schemaVersion: z.literal(STAFF_CONTRACT_VERSION),
   tenantId: z.string().min(1),
-  staff: z.array(staffAccountSchema),
+  uid: z.string().min(1),
+  email: z.string().min(1).nullable(),
+  displayName: z.string().min(1).nullable(),
+  roles: z.array(staffRoleSchema).min(1),
+  isActive: z.boolean(),
+  hasPin: z.boolean(),
+  createdAt: isoUtcTimestampSchema,
+  updatedAt: isoUtcTimestampSchema,
 });
-
-export type StaffListResult = z.infer<typeof staffListResultSchema>;
+export type StaffDirectoryEntry = z.infer<typeof staffDirectoryEntrySchema>;
 
 export const staffCreateInputSchema = z.strictObject({
   tenantId: z.string().min(1),

@@ -1,7 +1,5 @@
 import {
   collection,
-  doc,
-  getDoc,
   limit,
   onSnapshot,
   orderBy,
@@ -42,7 +40,6 @@ import {
   type NfcRevokeResult,
 } from '@contracts/nfc.contract';
 import {
-  getFirebaseAuth,
   getFirebaseFirestore,
   getFirebaseFunctions,
 } from '../../services/firebase/client';
@@ -223,50 +220,33 @@ export async function resolvePublicTable(
 
 /** Bounded tenant-table listener; archived tables stay out of the list. */
 export function subscribeTenantTables(
+  tenantId: string,
   onChange: (tables: TenantTable[]) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
   const db = getFirebaseFirestore();
-  const uid = getFirebaseAuth()?.currentUser?.uid;
-  if (!db || !uid) {
+  if (!db) {
     onChange([]);
     return () => undefined;
   }
 
-  let unsubscribe: Unsubscribe | null = null;
-  let cancelled = false;
-
-  void (async () => {
-    const userSnap = await getDoc(doc(db, 'users', uid));
-    const activeTenantId = userSnap.get('activeTenantId');
-    const tenantId =
-      typeof activeTenantId === 'string' ? activeTenantId : null;
-    if (cancelled || !tenantId) {
-      return;
-    }
-    const tablesQuery = query(
-      collection(db, 'tenants', tenantId, 'tables'),
-      where('archivedAt', '==', null),
-      orderBy('name'),
-      limit(TENANT_TABLE_LISTENER_LIMIT),
-    );
-    unsubscribe = onSnapshot(
-      tablesQuery,
-      (snap) => {
-        onChange(
-          snap.docs.map((docSnap) =>
-            mapStoredTable(docSnap.id, docSnap.data()),
-          ),
-        );
-      },
-      (error) => onError?.(error),
-    );
-  })();
-
-  return () => {
-    cancelled = true;
-    unsubscribe?.();
-  };
+  const tablesQuery = query(
+    collection(db, 'tenants', tenantId, 'tables'),
+    where('archivedAt', '==', null),
+    orderBy('name'),
+    limit(TENANT_TABLE_LISTENER_LIMIT),
+  );
+  return onSnapshot(
+    tablesQuery,
+    (snap) => {
+      onChange(
+        snap.docs.map((docSnap) =>
+          mapStoredTable(docSnap.id, docSnap.data()),
+        ),
+      );
+    },
+    (error) => onError?.(error),
+  );
 }
 
 /**

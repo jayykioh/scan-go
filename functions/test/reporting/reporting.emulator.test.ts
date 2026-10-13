@@ -54,8 +54,6 @@ import {
 import type {
   ReportingRebuildInput,
   ReportingRebuildResult,
-  ReportingSummaryInput,
-  ReportingSummaryResult,
 } from '../../../shared/contracts/reporting.contract.js';
 import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
 
@@ -276,13 +274,6 @@ async function signInAs(key: UserKey): Promise<void> {
   await signInWithEmailAndPassword(auth, USERS[key].email, PASSWORD);
 }
 
-function summaryCallable() {
-  return httpsCallable<ReportingSummaryInput, ReportingSummaryResult>(
-    functions,
-    'callableReportingGetSummary',
-  );
-}
-
 function rebuildCallable() {
   return httpsCallable<ReportingRebuildInput, ReportingRebuildResult>(
     functions,
@@ -306,54 +297,6 @@ async function expectRejection(
   const code = (caught as { code?: string }).code ?? '';
   expect(code).toContain(codeFragment);
 }
-
-describe('callableReportingGetSummary (REQ-RPT-001)', () => {
-  it('returns paid revenue, COGS, gross profit, items, and tables', async () => {
-    await signInAs('ownerA');
-    const response = await summaryCallable()({
-      tenantId: TENANT_A,
-      period: 'day',
-      anchorDay: DAY_KEY,
-    });
-    const result = response.data;
-
-    expect(result.dayCount).toBe(1);
-    expect(result.totals.revenueVnd).toBe(100000);
-    expect(result.totals.costVnd).toBe(44000);
-    expect(result.totals.grossProfitVnd).toBe(56000);
-    expect(Number.isInteger(result.totals.revenueVnd)).toBe(true);
-    expect(result.popularItems[0]?.itemName).toBe('Phở bò');
-    expect(result.tables[0]?.tableId).toBe('table-01');
-  });
-
-  it('aggregates a week range and allows an active Staff member to read', async () => {
-    await signInAs('staffA');
-    const response = await summaryCallable()({
-      tenantId: TENANT_A,
-      period: 'week',
-      anchorDay: DAY_KEY,
-    });
-    expect(response.data.fromDay).toBe('20260907');
-    expect(response.data.toDay).toBe('20260913');
-    expect(response.data.totals.revenueVnd).toBe(100000);
-  });
-
-  it('denies a cross-tenant Owner', async () => {
-    await signInAs('ownerB');
-    await expectRejection(
-      summaryCallable()({ tenantId: TENANT_A, period: 'day' }),
-      'permission-denied',
-    );
-  });
-
-  it('rejects a malformed input', async () => {
-    await signInAs('ownerA');
-    await expectRejection(
-      summaryCallable()({ tenantId: TENANT_A, period: 'year' } as unknown as ReportingSummaryInput),
-      'invalid-argument',
-    );
-  });
-});
 
 describe('callableReportingRebuildDailyStats (REQ-RPT-002)', () => {
   it('rebuilds a day from immutable Orders and Payments', async () => {

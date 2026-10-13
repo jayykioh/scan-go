@@ -96,6 +96,8 @@ export async function redeemLoyaltyPoints(
 }
 
 /** Read the tenant Loyalty configuration directly (REQ-LOY-001). */
-export async function getLoyaltyConfig(): Promise<LoyaltyConfig> {
-  return readLoyaltyConfig();
+export async function getLoyaltyConfig(
+  tenantId?: string,
+): Promise<LoyaltyConfig> {
+  return readLoyaltyConfig(tenantId);
 }

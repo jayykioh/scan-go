@@ -1,13 +1,26 @@
 import { useEffect, useState } from 'react';
+import { onIdTokenChanged } from 'firebase/auth';
 import type { Ingredient, Recipe } from '@contracts/inventory.contract';
-import type { CatalogMenuItem } from '@contracts/catalog.contract';
+import type {
+  CatalogMenuItem,
+  PublicMenuItem,
+} from '@contracts/catalog.contract';
 import type { TenantTable } from './adapters/table.adapter';
 import type { Promotion } from '@contracts/promotion.contract';
 import type { CampaignSuggestion } from '@contracts/campaign.contract';
 import type { LoyaltyConfig } from '@contracts/loyalty.contract';
+import type { SubscriptionState } from '@contracts/subscription.contract';
+import type { StaffDirectoryEntry } from '@contracts/staff.contract';
 import { getFirebaseAuth } from '../services/firebase/client';
-import { getActiveTenantId } from './adapters/tenant.adapter';
-import { subscribeOwnerMenu } from './adapters/catalog.adapter';
+import {
+  subscribeActiveTenantId,
+  subscribeCurrentMembership,
+  type ActiveMembershipReadContext,
+} from './adapters/tenant.adapter';
+import {
+  subscribeOwnerMenu,
+  subscribePublicMenu,
+} from './adapters/catalog.adapter';
 import {
   subscribeIngredients,
   subscribeRecipes,
@@ -16,45 +29,59 @@ import { subscribeTenantTables } from './adapters/table.adapter';
 import { listPromotions } from './adapters/promotion.adapter';
 import { readCampaignSuggestions } from './firestoreRead';
 import { getLoyaltyConfig } from './adapters/loyalty.adapter';
+import { getSubscription } from './adapters/subscription.adapter';
+import { subscribeStaffDirectory } from './adapters/staff.adapter';
+import { clearReadCache, invalidateReadCache } from './readCache';
 
 /**
- * One client-side store for the active tenant. Every slice opens a single
- * shared Firestore listener (or fetch) and keeps it alive while at least one
- * screen uses it. Screens read the same data, so switching screens no longer
- * restarts a load. See ADR 0015.
+ * One app-lifetime client store for the active non-ADMIN Tenant. Each slice is
+ * loaded once per identity/tenant/authorization context and remains cached across
+ * route unmounts. Live listeners are shared and disposed only when that context
+ * changes. See ADR 0015 / REQ-CACHE-001.
  *
  * Writes still go through the server callables. The store holds reads only.
  */
 
 export interface TenantStoreState {
+  userId: string | null;
   tenantId: string | null;
+  authorizationKey: string | null;
   menuItems: CatalogMenuItem[];
+  publicMenu: PublicMenuItem[];
   ingredients: Ingredient[];
   recipes: Recipe[];
   tables: TenantTable[];
   promotions: Promotion[];
   campaignSuggestions: CampaignSuggestion[];
   loyaltyConfig: LoyaltyConfig | null;
+  subscription: SubscriptionState | null;
+  staffDirectory: StaffDirectoryEntry[];
   loading: {
     menuItems: boolean;
+    publicMenu: boolean;
     ingredients: boolean;
     recipes: boolean;
     tables: boolean;
     promotions: boolean;
     campaignSuggestions: boolean;
     loyaltyConfig: boolean;
+    subscription: boolean;
+    staffDirectory: boolean;
   };
   errors: Partial<Record<keyof TenantStoreState['loading'], string>>;
 }
 
 type SliceKey =
   | 'menuItems'
+  | 'publicMenu'
   | 'ingredients'
   | 'recipes'
   | 'tables'
   | 'promotions'
   | 'campaignSuggestions'
-  | 'loyaltyConfig';
+  | 'loyaltyConfig'
+  | 'subscription'
+  | 'staffDirectory';
 
 type Listener = () => void;
 
@@ -62,27 +89,39 @@ interface Slice {
   key: SliceKey;
   refCount: number;
   unsubscribe: (() => void) | null;
+  pending: boolean;
+  hasValue: boolean;
+  dirty: boolean;
+  revision: number;
 }
 
 const EMPTY_LOADING = {
   menuItems: false,
+  publicMenu: false,
   ingredients: false,
   recipes: false,
   tables: false,
   promotions: false,
   campaignSuggestions: false,
   loyaltyConfig: false,
+  subscription: false,
+  staffDirectory: false,
 } as const;
 
 let state: TenantStoreState = {
+  userId: null,
   tenantId: null,
+  authorizationKey: null,
   menuItems: [],
+  publicMenu: [],
   ingredients: [],
   recipes: [],
   tables: [],
   promotions: [],
   campaignSuggestions: [],
   loyaltyConfig: null,
+  subscription: null,
+  staffDirectory: [],
   loading: { ...EMPTY_LOADING },
   errors: {},
 };
@@ -90,6 +129,12 @@ let state: TenantStoreState = {
 const listeners = new Set<Listener>();
 const slices = new Map<SliceKey, Slice>();
 let tenantUnsubscribe: (() => void) | null = null;
+let profileUnsubscribe: (() => void) | null = null;
+let membershipUnsubscribe: (() => void) | null = null;
+let watchedUid: string | null = null;
+let watchedTenantId: string | null = null;
+let authorizationKey: string | null = null;
+let contextGeneration = 0;
 
 function emit(): void {
   for (const listener of listeners) {
@@ -121,7 +166,15 @@ function slice(key: SliceKey): Slice {
   if (existing) {
     return existing;
   }
-  const created: Slice = { key, refCount: 0, unsubscribe: null };
+  const created: Slice = {
+    key,
+    refCount: 0,
+    unsubscribe: null,
+    pending: false,
+    hasValue: false,
+    dirty: false,
+    revision: 0,
+  };
   slices.set(key, created);
   return created;
 }
@@ -129,152 +182,265 @@ function slice(key: SliceKey): Slice {
 function clearSliceData(key: SliceKey): void {
   if (key === 'promotions') {
     setState({ promotions: [] });
+  } else if (key === 'publicMenu') {
+    setState({ publicMenu: [] });
   } else if (key === 'campaignSuggestions') {
     setState({ campaignSuggestions: [] });
   } else if (key === 'loyaltyConfig') {
     setState({ loyaltyConfig: null });
+  } else if (key === 'subscription') {
+    setState({ subscription: null });
+  } else if (key === 'staffDirectory') {
+    setState({ staffDirectory: [] });
   } else {
     setState({ [key]: [] } as Partial<TenantStoreState>);
   }
 }
 
-function startSlice(key: SliceKey, tenantId: string): void {
-  const entry = slice(key);
-  if (entry.unsubscribe) {
+function isCurrentSliceRequest(
+  tenantId: string,
+  generation: number,
+  entry: Slice,
+  revision: number,
+): boolean {
+  return (
+    generation === contextGeneration &&
+    state.tenantId === tenantId &&
+    state.userId !== null &&
+    state.authorizationKey !== null &&
+    entry.revision === revision
+  );
+}
+
+function isAccessError(error: Error): boolean {
+  const code = (error as Error & { code?: string }).code;
+  return code === 'permission-denied' || code === 'unauthenticated';
+}
+
+function publishSlice(
+  key: SliceKey,
+  tenantId: string,
+  entry: Slice,
+  generation: number,
+  revision: number,
+  patch: Partial<TenantStoreState>,
+): void {
+  if (!isCurrentSliceRequest(tenantId, generation, entry, revision)) {
     return;
   }
-  setLoading(key, true);
+  entry.pending = false;
+  entry.hasValue = true;
+  entry.dirty = false;
+  setState(patch);
+  setLoading(key, false);
   setError(key, null);
+}
+
+function failSlice(
+  key: SliceKey,
+  tenantId: string,
+  entry: Slice,
+  generation: number,
+  revision: number,
+  error: Error,
+): void {
+  if (!isCurrentSliceRequest(tenantId, generation, entry, revision)) {
+    return;
+  }
+  entry.pending = false;
+  entry.unsubscribe?.();
+  entry.unsubscribe = null;
+  entry.dirty = true;
+  if (isAccessError(error)) {
+    entry.hasValue = false;
+    entry.dirty = false;
+    clearSliceData(key);
+  }
+  setError(key, error.message);
+  setLoading(key, false);
+}
+
+function startSlice(key: SliceKey, tenantId: string): void {
+  const entry = slice(key);
+  if (
+    !state.userId ||
+    !state.authorizationKey ||
+    state.tenantId !== tenantId ||
+    entry.unsubscribe ||
+    entry.pending ||
+    (entry.hasValue && !entry.dirty)
+  ) {
+    return;
+  }
+
+  const generation = contextGeneration;
+  const revision = entry.revision;
+  entry.pending = true;
+  entry.dirty = false;
+  setError(key, null);
+  if (!entry.hasValue) {
+    setLoading(key, true);
+  }
+
+  const onFailure = (error: Error) =>
+    failSlice(key, tenantId, entry, generation, revision, error);
 
   if (key === 'menuItems') {
     entry.unsubscribe = subscribeOwnerMenu(
-      (items) => {
-        setState({ menuItems: items });
-        setLoading(key, false);
-      },
-      (error) => {
-        setError(key, error.message);
-        setLoading(key, false);
-      },
+      tenantId,
+      (items) =>
+        publishSlice(key, tenantId, entry, generation, revision, {
+          menuItems: items,
+        }),
+      onFailure,
+    );
+    return;
+  }
+
+  if (key === 'publicMenu') {
+    entry.unsubscribe = subscribePublicMenu(
+      tenantId,
+      (items) =>
+        publishSlice(key, tenantId, entry, generation, revision, {
+          publicMenu: items,
+        }),
+      { onError: onFailure },
     );
     return;
   }
 
   if (key === 'ingredients') {
     entry.unsubscribe = subscribeIngredients(
-      (items) => {
-        setState({ ingredients: items });
-        setLoading(key, false);
-      },
-      (error) => {
-        setError(key, error.message);
-        setLoading(key, false);
-      },
+      tenantId,
+      (items) =>
+        publishSlice(key, tenantId, entry, generation, revision, {
+          ingredients: items,
+        }),
+      onFailure,
     );
     return;
   }
 
   if (key === 'recipes') {
     entry.unsubscribe = subscribeRecipes(
-      (items) => {
-        setState({ recipes: items });
-        setLoading(key, false);
-      },
-      (error) => {
-        setError(key, error.message);
-        setLoading(key, false);
-      },
+      tenantId,
+      (items) =>
+        publishSlice(key, tenantId, entry, generation, revision, {
+          recipes: items,
+        }),
+      onFailure,
     );
     return;
   }
 
   if (key === 'tables') {
     entry.unsubscribe = subscribeTenantTables(
-      (items) => {
-        setState({ tables: items });
-        setLoading(key, false);
-      },
-      (error) => {
-        setError(key, error.message);
-        setLoading(key, false);
-      },
+      tenantId,
+      (items) =>
+        publishSlice(key, tenantId, entry, generation, revision, {
+          tables: items,
+        }),
+      onFailure,
     );
     return;
   }
 
+  if (key === 'staffDirectory') {
+    entry.unsubscribe = subscribeStaffDirectory(
+      tenantId,
+      (staffDirectory) =>
+        publishSlice(key, tenantId, entry, generation, revision, {
+          staffDirectory,
+        }),
+      onFailure,
+    );
+    return;
+  }
+
+  const publishFailure = (error: Error) =>
+    failSlice(key, tenantId, entry, generation, revision, error);
+  const publishPromotions = (items: Promotion[]) =>
+    publishSlice(key, tenantId, entry, generation, revision, { promotions: items });
+  const publishSuggestions = (items: CampaignSuggestion[]) =>
+    publishSlice(key, tenantId, entry, generation, revision, {
+      campaignSuggestions: items,
+    });
+  const publishLoyaltyConfig = (config: LoyaltyConfig) =>
+    publishSlice(key, tenantId, entry, generation, revision, {
+      loyaltyConfig: config,
+    });
+  const publishSubscription = (subscription: SubscriptionState | null) =>
+    publishSlice(key, tenantId, entry, generation, revision, { subscription });
+
   if (key === 'promotions') {
-    let cancelled = false;
-    entry.unsubscribe = () => {
-      cancelled = true;
-    };
-    void listPromotions()
-      .then((items) => {
-        if (!cancelled) {
-          setState({ promotions: items });
-          setLoading(key, false);
-        }
-      })
-      .catch((error: Error) => {
-        if (!cancelled) {
-          setError(key, error.message);
-          setLoading(key, false);
-        }
-      });
-    return;
-  }
-
-  if (key === 'campaignSuggestions') {
-    let cancelled = false;
-    entry.unsubscribe = () => {
-      cancelled = true;
-    };
-    void readCampaignSuggestions()
-      .then((items) => {
-        if (!cancelled) {
-          setState({ campaignSuggestions: items });
-          setLoading(key, false);
-        }
-      })
-      .catch((error: Error) => {
-        if (!cancelled) {
-          setError(key, error.message);
-          setLoading(key, false);
-        }
-      });
-    return;
-  }
-
-  if (key === 'loyaltyConfig') {
-    let cancelled = false;
-    entry.unsubscribe = () => {
-      cancelled = true;
-    };
-    void getLoyaltyConfig()
-      .then((config) => {
-        if (!cancelled) {
-          setState({ loyaltyConfig: config });
-          setLoading(key, false);
-        }
-      })
-      .catch((error: Error) => {
-        if (!cancelled) {
-          setError(key, error.message);
-          setLoading(key, false);
-        }
-      });
+    void listPromotions(tenantId).then(publishPromotions).catch(publishFailure);
+  } else if (key === 'campaignSuggestions') {
+    void readCampaignSuggestions(tenantId)
+      .then(publishSuggestions)
+      .catch(publishFailure);
+  } else if (key === 'loyaltyConfig') {
+    void getLoyaltyConfig(tenantId)
+      .then(publishLoyaltyConfig)
+      .catch(publishFailure);
+  } else {
+    void getSubscription(tenantId)
+      .then(publishSubscription)
+      .catch(publishFailure);
   }
 }
 
-function stopSlice(key: SliceKey): void {
-  const entry = slices.get(key);
-  if (!entry) {
+function resetForContext(
+  userId: string | null,
+  tenantId: string | null,
+  accessKey: string | null,
+): void {
+  contextGeneration += 1;
+  clearReadCache();
+  for (const entry of slices.values()) {
+    entry.unsubscribe?.();
+    entry.unsubscribe = null;
+    entry.pending = false;
+    entry.hasValue = false;
+    entry.dirty = false;
+    entry.revision += 1;
+  }
+  state = {
+    userId,
+    tenantId,
+    authorizationKey: accessKey,
+    menuItems: [],
+    publicMenu: [],
+    ingredients: [],
+    recipes: [],
+    tables: [],
+    promotions: [],
+    campaignSuggestions: [],
+    loyaltyConfig: null,
+    subscription: null,
+    staffDirectory: [],
+    loading: { ...EMPTY_LOADING },
+    errors: {},
+  };
+  emit();
+  if (!userId || !tenantId || !accessKey) {
     return;
   }
-  entry.unsubscribe?.();
-  entry.unsubscribe = null;
-  clearSliceData(key);
-  setLoading(key, false);
-  setError(key, null);
+  for (const entry of slices.values()) {
+    if (entry.refCount > 0) {
+      startSlice(entry.key, tenantId);
+    }
+  }
+}
+
+function membershipAccessKey(
+  membership: ActiveMembershipReadContext,
+): string {
+  return JSON.stringify([
+    membership.isActive,
+    membership.membershipType,
+    membership.roles,
+    membership.sessionVersion,
+  ]);
 }
 
 function startTenantWatch(): void {
@@ -285,61 +451,163 @@ function startTenantWatch(): void {
   if (!auth) {
     return;
   }
+
   let cancelled = false;
-  const sync = () => {
-    void getActiveTenantId()
-      .then((tenantId) => {
-        if (cancelled || tenantId === state.tenantId) {
+  let tokenGeneration = 0;
+  const stopAuth = onIdTokenChanged(auth, (user) => {
+    const identityUid = user?.uid ?? null;
+    if (identityUid !== watchedUid) {
+      watchedUid = identityUid;
+      profileUnsubscribe?.();
+      profileUnsubscribe = null;
+      membershipUnsubscribe?.();
+      membershipUnsubscribe = null;
+      watchedTenantId = null;
+      authorizationKey = null;
+      resetForContext(identityUid, null, null);
+    }
+    const thisTokenGeneration = ++tokenGeneration;
+    if (!user) {
+      return;
+    }
+    const uid = user.uid;
+
+    void user
+      .getIdTokenResult()
+      .then((token) => {
+        if (
+          cancelled ||
+          tokenGeneration !== thisTokenGeneration ||
+          watchedUid !== uid
+        ) {
           return;
         }
-        resetForTenant(tenantId);
+        if (token.claims.admin === true) {
+          profileUnsubscribe?.();
+          profileUnsubscribe = null;
+          membershipUnsubscribe?.();
+          membershipUnsubscribe = null;
+          watchedTenantId = null;
+          authorizationKey = null;
+          resetForContext(uid, null, null);
+          return;
+        }
+        if (profileUnsubscribe) {
+          return;
+        }
+
+        profileUnsubscribe = subscribeActiveTenantId(
+          uid,
+          (tenantId) => {
+            if (cancelled || watchedUid !== uid) {
+              return;
+            }
+            if (
+              tenantId === watchedTenantId &&
+              (tenantId === null || membershipUnsubscribe !== null)
+            ) {
+              return;
+            }
+            membershipUnsubscribe?.();
+            membershipUnsubscribe = null;
+            watchedTenantId = tenantId;
+            authorizationKey = null;
+            resetForContext(uid, null, null);
+            if (!tenantId) {
+              return;
+            }
+
+            membershipUnsubscribe = subscribeCurrentMembership(
+              tenantId,
+              uid,
+              (membership) => {
+                if (
+                  cancelled ||
+                  watchedUid !== uid ||
+                  watchedTenantId !== tenantId
+                ) {
+                  return;
+                }
+                if (!membership?.isActive) {
+                  authorizationKey = null;
+                  resetForContext(uid, null, null);
+                  return;
+                }
+                const nextAccessKey = membershipAccessKey(membership);
+                if (
+                  state.userId !== uid ||
+                  state.tenantId !== tenantId ||
+                  authorizationKey !== nextAccessKey
+                ) {
+                  authorizationKey = nextAccessKey;
+                  resetForContext(uid, tenantId, nextAccessKey);
+                }
+              },
+              () => {
+                if (cancelled || watchedUid !== uid) {
+                  return;
+                }
+                membershipUnsubscribe?.();
+                membershipUnsubscribe = null;
+                watchedTenantId = null;
+                authorizationKey = null;
+                resetForContext(uid, null, null);
+              },
+            );
+          },
+          () => {
+            if (cancelled || watchedUid !== uid) {
+              return;
+            }
+            profileUnsubscribe?.();
+            profileUnsubscribe = null;
+            membershipUnsubscribe?.();
+            membershipUnsubscribe = null;
+            watchedTenantId = null;
+            authorizationKey = null;
+            resetForContext(uid, null, null);
+          },
+        );
       })
       .catch(() => {
-        if (!cancelled && state.tenantId !== null) {
-          resetForTenant(null);
+        if (
+          !cancelled &&
+          tokenGeneration === thisTokenGeneration &&
+          watchedUid === uid
+        ) {
+          profileUnsubscribe?.();
+          profileUnsubscribe = null;
+          membershipUnsubscribe?.();
+          membershipUnsubscribe = null;
+          watchedTenantId = null;
+          authorizationKey = null;
+          resetForContext(uid, null, null);
         }
       });
-  };
-  sync();
-  const stopAuth = auth.onAuthStateChanged(sync);
+  });
+
   tenantUnsubscribe = () => {
     cancelled = true;
+    tokenGeneration += 1;
+    profileUnsubscribe?.();
+    profileUnsubscribe = null;
+    membershipUnsubscribe?.();
+    membershipUnsubscribe = null;
     stopAuth();
   };
 }
 
-function resetForTenant(tenantId: string | null): void {
-  for (const entry of slices.values()) {
-    entry.unsubscribe?.();
-    entry.unsubscribe = null;
-    slice(entry.key).refCount = entry.refCount;
-  }
-  state = {
-    tenantId,
-    menuItems: [],
-    ingredients: [],
-    recipes: [],
-    tables: [],
-    promotions: [],
-    campaignSuggestions: [],
-    loyaltyConfig: null,
-    loading: { ...EMPTY_LOADING },
-    errors: {},
-  };
-  emit();
-  for (const entry of slices.values()) {
-    if (entry.refCount > 0 && tenantId) {
-      startSlice(entry.key, tenantId);
-    }
-  }
+/** Register a mounted screen as a consumer of one slice. */
+/** Start the shared auth/tenant/membership watcher before one-shot reads. */
+export function ensureTenantStoreContext(): void {
+  startTenantWatch();
 }
 
-/** Register a mounted screen as a consumer of one slice. */
 export function acquireSlice(key: SliceKey): () => void {
   startTenantWatch();
   const entry = slice(key);
   entry.refCount += 1;
-  if (entry.refCount === 1 && state.tenantId) {
+  if (state.tenantId) {
     startSlice(key, state.tenantId);
   }
   let released = false;
@@ -348,10 +616,9 @@ export function acquireSlice(key: SliceKey): () => void {
       return;
     }
     released = true;
-    entry.refCount -= 1;
-    if (entry.refCount === 0) {
-      stopSlice(key);
-    }
+    entry.refCount = Math.max(0, entry.refCount - 1);
+    // Keep the valid value and shared listener across route unmounts. The
+    // authenticated/tenant/role context watcher clears them when access changes.
   };
 }
 
@@ -364,9 +631,44 @@ export function getStoreState(): TenantStoreState {
  * through callables, so the store has no optimistic update to reconcile; it
  * simply reloads the authoritative list.
  */
+function cachePathForSlice(key: SliceKey, tenantId: string): string {
+  const collectionBySlice: Record<SliceKey, string> = {
+    menuItems: 'menuItems',
+    publicMenu: 'publicMenuItems',
+    ingredients: 'ingredients',
+    recipes: 'recipes',
+    tables: 'tables',
+    promotions: 'promotions',
+    campaignSuggestions: 'campaignSuggestions',
+    loyaltyConfig: 'loyaltyConfig',
+    subscription: '',
+    staffDirectory: 'staffDirectory',
+  };
+  const collection = collectionBySlice[key];
+  return collection
+    ? `tenants/${tenantId}/${collection}`
+    : `tenants/${tenantId}`;
+}
+
 export function refreshSlice(key: SliceKey): void {
   const entry = slices.get(key);
   if (!entry || !state.tenantId) {
+    return;
+  }
+  if (entry.refCount === 0 && entry.unsubscribe) {
+    // A live listener already carries server updates, so do not disturb it just
+    // because an inactive screen requested invalidation.
+    return;
+  }
+  invalidateReadCache({
+    userId: state.userId ?? undefined,
+    tenantId: state.tenantId,
+    pathPrefix: cachePathForSlice(key, state.tenantId),
+  });
+  entry.revision += 1;
+  entry.pending = false;
+  entry.dirty = true;
+  if (entry.refCount === 0) {
     return;
   }
   entry.unsubscribe?.();
@@ -397,8 +699,8 @@ export function useStoreTenantId(): string | null {
 }
 
 /**
- * Read one slice and keep it alive while the calling screen is mounted. The
- * shared listener opens on the first screen and closes when the last unmounts.
+ * Read one slice and register a screen as a consumer. The cache/listener remain
+ * shared across route unmounts and close only when auth/tenant access changes.
  */
 export function useStoreSlice<K extends SliceKey>(
   key: K,

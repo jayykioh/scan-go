@@ -22,10 +22,18 @@ import {
   getFirebaseFunctions,
 } from '../../services/firebase/client';
 import type { OrderItem } from '../../types';
+import { invalidateReadCache } from '../readCache';
 import { createIdempotencyKey } from './idempotency';
 
 /** Customer tracking listeners are always bounded to one token document. */
 export const ORDER_TRACKING_LISTENER_LIMIT = 1;
+
+function invalidateReportingCache(tenantId: string): void {
+  invalidateReadCache({
+    tenantId,
+    pathPrefix: `tenants/${tenantId}/dailyStats`,
+  });
+}
 
 /**
  * Retry-safe key for one Customer Order submit. The key is generated once per
@@ -102,7 +110,9 @@ export async function submitOrder(
     'callableOrderSubmit',
   );
   const result = await callable(request);
-  return orderSubmitResultSchema.parse(result.data);
+  const parsed = orderSubmitResultSchema.parse(result.data);
+  invalidateReportingCache(parsed.order.tenantId);
+  return parsed;
 }
 
 /** Staff order entry request. The server resolves tenant, price, and table. */
@@ -124,7 +134,9 @@ export async function createStaffOrder(
     OrderSubmitResult
   >(functions, 'callableOrderStaffCreate');
   const result = await callable(request);
-  return orderSubmitResultSchema.parse(result.data);
+  const parsed = orderSubmitResultSchema.parse(result.data);
+  invalidateReportingCache(parsed.order.tenantId);
+  return parsed;
 }
 
 export type { OrderType };
@@ -145,7 +157,9 @@ export async function cancelUnpaidOrder(
     'callableOrderCancelUnpaid',
   );
   const result = await callable(request);
-  return orderCancellationResultSchema.parse(result.data);
+  const parsed = orderCancellationResultSchema.parse(result.data);
+  invalidateReportingCache(request.tenantId);
+  return parsed;
 }
 
 /** Read one tracking projection by its opaque token. */

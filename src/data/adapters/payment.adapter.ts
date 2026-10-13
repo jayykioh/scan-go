@@ -31,9 +31,17 @@ import {
   getFirebaseFirestore,
   getFirebaseFunctions,
 } from '../../services/firebase/client';
+import { invalidateReadCache } from '../readCache';
 
 /** A Cashier observes at most one Payment record per Order. */
 export const PAYMENT_LISTENER_LIMIT = 1;
+
+function invalidateReportingCache(tenantId: string): void {
+  invalidateReadCache({
+    tenantId,
+    pathPrefix: `tenants/${tenantId}/dailyStats`,
+  });
+}
 
 export interface ConfirmPaymentRequest {
   tenantId: string;
@@ -59,7 +67,9 @@ export async function confirmPayment(
     'callablePaymentConfirm',
   );
   const result = await callable(request);
-  return paymentConfirmationResultSchema.parse(result.data);
+  const parsed = paymentConfirmationResultSchema.parse(result.data);
+  invalidateReportingCache(request.tenantId);
+  return parsed;
 }
 
 /**
@@ -78,7 +88,9 @@ export async function correctPayment(
     'callablePaymentCorrect',
   );
   const result = await callable(request);
-  return paymentCorrectionResultSchema.parse(result.data);
+  const parsed = paymentCorrectionResultSchema.parse(result.data);
+  invalidateReportingCache(request.tenantId);
+  return parsed;
 }
 
 /** Read the dynamic VietQR instruction for one unpaid Order. */

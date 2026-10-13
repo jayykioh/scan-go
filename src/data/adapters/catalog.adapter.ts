@@ -208,44 +208,31 @@ export async function searchOwnerMenu(input: {
 
 /** Bounded private-menu listener for the Owner menu page. */
 export function subscribeOwnerMenu(
+  tenantId: string,
   onChange: (items: CatalogMenuItem[]) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
   const db = getFirebaseFirestore();
-  const uid = getFirebaseAuth()?.currentUser?.uid;
-  if (!db || !uid) {
+  if (!db) {
     onChange([]);
     return () => undefined;
   }
 
-  let unsubscribe: Unsubscribe | null = null;
-  let cancelled = false;
-
-  void readActiveTenantId(db, uid).then((tenantId) => {
-    if (cancelled || !tenantId) {
-      return;
-    }
-    const menuQuery = query(
-      collection(db, 'tenants', tenantId, 'menuItems'),
-      limit(PRIVATE_MENU_LISTENER_LIMIT),
-    );
-    unsubscribe = onSnapshot(
-      menuQuery,
-      (snap) => {
-        onChange(
-          snap.docs.map((docSnap) =>
-            mapStoredMenuItem(docSnap.id, docSnap.data()),
-          ),
-        );
-      },
-      (error) => onError?.(error),
-    );
-  });
-
-  return () => {
-    cancelled = true;
-    unsubscribe?.();
-  };
+  const menuQuery = query(
+    collection(db, 'tenants', tenantId, 'menuItems'),
+    limit(PRIVATE_MENU_LISTENER_LIMIT),
+  );
+  return onSnapshot(
+    menuQuery,
+    (snap) => {
+      onChange(
+        snap.docs.map((docSnap) =>
+          mapStoredMenuItem(docSnap.id, docSnap.data()),
+        ),
+      );
+    },
+    (error) => onError?.(error),
+  );
 }
 
 /**

@@ -185,6 +185,7 @@ export default function PublicMenuPage() {
       cart: OrderItem[],
       paymentMode: 'Pay-First' | 'Pay-Later',
       promotionCode: string | null,
+      customerNote: string | null,
     ) => {
       if (!linkContext) {
         throw new Error(t('publicMenu.tableUnknown'));
@@ -197,6 +198,7 @@ export default function PublicMenuPage() {
           idempotencyKey: readIdempotencyKey(linkContext.token),
           lines: toOrderCartLines(cart),
           promotionCode,
+          customerNote,
         });
       } catch (error) {
         throw new Error(

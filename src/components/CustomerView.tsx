@@ -6,6 +6,8 @@ import { LoyaltyMember, MenuItem, Order, OrderItem, TableConfig, TenantConfig } 
 import type { PublicOrderTracking } from '@contracts/order.contract';
 import type { PromotionEvaluationResult } from '@contracts/promotion.contract';
 import type { I18nMessageKey } from '@contracts/i18n.contract';
+import { NOTIFICATION_BANNER_MS } from '@contracts/notification.contract';
+import { CUSTOMER_NOTE_MAX_LENGTH } from '@contracts/order.contract';
 import { resolveInterfaceLocale, translate } from '../data/adapters/i18n.adapter';
 
 interface CustomerProps {
@@ -27,6 +29,7 @@ interface CustomerProps {
     cart: OrderItem[],
     paymentMode: 'Pay-First' | 'Pay-Later',
     promotionCode: string | null,
+    customerNote: string | null,
   ) => Promise<void>;
   /**
    * Server promotion evaluation (REQ-PRO-001). The page owns the callable so
@@ -96,6 +99,8 @@ export default function CustomerView({
   const [connectionProblem, setConnectionProblem] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [placedNotice, setPlacedNotice] = useState(false);
+  const [customerNote, setCustomerNote] = useState('');
 
   const template = INDUSTRY_TEMPLATES[tenantConfig.industry] || INDUSTRY_TEMPLATES.quan_an;
   const tableName = tables.find(table => table.id === simulationTableId)?.name || `${t('customer.table.badge')} ${simulationTableId}`;
@@ -266,6 +271,7 @@ export default function CustomerView({
         cart,
         tenantConfig.paymentMode,
         promotionCode.trim().length > 0 ? promotionCode.trim() : null,
+        customerNote.trim().length > 0 ? customerNote.trim() : null,
       );
     } catch (error) {
       setSubmitError((error as Error)?.message || t('customer.submit.failed'));
@@ -274,8 +280,12 @@ export default function CustomerView({
     }
     setIsSubmitting(false);
     setCart([]);
+    setCustomerNote('');
     setShowCart(false);
     setStep('tracking');
+    // The Order is committed; confirm it on screen for a beat (REQ-NOT-001).
+    setPlacedNotice(true);
+    window.setTimeout(() => setPlacedNotice(false), NOTIFICATION_BANNER_MS);
   };
 
   if (step === 'table_pick') {
@@ -307,7 +317,25 @@ export default function CustomerView({
   }
 
   return (
-    <div className="h-full bg-[#f7f7f8] text-zinc-950 flex flex-col overflow-hidden">
+    <div className="relative h-full bg-[#f7f7f8] text-zinc-950 flex flex-col overflow-hidden">
+      <AnimatePresence>
+        {placedNotice && (
+          <motion.div
+            role="status"
+            initial={{ opacity: 0, y: -18, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 520, damping: 18 }}
+            className="absolute inset-x-4 top-4 z-50 rounded-[24px] bg-emerald-600 px-4 py-3 text-center shadow-xl"
+          >
+            <p className="flex items-center justify-center gap-2 text-sm font-bold text-white">
+              <Check className="h-4 w-4" />
+              {t('customer.submit.placed')}
+            </p>
+            <p className="mt-0.5 text-xs text-white/70">{tableName}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="relative flex-1 overflow-y-auto pb-28">
         {step === 'tracking' ? (
           <TrackingScreen orders={activeCustomerOrders} tableName={tableName} onBack={() => setStep('menu')} />
@@ -462,7 +490,7 @@ export default function CustomerView({
           <ItemSheet locale={locale} item={activeItem} template={template} useTemplateModifiers={!directMenu} selectedModifiers={selectedModifiers} modifierPrice={modifierPrice} onToggleModifier={toggleModifier} onClose={() => setActiveItem(null)} onAdd={addActiveItemToCart} />
         )}
         {showCart && (
-          <CartSheet locale={locale} cart={cart} cartTotal={cartTotal} finalTotal={finalTotal} promoDiscount={promoDiscount} giftLines={giftLines} appliedPromotionName={appliedPromotionName} codeRequired={codeRequired} promotionCode={promotionCode} onPromotionCode={setPromotionCode} promotionError={promotionError} paymentMode={tenantConfig.paymentMode} onQty={updateCartQty} onClose={() => setShowCart(false)} onSubmit={submitOrder} isOnline={isOnline} isSubmitting={isSubmitting} errorMessage={connectionProblem || submitError} />
+          <CartSheet locale={locale} cart={cart} cartTotal={cartTotal} finalTotal={finalTotal} promoDiscount={promoDiscount} giftLines={giftLines} appliedPromotionName={appliedPromotionName} codeRequired={codeRequired} promotionCode={promotionCode} onPromotionCode={setPromotionCode} promotionError={promotionError} paymentMode={tenantConfig.paymentMode} onQty={updateCartQty} onClose={() => setShowCart(false)} onSubmit={submitOrder} customerNote={customerNote} onCustomerNote={setCustomerNote} isOnline={isOnline} isSubmitting={isSubmitting} errorMessage={connectionProblem || submitError} />
         )}
         {showLoyalty && (
           <LoyaltySheet profile={loyaltyProfile} phone={phoneNumber} name={customerName} otp={otpCode} otpError={otpError} redeemed={redeemedPoints} onPhone={setPhoneNumber} onName={setCustomerName} onOtp={(value: string) => { setOtpCode(value.replace(/\D/g, '')); setOtpError(''); }} onSave={saveLoyaltyProfile} onRedeem={redeemWithOtp} onClose={() => setShowLoyalty(false)} />
@@ -560,7 +588,7 @@ function ItemSheet({ item, template, useTemplateModifiers = true, selectedModifi
   );
 }
 
-function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, giftLines = [], appliedPromotionName = null, codeRequired = false, promotionCode = '', onPromotionCode, promotionError = null, paymentMode, onQty, onClose, onSubmit, isOnline = true, isSubmitting = false, errorMessage = null, locale = 'vi' }: any) {
+function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, giftLines = [], appliedPromotionName = null, codeRequired = false, promotionCode = '', onPromotionCode, promotionError = null, paymentMode, onQty, onClose, onSubmit, customerNote = '', onCustomerNote, isOnline = true, isSubmitting = false, errorMessage = null, locale = 'vi' }: any) {
   const t = (key: I18nMessageKey) => translate(locale, key);
   return (
     <Sheet onClose={onClose}>
@@ -584,6 +612,22 @@ function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, giftLines = [],
               </div>
             </div>
           ))}
+        </div>
+        <div className="space-y-2">
+          <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500" htmlFor="customer-note">{t('customer.cart.noteLabel')}</label>
+          <textarea
+            id="customer-note"
+            rows={2}
+            maxLength={CUSTOMER_NOTE_MAX_LENGTH}
+            value={customerNote}
+            onChange={(event) => onCustomerNote?.(event.target.value)}
+            placeholder={t('customer.cart.notePlaceholder')}
+            className="w-full resize-none rounded-[22px] bg-zinc-50 px-4 py-3 text-sm font-medium outline-none border border-zinc-100 focus:border-zinc-300"
+          />
+          <div className="flex items-start justify-between gap-3 text-xs text-zinc-500">
+            <span>{t('customer.cart.noteHint')}</span>
+            <span className="shrink-0 font-mono">{customerNote.length}/{CUSTOMER_NOTE_MAX_LENGTH}</span>
+          </div>
         </div>
         <div className="rounded-[26px] bg-zinc-950 text-white p-4 space-y-2">
           <div className="flex justify-between text-sm text-zinc-300"><span>{t('customer.cart.subtotal')}</span><span>{money(cartTotal)}</span></div>

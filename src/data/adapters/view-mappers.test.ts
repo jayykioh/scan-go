@@ -64,6 +64,15 @@ describe('toViewOrder', () => {
     expect(order.paymentMode).toBe('Pay-First');
     expect(order.paidAt).toBe(pendingOrderFixture.updatedAt);
   });
+
+  // The Kitchen tile reads the request, and an Order stored before the field
+  // existed must map to null rather than undefined (REQ-ORD-001).
+  it('carries the Customer request, null when the Order has none', () => {
+    expect(toViewOrder(pendingOrderFixture).customerNote).toBeNull();
+    expect(
+      toViewOrder({ ...pendingOrderFixture, customerNote: 'ít cay' }).customerNote,
+    ).toBe('ít cay');
+  });
 });
 
 describe('toTrackingOrder', () => {

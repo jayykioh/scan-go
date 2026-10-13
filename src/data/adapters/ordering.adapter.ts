@@ -73,6 +73,8 @@ export interface SubmitOrderRequest {
   promotionCode?: string | null;
   /** The verified Loyalty member, needed by a redemption or a segment. */
   loyaltyMemberId?: string | null;
+  /** The Customer's free-text request for the whole Order (REQ-ORD-001). */
+  customerNote?: string | null;
 }
 
 /** Preserve the option IDs selected in the cart for server-side price validation. */

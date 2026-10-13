@@ -352,6 +352,8 @@ export interface BuildOrderInput {
   tableName: string;
   paymentMode: OrderSnapshot['paymentMode'];
   lines: OrderLineSnapshot[];
+  /** The Customer's free-text request for the whole Order (REQ-ORD-001). */
+  customerNote?: string | null;
   trackingToken: string;
   idempotencyKey: string;
   now: string;
@@ -379,6 +381,7 @@ export function buildOrderSnapshot(input: BuildOrderInput): OrderSnapshot {
     orderType: input.orderType ?? 'dineIn',
     tableId: input.tableId,
     tableNameSnapshot: input.tableName,
+    customerNote: input.customerNote ?? null,
     status: 'pending',
     paymentMode: input.paymentMode,
     items: input.lines,

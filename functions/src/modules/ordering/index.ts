@@ -538,6 +538,7 @@ export const callableOrderSubmit = onCall(CALL_OPTIONS, async (request) => {
         tableName,
         paymentMode: input.paymentMode,
         lines,
+        customerNote: input.customerNote ?? null,
         trackingToken,
         idempotencyKey: input.idempotencyKey,
         now,
@@ -1258,6 +1259,12 @@ export const callableOrderListKitchen = onCall(
       throw new HttpsError('permission-denied', ORDERING_KITCHEN_DENIED_MESSAGE);
     }
 
+    // Kitchen queue is ordered oldest first (docs/module/fulfilment.md). The
+    // query reads newest first because the composite index is
+    // (status ASC, createdAt DESC), so the result is reversed for the queue.
+    // shortcut: a queue deeper than ORDER_LIST_LIMIT keeps the newest tickets
+    // and drops the oldest; add a (status ASC, createdAt ASC) index and query
+    // ascending when that can happen.
     const snap = await db
       .collection(`tenants/${input.tenantId}/orders`)
       .where('status', 'in', ['pending', 'cooking'])
@@ -1273,7 +1280,8 @@ export const callableOrderListKitchen = onCall(
           paidAt: (docSnap.get('paidAt') as string | null) ?? null,
         }),
       )
-      .map((docSnap) => mapStoredOrder(docSnap.id, docSnap.data()));
+      .map((docSnap) => mapStoredOrder(docSnap.id, docSnap.data()))
+      .reverse();
 
     return orderListResultSchema.parse({
       schemaVersion: ORDER_CONTRACT_VERSION,

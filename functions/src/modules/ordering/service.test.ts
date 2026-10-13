@@ -17,6 +17,7 @@ import {
   resolveSelectedModifiers,
   resolveStaffOrderTable,
   summarizeItems,
+  type BuildOrderInput,
 } from './service.js';
 import {
   EMPTY_PROMOTION_ELIGIBILITY,
@@ -140,6 +141,31 @@ describe('buildOrderLines: integer VND totals', () => {
   });
 });
 
+/** One minimal Order input; each test overrides only what it asserts. */
+function snapshotInput(overrides: Partial<BuildOrderInput> = {}): BuildOrderInput {
+  return {
+    orderId: 'order-note',
+    tenantId: TENANT_A_FIXTURE,
+    tableId: 'table-05',
+    tableName: 'Bàn 5',
+    paymentMode: 'payLater',
+    lines: buildOrderLines({
+      publicItems: publicItems(),
+      lines: [
+        {
+          menuItemId: MENU_ITEM_ID_FIXTURE,
+          quantity: 1,
+          selectedOptionIds: [],
+        },
+      ],
+    }),
+    trackingToken: 'track-note',
+    idempotencyKey: ORDER_IDEMPOTENCY_KEY_FIXTURE,
+    now: '2026-09-12T07:00:00.000Z',
+    ...overrides,
+  };
+}
+
 describe('buildOrderSnapshot / tracking projection', () => {
   it('creates a pending order and a public tracking projection', () => {
     const lines = buildOrderLines({
@@ -175,6 +201,36 @@ describe('buildOrderSnapshot / tracking projection', () => {
     expect(publicOrderTrackingSchema.safeParse(tracking).success).toBe(true);
     expect('customerPhone' in tracking).toBe(false);
     expect(summarizeItems(lines)).toBe('2x Phở bò (Trứng)');
+  });
+
+  // Kitchen reads the request off the ticket, so it must survive the snapshot
+  // and must never break an Order stored before the field existed
+  // (REQ-ORD-001).
+  it('stores the Customer request and defaults it to null', () => {
+    expect(
+      buildOrderSnapshot(snapshotInput({ customerNote: 'ít cay, không hành' }))
+        .customerNote,
+    ).toBe('ít cay, không hành');
+    expect(buildOrderSnapshot(snapshotInput()).customerNote).toBeNull();
+  });
+
+  // The stored document is mapped through an explicit field list, so the
+  // request must be named there or it never reaches Kitchen (REQ-ORD-001).
+  it('carries the stored Customer request back through the mapper', () => {
+    const stored = buildOrderSnapshot(
+      snapshotInput({ customerNote: 'ít cay, không hành' }),
+    ) as unknown as Record<string, unknown>;
+    expect(mapStoredOrder('order-note', stored).customerNote).toBe(
+      'ít cay, không hành',
+    );
+  });
+
+  it('reads a stored Order written before the Customer request existed', () => {
+    const {
+      customerNote: _note,
+      ...withoutNote
+    } = buildOrderSnapshot(snapshotInput()) as unknown as Record<string, unknown>;
+    expect(mapStoredOrder('order-note', withoutNote).customerNote).toBeNull();
   });
 
   it('keeps Order source order idempotency-keyed and immutable-shaped', () => {

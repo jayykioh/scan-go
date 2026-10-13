@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'motion/react';
 import type { StaffPinDeniedState } from '@contracts/identity.contract';
 import {
   applyNotificationEvent,
   initialNotificationState,
+  NOTIFICATION_BANNER_MS,
   NOTIFICATION_SOUND_STORAGE_KEY,
   notificationPreferenceSchema,
   readSoundEnabled,
+  seedNotificationState,
   type NotificationEvent,
   type NotificationState,
 } from '@contracts/notification.contract';
@@ -14,6 +16,8 @@ import {
   listReadyOrders,
   markServed,
   playNotificationTone,
+  requestNotificationPermission,
+  showDesktopNotification,
   subscribeTenantNotifications,
 } from '../data/adapters/fulfilment.adapter';
 import { toViewOrder } from '../data/adapters/view-mappers';
@@ -29,6 +33,7 @@ import KitchenView from './KitchenView';
 import CashierView from './CashierView';
 import InventoryPanel from './InventoryPanel';
 import StaffOrderEntry from './StaffOrderEntry';
+import NotificationDialog from './NotificationDialog';
 import { Boxes, ChefHat, ClipboardList, Coffee, CreditCard, LogOut, CheckCircle, Bell, Volume2, VolumeX } from 'lucide-react';
 
 interface StaffViewProps {
@@ -72,10 +77,11 @@ export default function StaffView({
   const [activeTab, setActiveTab] = useState<'kitchen' | 'inventory' | 'order' | 'waiter' | 'cashier'>('kitchen');
   const [serveError, setServeError] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [notificationState, setNotificationState] = useState<NotificationState>(
-    initialNotificationState,
-  );
   const [notificationToast, setNotificationToast] = useState<NotificationEvent | null>(null);
+  // Dedupe lives in a ref, not state: a side effect inside a state updater
+  // replays the tone every time React invokes the updater twice (REQ-NOT-001).
+  const notificationStateRef = useRef<NotificationState>(initialNotificationState);
+  const firstSnapshotRef = useRef(true);
   const [soundEnabled, setSoundEnabled] = usePersistentState<boolean>(
     NOTIFICATION_SOUND_STORAGE_KEY,
     true,
@@ -113,21 +119,38 @@ export default function StaffView({
   // (REQ-NOT-001).
   const handleNotificationEvents = useCallback(
     (events: NotificationEvent[]) => {
+      // The Waiter channel belongs to the Waiter role; a Kitchen device must
+      // not banner a ready dish or call the ready queue (REQ-NOT-001).
+      if (!currentStaff?.roles.isWaiter) return;
+      // The first snapshot is the stored backlog, i.e. the ready queue.
+      // Seeding the dedupe window with it keeps reopening the view silent.
+      if (firstSnapshotRef.current) {
+        firstSnapshotRef.current = false;
+        notificationStateRef.current = seedNotificationState(
+          events.map(event => event.eventId),
+        );
+        return;
+      }
       const waiterEvents = events.filter(event => event.channel === 'waiter');
       if (waiterEvents.length === 0) return;
       const latest = waiterEvents[0];
-      setNotificationState(prev => {
-        const { state, effect } = applyNotificationEvent(prev, latest, soundEnabled);
-        if (effect.isVisible) {
-          setNotificationToast(latest);
-          playNotificationTone(effect.isAudible);
-          window.setTimeout(() => setNotificationToast(null), 4000);
-        }
-        return state;
-      });
+      const { state, effect } = applyNotificationEvent(
+        notificationStateRef.current,
+        latest,
+        soundEnabled,
+      );
+      notificationStateRef.current = state;
+      if (effect.isVisible) {
+        const title = latest.kind === 'orderReady' ? 'Món đã sẵn sàng' : 'Đơn mới';
+        setNotificationToast(latest);
+        playNotificationTone(effect.isAudible);
+        // The stored table name already reads "Bàn 1".
+        void showDesktopNotification(title, latest.tableName);
+        window.setTimeout(() => setNotificationToast(null), NOTIFICATION_BANNER_MS);
+      }
       void refreshReadyQueue();
     },
-    [soundEnabled, refreshReadyQueue],
+    [soundEnabled, refreshReadyQueue, currentStaff],
   );
 
   const currentStaffUid = currentStaff?.uid;
@@ -165,6 +188,8 @@ export default function StaffView({
         deviceId,
         pin: pinInput,
       });
+      // A tap is the gesture browsers require before they allow notifications.
+      requestNotificationPermission();
       const displayName =
         staffAccounts.find((account) => account.id === session.uid)?.name ??
         fallbackName;
@@ -296,22 +321,16 @@ export default function StaffView({
         </div>
       </div>
 
-      {/* One visible notification banner per server effect */}
-      <AnimatePresence>
-        {notificationToast && (
-          <motion.div
-            role="status"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="mx-4 mt-3 rounded-[21px] border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-center"
-          >
-            <p className="text-xs font-semibold text-emerald-800">
-              {notificationToast.kind === 'orderReady' ? 'Món đã sẵn sàng' : 'Đơn mới'} • Bàn {notificationToast.tableName}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* One centred alert per server notification effect */}
+      <NotificationDialog
+        open={notificationToast !== null}
+        title={notificationToast?.kind === 'orderReady' ? 'Món đã sẵn sàng' : 'Đơn mới'}
+        tableName={notificationToast?.tableName ?? ''}
+        items={
+          orders.find(order => order.id === notificationToast?.orderId)?.items
+        }
+        onClose={() => setNotificationToast(null)}
+      />
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto">

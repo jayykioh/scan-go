@@ -43,6 +43,16 @@ export default tseslint.config(
     },
   },
   {
+    // The Service Worker is a static browser asset served from `public/`, not
+    // part of the bundle: it needs Service Worker globals (REQ-NOT-001).
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: {
+        ...globals.serviceworker,
+      },
+    },
+  },
+  {
     // Feedback harness scripts are Node ESM run with `node`, not part of the
     // Vite bundle: they need Node globals plus browser globals for the code
     // inside `page.evaluate(...)`, and their deliberate `.catch(() => {})`

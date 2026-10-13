@@ -54,6 +54,9 @@ export function notificationChannelForKind(
 /** The bounded window of already-seen event ids kept by the client. */
 export const NOTIFICATION_DEDUPE_WINDOW = 50;
 
+/** How long one visible banner stays on screen before it clears itself. */
+export const NOTIFICATION_BANNER_MS = 10_000;
+
 /** Persistent mute preference. A missing value means sound is enabled. */
 export const NOTIFICATION_SOUND_STORAGE_KEY = 'scango.notifications.soundEnabled';
 
@@ -78,6 +81,18 @@ export const initialNotificationState: NotificationState = {
   seenEventIds: [],
   lastEvent: null,
 };
+
+/**
+ * Seed the dedupe window from the first snapshot. The stored backlog is the
+ * queue, not a new alert: only an event that arrives after the view opened
+ * makes a banner and a tone, so reopening Kitchen is silent (REQ-NOT-001).
+ */
+export function seedNotificationState(eventIds: string[]): NotificationState {
+  return {
+    seenEventIds: eventIds.slice(-NOTIFICATION_DEDUPE_WINDOW),
+    lastEvent: null,
+  };
+}
 
 export interface NotificationEffect {
   isDuplicate: boolean;

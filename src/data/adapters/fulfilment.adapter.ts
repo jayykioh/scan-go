@@ -273,8 +273,8 @@ export function subscribeKitchenAvailability(
 }
 
 /**
- * Play one short audible tone when sound is enabled. A browser without the Web
- * Audio API, or a blocked audio context, stays silent without an error
+ * Play one short two-note "ting" when sound is enabled. A browser without the
+ * Web Audio API, or a blocked audio context, stays silent without an error
  * (REQ-NOT-001).
  */
 export function playNotificationTone(soundEnabled: boolean): boolean {
@@ -292,18 +292,75 @@ export function playNotificationTone(soundEnabled: boolean): boolean {
   }
   try {
     const context = new AudioContextCtor();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = 'sine';
-    oscillator.frequency.value = 880;
-    gain.gain.value = 0.05;
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.15);
-    oscillator.onended = () => {
-      void context.close().catch(() => undefined);
-    };
+    // Two rising notes with a soft decay, so the alert reads as a "ting"
+    // rather than a flat beep.
+    [880, 1318.5].forEach((frequency, index) => {
+      const start = context.currentTime + index * 0.09;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.08, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.4);
+    });
+    window.setTimeout(() => void context.close().catch(() => undefined), 700);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Ask for the browser notification permission once. Browsers require a user
+ * gesture, so every caller runs this from a tap (REQ-NOT-001).
+ */
+export function requestNotificationPermission(): void {
+  if (
+    typeof Notification === 'undefined' ||
+    Notification.permission !== 'default'
+  ) {
+    return;
+  }
+  try {
+    // A browser that takes a callback returns no promise to catch.
+    void Notification.requestPermission();
+  } catch {
+    // The prompt still appeared; nothing else to do.
+  }
+}
+
+/**
+ * Show one OS notification, so Kitchen and Waiter still see the alert with the
+ * tab in the background. Android Chrome renders notifications only through a
+ * Service Worker registration; the page-level constructor is the desktop
+ * fallback. A browser without the API, or a denied permission, stays silent.
+ *
+ * shortcut: a closed tab or app gets nothing, upgrade to FCM push when the
+ * alert must arrive with the app closed.
+ */
+export async function showDesktopNotification(
+  title: string,
+  body: string,
+): Promise<boolean> {
+  if (
+    typeof Notification === 'undefined' ||
+    Notification.permission !== 'granted'
+  ) {
+    return false;
+  }
+  const options = { body, icon: '/favicon.svg' };
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration();
+    if (registration) {
+      await registration.showNotification(title, options);
+      return true;
+    }
+    new Notification(title, options);
     return true;
   } catch {
     return false;

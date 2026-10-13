@@ -71,6 +71,8 @@ export interface Order {
   tableName?: string;
   /** Dine-in Order uses a real table; takeaway uses the reserved label. */
   orderType?: 'dineIn' | 'takeaway';
+  /** The Customer's free-text request for the whole Order (REQ-ORD-001). */
+  customerNote?: string | null;
   items: OrderItem[];
   total: number;
   status: OrderStatus;

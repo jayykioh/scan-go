@@ -18,6 +18,12 @@ window.addEventListener('vite:preloadError', (event) => {
   }
 });
 
+// OS notifications need a Service Worker registration on Android Chrome; the
+// worker itself only handles notification taps (REQ-NOT-001).
+if ('serviceWorker' in navigator) {
+  void navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>

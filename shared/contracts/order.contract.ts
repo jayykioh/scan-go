@@ -10,6 +10,21 @@ import { promotionSnapshotSchema } from './promotion.contract.js';
 
 export const ORDER_CONTRACT_VERSION = 2;
 
+/**
+ * A Customer writes one free-text request per Order, for example "ít cay,
+ * không hành". Kitchen reads it on the ticket (REQ-ORD-001).
+ */
+export const CUSTOMER_NOTE_MAX_LENGTH = 200;
+
+/** One optional Customer request; an empty string is never stored. */
+const customerNoteSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(CUSTOMER_NOTE_MAX_LENGTH)
+  .nullable()
+  .optional();
+
 /** Server-authoritative Order lifecycle statuses (docs/module/ordering.md). */
 export const orderStatusSchema = z.enum([
   'pending',
@@ -94,6 +109,8 @@ export const orderSubmitInputSchema = z.strictObject({
   promotionCode: z.string().trim().min(1).max(32).nullable().optional(),
   /** The verified Loyalty member, needed by a redemption or a segment. */
   loyaltyMemberId: z.string().min(1).nullable().optional(),
+  /** The Customer's free-text request for the whole Order. */
+  customerNote: customerNoteSchema,
 });
 
 export type OrderSubmitInput = z.infer<typeof orderSubmitInputSchema>;
@@ -127,6 +144,11 @@ export const orderSnapshotSchema = z.strictObject({
   orderType: orderTypeSchema,
   tableId: z.string().min(1),
   tableNameSnapshot: z.string().min(1),
+  /**
+   * The Customer's request, absent on an Order stored before the field
+   * existed, so it stays optional and never fails a stored Order parse.
+   */
+  customerNote: customerNoteSchema,
   status: orderStatusSchema,
   paymentMode: orderPaymentModeSchema,
   items: z.array(orderLineSnapshotSchema).min(1),

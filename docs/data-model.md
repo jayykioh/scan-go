@@ -137,6 +137,7 @@ Table service state is **not stored**. It is derived from live Orders on demand 
 | `status` | `pending | cooking | ready | served | paid | cancelled` |
 | `paymentMode` | `payFirst | payLater` |
 | `paymentMethod` | `cash | vietQr` or null |
+| `customerNote` | the Customer's free-text request for the whole Order, trimmed, at most 200 characters, or null. Absent on Orders stored before the field existed |
 | `items` | immutable item snapshots |
 | `subtotalVnd`, `discountVnd`, `totalVnd` | integer; `totalVnd = subtotalVnd - discountVnd` |
 | `promotionSnapshot` | the applied Promotion frozen as `promotionId`, `name`, `benefitType`, `priority`, `discountVnd`, `giftValueVnd`, `code`; or null |

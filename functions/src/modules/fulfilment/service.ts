@@ -210,6 +210,8 @@ export function mapStoredOrder(
     orderType: data.orderType ?? 'dineIn',
     tableId: data.tableId,
     tableNameSnapshot: data.tableNameSnapshot,
+    // An Order stored before the Customer request existed reads as null.
+    customerNote: data.customerNote ?? null,
     status: data.status,
     paymentMode: data.paymentMode,
     items: (data.items ?? []).map((line: DocumentData) => ({

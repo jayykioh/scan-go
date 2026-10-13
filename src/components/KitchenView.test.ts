@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   buildKitchenAvailabilityGroups,
   isKitchenQueueOrder,
+  kitchenWaitMinutes,
+  kitchenWaitTone,
 } from './KitchenView';
 import type { MenuItem, Order } from '../types';
 
@@ -88,5 +90,34 @@ describe('buildKitchenAvailabilityGroups', () => {
     const groups = buildKitchenAvailabilityGroups(catalog, [], false);
     const mains = groups.find(([category]) => category === 'Món chính')?.[1];
     expect(mains?.find((item) => item.id === 'b')?.inStock).toBe(false);
+  });
+});
+
+/**
+ * The tile shows how long a ticket has waited and gets louder with age, so the
+ * longest wait is the easiest tile to spot (REQ-KDS-001).
+ */
+describe('kitchenWaitMinutes', () => {
+  const placedAt = new Date('2026-09-12T07:00:00.000Z');
+
+  it('counts whole minutes waited', () => {
+    expect(kitchenWaitMinutes(placedAt, placedAt.getTime())).toBe(0);
+    expect(kitchenWaitMinutes(placedAt, placedAt.getTime() + 90_000)).toBe(1);
+    expect(kitchenWaitMinutes(placedAt, placedAt.getTime() + 3_600_000)).toBe(60);
+  });
+
+  it('never shows a negative wait when the clocks disagree', () => {
+    expect(kitchenWaitMinutes(placedAt, placedAt.getTime() - 120_000)).toBe(0);
+  });
+});
+
+describe('kitchenWaitTone', () => {
+  it('stays calm, turns amber at ten minutes, red at twenty', () => {
+    expect(kitchenWaitTone(0)).toBe('calm');
+    expect(kitchenWaitTone(9)).toBe('calm');
+    expect(kitchenWaitTone(10)).toBe('warn');
+    expect(kitchenWaitTone(19)).toBe('warn');
+    expect(kitchenWaitTone(20)).toBe('late');
+    expect(kitchenWaitTone(90)).toBe('late');
   });
 });

@@ -180,7 +180,10 @@ export function toTableLinkContext(
 ): TableLinkContext {
   const isActive = data.isActive === true;
   return tableLinkContextSchema.parse({
-    schemaVersion: data.schemaVersion ?? TABLE_CONTRACT_VERSION,
+    // A stored link keeps the contract version it was written with, but the
+    // projection always speaks the current one. Echoing the stored version
+    // rejected every QR printed before a version bump (REQ-TBL-001).
+    schemaVersion: TABLE_CONTRACT_VERSION,
     token,
     tenantId: data.tenantId,
     tableId: data.tableId,

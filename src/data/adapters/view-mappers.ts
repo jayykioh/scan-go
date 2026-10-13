@@ -115,6 +115,8 @@ export function toViewOrder(order: OrderSnapshot): Order {
     tableId: order.tableId,
     tableName: order.tableNameSnapshot,
     orderType: order.orderType,
+    // Absent on an Order stored before the field existed.
+    customerNote: order.customerNote ?? null,
     items,
     total: order.totalVnd,
     status: order.status as OrderStatus,

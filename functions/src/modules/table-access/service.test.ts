@@ -22,6 +22,7 @@ import {
   OLD_TABLE_TOKEN_FIXTURE,
 } from '../../../../shared/fixtures/table.fixture.js';
 import { TENANT_A_FIXTURE } from '../../../../shared/fixtures/identity.fixture.js';
+import { TABLE_CONTRACT_VERSION } from '../../../../shared/contracts/table.contract.js';
 
 describe('generateTableToken', () => {
   it('is opaque, random, and URL-safe', () => {
@@ -76,6 +77,23 @@ describe('toTableLinkContext', () => {
     });
     expect(context.status).toBe('revoked');
     expect(context.isActive).toBe(false);
+  });
+
+  // A QR printed before a contract bump is stored under the older version and
+  // must keep resolving (REQ-TBL-001).
+  it('resolves a link stored under an older contract version', () => {
+    const context = toTableLinkContext(OLD_TABLE_TOKEN_FIXTURE, {
+      schemaVersion: 1,
+      tenantId: TENANT_A_FIXTURE,
+      tableId: activeTableLinkContextFixture.tableId,
+      tableName: activeTableLinkContextFixture.tableName,
+      tokenVersion: 1,
+      isActive: true,
+      createdAt: activeTableLinkContextFixture.createdAt,
+      revokedAt: null,
+    });
+    expect(context.schemaVersion).toBe(TABLE_CONTRACT_VERSION);
+    expect(context.status).toBe('active');
   });
 });
 

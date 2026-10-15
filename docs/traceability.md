@@ -89,7 +89,7 @@ Plan: `docs/plan/insight-growth-plan.md`. ADRs: 0008 (AI provider), 0009 (reserv
 | REQ-AI-003, NFR-PRIV-002 | G2-03 — AI | Done. Open Q&A with sources, missing-data honesty, permission denial, masking. NFR-SEC-003 stays M3. |
 | REQ-FDB-001 | G2-04 — Feedback | Done. Tenant-scoped verified feedback, PII minimization. Emulator and Rules evidence pass. |
 | REQ-FDB-002 | G2-05 — Feedback/AI | Done. Source-cited theme grouping, masking, adversarial resistance. Emulator evidence pass. |
-| REQ-AI-004, NFR-AI-002 | G2-06 — AI | Done. Feature-flagged Jev adapter and offline evaluation report; default provider unchanged (ADR 0008). |
+| REQ-AI-004, NFR-AI-002 | G2-06 — AI | ADR 0020 drops the TypeSafe Jev candidate: Gemini is the only AI model provider, and the offline evaluation report keeps Gemini as its candidate. The Jev adapter, flag, schema, and cost model are still in code, so this row is PENDING implementation. |
 | REQ-FDB-003 | G3-01 — Feedback | Done. Ticket state, actor, time, reason on transition. Emulator evidence pass. |
 | REQ-FDB-004, REQ-FDB-005 | QA-01 — Product feedback | Done. Member-scoped report with screenshot prefix boundary; Storage raster allowlist and bounded size; client delete denied. Unit, Rules, and Emulator evidence pass. |
 | REQ-FDB-006 | QA-01 — Product feedback | Done. Owner-only inbox with append-only status history (actor, time, reason). Rules and Emulator evidence pass. |
@@ -111,6 +111,8 @@ Plan: `docs/plan/insight-growth-plan.md`. ADRs: 0008 (AI provider), 0009 (reserv
 | REQ-PRO-007 | Promotion builder assistant | First slice: approved scope recorded in SRS; implementation and acceptance evidence pending. |
 | REQ-INV-010, REQ-INV-011 | G3-07 — Inventory/AI | Done. Stock-in lots record their price and move the ingredient Cost to the weighted average (ADR 0014). A lot above ten percent over the prior Cost produces a deterministic price-increase warning with both prices and the percentage. The Kho screen asks for the lot price on a positive adjustment and shows the purchase price beside the weighted-average Cost. Unit evidence pass; emulator test pending. |
 | REQ-NFC-001, REQ-PRO-001, REQ-LOY-001, REQ-SUB-001, REQ-PAY-002 | M3 baseline — worker | Done, except NFC device write and loyalty code delivery and payment webhook transport (deployment tasks). Emulator and Rules evidence pass. |
+| REQ-AUTH-005 | Owner PIN bypass — Auth/UI ([ADR 0021](adr/0021-owner-operates-without-a-staff-pin.md)) | Done. The Owner of the active Tenant opens `/operation/staff` into the operating tabs with every role and no PIN prompt; `useActiveMembership` reads the caller's own `members/{uid}` once, `toOwnerStaffSessionView` builds the session, and `StaffView` seeds it once per mount so Đăng xuất still reaches the PIN gate. A Staff membership is unchanged. Evidence: 5 `useActiveMembership` unit tests and 2 `toOwnerStaffSessionView` tests pass. |
+| REQ-AUTH-006 | Console split — Auth/UI ([ADR 0021](adr/0021-owner-operates-without-a-staff-pin.md)) | Done. `DashboardLayout` replaces the Owner console with `/staff` for an active non-Owner membership. The server boundary is unchanged and was re-read for this: `firestore.rules` gates `dailyStats`, `aiUsage`, and `aiInsights` to `isActiveOwner` and `payments` to Owner-or-Cashier, and every business callable re-verifies the membership. Evidence: `ownerConsoleRedirect` unit tests pass. |
 | REQ-RSV-001, REQ-RSV-002, REQ-RSV-003 | ADR 0009 | Deferred, outside M1–M3 |
 
 ## Evidence gap

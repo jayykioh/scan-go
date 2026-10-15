@@ -1,6 +1,6 @@
 # Kế hoạch M2/M3 — Insight, Feedback, Workforce, Inventory count
 
-**Nguồn:** SRS 1.2, ADR 0008, ADR 0009, `PRODUCT_OBJECTIVES.md`.
+**Nguồn:** SRS 1.3, ADR 0020, ADR 0009, `PRODUCT_OBJECTIVES.md`.
 **Phạm vi:** P1 và P2 mới. P0 không đổi. Đặt trước do khách tự yêu cầu/gọi món trước vẫn hoãn; đặt bàn do nhân viên nhập được duyệt riêng tại REQ-TBL-005..007.
 **Điều kiện vào:** M1 đã đạt P0 acceptance. Không bắt đầu ticket nào khi M1 còn thiếu bằng chứng.
 
@@ -21,7 +21,7 @@ G2-01 AI provider adapter + usage/budget
 G2-04 Feedback submit ─> G2-05 ─> G3-01 Feedback tickets
 G3-02 Shift schedule ─> G3-03 Clock in/out + correction
 G3-04 Stock count/waste/adjustment ─> G3-05 Loss variance review
-G2-01 ─> G2-06 TypeSafe Jev evaluation
+G2-01 ─> G2-06 Remove TypeSafe Jev (Gemini only)
 ```
 
 ## M2 / P1 tickets
@@ -76,16 +76,16 @@ G2-01 ─> G2-06 TypeSafe Jev evaluation
 - **Tests:** source-reference test; masking test; adversarial-input test.
 - **Bằng chứng:** grouped fixture; traceability cập nhật.
 
-### G2-06 — Đánh giá TypeSafe Jev
-- **REQ/NFR:** ADR 0008, REQ-AI-004, NFR-AI-002.
-- **Mục tiêu:** So sánh Jev với mốc mặc định trên việc phân loại phản hồi và chọn ưu tiên, bằng tiếng Việt.
+### G2-06 — Bỏ TypeSafe Jev, chỉ dùng Gemini
+- **REQ/NFR:** ADR 0020, REQ-AI-004, NFR-AI-002.
+- **Mục tiêu:** Gemini là provider model duy nhất. Xoá adapter Jev, feature flag `TYPESAFE_JEV_ENABLED`, secret slot `TYPESAFE_API_KEY`, response schema và cost model. Giữ adapter tất định `rule-based` làm fallback khi không có secret.
 - **Module sở hữu:** AI.
-- **Khu vực:** Jev adapter sau feature flag; evaluation script; báo cáo chi phí và chất lượng.
-- **Phụ thuộc:** G2-01, và một hợp đồng early-access TypeSafe.
-- **Kiểm tra chấp nhận:** Given một tập phản hồi tiếng Việt đã ẩn PII, when chạy cả hai provider, then báo cáo có chi phí mỗi kết quả hữu ích, chất lượng tiếng Việt, khả năng dẫn nguồn và độ trễ.
-- **Tests:** adapter contract test; cost accounting test; fallback test.
-- **Bằng chứng:** báo cáo so sánh; khuyến nghị giữ hoặc đổi provider. Chỉ đổi mặc định qua một ADR mới.
-- **Chưa chốt:** điều khoản TypeSafe và chất lượng tiếng Việt (SRS Q-4).
+- **Khu vực:** `shared/contracts/config.contract.ts` (`aiProviderSchema`); `functions/src/modules/ai/service.ts`; `evaluation.ts`; `evaluation.cli.ts`; fixtures `shared/fixtures/ai.fixture.ts`; tests; docs.
+- **Phụ thuộc:** G2-01.
+- **Kiểm tra chấp nhận:** Given `ai.provider`, when ghi một giá trị, then chỉ `gemini` và `rule-based` hợp lệ và `jev` bị từ chối; given không có secret, then provider tất định được chọn; given chạy `npm --workspace functions run ai:evaluate`, then báo cáo so Gemini với mốc tất định và không đổi provider đã chọn.
+- **Tests:** provider schema test; resolve fallback test; `aiUsage` cost accounting test; evaluation report test.
+- **Bằng chứng:** không còn tham chiếu `jev` trong `shared/`, `functions/`, `src/`; typecheck, lint, unit và Emulator pass.
+- **Trạng thái:** chưa triển khai — SRS traceability `REQ-AI-004` = PARTIAL.
 
 ## M3 / P2 tickets
 

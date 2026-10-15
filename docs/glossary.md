@@ -6,8 +6,8 @@ This glossary follows `docs/context.md` and the approved SRS.
 |---|---|
 | ADMIN | The ScanGo system owner with unrestricted platform and tenant access. |
 | AI assistant | A read-only assistant that explains Cost, gross profit, stock, feedback, and priority findings from tenant data. |
-| AI provider adapter | The one replaceable interface the AI module calls. Default provider is Gemini; TypeSafe Jev is an evaluation candidate. |
-| Jev | TypeSafe AI's System One model. It returns typed decisions with confidence and does not generate prose. |
+| AI provider adapter | The one replaceable interface the AI module calls. Gemini is the only model provider; the deterministic adapter is the fallback when no provider secret is bound (ADR 0020). |
+| Deterministic adapter | The `rule-based` provider. It calls no model, costs nothing, and is what the server falls back to when no provider secret is bound. |
 | Insight | One weekly finding with department, priority, period, source data, confidence, and suggested action. |
 | Weekly analysis | A scheduled per-tenant AI run that ranks operational findings. |
 | Feedback ticket | A Customer review or issue tracked from `received` to `resolved`. |

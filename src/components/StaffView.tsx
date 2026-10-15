@@ -30,11 +30,13 @@ import OperationTableBoard, {
 } from './OperationTableBoard';
 import { StaffAccount, TenantConfig, TableConfig, Order } from '../types';
 import {
+  toOwnerStaffSessionView,
   toStaffPinDeniedState,
   toStaffSessionView,
   verifyStaffPin,
   type StaffSessionView,
 } from '../data/adapters/auth.adapter';
+import { isTenantOwner, useActiveMembership } from '../hooks/useActiveMembership';
 import KitchenView from './KitchenView';
 import CashierView from './CashierView';
 import InventoryPanel from './InventoryPanel';
@@ -137,6 +139,29 @@ export default function StaffView({
   const dialogTable = selectedTableId
     ? operationTables.find((table) => table.tableId === selectedTableId) ?? null
     : null;
+
+  // The Owner is already signed in, so the PIN gate never greets them: they
+  // start the shift as themselves. Seeded once per mount, not on every render,
+  // so tapping Đăng xuất still drops to the PIN gate for the next person
+  // (REQ-AUTH-005).
+  const membership = useActiveMembership();
+  const ownerSession = useMemo(
+    () =>
+      isTenantOwner(membership) && membership.tenantId && membership.userId
+        ? toOwnerStaffSessionView({
+            tenantId: membership.tenantId,
+            uid: membership.userId,
+            name: membership.name ?? fallbackName,
+          })
+        : null,
+    [membership, fallbackName],
+  );
+  const ownerSeededRef = useRef(false);
+  useEffect(() => {
+    if (ownerSeededRef.current || currentStaff || !ownerSession) return;
+    ownerSeededRef.current = true;
+    setCurrentStaff(ownerSession);
+  }, [currentStaff, ownerSession, setCurrentStaff]);
 
   // Waiter reads the bounded `ready` queue from the Fulfilment query.
   const refreshReadyQueue = useCallback(async () => {

@@ -1,6 +1,6 @@
 # ADR 0008 — AI provider adapter with Gemini default and Jev evaluation
 
-- Status: Decided
+- Status: Superseded by ADR 0020 (2026-10-15). Kept for rationale.
 - Date: 2026-09-30
 - Serves: REQ-AI-001, REQ-AI-004, REQ-AI-005, NFR-AI-001, NFR-AI-002
 

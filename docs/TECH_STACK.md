@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document ID | TECH-SCANGO-001 |
-| Version | 1.2 |
-| Date | 2026-09-27 |
+| Version | 1.4 |
+| Date | 2026-10-15 |
 | Companion to | `SRS.md` §3 |
 | Status | Approved foundation |
 | Source template | `~/.config/opencode/docs-template/TECH_STACK.template.md` |
@@ -29,7 +29,7 @@
 | Object storage | Firebase Storage | DECIDED | REQ-CAT-001, NFR-SEC-001 |
 | Auth | Firebase Auth email/password for Owner (ADR 0007); server-issued Staff sessions | DECIDED | REQ-AUTH-001, REQ-AUTH-002 |
 | Payment | Dynamic VietQR plus manual Cashier confirmation; replaceable automatic adapter | DECIDED | REQ-CAS-001, REQ-PAY-002 |
-| AI | One replaceable provider adapter; Gemini default, TypeSafe Jev evaluation candidate (ADR 0008) | DECIDED | REQ-AI-001, REQ-AI-004, NFR-AI-001, NFR-AI-002 |
+| AI | One replaceable provider adapter; Gemini is the only model provider, deterministic adapter as fallback (ADR 0020) | DECIDED | REQ-AI-001, REQ-AI-004, NFR-AI-001, NFR-AI-002 |
 | Runtime config | Versioned typed `config.ts`, Firestore ADMIN defaults, allowed tenant overrides | DECIDED | REQ-CFG-001, NFR-CFG-001 |
 | Observability | Firebase logging; Sentry for P1 web errors | DECIDED | NFR-OBS-001 |
 | Analytics | Firebase Analytics with privacy review before production | DECIDED | NFR-PRIV-001 |
@@ -103,8 +103,8 @@ Only `docs/RULES_FIREBASE.md` is active for the database-specific rules.
 
 | State | Decision |
 |---|---|
-| Q-3 RESOLVED 2026-09-30 | Keep Gemini as the default AI provider and evaluate TypeSafe Jev behind the adapter (ADR 0008). |
-| Q-4 OPEN | TypeSafe contract terms, Vietnamese quality, and zero-retention availability. Owner: Founder. |
+| Q-3 RESOLVED 2026-09-30; amended 2026-10-15 | Gemini is the only AI model provider, behind one replaceable adapter; TypeSafe Jev is dropped (ADR 0020). |
+| Q-4 RESOLVED 2026-10-15 | Closed without a TypeSafe contract. TypeSafe is no longer a candidate, so its terms and Vietnamese quality gate nothing (ADR 0020). |
 | Foundation | The Founder approved all foundation choices on 2026-09-12. |
 
 ## 8. Version Pinning
@@ -121,3 +121,4 @@ Only `docs/RULES_FIREBASE.md` is active for the database-specific rules.
 | 1.1 | 2026-09-12 | Added detailed module boundaries, public projections, and daily stats. |
 | 1.2 | 2026-09-27 | ADR 0007: switched Owner auth from phone OTP to email/password. |
 | 1.3 | 2026-09-30 | ADR 0008: replaceable AI provider adapter, Gemini default, TypeSafe Jev evaluation candidate. |
+| 1.4 | 2026-10-15 | ADR 0020: Gemini is the only AI model provider; the TypeSafe Jev candidate, its feature flag, and its secret slot are removed. |

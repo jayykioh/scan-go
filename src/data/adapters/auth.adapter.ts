@@ -196,6 +196,32 @@ export function toStaffSessionView(
   };
 }
 
+/**
+ * The Owner's operating session (REQ-AUTH-005). The Owner is already
+ * authenticated by Firebase Auth for the Tenant they own, so no PIN is
+ * verified, and an Owner membership carries no reduced role set: every
+ * operating tab is available and the server still authorizes each command from
+ * the membership. This view never leaves the browser.
+ */
+export function toOwnerStaffSessionView(input: {
+  tenantId: string;
+  uid: string;
+  name?: string | null;
+}): StaffSessionView {
+  const name = input.name?.trim();
+  return {
+    sessionId: `owner:${input.tenantId}`,
+    tenantId: input.tenantId,
+    uid: input.uid,
+    deviceId: 'owner-console',
+    name: name && name.length > 0 ? name : input.uid,
+    roles: { isKitchen: true, isWaiter: true, isCashier: true },
+    permissions: [],
+    sessionVersion: 1,
+    status: 'active',
+  };
+}
+
 const STAFF_PIN_VERIFY_CALLABLE = 'callableAuthStaffPinVerify';
 const STAFF_REVOKE_CALLABLE = 'callableAuthRevokeStaffSessions';
 

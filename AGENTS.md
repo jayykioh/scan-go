@@ -62,6 +62,8 @@
 - [ADR 0017: Temporarily disable App Check enforcement](docs/adr/0017-temporarily-disable-app-check-enforcement.md)
 - [ADR 0018: Table floor plan and live table status](docs/adr/0018-table-floor-plan-and-live-table-status.md)
 - [ADR 0019: Waiter takes orders at the table](docs/adr/0019-waiter-takes-orders-at-the-table.md)
+- [ADR 0020: Gemini is the only AI model provider](docs/adr/0020-gemini-is-the-only-ai-provider.md)
+- [ADR 0021: The Owner operates without a Staff PIN](docs/adr/0021-owner-operates-without-a-staff-pin.md)
 - [Firestore research](research/firestore-foundation.md)
 
 ## Agent constraints

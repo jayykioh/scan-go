@@ -41,7 +41,7 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[ADR 0005](adr/0005-use-rebuildable-daily-stats.md)** | Rebuildable daily stats | Reporting storage changes |
 | **[ADR 0006](adr/0006-use-real-firestore-and-defer-emulator-tests.md)** | Real Firestore and deferred Emulator tests | Bootstrap and test setup |
 | **[ADR 0007](adr/0007-switch-owner-auth-to-email-password.md)** | Email/password Owner auth | Auth changes |
-| **[ADR 0008](adr/0008-ai-provider-adapter-and-jev-evaluation.md)** | AI provider adapter and Jev evaluation | AI provider changes |
+| **[ADR 0008](adr/0008-ai-provider-adapter-and-jev-evaluation.md)** | AI provider adapter and Jev evaluation (superseded by ADR 0020) | AI provider changes |
 | **[ADR 0009](adr/0009-defer-reservations-and-separate-payment-state.md)** | Customer reservations deferred; staff table bookings approved; payment and preparation remain separate | Scope changes |
 | **[ADR 0010](adr/0010-do-not-audit-read-access.md)** | Audit records changes only; read access is not audited | Audit and privacy changes |
 | **[ADR 0011](adr/0011-deploy-cloud-functions-in-asia-southeast1.md)** | Cloud Functions deploy in asia-southeast1 | Region and deployment changes |
@@ -53,6 +53,8 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[ADR 0017](adr/0017-temporarily-disable-app-check-enforcement.md)** | Temporarily disable App Check enforcement | App Check rollout changes |
 | **[ADR 0018](adr/0018-table-floor-plan-and-live-table-status.md)** | Table floor plan and live table status | Table layout and floor-plan changes |
 | **[ADR 0019](adr/0019-waiter-takes-orders-at-the-table.md)** | Waiter takes orders at the table | Waiter and order-entry permission changes |
+| **[ADR 0020](adr/0020-gemini-is-the-only-ai-provider.md)** | Gemini is the only AI model provider (supersedes ADR 0008) | AI provider changes |
+| **[ADR 0021](adr/0021-owner-operates-without-a-staff-pin.md)** | The Owner operates without a Staff PIN, and a Staff membership never opens the Owner console | Auth, role, and console-access changes |
 | **[USP.md](USP.md)** | Unique Selling Proposition | Writing marketing copy, sales pitches, positioning |
 | **[SWOT.md](SWOT.md)** | Strategic analysis | Quarterly reviews, investor updates, risk assessment |
 | **[PESTEL.md](PESTEL.md)** | Macro-environment analysis | Quarterly strategy reviews, investor discussions, regulatory tracking |

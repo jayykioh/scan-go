@@ -9,8 +9,8 @@
 | Landing and introduction | DONE | `/`, `/introduce`; `LandingPage`, `IntroducePage` | None | None |
 | Operating pages launcher | DONE | `/operation`; `OperationIndex` | REQ-UX-002 | None |
 | Owner email sign-in and first Tenant | PARTIAL | `/login`, `/register`; `LoginPage`, `RegisterPage` | REQ-AUTH-001, REQ-TEN-001 | Firebase Auth email/password; `callableAuthRegisterOwner`; `callableTenantBootstrap`; current identity and membership query |
-| Tenant switch and Staff access | PARTIAL | `OperationLayout`, `StaffPage`, `StaffView` | REQ-TEN-001, REQ-AUTH-002, REQ-ACL-001 | membership query; `tenant-select-active`; Staff PIN command; authorization decision |
-| Dashboard shell and navigation | PARTIAL | `DashboardLayout`, `RootLayout`, `AuthLayout` | REQ-TEN-001, REQ-I18N-001 | authenticated active-Tenant context; locale state; route guards |
+| Tenant switch and Staff access | PARTIAL | `OperationLayout`, `StaffPage`, `StaffView` | REQ-TEN-001, REQ-AUTH-002, REQ-AUTH-005, REQ-ACL-001 | membership query; `tenant-select-active`; Staff PIN command; authorization decision. The Owner of the active Tenant reads their own `members/{uid}` once through `useActiveMembership` and enters the operating tabs without a PIN; a Staff membership keeps the PIN gate |
+| Dashboard shell and navigation | PARTIAL | `DashboardLayout`, `RootLayout`, `AuthLayout` | REQ-TEN-001, REQ-AUTH-006, REQ-I18N-001 | authenticated active-Tenant context; locale state; route guards. An active non-Owner membership of the active Tenant is redirected to `/staff` |
 | Owner menu | PARTIAL | `/dashboard/menu`; `MenuPage`, `OwnerView` | REQ-CAT-001, REQ-CAT-002 | Catalog create/update/archive/template commands; private menu query; public projection listener |
 | Tables, area assignments, reservations, and QR link | IMPLEMENTED + AMENDMENT APPROVED (implementation pending) | `/dashboard/tables`; `TablesPage`, `OwnerView` | REQ-TBL-001..007, NFR-SEC-002 | Existing table create/rename/archive/regenerate/configure commands; tenant table query through the shared `tables` store slice; public-token resolver; floor plan with drag/keyboard, area filter, list, summary, and detail; pending UI for multi-Waiter area assignments, staff-entered time-bounded reservations, reservation lifecycle, and combined Order/reservation state query |
 | Owner settings | PARTIAL | `/dashboard/settings`; `SettingsPage` | REQ-CFG-001, REQ-ONB-001 | direct authorized read of `platform/config` and tenant `configOverrides`; resolved Config with source; `callableConfigUpdateTenant` for allowed tenant settings; Tenant query |
@@ -65,7 +65,7 @@ Each entry requires both a UI deliverable and a backend deliverable.
 | Inconsistency | Checked-in evidence | Required correction |
 |---|---|---|
 | Router versus no router | `App.tsx` uses React Router; `docs/architecture.md` says no router. | Treat React Router as current implementation; mark architecture text historical. |
-| Provider claim versus rule-based AI | SRS/TECH_STACK require one server AI provider adapter (Gemini default, ADR 0008); `OwnerView` and `SoloOperatorView` use local rule text. | Keep UI as mockup; implement server AI only in P1. |
+| Provider claim versus rule-based AI | SRS/TECH_STACK require one server AI provider adapter (Gemini only, ADR 0020); `OwnerView` and `SoloOperatorView` use local rule text. | Keep UI as mockup; implement server AI only in P1. |
 | Next.js blueprint versus React/Vite | TECH_STACK selects React/Vite; old blueprint references can conflict. | Keep React 19, Vite, React Router, and `vercel.json` SPA rewrite. |
 | Free/Lite/Pro versus Lite/Pro/Enterprise | SRS/data model use `free|lite|pro`; `types.ts` and SubscriptionPage use Lite/Pro/Enterprise. | Use approved Free/Lite/Pro only; Enterprise remains out of scope. |
 | Plaintext Staff PIN | `types.ts`, `mockData.ts`, StaffPage, and SimulatorLayout store/display PIN. | Remove browser PIN persistence; keep only server `staffPinHash`. |

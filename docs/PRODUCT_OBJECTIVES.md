@@ -2,7 +2,7 @@
 
 > Cập nhật: 2026-09-29. Tài liệu định hướng theo ý tưởng của Founder, dùng để thống nhất giá trị sản phẩm và các cơ hội mở rộng. Đây không phải kế hoạch triển khai hay bản sửa đổi SRS. Các đề xuất mới cần được chuyển thành yêu cầu có tiêu chí nghiệm thu trước khi viết code.
 >
-> **Đã chốt 2026-09-30:** cọc full nghĩa là đủ tiền món; đặt bàn để sau (ADR 0009). Nhóm thử đầu tiên: quán cà phê/trà sữa và quán có bếp. AI giữ Gemini làm mặc định và đánh giá TypeSafe Jev sau adapter (ADR 0008). Các mở rộng đã thành yêu cầu trong SRS 1.2 và `docs/plan/insight-growth-plan.md`.
+> **Đã chốt 2026-09-30, cập nhật 2026-10-15:** cọc full nghĩa là đủ tiền món; đặt bàn để sau (ADR 0009). Nhóm thử đầu tiên: quán cà phê/trà sữa và quán có bếp. Gemini là provider model duy nhất, không còn đánh giá TypeSafe Jev (ADR 0020). Các mở rộng đã thành yêu cầu trong SRS 1.3 và `docs/plan/insight-growth-plan.md`.
 
 ## 1. Mục tiêu chung
 
@@ -62,13 +62,13 @@ Chủ quán có thể hỏi mọi mảng mà hệ thống có dữ liệu và h�
 
 Ví dụ: “Hôm nay có bao nhiêu bàn đặt trước?”, “Khách chê điều gì nhiều nhất?”, “Món nào nên xem lại giá?”, “Ca nào thường chậm ra món?”. Nếu chưa có dữ liệu, AI trả lời rõ chưa thể kết luận và cho biết cần bổ sung gì.
 
-### Chi phí AI và công cụ “jev”
+### Chi phí AI
 
-“jev” là tên Founder nhắc tới, hiện chưa xác định công cụ hoặc nhà cung cấp cụ thể. Chưa có cơ sở khẳng định mức giảm chi phí hoặc dùng đầu ra của công cụ này làm nguồn quyết định cuối cùng.
+Gemini là provider model duy nhất, gọi qua một adapter phía server (ADR 0020). Adapter tất định `rule-based` là fallback khi chưa bind secret, nên tenant chưa cấu hình vẫn chạy được và không tốn tiền. TypeSafe Jev từng là ứng viên đánh giá nhưng đã bỏ: không có hợp đồng và không có lệnh gọi thật nào.
 
-Định hướng tối ưu gồm tổng hợp bằng logic xác định trước khi gọi AI, chỉ gửi dữ liệu liên quan, xử lý phần thay đổi và đặt ngân sách theo tenant. Đánh giá công cụ dựa trên tổng chi phí cho một phân tích hữu ích, chất lượng tiếng Việt, khả năng dẫn nguồn, độ trễ và cách xử lý dữ liệu.
+Định hướng tối ưu gồm tổng hợp bằng logic xác định trước khi gọi AI, chỉ gửi dữ liệu liên quan, xử lý phần thay đổi và đặt ngân sách theo tenant. Đánh giá model dựa trên tổng chi phí cho một phân tích hữu ích, chất lượng tiếng Việt, khả năng dẫn nguồn, độ trễ và cách xử lý dữ liệu, đo offline bằng `npm --workspace functions run ai:evaluate`.
 
-Nếu “jev” phù hợp, đầu ra của nó có thể hỗ trợ đề xuất ưu tiên theo tiêu chí trên. [TECH_STACK](TECH_STACK.md) hiện chọn Gemini qua adapter phía server; thay nhà cung cấp cần quyết định riêng. Việc lưu kết quả tuần hoặc tái sử dụng câu trả lời cũng cần đặc tả lưu trữ và thời hạn lưu, vì [module AI](module/ai.md) hiện không lưu câu trả lời mặc định.
+Chi phí thật mỗi lệnh gọi Gemini được ghi vào `aiUsage` theo provider, model, token và VND, và bị chặn bởi `ai.monthlyBudgetVnd`. Việc lưu kết quả tuần hoặc tái sử dụng câu trả lời cũ vẫn cần đặc tả lưu trữ và thời hạn lưu, vì [module AI](module/ai.md) hiện không lưu câu trả lời mặc định.
 
 ## 4. Hiểu hao hụt, giá vốn và hiệu quả món ăn
 
@@ -169,7 +169,6 @@ REQ hiện có chỉ bao phủ hành vi trong SRS, không tự bao phủ các ph
 
 ## 12. Các điểm cần làm rõ khi đặc tả
 
-- Tên hoặc link chính xác của “jev”, chức năng dự kiến và bằng chứng tiết kiệm chi phí.
 - “Nhà cung cấp giá trị tiền của đơn hàng” là bên dữ liệu giá nguyên liệu, bên thanh toán hay nhu cầu khác.
 - “Cọc full” là đủ giá trị món hay đủ khoản cọc; ai được xác nhận cho làm trước.
 - Chính sách giữ bàn, đến muộn, không đến, hủy và hoàn tiền khi bếp đã bắt đầu làm.

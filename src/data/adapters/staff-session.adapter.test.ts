@@ -8,6 +8,7 @@ import {
   staffSessionFixture,
 } from '../../../shared/fixtures/identity.fixture';
 import {
+  toOwnerStaffSessionView,
   toStaffPinDeniedState,
   toStaffSessionView,
 } from './auth.adapter';
@@ -47,6 +48,35 @@ describe('toStaffSessionView', () => {
     const serialized = JSON.stringify(view);
     expect(serialized).not.toContain('"123456"');
     expect(serialized).not.toContain('"pin"');
+  });
+});
+
+describe('toOwnerStaffSessionView', () => {
+  it('unlocks every operating tab for the Owner without a PIN (REQ-AUTH-005)', () => {
+    const view = toOwnerStaffSessionView({
+      tenantId: 'tenant-a',
+      uid: 'owner-1',
+      name: 'Chủ quán',
+    });
+    expect(view.tenantId).toBe('tenant-a');
+    expect(view.uid).toBe('owner-1');
+    expect(view.name).toBe('Chủ quán');
+    expect(view.status).toBe('active');
+    expect(view.roles).toEqual({
+      isKitchen: true,
+      isWaiter: true,
+      isCashier: true,
+    });
+    expect('pin' in view).toBe(false);
+  });
+
+  it('falls back to the uid when the Owner has no display name', () => {
+    const view = toOwnerStaffSessionView({
+      tenantId: 'tenant-a',
+      uid: 'owner-1',
+      name: '   ',
+    });
+    expect(view.name).toBe('owner-1');
   });
 });
 

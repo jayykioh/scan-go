@@ -40,6 +40,10 @@ import {
 } from '../data/tenantStore';
 import AiChatWidget from '../components/AiChatWidget';
 import FeedbackWidget from '../components/FeedbackWidget';
+import {
+  ownerConsoleRedirect,
+  useActiveMembership,
+} from '../hooks/useActiveMembership';
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
@@ -49,6 +53,11 @@ export default function DashboardLayout() {
   const [tenantError, setTenantError] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const activeTenantId = useStoreTenantId();
+  const membership = useActiveMembership();
+  // A Staff membership works from the Staff entry, never in the Owner console
+  // (REQ-AUTH-006). The Rules and callables already refuse it every Owner read
+  // and command; this only keeps the console off a Staff screen.
+  const membershipRedirect = ownerConsoleRedirect(membership);
 
   // The shared store owns the active tenant and membership listener; Dashboard
   // membership-list reads remain for the switcher only.
@@ -142,6 +151,10 @@ export default function DashboardLayout() {
 
   if (configured && !authLoading && !user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (membershipRedirect) {
+    return <Navigate to={membershipRedirect} replace />;
   }
 
   return (

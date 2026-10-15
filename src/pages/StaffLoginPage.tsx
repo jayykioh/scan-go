@@ -41,6 +41,10 @@ export default function StaffLoginPage() {
   const [signingIn, setSigningIn] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [memberships, setMemberships] = useState<TenantSummary[]>([]);
+  // Shops this account owns. An Owner reaches the operating pages without a PIN,
+  // so this page must not tell them they are "not Staff" with nowhere to go
+  // (REQ-AUTH-005).
+  const [ownedShops, setOwnedShops] = useState<string[]>([]);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [currentStaff, setCurrentStaff] = useState<StaffSessionView | null>(null);
 
@@ -52,6 +56,7 @@ export default function StaffLoginPage() {
   useEffect(() => {
     if (!user) {
       setMemberships([]);
+      setOwnedShops([]);
       setTenantId(null);
       setCurrentStaff(null);
       return;
@@ -64,8 +69,12 @@ export default function StaffLoginPage() {
         const staffTenants = result.tenants.filter(
           (tenant) => tenant.membershipType === 'staff' && tenant.isActive,
         );
+        const ownedTenants = result.tenants
+          .filter((tenant) => tenant.membershipType === 'owner' && tenant.isActive)
+          .map((tenant) => tenant.shopName || tenant.tenantId);
         if (cancelled) return;
         setMemberships(staffTenants);
+        setOwnedShops(ownedTenants);
         if (staffTenants.length > 0) {
           await selectActiveTenant(staffTenants[0].tenantId);
           if (!cancelled) setTenantId(staffTenants[0].tenantId);
@@ -194,17 +203,35 @@ export default function StaffLoginPage() {
   }
 
   if (memberships.length === 0 || !tenantId || !activeTenant) {
+    // The Owner of a shop is not Staff of it, so the Staff entry cannot start a
+    // PIN session for them. Send them to the operating pages, where the Owner
+    // works without one (REQ-AUTH-005).
+    const isOwner = ownedShops.length > 0;
     return (
       <SimpleNotice
-        title="Chưa phải nhân viên"
-        message={`Tài khoản ${user.email ?? user.uid} chưa được gán vào cửa hàng nào. Liên hệ chủ quán.`}
+        title={isOwner ? 'Bạn là chủ quán' : 'Chưa phải nhân viên'}
+        message={
+          isOwner
+            ? `Tài khoản ${user.email ?? user.uid} là chủ của ${ownedShops.join(', ')}. Chủ quán không dùng mã PIN ở đây — vào trang vận hành để làm việc, hoặc đăng xuất để nhân viên đăng nhập.`
+            : `Tài khoản ${user.email ?? user.uid} chưa được gán vào cửa hàng nào. Liên hệ chủ quán.`
+        }
         action={
-          <button
-            onClick={() => void handleSignOut()}
-            className="mt-4 bg-zinc-950 text-white font-bold py-3 px-6 border-hard shadow-hard uppercase tracking-widest text-xs"
-          >
-            Đăng xuất
-          </button>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+            {isOwner && (
+              <Link
+                to="/operation"
+                className="bg-orange-600 text-white font-bold py-3 px-6 border-hard shadow-hard uppercase tracking-widest text-xs"
+              >
+                Vào trang vận hành
+              </Link>
+            )}
+            <button
+              onClick={() => void handleSignOut()}
+              className="bg-zinc-950 text-white font-bold py-3 px-6 border-hard shadow-hard uppercase tracking-widest text-xs"
+            >
+              Đăng xuất
+            </button>
+          </div>
         }
       />
     );

@@ -59,6 +59,13 @@ reads, not data.
    reads, `payments` remains Owner-or-Cashier, and each callable keeps its own
    membership and role gate (REQ-ACL-001).
 
+5. **The Staff sign-in page names an Owner instead of dead-ending.** `/staff`
+   resolves the memberships it already reads and, when the account owns an
+   active Tenant and holds no Staff membership, says so, links to `/operation`,
+   and keeps Đăng xuất for handing the device to the next person. The page still
+   refuses to start a PIN session for an Owner: an Owner membership has no PIN
+   hash to verify and no reduced role set to issue.
+
 ## Consequences
 
 - Opening `/operation/staff` as the Owner now costs one membership-document
@@ -70,9 +77,8 @@ reads, not data.
   An ADMIN is not a member of anybody's Tenant, so the operation callables
   refuse them; the Staff PIN screen stays as it is rather than inventing a
   session the server would reject.
-- `/staff` still tells an Owner "Tài khoản ... chưa được gán vào cửa hàng nào."
-  when they open the Staff *sign-in* page. It is accurate for that page and was
-  left alone.
+- An account that owns one Tenant and is Staff of another keeps the PIN flow on
+  `/staff`, because it does have a Staff membership to verify (REQ-TEN-001).
 - The Owner's name in the operating header comes from the Firebase Auth
   display name, else the email, else the uid; the Owner's profile display name
   in `users/{uid}` is not read for this.

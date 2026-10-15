@@ -239,6 +239,22 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // PayOS payment links are the server-side mapping from a provider
+      // `orderCode` to a Tenant and an Order, so they stay server-written and
+      // server-read only. The Cashier receives the link through the callable
+      // (REQ-PAY-003, REQ-PAY-004).
+      match /payosPaymentLinks/{orderId} {
+        allow read, write: if false;
+      }
+
+      // Report topic counters carry no customer text, only counts and feedback
+      // IDs, so they follow the same Owner gate as the reports behind them.
+      // Server-written only; cross-tenant reads stay denied (REQ-FDB-007).
+      match /feedbackTopics/{topicKey} {
+        allow read: if isActiveOwner(tenantId) || isAdmin();
+        allow write: if false;
+      }
+
       // Product feedback is the operator's report about ScanGo itself, with
       // optional screenshots in Storage. It is server-written only and Owner or
       // ADMIN read, so a report cannot be forged or read cross-tenant

@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-08T17:11:50.737Z",
+  "generatedAt": "2026-10-14T13:55:37.572Z",
   "tenantId": "first-g43h5hgnc4RJ0FJrYHxmd3g7qXl1",
   "tableId": "aSXum1V3IFEXmAlsJZR7",
-  "orderId": "2YtDBanEfsIpUtjFTOOe",
+  "orderId": "LRIES0yWUgV2arv2RiOG",
   "passed": 12,
   "failed": 0,
   "findings": [
@@ -14,7 +14,7 @@
     {
       "kind": "pass",
       "label": "Ghi một sự kiện audit TableConfigured",
-      "detail": "14 sự kiện gần nhất"
+      "detail": "19 sự kiện gần nhất"
     },
     {
       "kind": "pass",
@@ -39,7 +39,7 @@
     {
       "kind": "pass",
       "label": "Đơn đang mở làm bàn chuyển sang \"có khách\"",
-      "detail": "{\"tableId\":\"aSXum1V3IFEXmAlsJZR7\",\"state\":\"occupied\",\"activeOrderCount\":1,\"readyOrderCount\":0,\"unsettledOrderCount\":0,\"oldestActiveOrderAt\":\"2026-10-08T17:11:46.825Z\"}"
+      "detail": "{\"tableId\":\"aSXum1V3IFEXmAlsJZR7\",\"state\":\"occupied\",\"activeOrderCount\":1,\"readyOrderCount\":0,\"unsettledOrderCount\":0,\"oldestActiveOrderAt\":\"2026-10-14T13:55:25.991Z\"}"
     },
     {
       "kind": "pass",
@@ -49,12 +49,12 @@
     {
       "kind": "pass",
       "label": "Đơn ở trạng thái ready làm bàn hiện \"món sẵn sàng\"",
-      "detail": "{\"tableId\":\"aSXum1V3IFEXmAlsJZR7\",\"state\":\"foodReady\",\"activeOrderCount\":1,\"readyOrderCount\":1,\"unsettledOrderCount\":0,\"oldestActiveOrderAt\":\"2026-10-08T17:11:46.825Z\"}"
+      "detail": "{\"tableId\":\"aSXum1V3IFEXmAlsJZR7\",\"state\":\"foodReady\",\"activeOrderCount\":1,\"readyOrderCount\":1,\"unsettledOrderCount\":0,\"oldestActiveOrderAt\":\"2026-10-14T13:55:25.991Z\"}"
     },
     {
       "kind": "pass",
       "label": "Đơn đã phục vụ nhưng chưa thu tiền làm bàn hiện \"chờ thanh toán\"",
-      "detail": "{\"tableId\":\"aSXum1V3IFEXmAlsJZR7\",\"state\":\"awaitingPayment\",\"activeOrderCount\":1,\"readyOrderCount\":0,\"unsettledOrderCount\":1,\"oldestActiveOrderAt\":\"2026-10-08T17:11:46.825Z\"}"
+      "detail": "{\"tableId\":\"aSXum1V3IFEXmAlsJZR7\",\"state\":\"awaitingPayment\",\"activeOrderCount\":1,\"readyOrderCount\":0,\"unsettledOrderCount\":1,\"oldestActiveOrderAt\":\"2026-10-14T13:55:25.991Z\"}"
     },
     {
       "kind": "pass",

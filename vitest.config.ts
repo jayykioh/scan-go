@@ -12,8 +12,14 @@ export default defineConfig({
     },
   },
   test: {
+    // Node stays the default so the pure-logic suite needs no DOM. A component
+    // test opts in with `// @vitest-environment jsdom` at the top of its file.
     environment: 'node',
-    include: ['src/**/*.test.ts', 'shared/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'shared/**/*.test.ts',
+    ],
     passWithNoTests: true,
   },
 });

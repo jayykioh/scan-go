@@ -1,12 +1,14 @@
 # Ordering Module
 
-- Serves: REQ-ORD-001, REQ-ORD-002, REQ-ORD-003, REQ-ORD-004, REQ-PRO-001, REQ-PRO-003, REQ-TBL-003
+- Serves: REQ-ORD-001, REQ-ORD-002, REQ-ORD-003, REQ-ORD-004, REQ-ORD-005, REQ-WAI-002, REQ-PRO-001, REQ-PRO-003, REQ-TBL-003
 - Owns: Cart validation, Order creation, Order source record, Customer tracking projection, table service state derived from Orders
 - Does not own: Payment records, stock quantities, or Loyalty balance
 
 ## Commands
 - Validate a cart against current public menu data.
-- Create Pay-First or Pay-Later Orders.
+- Create Pay-First or Pay-Later Orders. Staff order entry is authorized for an active
+  `cashier` or `waiter` membership, so a Waiter takes the order at the table it serves;
+  cancellation and settlement stay cashier-only (REQ-ORD-005, REQ-WAI-002, ADR 0019).
 - Cancel an unpaid Order through the coordinated cancellation transaction.
 
 ## Queries

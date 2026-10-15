@@ -22,6 +22,12 @@ import {
 } from '../data/adapters/fulfilment.adapter';
 import { toViewOrder } from '../data/adapters/view-mappers';
 import { usePersistentState } from '../hooks/usePersistentState';
+import { useOperationTables } from '../hooks/useOperationTables';
+import { resolvePlanLayout } from '../pages/dashboard/tables/tablePlan';
+import OperationTableBoard, {
+  summarizeOrdersByTable,
+  type OperationTableState,
+} from './OperationTableBoard';
 import { StaffAccount, TenantConfig, TableConfig, Order } from '../types';
 import {
   toStaffPinDeniedState,
@@ -34,6 +40,7 @@ import CashierView from './CashierView';
 import InventoryPanel from './InventoryPanel';
 import StaffOrderEntry from './StaffOrderEntry';
 import NotificationDialog from './NotificationDialog';
+import WaiterTableDialog from './WaiterTableDialog';
 import { Boxes, ChefHat, ClipboardList, Coffee, CreditCard, LogOut, CheckCircle, Bell, Volume2, VolumeX } from 'lucide-react';
 
 interface StaffViewProps {
@@ -100,6 +107,37 @@ export default function StaffView({
   const readyOrders = useMemo(() => orders.filter(o => o.status === 'ready'), [orders]);
   const servedOrders = useMemo(() => orders.filter(o => o.status === 'served'), [orders]);
 
+  // The Waiter board shows which table each ready dish belongs to and pings the
+  // tables that have dishes to carry (REQ-WAI-001, REQ-WAI-002, REQ-TBL-003).
+  // Hooks run before the sign-in early return below.
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const { tables: operationTables } = useOperationTables(tables);
+  const layout = useMemo(
+    () => resolvePlanLayout(operationTables),
+    [operationTables],
+  );
+  // The store-backed tables the dish entry offers, so a Waiter sees the real
+  // floor rather than the demo fallback and both read the same cached slice.
+  const storeTables = useMemo(
+    () => operationTables.map((table) => ({ id: table.tableId, name: table.name })),
+    [operationTables],
+  );
+  const boardStates = useMemo(() => {
+    const states = new Map<string, OperationTableState>();
+    for (const [tableId, summary] of summarizeOrdersByTable(readyOrders)) {
+      states.set(tableId, {
+        state: 'foodReady',
+        count: summary.count,
+        ping: true,
+      });
+    }
+    return states;
+  }, [readyOrders]);
+
+  const dialogTable = selectedTableId
+    ? operationTables.find((table) => table.tableId === selectedTableId) ?? null
+    : null;
+
   // Waiter reads the bounded `ready` queue from the Fulfilment query.
   const refreshReadyQueue = useCallback(async () => {
     if (!currentStaff) return;
@@ -165,8 +203,10 @@ export default function StaffView({
     void refreshReadyQueue();
   }, [currentStaff, refreshReadyQueue]);
 
+  // The stored snapshot already reads "Bàn 1", so the fallback keeps the same
+  // shape instead of being prefixed again at the call site.
   const getTableName = (order: Order) =>
-    order.tableName ?? tables.find(t => t.id === order.tableId)?.name ?? order.tableId;
+    order.tableName ?? tables.find(t => t.id === order.tableId)?.name ?? `Bàn ${order.tableId}`;
 
   useEffect(() => {
     if (currentStaff) {
@@ -352,13 +392,22 @@ export default function StaffView({
           <StaffOrderEntry
             tenantId={tenantId}
             tenantConfig={tenantConfig}
-            tables={tables}
+            tables={storeTables}
           />
         )}
 
         {activeTab === 'waiter' && (
           <div className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <OperationTableBoard
+              placements={layout.placements}
+              columns={layout.columns}
+              rows={layout.rows}
+              states={boardStates}
+              selectedTableId={selectedTableId}
+              onSelect={(table) => setSelectedTableId(table.tableId)}
+            />
+
+            <div className="flex items-center justify-between gap-2">
               <h3 className="text-[13px] font-bold flex items-center gap-2">
                 <Bell className="w-4 h-4 text-emerald-600" />
                 Món cần phục vụ
@@ -366,6 +415,9 @@ export default function StaffView({
                   <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full">{readyOrders.length}</span>
                 )}
               </h3>
+              <span className="text-[11px] font-semibold text-[#8E8E93]">
+                bấm bàn để phục vụ
+              </span>
             </div>
 
             {serveError && (
@@ -373,13 +425,15 @@ export default function StaffView({
             )}
 
             {readyOrders.length === 0 && servedOrders.length === 0 && (
-              <p className="text-[#8E8E93] text-xs text-center py-8">Chưa có đơn hàng nào.</p>
+              <p className="text-[#8E8E93] text-xs text-center py-8">
+                Chưa có đơn hàng nào.
+              </p>
             )}
 
             {readyOrders.map(order => (
               <div key={order.id} className="bg-[#F5F5F7] border border-emerald-200 p-4 rounded-[21px] shadow-sm">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-bold text-[12px]">{order.orderType === 'takeaway' ? 'Mang về' : `Bàn ${getTableName(order)}`}</span>
+                  <span className="font-bold text-[12px]">{order.orderType === 'takeaway' ? 'Mang về' : getTableName(order)}</span>
                   <span className="text-[10px] text-[#8E8E93]">#{order.id.slice(-6)}</span>
                 </div>
                 <div className="text-[11px] text-[#707070] space-y-1 mb-3">
@@ -406,7 +460,7 @@ export default function StaffView({
                 {servedOrders.map(order => (
                   <div key={order.id} className="bg-white border border-[#B5C7D8] p-3 rounded-[21px] opacity-60">
                     <div className="flex justify-between items-center">
-                      <span className="font-semibold text-[11px]">{order.orderType === 'takeaway' ? 'Mang về' : `Bàn ${getTableName(order)}`}</span>
+                      <span className="font-semibold text-[11px]">{order.orderType === 'takeaway' ? 'Mang về' : getTableName(order)}</span>
                       <span className="text-[10px] text-green-600">✓ Hoàn tất</span>
                     </div>
                   </div>
@@ -445,6 +499,22 @@ export default function StaffView({
             </button>
           ))}
         </div>
+      )}
+
+      {/* One table's workspace, opened from the floor plan (REQ-WAI-002). */}
+      {activeTab === 'waiter' && dialogTable && (
+        <WaiterTableDialog
+          table={dialogTable}
+          tenantId={tenantId}
+          tenantConfig={tenantConfig}
+          tables={storeTables}
+          canCollect={currentStaff.roles.isCashier}
+          readyOrders={readyOrders.filter(
+            (order) => order.tableId === dialogTable.tableId,
+          )}
+          onServe={(orderId) => void handleServeOrder(orderId)}
+          onClose={() => setSelectedTableId(null)}
+        />
       )}
     </motion.div>
   );

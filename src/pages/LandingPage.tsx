@@ -87,10 +87,10 @@ export default function LandingPage() {
                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link 
-                to="/simulator" 
+                to="/operation" 
                 className="flex items-center gap-3 bg-white text-zinc-900 px-8 py-4 font-mono font-bold text-sm uppercase tracking-widest transition-all cursor-pointer border-hard shadow-hard hover:-translate-y-1 active:translate-x-1 active:translate-y-1 active:shadow-none group"
               >
-                Xem mô phỏng
+                Xem vận hành
                 <ArrowDownRight className="w-5 h-5 group-hover:translate-x-1 group-hover:translate-y-1 transition-transform" />
               </Link>
             </div>

@@ -36,6 +36,7 @@
 
 - Deny access by default.
 - Scope tenant reads through active-membership Rules. A Staff membership document is private to its user; Owner Staff listings read only the bounded `staffDirectory` projection, which excludes PIN hashes and permission internals.
+- Keep the PayOS link mapping server-only. `payosPaymentLinks/{orderId}` joins a provider `orderCode` to a Tenant and an Order, so no client reads or writes it; the Cashier receives the link through `callablePaymentCreatePayosLink` (REQ-PAY-003, REQ-PAY-004).
 - Treat `users/{uid}.activeTenantId` as navigation state, not authorization proof.
 - Permit table-link reads only at `publicTableLinks/{token}`.
 - Permit Customer and cashier menu reads only from tenant `publicMenuItems` projections; private `menuItems` carrying cost/recipe/stock fields are Owner/Kitchen-only.

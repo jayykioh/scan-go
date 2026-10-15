@@ -6,6 +6,7 @@ import {
   type FeedbackKind,
   type FeedbackRecord,
   type FeedbackSubmitInput,
+  type FeedbackTopicKey,
   type FeedbackVerificationState,
 } from '../../../../shared/contracts/feedback.contract.js';
 import { maskPersonalData } from '../../shared/pii.js';
@@ -40,6 +41,8 @@ export interface BuildFeedbackRecordInput {
   message?: string;
   orderId: string | null;
   verificationState: FeedbackVerificationState;
+  /** The one topic the report was classified into (REQ-FDB-007). */
+  topicKey: FeedbackTopicKey;
   now: string;
 }
 
@@ -59,7 +62,7 @@ export function buildFeedbackRecord(
     verificationState: input.verificationState,
     actorType: 'customer',
     actorUid: null,
-    topicTags: [],
+    topicTags: [input.topicKey],
     createdAt: input.now,
   });
 }

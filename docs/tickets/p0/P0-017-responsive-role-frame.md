@@ -1,5 +1,12 @@
 # P0-017 — Responsive role frame
 
+> **Superseded 2026-10-14.** The small-viewport phone frame in REQ-UX-002 was
+> removed by product decision. `PhoneSimulator` is deleted; every operating page
+> is full-screen at any width, and `/simulator` is replaced by the `/operation`
+> hub. The checklist below is kept as history; for a small viewport the current
+> acceptance requires the opposite of its first item. See the REQ-UX-002 and
+> REQ-UX-003 rows in `docs/SRS.md` and `docs/traceability.md`.
+
 ## Requirement links
 
 REQ-UX-002, NFR-UX-001.

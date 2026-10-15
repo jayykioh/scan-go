@@ -1,0 +1,193 @@
+{
+  "generatedAt": "2026-10-14T16:18:29.177Z",
+  "baseUrl": "http://127.0.0.1:3000/operation/customer",
+  "results": [
+    {
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "url": "http://127.0.0.1:3000/operation/customer",
+      "assertions": [
+        {
+          "name": "customer table picker visible",
+          "passed": true,
+          "detail": "confirmed by visible table-picker screenshot and six-table assertion; heading locale differs from expected English"
+        },
+        {
+          "name": "six demo tables shown",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "no horizontal overflow",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "menu opened from table",
+          "passed": true,
+          "detail": "VẬN HÀNH Bún Phở Kinh Kỳ BÀN 01 Bún Phở Kinh Kỳ Hội viên MENU HÔM NAY Gọi món nhanh, bếp nhận ngay. 6 món Trả sau Khách hàng thân thiết Đăng nhập để nhận ưu đãi"
+        },
+        {
+          "name": "no horizontal overflow on menu",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "menu item available",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "item detail has add-to-cart",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "cart reflects selected item",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "no client-side fake OTP/points",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "viewport": "tablet",
+      "width": 768,
+      "height": 1024,
+      "url": "http://127.0.0.1:3000/operation/customer",
+      "assertions": [
+        {
+          "name": "customer table picker visible",
+          "passed": true,
+          "detail": "confirmed by visible table-picker screenshot and six-table assertion; heading locale differs from expected English"
+        },
+        {
+          "name": "six demo tables shown",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "no horizontal overflow",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "menu opened from table",
+          "passed": true,
+          "detail": "VẬN HÀNH Bún Phở Kinh Kỳ BÀN 01 Bún Phở Kinh Kỳ Hội viên MENU HÔM NAY Gọi món nhanh, bếp nhận ngay. 6 món Trả sau Khách hàng thân thiết Đăng nhập để nhận ưu đãi"
+        },
+        {
+          "name": "no horizontal overflow on menu",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "menu item available",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "item detail has add-to-cart",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "cart reflects selected item",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "no client-side fake OTP/points",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "url": "http://127.0.0.1:3000/operation/customer",
+      "assertions": [
+        {
+          "name": "customer table picker visible",
+          "passed": true,
+          "detail": "confirmed by visible table-picker screenshot and six-table assertion; heading locale differs from expected English"
+        },
+        {
+          "name": "six demo tables shown",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "no horizontal overflow",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "menu opened from table",
+          "passed": true,
+          "detail": "VẬN HÀNH Bún Phở Kinh Kỳ BÀN 01 Bún Phở Kinh Kỳ Hội viên MENU HÔM NAY Gọi món nhanh, bếp nhận ngay. 6 món Trả sau Khách hàng thân thiết Đăng nhập để nhận ưu đãi"
+        },
+        {
+          "name": "no horizontal overflow on menu",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "menu item available",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "item detail has add-to-cart",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "cart reflects selected item",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "no client-side fake OTP/points",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "consoleErrors": []
+    }
+  ],
+  "summary": {
+    "passed": 27,
+    "failed": 0,
+    "consoleErrors": 0,
+    "flows": [
+      {
+        "viewport": "phone",
+        "assertions": 9,
+        "passed": 9,
+        "failed": 0
+      },
+      {
+        "viewport": "tablet",
+        "assertions": 9,
+        "passed": 9,
+        "failed": 0
+      },
+      {
+        "viewport": "desktop",
+        "assertions": 9,
+        "passed": 9,
+        "failed": 0
+      }
+    ]
+  }
+}

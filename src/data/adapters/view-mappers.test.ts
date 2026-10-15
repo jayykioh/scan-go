@@ -73,6 +73,16 @@ describe('toViewOrder', () => {
       toViewOrder({ ...pendingOrderFixture, customerNote: 'ít cay' }).customerNote,
     ).toBe('ít cay');
   });
+
+  // The Cashier bill prints the returning customer's name, and the snapshot
+  // carries only the member id (REQ-CAS-003).
+  it('carries the Loyalty member id, null when the Order has none', () => {
+    expect(toViewOrder(pendingOrderFixture).loyaltyMemberId).toBeNull();
+    expect(
+      toViewOrder({ ...pendingOrderFixture, loyaltyMemberId: 'member_0900000001' })
+        .loyaltyMemberId,
+    ).toBe('member_0900000001');
+  });
 });
 
 describe('toTrackingOrder', () => {

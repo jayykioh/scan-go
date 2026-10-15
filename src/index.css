@@ -58,13 +58,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
+/* Tailwind preflight already resets the form font inside `@layer base`. A copy
+ * here would be unlayered and would beat every `text-*` utility, so every
+ * button and input would render at the 16px body size instead of its class. */
 button,
 select {
   touch-action: manipulation;

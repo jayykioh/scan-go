@@ -49,6 +49,10 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[ADR 0013](adr/0013-kitchen-manages-inventory-with-report.md)** | Kitchen manages inventory with a change report | Inventory permission changes |
 | **[ADR 0014](adr/0014-weighted-average-ingredient-cost.md)** | Weighted-average ingredient Cost with per-lot purchase price | Inventory Cost and price-warning changes |
 | **[ADR 0015](adr/0015-direct-firestore-reads.md)** | Read tenant data directly when the rules allow it | Client read path and data-access changes |
+| **[ADR 0016](adr/0016-promotion-engine-and-order-snapshot.md)** | Promotion engine and Order snapshot | Promotion and Order pricing changes |
+| **[ADR 0017](adr/0017-temporarily-disable-app-check-enforcement.md)** | Temporarily disable App Check enforcement | App Check rollout changes |
+| **[ADR 0018](adr/0018-table-floor-plan-and-live-table-status.md)** | Table floor plan and live table status | Table layout and floor-plan changes |
+| **[ADR 0019](adr/0019-waiter-takes-orders-at-the-table.md)** | Waiter takes orders at the table | Waiter and order-entry permission changes |
 | **[USP.md](USP.md)** | Unique Selling Proposition | Writing marketing copy, sales pitches, positioning |
 | **[SWOT.md](SWOT.md)** | Strategic analysis | Quarterly reviews, investor updates, risk assessment |
 | **[PESTEL.md](PESTEL.md)** | Macro-environment analysis | Quarterly strategy reviews, investor discussions, regulatory tracking |

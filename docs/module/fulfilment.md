@@ -1,6 +1,6 @@
 # Fulfilment Module
 
-- Serves: REQ-KDS-001, REQ-NOT-001, REQ-WAI-001
+- Serves: REQ-KDS-001, REQ-NOT-001, REQ-WAI-001, REQ-WAI-002
 - Owns: Kitchen and Waiter workflow coordination and notification effects
 - Does not own: Orders, Inventory, Catalog, or Payment records
 

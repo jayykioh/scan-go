@@ -1,21 +1,20 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, Check, ChevronLeft, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Ticket, X } from 'lucide-react';
+import { AlertCircle, Check, ChevronLeft, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Star, Ticket, X } from 'lucide-react';
 import { INDUSTRY_TEMPLATES } from '../mockData';
-import { LoyaltyMember, MenuItem, Order, OrderItem, TableConfig, TenantConfig } from '../types';
+import { MenuItem, Order, OrderItem, TableConfig, TenantConfig } from '../types';
 import type { PublicOrderTracking } from '@contracts/order.contract';
 import type { PromotionEvaluationResult } from '@contracts/promotion.contract';
 import type { I18nMessageKey } from '@contracts/i18n.contract';
 import { NOTIFICATION_BANNER_MS } from '@contracts/notification.contract';
 import { CUSTOMER_NOTE_MAX_LENGTH } from '@contracts/order.contract';
+import { FEEDBACK_MESSAGE_MAX_LENGTH } from '@contracts/feedback.contract';
 import { resolveInterfaceLocale, translate } from '../data/adapters/i18n.adapter';
 
 interface CustomerProps {
   tenantConfig: TenantConfig;
   menuItems: MenuItem[];
   orders: Order[];
-  loyaltyMembers: LoyaltyMember[];
-  setLoyaltyMembers: React.Dispatch<React.SetStateAction<LoyaltyMember[]>>;
   simulationTableId: string;
   setSimulationTableId: (val: string) => void;
   tables: TableConfig[];
@@ -50,6 +49,16 @@ interface CustomerProps {
   menuError?: string | null;
   /** Server public tracking projection for the submitted Order. */
   tracking?: PublicOrderTracking | null;
+  /**
+   * Customer report path (REQ-FDB-001, REQ-FDB-007). The public page owns the
+   * callable and the tracking token; the demo simulator passes no handler, so a
+   * simulated guest never writes a real report.
+   */
+  onSubmitFeedback?: (input: {
+    kind: 'review' | 'issue';
+    rating?: number;
+    message?: string;
+  }) => Promise<void>;
 }
 
 type CustomerStep = 'table_pick' | 'menu' | 'tracking';
@@ -66,8 +75,6 @@ export default function CustomerView({
   tenantConfig,
   menuItems,
   orders,
-  loyaltyMembers,
-  setLoyaltyMembers,
   simulationTableId,
   setSimulationTableId,
   tables,
@@ -76,6 +83,7 @@ export default function CustomerView({
   onEvaluatePromotion,
   isOnline = true,
   menuError = null,
+  onSubmitFeedback,
 }: CustomerProps) {
   // The Customer surface opens in the saved or browser locale. Owner menu
   // content is never passed through `t` (REQ-I18N-001).
@@ -90,12 +98,6 @@ export default function CustomerView({
   const [query, setQuery] = useState('');
   const [showCart, setShowCart] = useState(false);
   const [showLoyalty, setShowLoyalty] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [loyaltyProfile, setLoyaltyProfile] = useState<LoyaltyMember | null>(null);
-  const [redeemedPoints, setRedeemedPoints] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [otpError, setOtpError] = useState('');
   const [connectionProblem, setConnectionProblem] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -207,45 +209,6 @@ export default function CustomerView({
       .filter(item => item.quantity > 0));
   };
 
-  const saveLoyaltyProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phoneNumber.trim().length < 9) return;
-    const existing = loyaltyMembers.find(member => member.phone === phoneNumber.trim());
-    if (existing) {
-      setLoyaltyProfile(existing);
-    } else {
-      const created: LoyaltyMember = {
-        phone: phoneNumber.trim(),
-        name: customerName.trim() || t('customer.loyalty.newMember'),
-        points: 15,
-        totalSpent: 0,
-        visits: 1,
-        isVerified: false,
-      };
-      setLoyaltyProfile(created);
-      setLoyaltyMembers(prev => [...prev, created]);
-    }
-    setShowLoyalty(false);
-  };
-
-  const redeemWithOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loyaltyProfile) return;
-    if (loyaltyProfile.points < 30) {
-      setOtpError(t('customer.loyalty.pointsNeeded'));
-      return;
-    }
-    if (otpCode.length < 4) {
-      setOtpError(t('customer.loyalty.otpRequired'));
-      return;
-    }
-    const updated = { ...loyaltyProfile, points: Math.max(0, loyaltyProfile.points - 30), isVerified: true };
-    setLoyaltyProfile(updated);
-    setLoyaltyMembers(prev => prev.map(member => member.phone === updated.phone ? updated : member));
-    setRedeemedPoints(true);
-    setOtpError('');
-  };
-
   const submitOrder = async () => {
     if (cart.length === 0 || isSubmitting) return;
 
@@ -338,7 +301,12 @@ export default function CustomerView({
       </AnimatePresence>
       <div className="relative flex-1 overflow-y-auto pb-28">
         {step === 'tracking' ? (
-          <TrackingScreen orders={activeCustomerOrders} tableName={tableName} onBack={() => setStep('menu')} />
+          <TrackingScreen
+            orders={activeCustomerOrders}
+            tableName={tableName}
+            onBack={() => setStep('menu')}
+            onSubmitFeedback={onSubmitFeedback}
+          />
         ) : (
           <>
             <section className="sticky top-0 z-20 bg-[#f7f7f8]/90 backdrop-blur-xl px-4 pt-4 pb-3 border-b border-white/70">
@@ -347,9 +315,11 @@ export default function CustomerView({
                   <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.16em] truncate">{tableName}</p>
                   <h1 className="text-[22px] font-black tracking-[-0.04em] truncate">{tenantConfig.shopName}</h1>
                 </div>
-                <button type="button" onClick={() => setShowLoyalty(true)} className="shrink-0 rounded-full bg-white px-3 py-2 text-[11px] font-bold text-zinc-800 shadow-sm border border-zinc-100">
-                  {loyaltyProfile ? `${loyaltyProfile.points} ${t('customer.loyalty.points')}` : t('customer.member.short')}
-                </button>
+                {tenantConfig.loyaltyEnabled && (
+                  <button type="button" onClick={() => setShowLoyalty(true)} className="shrink-0 rounded-full bg-white px-3 py-2 text-[11px] font-bold text-zinc-800 shadow-sm border border-zinc-100">
+                    {t('customer.member.short')}
+                  </button>
+                )}
               </div>
 
               <div className="mt-3 flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm border border-zinc-100">
@@ -399,31 +369,16 @@ export default function CustomerView({
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-black text-zinc-950">{t('customer.loyalty.title')}</p>
-                      <p className="text-xs text-zinc-500 truncate">
-                        {loyaltyProfile ? `${loyaltyProfile.points} ${t('customer.loyalty.pointsAccumulated')}` : t('customer.loyalty.loginPromptShort')}
-                      </p>
+                      <p className="text-xs text-zinc-500 truncate">{t('customer.loyalty.loginPromptShort')}</p>
                     </div>
-                    <button 
+                    <button
+                      type="button"
                       onClick={() => setShowLoyalty(true)}
                       className="shrink-0 rounded-full bg-zinc-950 text-white px-3 py-1.5 text-[11px] font-bold"
                     >
-                      {loyaltyProfile ? t('customer.loyalty.redeemGift') : t('customer.loyalty.login')}
+                      {t('customer.loyalty.login')}
                     </button>
                   </div>
-                  {loyaltyProfile && (
-                    <div className="pt-2 border-t border-zinc-100">
-                      <div className="flex justify-between text-[11px] font-bold text-zinc-500 mb-1.5">
-                        <span>{t('customer.loyalty.silverTier')}</span>
-                        <span>{t('customer.loyalty.progressHint').replace('{points}', String(loyaltyProfile.points))}</span>
-                      </div>
-                      <div className="w-full bg-zinc-100 rounded-full h-1.5 overflow-hidden">
-                        <div 
-                          className="h-full bg-emerald-500 rounded-full transition-all"
-                          style={{ width: `${Math.min(100, (loyaltyProfile.points / 30) * 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -493,7 +448,7 @@ export default function CustomerView({
           <CartSheet locale={locale} cart={cart} cartTotal={cartTotal} finalTotal={finalTotal} promoDiscount={promoDiscount} giftLines={giftLines} appliedPromotionName={appliedPromotionName} codeRequired={codeRequired} promotionCode={promotionCode} onPromotionCode={setPromotionCode} promotionError={promotionError} paymentMode={tenantConfig.paymentMode} onQty={updateCartQty} onClose={() => setShowCart(false)} onSubmit={submitOrder} customerNote={customerNote} onCustomerNote={setCustomerNote} isOnline={isOnline} isSubmitting={isSubmitting} errorMessage={connectionProblem || submitError} />
         )}
         {showLoyalty && (
-          <LoyaltySheet profile={loyaltyProfile} phone={phoneNumber} name={customerName} otp={otpCode} otpError={otpError} redeemed={redeemedPoints} onPhone={setPhoneNumber} onName={setCustomerName} onOtp={(value: string) => { setOtpCode(value.replace(/\D/g, '')); setOtpError(''); }} onSave={saveLoyaltyProfile} onRedeem={redeemWithOtp} onClose={() => setShowLoyalty(false)} />
+          <LoyaltySheet onClose={() => setShowLoyalty(false)} />
         )}
       </AnimatePresence>
     </div>
@@ -668,43 +623,34 @@ function CartSheet({ cart, cartTotal, finalTotal, promoDiscount, giftLines = [],
   );
 }
 
-function LoyaltySheet({ profile, phone, name, otp, otpError, redeemed, onPhone, onName, onOtp, onSave, onRedeem, onClose }: any) {
+function LoyaltySheet({ onClose }: { onClose: () => void }) {
   const t = (key: I18nMessageKey) => translate(resolveInterfaceLocale(), key);
   return (
     <Sheet onClose={onClose}>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-[28px] font-black tracking-[-0.05em]">{t('customer.member.short')}</h2>
-            <span className="text-[9px] font-bold uppercase text-zinc-400">{t('customer.loyalty.sheet.demo')}</span>
-          </div>
-          <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100"><X className="h-5 w-5" /></button>
+          <h2 className="text-[28px] font-black tracking-[-0.05em]">{t('customer.member.short')}</h2>
+          <button type="button" onClick={onClose} aria-label={t('common.close')} className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100"><X className="h-5 w-5" /></button>
         </div>
-        {profile ? (
-          <form onSubmit={onRedeem} className="space-y-4">
-            <div className="rounded-[28px] bg-gradient-to-br from-zinc-950 to-zinc-800 p-5 text-white">
-              <Gift className="h-6 w-6 text-orange-300" />
-              <p className="mt-5 text-sm text-zinc-300">{profile.name}</p>
-              <p className="text-[36px] font-black tracking-[-0.06em]">{profile.points} {t('customer.loyalty.points')}</p>
-            </div>
-            <input value={otp} onChange={e => onOtp(e.target.value)} inputMode="numeric" maxLength={4} placeholder={t('customer.loyalty.sheet.otpPlaceholder')} className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 text-center font-black tracking-[0.3em] outline-none border border-zinc-100" />
-            {otpError && <p className="text-xs font-bold text-red-600">{otpError}</p>}
-            <button type="submit" disabled={redeemed} className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black disabled:opacity-50">{redeemed ? t('customer.loyalty.sheet.redeemedOffer') : t('customer.loyalty.sheet.redeemOffer')}</button>
-            <p className="text-xs text-zinc-500">{t('customer.loyalty.sheet.redeemNote')}</p>
-          </form>
-        ) : (
-          <form onSubmit={onSave} className="space-y-3">
-            <input value={phone} onChange={e => onPhone(e.target.value.replace(/\D/g, ''))} inputMode="tel" placeholder={t('customer.loyalty.sheet.phone')} className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 font-bold outline-none border border-zinc-100" />
-            <input value={name} onChange={e => onName(e.target.value)} placeholder={t('customer.loyalty.sheet.namePlaceholder')} className="w-full rounded-[22px] bg-zinc-50 px-4 py-3 font-bold outline-none border border-zinc-100" />
-            <button type="submit" className="w-full rounded-[24px] bg-zinc-950 py-4 text-white font-black">{t('customer.loyalty.sheet.saveMember')}</button>
-          </form>
-        )}
+        <div className="rounded-[24px] bg-amber-50 p-4 text-sm text-amber-900" role="status">
+          {t('customer.loyalty.loginPromptShort')}. {t('customer.loyalty.verificationRequired')}
+        </div>
       </div>
     </Sheet>
   );
 }
 
-function TrackingScreen({ orders, tableName, onBack }: { orders: Order[]; tableName: string; onBack: () => void }) {
+function TrackingScreen({
+  orders,
+  tableName,
+  onBack,
+  onSubmitFeedback,
+}: {
+  orders: Order[];
+  tableName: string;
+  onBack: () => void;
+  onSubmitFeedback?: CustomerProps['onSubmitFeedback'];
+}) {
   const t = (key: I18nMessageKey) => translate(resolveInterfaceLocale(), key);
   return (
     <div className="min-h-full p-4 space-y-4">
@@ -742,6 +688,118 @@ function TrackingScreen({ orders, tableName, onBack }: { orders: Order[]; tableN
           </div>
         </div>
       ))}
+      {onSubmitFeedback && <TrackingFeedbackForm onSubmitFeedback={onSubmitFeedback} />}
     </div>
+  );
+}
+
+/**
+ * Guest report form (REQ-FDB-001, REQ-FDB-007). A rating submits a review, a
+ * message alone submits an issue, and the server decides the topic and the
+ * verification state. The form sends no identity field.
+ */
+function TrackingFeedbackForm({
+  onSubmitFeedback,
+}: {
+  onSubmitFeedback: NonNullable<CustomerProps['onSubmitFeedback']>;
+}) {
+  const t = (key: I18nMessageKey) => translate(resolveInterfaceLocale(), key);
+  const [rating, setRating] = useState(0);
+  const [issueArea, setIssueArea] = useState('service');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const trimmed = message.trim();
+  const canSubmit = (rating > 0 || trimmed.length > 0) && !sending;
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!canSubmit) return;
+    setSending(true);
+    setError(null);
+    try {
+      const categorizedMessage = trimmed
+        ? `[${t(`customer.feedback.area.${issueArea}` as I18nMessageKey)}] ${trimmed}`
+        : undefined;
+      await onSubmitFeedback(
+        rating > 0
+          ? { kind: 'review', rating, ...(categorizedMessage ? { message: categorizedMessage } : {}) }
+          : { kind: 'issue', message: categorizedMessage ?? '' },
+      );
+      setSent(true);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : t('customer.feedback.error'),
+      );
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <div className="rounded-[28px] bg-white p-6 text-center border border-emerald-100">
+        <Check className="mx-auto h-8 w-8 text-emerald-600" />
+        <p className="mt-2 font-black text-zinc-950">{t('customer.feedback.success')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-[28px] bg-white p-4 shadow-sm border border-zinc-100 space-y-3">
+      <p className="font-black text-zinc-950">{t('customer.feedback.title')}</p>
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('customer.feedback.ratingLabel')}</p>
+        <div className="mt-2 flex gap-1">
+          {[1, 2, 3, 4, 5].map(value => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRating(value)}
+              aria-label={`${value}/5`}
+              aria-pressed={rating === value}
+              className={`flex h-9 w-9 items-center justify-center rounded-full border ${value <= rating ? 'border-amber-400 bg-amber-400 text-white' : 'border-zinc-100 bg-zinc-50 text-zinc-300'}`}
+            >
+              <Star className="h-4 w-4" />
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="block">
+        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('customer.feedback.areaLabel')}</span>
+        <select
+          value={issueArea}
+          onChange={event => setIssueArea(event.target.value)}
+          className="mt-2 w-full rounded-[22px] bg-zinc-50 px-4 py-3 text-sm font-semibold outline-none border border-zinc-100"
+        >
+          {(['service', 'food', 'amenities', 'other'] as const).map(area => (
+            <option key={area} value={area}>{t(`customer.feedback.area.${area}`)}</option>
+          ))}
+        </select>
+      </label>
+      <label className="block">
+        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('customer.feedback.messageLabel')}</span>
+        <textarea
+          value={message}
+          onChange={event => setMessage(event.target.value)}
+          maxLength={FEEDBACK_MESSAGE_MAX_LENGTH}
+          rows={3}
+          placeholder={t('customer.feedback.messagePlaceholder')}
+          className="mt-2 w-full rounded-[22px] bg-zinc-50 px-4 py-3 text-sm outline-none border border-zinc-100"
+        />
+      </label>
+      {error && <p role="alert" className="text-sm font-bold text-red-600">{error}</p>}
+      <button
+        type="submit"
+        disabled={!canSubmit}
+        className="w-full rounded-full bg-zinc-950 px-4 py-3 text-sm font-black text-white disabled:opacity-40"
+      >
+        {sending ? t('customer.feedback.submitting') : t('customer.feedback.submit')}
+      </button>
+    </form>
   );
 }

@@ -121,6 +121,9 @@ export function toViewOrder(order: OrderSnapshot): Order {
     total: order.totalVnd,
     status: order.status as OrderStatus,
     timestamp: new Date(order.createdAt),
+    // The Cashier prints the member's name on the bill (REQ-CAS-003); the
+    // snapshot carries the member id, never a name or a phone.
+    loyaltyMemberId: order.loyaltyMemberId,
     paymentMode: order.paymentMode === 'payFirst' ? 'Pay-First' : 'Pay-Later',
     // The server tracks payment via Ordering; a Pay-First Order carries the
     // confirmed timestamp so Kitchen releases it only after settlement.

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
 import {
   Boxes,
   ClipboardList,
@@ -88,8 +87,15 @@ const EMPTY_FORM: IngredientForm = {
 const ACTION_LABEL: Record<string, string> = {
   IngredientChanged: 'Nguyên liệu',
   RecipeChanged: 'Công thức',
-  StockAdjusted: 'Điều chỉnh kho',
+  StockAdjusted: 'Tồn kho',
   StockCountRecorded: 'Kiểm kê',
+};
+
+/** Reason codes are stored as codes; the report reads them in Vietnamese. */
+const REASON_LABEL: Record<string, string> = {
+  waste: 'Hao hụt / hết hạn',
+  manual_adjustment: 'Điều chỉnh khác',
+  stock_in: 'Nhập hàng',
 };
 
 const COMMAND_LABEL: Record<string, string> = {
@@ -127,6 +133,54 @@ function errorMessage(error: unknown): string {
   return 'Thao tác kho thất bại.';
 }
 
+/** Filter chip of the report view. */
+function chipClass(active: boolean): string {
+  return `font-mono font-bold text-[10px] uppercase tracking-widest px-3 py-1.5 border-hard cursor-pointer ${
+    active ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-900 hover:bg-zinc-100'
+  }`;
+}
+
+/** Ingredients per page; the list is paged instead of rendering everything. */
+export const INGREDIENT_PAGE_SIZE = 10;
+
+export function pageCount(total: number, size: number): number {
+  return Math.max(1, Math.ceil(total / size));
+}
+
+/** One page of a list; the requested page is clamped to the last real page. */
+export function pageSlice<T>(items: T[], page: number, size: number): T[] {
+  const safe = Math.min(Math.max(page, 0), pageCount(items.length, size) - 1);
+  return items.slice(safe * size, safe * size + size);
+}
+
+/** Waste is a stock deduction the kitchen recorded with the waste reason. */
+export function isWasteEntry(entry: InventoryChangeEntry): boolean {
+  return entry.action === 'StockAdjusted' && entry.reason === 'waste';
+}
+
+/**
+ * Quantities typed for a bulk waste. An empty row is skipped; a row that is not
+ * a whole number above zero is counted as invalid instead of silently dropped.
+ */
+export function parseBulkWasteQuantities(
+  ingredientIds: string[],
+  quantities: Record<string, string>,
+): { rows: Array<{ ingredientId: string; delta: number }>; invalid: number } {
+  const rows: Array<{ ingredientId: string; delta: number }> = [];
+  let invalid = 0;
+  for (const ingredientId of ingredientIds) {
+    const raw = (quantities[ingredientId] ?? '').trim();
+    if (!raw) continue;
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value <= 0) {
+      invalid += 1;
+      continue;
+    }
+    rows.push({ ingredientId, delta: -value });
+  }
+  return { rows, invalid };
+}
+
 /** Base unit of a purchase unit, matched against an ingredient base unit. */
 function isUnitCompatible(unit: UnitInput, baseUnit: Ingredient['baseUnit']): boolean {
   if (unit === 'kg' || unit === 'g') return baseUnit === 'g';
@@ -139,9 +193,17 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
   const [ingredients, inventoryState] = useStoreSlice('ingredients');
   const listError = inventoryState.error;
   const [report, setReport] = useState<InventoryChangeEntry[]>([]);
-  const [showReport, setShowReport] = useState(false);
+  const [view, setView] = useState<'list' | 'report'>('list');
+  const [wasteOnly, setWasteOnly] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkWasteOpen, setBulkWasteOpen] = useState(false);
+  const [bulkQuantities, setBulkQuantities] = useState<Record<string, string>>({});
+  const [bulkReason, setBulkReason] = useState<'waste' | 'manual_adjustment'>(
+    'waste',
+  );
+  const [bulkNote, setBulkNote] = useState('');
   const [form, setForm] = useState<IngredientForm | null>(null);
   const [archiving, setArchiving] = useState<Ingredient | null>(null);
   const [adjusting, setAdjusting] = useState<Ingredient | null>(null);
@@ -158,6 +220,45 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
     [ingredients],
   );
 
+  // The kitchen tablet never renders the whole catalogue at once.
+  const [page, setPage] = useState(0);
+  const pages = pageCount(activeIngredients.length, INGREDIENT_PAGE_SIZE);
+  const safePage = Math.min(page, pages - 1);
+  const pageItems = pageSlice(activeIngredients, safePage, INGREDIENT_PAGE_SIZE);
+
+  // Selection drives the bulk waste entry, so it only ever holds live rows.
+  const selectedIngredients = useMemo(
+    () =>
+      activeIngredients.filter((item) => selectedIds.includes(item.ingredientId)),
+    [activeIngredients, selectedIds],
+  );
+  const wasteReport = useMemo(() => report.filter(isWasteEntry), [report]);
+  const visibleReport = wasteOnly ? wasteReport : report;
+  const allPageSelected =
+    pageItems.length > 0 &&
+    pageItems.every((item) => selectedIds.includes(item.ingredientId));
+
+  const toggleSelected = (ingredientId: string) =>
+    setSelectedIds((previous) =>
+      previous.includes(ingredientId)
+        ? previous.filter((id) => id !== ingredientId)
+        : [...previous, ingredientId],
+    );
+
+  const togglePageSelected = () =>
+    setSelectedIds((previous) =>
+      allPageSelected
+        ? previous.filter(
+            (id) => !pageItems.some((item) => item.ingredientId === id),
+          )
+        : [
+            ...new Set([
+              ...previous,
+              ...pageItems.map((item) => item.ingredientId),
+            ]),
+          ],
+    );
+
   const loadReport = useCallback(async () => {
     setLoadingReport(true);
     try {
@@ -171,8 +272,8 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
   }, [toast]);
 
   useEffect(() => {
-    if (showReport) void loadReport();
-  }, [showReport, loadReport]);
+    if (view === 'report') void loadReport();
+  }, [view, loadReport]);
 
   const openCreate = () => {
     setForm({ ...EMPTY_FORM });
@@ -331,6 +432,50 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
     }
   };
 
+  /** One note and one reason cover every ingredient picked for waste. */
+  const handleBulkWaste = async () => {
+    const { rows, invalid } = parseBulkWasteQuantities(
+      selectedIngredients.map((item) => item.ingredientId),
+      bulkQuantities,
+    );
+    if (invalid > 0) {
+      toast.error('Số lượng hao hụt phải là số nguyên lớn hơn 0');
+      return;
+    }
+    if (rows.length === 0) {
+      toast.error('Nhập số lượng hao hụt cho ít nhất một nguyên liệu');
+      return;
+    }
+    const note = bulkNote.trim();
+    if (!note) {
+      toast.error('Cần ghi lý do khi giảm kho (hết hạn, hỏng, hoặc lý do khác)');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const stamp = Date.now();
+      for (const row of rows) {
+        await adjustStock(
+          row.ingredientId,
+          row.delta,
+          bulkReason,
+          `inv-waste-${row.ingredientId}-${stamp}`,
+          note,
+        );
+      }
+      toast.success(`Đã ghi hao hụt ${rows.length} nguyên liệu`);
+      setBulkWasteOpen(false);
+      setBulkQuantities({});
+      setBulkNote('');
+      setSelectedIds([]);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className={embedded ? 'p-4 space-y-4' : 'p-6 md:p-12 w-full max-w-6xl mx-auto animate-fadeIn space-y-6'}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -346,25 +491,51 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
           </div>
         )}
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setShowReport((value) => !value)}
-            className={`font-mono font-bold text-xs uppercase tracking-widest px-4 py-2.5 border-hard flex items-center gap-2 transition-colors cursor-pointer ${
-              showReport ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-900 hover:bg-zinc-100'
-            }`}
-          >
-            <History className="w-4 h-4" />
-            Báo cáo thay đổi
-          </button>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="bg-orange-600 text-white font-mono font-bold text-xs uppercase tracking-widest px-4 py-2.5 border-hard shadow-hard flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Thêm nguyên liệu
-          </button>
+          {view === 'list' && (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="bg-orange-600 text-white font-mono font-bold text-xs uppercase tracking-widest px-4 py-2.5 border-hard shadow-hard flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Thêm nguyên liệu
+            </button>
+          )}
         </div>
+      </div>
+
+      <div
+        role="tablist"
+        aria-label="Kho nguyên liệu"
+        data-testid="inventory-tabs"
+        className="flex gap-2 border-hard bg-white p-1"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === 'list'}
+          data-testid="inventory-tab-list"
+          onClick={() => setView('list')}
+          className={`flex-1 font-mono font-bold text-[11px] uppercase tracking-normal whitespace-nowrap px-2 py-2.5 border-hard flex items-center justify-center gap-2 cursor-pointer sm:text-xs sm:tracking-widest sm:px-4 ${
+            view === 'list' ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-900 hover:bg-zinc-100'
+          }`}
+        >
+          <Boxes className="w-4 h-4" />
+          Nguyên liệu
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === 'report'}
+          data-testid="inventory-tab-report"
+          onClick={() => setView('report')}
+          className={`flex-1 font-mono font-bold text-[11px] uppercase tracking-normal whitespace-nowrap px-2 py-2.5 border-hard flex items-center justify-center gap-2 cursor-pointer sm:text-xs sm:tracking-widest sm:px-4 ${
+            view === 'report' ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-900 hover:bg-zinc-100'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          Báo cáo kho
+        </button>
       </div>
 
       {listError && (
@@ -373,101 +544,194 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
         </div>
       )}
 
-      <AnimatePresence>
-        {showReport && (
-          <motion.section
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-white border-hard shadow-hard">
-              <div className="flex items-center justify-between p-4 border-b border-hard">
-                <div className="flex items-center gap-2">
-                  <ClipboardList className="w-4 h-4 text-orange-600" />
-                  <span className="font-mono text-xs font-bold uppercase tracking-widest text-zinc-900">
-                    Báo cáo thay đổi kho ({report.length})
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void loadReport()}
-                  className="p-2 text-zinc-500 hover:text-zinc-900 cursor-pointer"
-                  title="Tải lại báo cáo"
-                >
-                  <RefreshCw className={`w-4 h-4 ${loadingReport ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
-              <div className="max-h-80 overflow-y-auto divide-y divide-zinc-100">
-                {report.length === 0 ? (
-                  <p className="p-6 text-center text-sm text-zinc-500">
-                    Chưa có thay đổi nào được ghi nhận.
-                  </p>
-                ) : (
-                  report.map((entry) => (
-                    <div key={entry.eventId} className="flex items-start justify-between gap-3 p-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-zinc-900">
-                          {describeChange(entry)}
-                          {entry.targetName ? `: ${entry.targetName}` : ''}
-                        </p>
-                        <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 mt-0.5">
-                          {entry.actorType}
-                          {entry.role ? ` · ${entry.role}` : ''} · {formatTime(entry.createdAt)}
-                          {entry.quantityDelta !== null
-                            ? ` · ${entry.quantityDelta > 0 ? '+' : ''}${entry.quantityDelta}`
-                            : ''}
-                        </p>
-                        {entry.reason && (
-                          <p className="text-xs text-zinc-500 mt-1">Lý do: {entry.reason}</p>
-                        )}
-                        {entry.note && (
-                          <p className="text-xs text-zinc-500 mt-1">Ghi chú: {entry.note}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+      {view === 'report' && (
+        <section className="bg-white border-hard shadow-hard">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-hard">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-orange-600" />
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-zinc-900">
+                Báo cáo thay đổi kho ({visibleReport.length})
+              </span>
             </div>
-          </motion.section>
-        )}
-      </AnimatePresence>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                data-testid="report-filter-all"
+                onClick={() => setWasteOnly(false)}
+                className={chipClass(!wasteOnly)}
+              >
+                Tất cả ({report.length})
+              </button>
+              <button
+                type="button"
+                data-testid="report-filter-waste"
+                onClick={() => setWasteOnly(true)}
+                className={chipClass(wasteOnly)}
+              >
+                Hao hụt ({wasteReport.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => void loadReport()}
+                className="p-2 text-zinc-500 hover:text-zinc-900 cursor-pointer"
+                title="Tải lại báo cáo"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingReport ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
+          <div className="max-h-[60vh] overflow-y-auto divide-y divide-zinc-100">
+            {visibleReport.length === 0 ? (
+              <p className="p-6 text-center text-sm text-zinc-500">
+                Chưa có thay đổi nào được ghi nhận.
+              </p>
+            ) : (
+              visibleReport.map((entry) => (
+                <div
+                  key={entry.eventId}
+                  data-testid="report-row"
+                  className="flex items-start justify-between gap-3 p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-zinc-900 flex flex-wrap items-center gap-2">
+                      {describeChange(entry)}
+                      {entry.targetName ? `: ${entry.targetName}` : ''}
+                      {isWasteEntry(entry) && (
+                        <span
+                          data-testid="report-waste-badge"
+                          className="font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 border-hard bg-red-100 text-red-700"
+                        >
+                          Hao hụt
+                        </span>
+                      )}
+                    </p>
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 mt-0.5">
+                      {entry.actorType}
+                      {entry.role ? ` · ${entry.role}` : ''} · {formatTime(entry.createdAt)}
+                      {entry.quantityDelta !== null
+                        ? ` · ${entry.quantityDelta > 0 ? '+' : ''}${entry.quantityDelta}`
+                        : ''}
+                    </p>
+                    {entry.reason && (
+                      <p className="text-xs text-zinc-500 mt-1">
+                        Lý do: {REASON_LABEL[entry.reason] ?? entry.reason}
+                      </p>
+                    )}
+                    {entry.note && (
+                      <p className="text-xs text-zinc-500 mt-1">Ghi chú: {entry.note}</p>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      )}
 
-      <div className="bg-white border-hard shadow-hard overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[820px]">
+      {view === 'list' && (
+        <>
+      {selectedIngredients.length > 0 && (
+        <div
+          data-testid="bulk-waste-bar"
+          className="flex flex-wrap items-center justify-between gap-3 border-hard bg-amber-50 px-4 py-3"
+        >
+          <p className="font-mono text-xs font-bold uppercase tracking-widest text-zinc-900">
+            Đã chọn {selectedIngredients.length} nguyên liệu
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-testid="bulk-waste-open"
+              onClick={() => {
+                setBulkQuantities({});
+                setBulkNote('');
+                setBulkReason('waste');
+                setBulkWasteOpen(true);
+              }}
+              className="bg-red-600 text-white font-mono font-bold text-xs uppercase tracking-widest px-4 py-2.5 border-hard hover:bg-red-700 cursor-pointer"
+            >
+              Ghi hao hụt
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="bg-white text-zinc-900 font-mono font-bold text-xs uppercase tracking-widest px-4 py-2.5 border-hard hover:bg-zinc-100 cursor-pointer"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div
+        data-testid="ingredient-table-scroll"
+        className="bg-white border-hard shadow-hard overflow-x-auto"
+      >
+        <table className="w-full text-left border-collapse lg:min-w-[880px]">
           <thead>
             <tr className="bg-zinc-950 text-white font-mono text-[10px] uppercase tracking-widest">
-              <th className="p-4 font-bold border-b border-hard">Nguyên liệu</th>
-              <th className="p-4 font-bold border-b border-hard">Đơn vị</th>
-              <th className="p-4 font-bold border-b border-hard">Giá nhập</th>
-              <th className="p-4 font-bold border-b border-hard">Tồn kho</th>
-              <th className="p-4 font-bold border-b border-hard">Trạng thái</th>
-              <th className="p-4 font-bold border-b border-hard text-right">Thao tác</th>
+              <th className="p-2 font-bold border-b border-hard lg:p-4">
+                <input
+                  type="checkbox"
+                  checked={allPageSelected}
+                  onChange={togglePageSelected}
+                  aria-label="Chọn tất cả nguyên liệu trên trang"
+                  className="accent-orange-600 cursor-pointer"
+                />
+              </th>
+              <th className="p-2 font-bold border-b border-hard lg:p-4">Nguyên liệu</th>
+              <th className="hidden p-2 font-bold border-b border-hard lg:table-cell lg:p-4">Đơn vị</th>
+              <th className="hidden p-2 font-bold border-b border-hard lg:table-cell lg:p-4">Giá nhập</th>
+              <th className="p-2 font-bold border-b border-hard lg:p-4">Tồn kho</th>
+              <th className="hidden p-2 font-bold border-b border-hard lg:table-cell lg:p-4">Trạng thái</th>
+              <th className="p-2 font-bold border-b border-hard text-right lg:p-4">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {activeIngredients.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-zinc-500 font-mono text-sm uppercase tracking-widest">
+                <td colSpan={7} className="p-8 text-center text-zinc-500 font-mono text-sm uppercase tracking-widest">
                   Chưa có nguyên liệu. Bấm "Thêm nguyên liệu".
                 </td>
               </tr>
             ) : (
-              activeIngredients.map((ingredient) => {
+              pageItems.map((ingredient) => {
                 const low = ingredient.stockQuantity <= ingredient.lowStockThreshold;
                 return (
-                  <tr key={ingredient.ingredientId} className="hover:bg-zinc-50 transition-colors">
-                    <td className="p-4 border-b border-hard">
+                  <tr
+                    key={ingredient.ingredientId}
+                    data-testid="ingredient-row"
+                    className="hover:bg-zinc-50 transition-colors"
+                  >
+                    <td className="p-2 border-b border-hard lg:p-4">
+                      <input
+                        type="checkbox"
+                        data-testid="ingredient-select"
+                        checked={selectedIds.includes(ingredient.ingredientId)}
+                        onChange={() => toggleSelected(ingredient.ingredientId)}
+                        aria-label={`Chọn ${ingredient.name}`}
+                        className="accent-orange-600 cursor-pointer"
+                      />
+                    </td>
+                    <td className="p-2 border-b border-hard lg:p-4">
                       <p className="font-bold text-zinc-900">{ingredient.name}</p>
                       <p className="font-mono text-[10px] text-zinc-400 mt-1">
                         #{ingredient.ingredientId.slice(-8)}
                       </p>
+                      <span
+                        className={`mt-1 inline-block font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 border-hard lg:hidden ${
+                          ingredient.isActive
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-zinc-200 text-zinc-600'
+                        }`}
+                      >
+                        {ingredient.isActive ? 'Đang dùng' : 'Tạm ngưng'}
+                      </span>
                     </td>
-                    <td className="p-4 font-mono text-xs text-zinc-600 border-b border-hard">
+                    <td className="hidden p-2 font-mono text-xs text-zinc-600 border-b border-hard lg:table-cell lg:p-4">
                       {purchaseUnitLabel(ingredient)}
                     </td>
-                    <td className="p-4 font-mono text-xs text-zinc-600 border-b border-hard">
+                    <td className="hidden p-2 font-mono text-xs text-zinc-600 border-b border-hard lg:table-cell lg:p-4">
                       {ingredient.purchasePriceVnd !== null ? (
                         <>
                           <div>
@@ -483,7 +747,7 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
                         `${formatVnd(ingredient.unitCostVnd)}/${displayUnit(ingredient)}`
                       )}
                     </td>
-                    <td className="p-4 border-b border-hard">
+                    <td className="p-2 border-b border-hard lg:p-4">
                       <span className={`font-mono text-xs font-bold ${low ? 'text-red-600' : 'text-zinc-900'}`}>
                         {ingredient.stockQuantity.toLocaleString('vi-VN')} {displayUnit(ingredient)}
                       </span>
@@ -491,7 +755,7 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
                         Ngưỡng {ingredient.lowStockThreshold}
                       </p>
                     </td>
-                    <td className="p-4 border-b border-hard">
+                    <td className="hidden p-2 border-b border-hard lg:table-cell lg:p-4">
                       <span
                         className={`font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-1 border-hard ${
                           ingredient.isActive
@@ -502,8 +766,8 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
                         {ingredient.isActive ? 'Đang dùng' : 'Tạm ngưng'}
                       </span>
                     </td>
-                    <td className="p-4 border-b border-hard text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="p-2 border-b border-hard text-right lg:p-4">
+                      <div className="flex items-center justify-end gap-1 lg:gap-2">
                         <button
                           type="button"
                           onClick={() => {
@@ -543,6 +807,43 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
           </tbody>
         </table>
       </div>
+
+      {activeIngredients.length > INGREDIENT_PAGE_SIZE && (
+        <div
+          data-testid="ingredient-pager"
+          className="flex flex-wrap items-center justify-between gap-3 border-hard bg-white px-4 py-3"
+        >
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+            Trang {safePage + 1}/{pages} ·{' '}
+            {safePage * INGREDIENT_PAGE_SIZE + 1}–
+            {Math.min(
+              (safePage + 1) * INGREDIENT_PAGE_SIZE,
+              activeIngredients.length,
+            )}{' '}
+            trong {activeIngredients.length} nguyên liệu
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPage(safePage - 1)}
+              disabled={safePage === 0}
+              className="border-hard bg-white px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-900 hover:bg-zinc-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+            >
+              ‹ Trước
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage(safePage + 1)}
+              disabled={safePage >= pages - 1}
+              className="border-hard bg-white px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-900 hover:bg-zinc-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+            >
+              Sau ›
+            </button>
+          </div>
+        </div>
+      )}
+        </>
+      )}
 
       {form && (
         <Modal title={form.mode === 'create' ? 'Thêm nguyên liệu' : 'Sửa nguyên liệu'} onClose={() => setForm(null)}>
@@ -769,6 +1070,85 @@ export default function InventoryPanel({ embedded = false }: InventoryPanelProps
                 onClick={() => void handleAdjust()}
                 disabled={saving}
                 className="flex-1 bg-zinc-950 border-hard text-white font-mono font-bold text-xs uppercase tracking-widest py-3 hover:bg-zinc-800 cursor-pointer disabled:opacity-50"
+              >
+                Lưu
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {bulkWasteOpen && (
+        <Modal title="Ghi hao hụt nhiều nguyên liệu" onClose={() => setBulkWasteOpen(false)}>
+          <div data-testid="bulk-waste-modal" className="p-6 space-y-4">
+            <div className="max-h-64 space-y-3 overflow-y-auto">
+              {selectedIngredients.map((ingredient) => (
+                <div key={ingredient.ingredientId} className="space-y-1">
+                  <label className="block text-sm font-bold text-zinc-900">
+                    {ingredient.name}
+                    <span className="ml-2 font-mono text-[10px] font-normal uppercase tracking-widest text-zinc-500">
+                      còn {ingredient.stockQuantity.toLocaleString('vi-VN')}{' '}
+                      {displayUnit(ingredient)}
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    data-testid="bulk-waste-qty"
+                    value={bulkQuantities[ingredient.ingredientId] ?? ''}
+                    onChange={(e) =>
+                      setBulkQuantities((previous) => ({
+                        ...previous,
+                        [ingredient.ingredientId]: e.target.value,
+                      }))
+                    }
+                    className="w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-orange-600"
+                    placeholder={`Số lượng hao hụt (${displayUnit(ingredient)})`}
+                  />
+                </div>
+              ))}
+            </div>
+            <Field label="Lý do giảm">
+              <select
+                data-testid="bulk-waste-reason"
+                value={bulkReason}
+                onChange={(e) =>
+                  setBulkReason(e.target.value as 'waste' | 'manual_adjustment')
+                }
+                className="w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-orange-600 cursor-pointer"
+              >
+                <option value="waste">Hao hụt / hết hạn</option>
+                <option value="manual_adjustment">Điều chỉnh khác</option>
+              </select>
+            </Field>
+            <Field label="Ghi chú (bắt buộc)">
+              <input
+                type="text"
+                data-testid="bulk-waste-note"
+                value={bulkNote}
+                onChange={(e) => setBulkNote(e.target.value)}
+                className="w-full bg-zinc-50 border-hard px-4 py-3 font-mono text-sm text-zinc-900 focus:outline-none focus:border-orange-600"
+                placeholder="Ví dụ: hết hạn ngày 01/10"
+              />
+            </Field>
+            <p className="text-xs text-zinc-500">
+              Nguyên liệu để trống sẽ không bị trừ. Mỗi nguyên liệu được ghi một
+              dòng vào báo cáo kho.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setBulkWasteOpen(false)}
+                className="flex-1 bg-white border-hard text-zinc-900 font-mono font-bold text-xs uppercase tracking-widest py-3 hover:bg-zinc-100 cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                data-testid="bulk-waste-submit"
+                onClick={() => void handleBulkWaste()}
+                disabled={saving}
+                className="flex-1 bg-red-600 border-hard text-white font-mono font-bold text-xs uppercase tracking-widest py-3 hover:bg-red-700 cursor-pointer disabled:opacity-50"
               >
                 Lưu
               </button>

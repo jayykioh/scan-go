@@ -6,6 +6,7 @@ import { formatVnd, getReportingSummary } from '../../data/adapters/reporting.ad
 import { useStoreSlice } from '../../data/tenantStore';
 import { formatPlanLabel } from '../../data/adapters/subscription-view';
 import { useStoreTenantId } from '../../data/tenantStore';
+import TablePerformance from './overview/TablePerformance';
 
 interface TopItem {
   name: string;
@@ -101,10 +102,10 @@ export default function OverviewPage() {
           </p>
         </div>
         <Link
-          to="/simulator"
+          to="/operation"
           className="bg-zinc-900 hover:bg-zinc-800 text-white px-6 py-3 font-bold text-sm uppercase tracking-widest shadow-hard border-hard transition-transform active:translate-y-1 flex items-center gap-2"
         >
-          Mở Máy Trạm (Simulator) <ArrowRight className="w-4 h-4" />
+          Mở trang Vận hành <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
 
@@ -290,6 +291,12 @@ export default function OverviewPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Table stats were already returned by the summary but never shown
+          (REQ-RPT-001). */}
+      <div className="mt-6">
+        <TablePerformance tables={summary?.tables ?? []} />
       </div>
     </div>
   );

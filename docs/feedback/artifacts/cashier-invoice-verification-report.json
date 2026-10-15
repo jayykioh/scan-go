@@ -1,0 +1,121 @@
+{
+  "generatedAt": "2026-10-14T13:51:22.678Z",
+  "base": "http://127.0.0.1:3000",
+  "tenantId": "first-g43h5hgnc4RJ0FJrYHxmd3g7qXl1",
+  "table": {
+    "tableId": "aSXum1V3IFEXmAlsJZR7",
+    "name": "Bàn QA 01"
+  },
+  "passed": 18,
+  "failed": 0,
+  "screenshots": [
+    "docs/feedback/artifacts/cashier-invoice-a1-dialog.png",
+    "docs/feedback/artifacts/cashier-invoice-b1-history-page2.png",
+    "docs/feedback/artifacts/cashier-invoice-b2-payment-record.png",
+    "docs/feedback/artifacts/cashier-invoice-c1-empty-table-history.png",
+    "docs/feedback/artifacts/cashier-invoice-d1-dialog-phone.png"
+  ],
+  "consoleErrors": [],
+  "findings": [
+    {
+      "flow": "setup",
+      "kind": "pass",
+      "label": "Đọc được bàn thật của cửa hàng để gắn hoá đơn"
+    },
+    {
+      "flow": "A-invoice-dialog",
+      "kind": "pass",
+      "label": "Thu ngân: sơ đồ bàn render",
+      "detail": "[data-testid=\"operation-table-board\"]"
+    },
+    {
+      "flow": "A-invoice-dialog",
+      "kind": "pass",
+      "label": "Bấm bàn mở dialog hoá đơn của bàn đó",
+      "detail": "Bàn QA 01"
+    },
+    {
+      "flow": "A-invoice-dialog",
+      "kind": "pass",
+      "label": "Dialog: hiện số bàn cụ thể và trạng thái đang có khách",
+      "detail": "Bàn QA 01 / "
+    },
+    {
+      "flow": "A-invoice-dialog",
+      "kind": "pass",
+      "label": "Dialog: hoá đơn đang mở in món, tổng tiền, số bàn và tên khách hàng cũ",
+      "detail": "Bàn QA 01 / Chờ / [QA] Món hoá đơn x1 / 123,000đ"
+    },
+    {
+      "flow": "A-invoice-dialog",
+      "kind": "pass",
+      "label": "Dialog: có nút tạo/mở lại mã thanh toán PayOS"
+    },
+    {
+      "flow": "A-invoice-dialog",
+      "kind": "pass",
+      "label": "Dialog: mở lại mã PayOS trả lời rõ ràng (QR hoặc lý do từ chối)"
+    },
+    {
+      "flow": "B-history",
+      "kind": "pass",
+      "label": "\"Xem hoá đơn khác\" in 5 hoá đơn một trang"
+    },
+    {
+      "flow": "B-history",
+      "kind": "pass",
+      "label": "Dialog: hoá đơn cũ ghi số trang"
+    },
+    {
+      "flow": "B-history",
+      "kind": "pass",
+      "label": "Bấm \"Tiếp\" sang trang hoá đơn cũ tiếp theo",
+      "detail": "1 dòng"
+    },
+    {
+      "flow": "B-history",
+      "kind": "pass",
+      "label": "Dialog: trang 2 ghi đúng số trang"
+    },
+    {
+      "flow": "B-history",
+      "kind": "pass",
+      "label": "Mở lại được mã thanh toán của hoá đơn cũ (phương thức + số tiền)",
+      "detail": ""
+    },
+    {
+      "flow": "C-empty-table",
+      "kind": "pass",
+      "label": "Bàn trống: dialog mở đúng bàn và ghi trạng thái trống"
+    },
+    {
+      "flow": "C-empty-table",
+      "kind": "pass",
+      "label": "Bàn trống: hiện thẳng danh sách hoá đơn cũ của chính bàn đó",
+      "detail": "2 hoá đơn"
+    },
+    {
+      "flow": "D-phone",
+      "kind": "pass",
+      "label": "Phone: dialog hoá đơn không tràn ngang",
+      "detail": "390<=390"
+    },
+    {
+      "flow": "D-phone",
+      "kind": "pass",
+      "label": "Phone: dialog vẫn mở và nút đóng đủ 44px",
+      "detail": "44x44"
+    },
+    {
+      "flow": "D-phone",
+      "kind": "pass",
+      "label": "Đóng dialog trả lại sơ đồ bàn"
+    },
+    {
+      "flow": "D-phone",
+      "kind": "pass",
+      "label": "Không có lỗi console",
+      "detail": ""
+    }
+  ]
+}

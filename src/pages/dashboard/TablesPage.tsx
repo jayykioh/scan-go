@@ -262,7 +262,7 @@ export default function TablesPage() {
       return;
     }
     if (rows.length <= 1) {
-      toast.error('Cần giữ lại ít nhất một bàn để simulator hoạt động');
+      toast.error('Cần giữ lại ít nhất một bàn để trang vận hành hoạt động');
       setDeletingTable(null);
       return;
     }

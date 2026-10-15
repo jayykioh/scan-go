@@ -24,8 +24,12 @@
 - [Playwright review and competitor comparison](docs/feedback/comparative-review-2026-10.md)
 - [Feature audit: catalog, inventory, staff, config, subscription, simulator](docs/feedback/feature-audit-2026-10/README.md)
 - [Competitor survey 2026-10](docs/feedback/competitor-report-2026-10.md)
+- [Dashboard data and manager-update research 2026-10](docs/feedback/dashboard-data-research-2026-10.md)
 - [Promotion feature verification harness](docs/feedback/harness/run-promotion-verification.mjs)
 - [Table floor plan verification harness](docs/feedback/harness/verify-tables-page.mjs)
+- [Table performance panel verification harness](docs/feedback/harness/verify-table-performance-panel.mjs)
+- [Operating pages verification harness](docs/feedback/harness/verify-operation-pages.mjs)
+- [Cashier invoice verification harness](docs/feedback/harness/verify-cashier-invoices.mjs)
 - [Initial P0 ticket plan](docs/plan/initial-p0-ticket-plan.md)
 - [Week 1 sprint plan](docs/plan/week-1-sprint.md)
 - [P0 parallel skeleton](docs/plan/p0-parallel-skeleton.md)
@@ -35,8 +39,10 @@
 - [Developer 3 P0 plan: Ordering, Fulfilment, i18n](docs/plan/p0-developer-3.md)
 - [Developer 4 P0 plan: Inventory, Payment, durable work](docs/plan/p0-developer-4.md)
 - [Insight and growth plan: M2/M3 AI, feedback, workforce, inventory count](docs/plan/insight-growth-plan.md)
+- [Dashboard trust plan: DR-001 reporting](docs/plan/dashboard-trust-plan.md)
 - [Ticket traceability](docs/traceability.md)
 - [Dependency-ready P0 tickets](docs/tickets/p0/README.md)
+- [Dashboard trust wave tickets: DR-001 reporting](docs/tickets/dashboard/README.md)
 - [ADR 0001: Firestore and Cloud Functions](docs/adr/0001-use-firestore-and-cloud-functions.md)
 - [ADR 0002: Independent modules](docs/adr/0002-use-independent-product-modules.md)
 - [ADR 0003: Layered configuration](docs/adr/0003-use-layered-configuration.md)
@@ -55,6 +61,7 @@
 - [ADR 0016: Promotion engine and Order snapshot](docs/adr/0016-promotion-engine-and-order-snapshot.md)
 - [ADR 0017: Temporarily disable App Check enforcement](docs/adr/0017-temporarily-disable-app-check-enforcement.md)
 - [ADR 0018: Table floor plan and live table status](docs/adr/0018-table-floor-plan-and-live-table-status.md)
+- [ADR 0019: Waiter takes orders at the table](docs/adr/0019-waiter-takes-orders-at-the-table.md)
 - [Firestore research](research/firestore-foundation.md)
 
 ## Agent constraints
@@ -64,6 +71,8 @@
 - Do not create direct client writes to business collections.
 - Do not add PostgreSQL rules while Firestore remains selected.
 - Treat P3 and listed non-goals as out of scope until an approved amendment.
+- After completing each feature, run its plan-defined tests (test plan/acceptance scenarios) before marking it done; report the commands and outcomes, and do not claim completion if required tests fail or were not run.
+- Whenever changing UI, use Playwright to capture a screenshot of the rendered page, inspect it, then improve any issues found; apply the existing UI/design-taste skills and repeat the screenshot review after changes. If browser access or a runnable page is unavailable, state that visual verification was not performed.
 
 <!-- graphify-rules-start (managed by `graphify init`) -->
 ## Use Graphify before grep

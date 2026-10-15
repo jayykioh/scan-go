@@ -149,12 +149,13 @@ async function seedEmulators(): Promise<void> {
     });
   }
 
-  // Pin the deterministic provider for tenant A. The suite must be hermetic:
-  // without this override the three-layer Config default (`gemini`, ADR 0008)
-  // applies, and a developer machine or CI runner that happens to expose
-  // GEMINI_API_KEY would send these assertions to the live provider. The
+  // Pin the deterministic provider for both tenants. The suite must be
+  // hermetic: without this override the three-layer Config default (`gemini`,
+  // ADR 0008) applies, and a developer machine or CI runner that happens to
+  // expose GEMINI_API_KEY sends these assertions to the live provider. The
   // deterministic adapter is what proves cited sources, deterministic
-  // warnings, and no external spend.
+  // warnings, and no external spend. Tenant B keeps no data on purpose, so its
+  // assertions still prove the missing-data path.
   await db.doc(`tenants/${TENANT_A}`).set({
     shopName: 'AI Tenant A',
     timezone: 'Asia/Ho_Chi_Minh',
@@ -174,6 +175,7 @@ async function seedEmulators(): Promise<void> {
   await db.doc(`tenants/${TENANT_B}`).set({
     shopName: 'AI Tenant B',
     timezone: 'Asia/Ho_Chi_Minh',
+    configOverrides: { ai: { provider: 'rule-based' } },
   });
   await db.doc(`tenants/${TENANT_B}/members/${USERS.ownerB.uid}`).set({
     membershipType: 'owner',
@@ -591,10 +593,13 @@ describe('callableAiRunWeeklyAnalysis (REQ-AI-002, NFR-AI-001)', () => {
       expect(insight.rawText).toBeUndefined();
     }
 
+    // The analysis is computed in code, so it makes no provider call, costs
+    // nothing, and records no usage. Only a real provider call may write an
+    // `aiUsage` record.
+    expect(result.provider).toBe('rule-based');
+    expect(result.model).toBe('deterministic-v1');
     const usageSnap = await db.collection(`tenants/${TENANT_A}/aiUsage`).get();
-    expect(
-      usageSnap.docs.some((doc) => doc.get('purpose') === 'weeklyAnalysis'),
-    ).toBe(true);
+    expect(usageSnap.size).toBe(0);
   });
 
   it('is idempotent for a repeated run of the same week', async () => {

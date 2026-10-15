@@ -329,11 +329,17 @@ describe('callableOrderStaffCreate: validation and idempotency', () => {
 });
 
 describe('callableOrderStaffCreate: authorization', () => {
-  it('denies Kitchen, Waiter, and a cross-Tenant Owner', async () => {
-    await signInAs('kitchenA');
-    await expectRejection(staffCreateCallable()(input()), 'permission-denied');
-
+  it('lets a Waiter take the order at the table it serves', async () => {
     await signInAs('waiterA');
+    const result = (await staffCreateCallable()(input())).data;
+
+    expect(result.status).toBe('created');
+    expect(result.order.tableId).toBe(TABLE_ID);
+    expect((await db.collection(`tenants/${TENANT_A}/orders`).get()).size).toBe(1);
+  });
+
+  it('denies Kitchen and a cross-Tenant Owner', async () => {
+    await signInAs('kitchenA');
     await expectRejection(staffCreateCallable()(input()), 'permission-denied');
 
     await signInAs('ownerB');

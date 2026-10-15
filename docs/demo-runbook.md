@@ -35,6 +35,29 @@ Do this before the audience arrives.
    [market price survey](market-price-survey.md) for why a retail price is not a
    purchase cost.
 5. Open the Owner dashboard and confirm the revenue cards show numbers.
+6. To demo PayOS in the Cashier, bind the three PayOS credentials once, then
+   deploy. `firebase deploy --only functions` **fails while a bound secret is
+   missing**, so create the secrets first. Without them the Cashier's PayOS
+   button refuses with a stated reason instead of failing halfway.
+   ```bash
+   firebase functions:secrets:set PAYOS_CLIENT_ID
+   firebase functions:secrets:set PAYOS_API_KEY
+   firebase functions:secrets:set PAYOS_CHECKSUM_KEY
+   npm run deploy:rules
+   npm run deploy:indexes
+   npm run deploy:functions
+   ```
+   Then register the webhook URL in the PayOS dashboard:
+   `https://asia-southeast1-<project-id>.cloudfunctions.net/payosWebhookV1`.
+   The Functions emulator needs none of this: it always uses fixed test
+   credentials, so the PayOS QR step can be demonstrated only against a real
+   PayOS account.
+7. If the Owner Staff list is empty for a Tenant whose Staff were created before
+   the `staffDirectory` projection existed, fill the missing rows:
+   ```bash
+   npm run backfill:staff-directory -- --confirm
+   ```
+   It is additive and idempotent and never rewrites an existing row.
 
 Warning: only one Functions emulator may use port 5001. A running test emulator
 (`scango-rules-test`) steals that port and makes every callable fail. Stop it
@@ -118,7 +141,7 @@ Run the flow in this order. It follows one Order from scan to revenue.
 - Feature: Waiter, REQ-WAI-001.
 
 ### 2.10 Cashier payment — 2 min
-- Screen: `/staff` as Cashier, or `/simulator/cashier`.
+- Screen: `/staff` as Cashier, or `/operation/cashier`.
 - Confirm cash, or show the dynamic VietQR instruction.
 - Say: a confirmed Payment is immutable; correction uses reversal or refund.
 - Feature: Cashier, REQ-CAS-001 and REQ-CAS-002; Payment, REQ-PAY-001.
@@ -169,10 +192,15 @@ Run the flow in this order. It follows one Order from scan to revenue.
 
 ## 4. Known gaps to state honestly
 
-- Office Simulator (`/simulator`) still uses browser demo state, not Firestore.
+- The Customer page of the operating hub (`/operation/customer`) still uses browser demo state, not Firestore; the Cashier, Kitchen, and Staff pages need a signed-in Tenant.
 - NFC needs a physical NDEF device step (REQ-NFC-001 is partial).
 - Loyalty phone delivery provider is not live (REQ-LOY-001).
 - Payment provider secret and live transport are not configured (REQ-PAY-002).
+- PayOS is wired end to end (REQ-PAY-003, REQ-PAY-004) but needs the three
+  Secret Manager credentials, the deployed `payosPaymentLinks.orderCode` index,
+  and a real merchant account before a live QR can be paid. It is one
+  platform-level PayOS account shared by every Tenant, so onboarding a second
+  shop that collects into its own account needs per-tenant credentials.
 - The floor plan shows table state from a ten-second poll, not a realtime push; printing a real QR
   sheet is still open (IMP-15), so the plan copies or opens the link instead.
 - PWA service worker and offline caching are not finished.

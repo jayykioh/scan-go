@@ -155,3 +155,61 @@ export const feedbackTicketResultSchema = z.strictObject({
 export type FeedbackTicketResult = z.infer<
   typeof feedbackTicketResultSchema
 >;
+
+/**
+ * Customer report topics (REQ-FDB-007, REQ-FDB-008). The catalog is closed, so
+ * a report can only land on a known topic or `other`. The tag is the only part a
+ * model may decide; the count and the threshold are arithmetic in code.
+ */
+export const feedbackTopicKeySchema = z.enum([
+  'food-quality',
+  'service',
+  'price',
+  'cleanliness',
+  'order-accuracy',
+  'other',
+]);
+export type FeedbackTopicKey = z.infer<typeof feedbackTopicKeySchema>;
+
+/** Whether the current window for this topic already raised its warning. */
+export const feedbackTopicAlertStateSchema = z.enum(['none', 'alerted']);
+export type FeedbackTopicAlertState = z.infer<
+  typeof feedbackTopicAlertStateSchema
+>;
+
+export const FEEDBACK_TOPIC_RECENT_IDS_MAX = 20;
+
+/**
+ * One topic's counter. `count` is all-time; `windowCount` counts reports since
+ * `windowStartedAt`, which resets once the configured window elapses. That makes
+ * a surge detectable with one document read and no scheduled job.
+ */
+export const feedbackTopicSchema = z.strictObject({
+  schemaVersion: z.literal(FEEDBACK_CONTRACT_VERSION),
+  tenantId: z.string().min(1),
+  topicKey: feedbackTopicKeySchema,
+  label: z.string().min(1).max(120),
+  department: z.enum(['finance', 'menu', 'inventory', 'operations', 'customer']),
+  count: z.number().int().nonnegative(),
+  windowStartedAt: isoUtcTimestampSchema,
+  windowCount: z.number().int().nonnegative(),
+  recentFeedbackIds: z
+    .array(z.string().min(1))
+    .max(FEEDBACK_TOPIC_RECENT_IDS_MAX),
+  lastFeedbackId: z.string().min(1),
+  firstAt: isoUtcTimestampSchema,
+  lastAt: isoUtcTimestampSchema,
+  alertState: feedbackTopicAlertStateSchema,
+  alertedAt: isoUtcTimestampSchema.nullable(),
+  updatedAt: isoUtcTimestampSchema,
+});
+export type FeedbackTopic = z.infer<typeof feedbackTopicSchema>;
+
+export const feedbackTopicListResultSchema = z.strictObject({
+  schemaVersion: z.literal(FEEDBACK_CONTRACT_VERSION),
+  tenantId: z.string().min(1),
+  topics: z.array(feedbackTopicSchema).max(50),
+});
+export type FeedbackTopicListResult = z.infer<
+  typeof feedbackTopicListResultSchema
+>;

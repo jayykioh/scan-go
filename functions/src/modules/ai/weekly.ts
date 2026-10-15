@@ -17,7 +17,6 @@ import {
   resolvePeriodRange,
   shiftDayKey,
 } from '../reporting/service.js';
-import { writeAuditEvent } from '../../shared/audit.js';
 import {
   readConfigLayers,
   resolveTenantConfig,
@@ -25,22 +24,17 @@ import {
 import {
   AI_DEFAULT_TIMEZONE,
   MAX_AI_ITEM_STATS,
+  RULE_BASED_MODEL,
+  RULE_BASED_PROVIDER,
   assembleSafeContext,
-  buildAiUsageRecord,
   computeWarnings,
-  hasSecretMaterial,
-  isAiBudgetExhausted,
   mapDailyItemStats,
   mapDailyStats,
-  monthKeyFromDayKey,
   readIngredients,
+  readFeedbackTopics,
   readMenuItems,
-  resolveAiProvider,
-  sumAiUsageCostVnd,
-  type AiProviderRegistry,
 } from './service.js';
 
-const MAX_USAGE_RECORDS = 1000;
 const MAX_WEEK_DAYS = 7;
 
 export interface WeeklyPeriod {
@@ -87,6 +81,7 @@ const DEPARTMENT_BY_KIND: Record<AiWarning['kind'], AiInsightDepartment> = {
   lowStock: 'inventory',
   priceIncrease: 'inventory',
   revenueDrop: 'finance',
+  feedbackSurge: 'customer',
   missingData: 'operations',
 };
 
@@ -102,6 +97,7 @@ const TITLE_BY_KIND: Record<AiWarning['kind'], string> = {
   lowStock: 'Nguyên liệu sắp hết',
   priceIncrease: 'Nguyên liệu tăng giá nhập',
   revenueDrop: 'Doanh thu giảm so với ngày trước',
+  feedbackSurge: 'Nhiều phản hồi về cùng một vấn đề',
   missingData: 'Thiếu dữ liệu để kết luận',
 };
 
@@ -186,8 +182,6 @@ async function readWeeklyDayStats(
 
 export interface RunWeeklyAnalysisOptions {
   now?: string;
-  env?: Record<string, string | undefined>;
-  registry?: AiProviderRegistry;
 }
 
 /**
@@ -195,6 +189,11 @@ export interface RunWeeklyAnalysisOptions {
  * written to `aiInsights` with deterministic ids, so a repeated run for the
  * same week is idempotent and never duplicates. The run writes only AI records
  * and never changes business state (REQ-AI-002, NFR-SEC-003).
+ *
+ * The analysis is computed in code, so it makes no provider call and records no
+ * `aiUsage`. Insight text is already grounded Vietnamese prose from
+ * `computeWarnings`; sending it to a model only added cost without changing a
+ * single character of the output (ADR 0008).
  */
 export async function runWeeklyAnalysis(
   db: Firestore,
@@ -209,12 +208,12 @@ export async function runWeeklyAnalysis(
       ? timezoneRaw
       : AI_DEFAULT_TIMEZONE;
   const period = resolveWeeklyPeriod(now, timezone);
-  const monthKey = monthKeyFromDayKey(dayKeyFromIso(now, timezone));
 
-  const [dayStats, menuItems, ingredients] = await Promise.all([
+  const [dayStats, menuItems, ingredients, feedbackTopics] = await Promise.all([
     readWeeklyDayStats(db, tenantId, period),
     readMenuItems(db, tenantId),
     readIngredients(db, tenantId),
+    readFeedbackTopics(db, tenantId),
   ]);
 
   const context = assembleSafeContext({
@@ -222,6 +221,7 @@ export async function runWeeklyAnalysis(
     dayStats,
     menuItems,
     ingredients,
+    feedbackTopics,
   });
   const resolvedConfig = resolveTenantConfig(
     await readConfigLayers(db, tenantId),
@@ -229,73 +229,16 @@ export async function runWeeklyAnalysis(
   const warnings = computeWarnings(context, {
     revenueDropPercent: resolvedConfig.values.ai.revenueDropPercent,
     lowMarginPercent: resolvedConfig.values.ai.lowMarginPercent,
+    feedbackTopicAlertCount:
+      resolvedConfig.values.ai.feedbackTopicAlertCount,
   });
-  const { provider: providerName, monthlyBudgetVnd } = resolvedConfig.values.ai;
-  const provider = resolveAiProvider(
-    providerName,
-    options.env ?? process.env,
-    options.registry ?? {},
-  );
-
-  // Budget is enforced before any provider call; over budget the run degrades
-  // to deterministic insights and records an audit event (NFR-AI-002).
-  const usageSnap = await db
-    .collection(`tenants/${tenantId}/aiUsage`)
-    .where('monthKey', '==', monthKey)
-    .limit(MAX_USAGE_RECORDS)
-    .get();
-  const spentVnd = sumAiUsageCostVnd(
-    usageSnap.docs.map((usageDoc) => ({
-      estimatedCostVnd: Number(usageDoc.get('estimatedCostVnd') ?? 0),
-    })),
-  );
-
-  let providerNameUsed = provider.provider;
-  let modelUsed = provider.model;
-  if (isAiBudgetExhausted({ monthlyBudgetVnd, spentVnd })) {
-    await writeAuditEvent({
-      tenantId,
-      actorUid: null,
-      actorType: 'system',
-      role: null,
-      action: 'AiBudgetExceeded',
-      targetType: 'aiUsage',
-      targetId: null,
-      reason: null,
-      detail: {
-        monthKey,
-        monthlyBudgetVnd,
-        spentVnd,
-        purpose: 'weeklyAnalysis',
-      },
-    });
-  } else {
-    const question = `Phân tích tuần ${period.periodStart}..${period.periodEnd}`;
-    if (hasSecretMaterial(question)) {
-      throw new Error('Secret-like material is not allowed in an AI prompt.');
-    }
-    const response = await provider.generate({ question, context, warnings });
-    providerNameUsed = response.provider;
-    modelUsed = response.model;
-    const usageRef = db.collection(`tenants/${tenantId}/aiUsage`).doc();
-    await usageRef.set(
-      buildAiUsageRecord({
-        usageId: usageRef.id,
-        tenantId,
-        response,
-        monthKey,
-        now,
-        purpose: 'weeklyAnalysis',
-      }),
-    );
-  }
 
   const insights = buildWeeklyInsights({
     tenantId,
     period,
     warnings,
-    provider: providerNameUsed,
-    model: modelUsed,
+    provider: RULE_BASED_PROVIDER,
+    model: RULE_BASED_MODEL,
     now,
   });
 
@@ -316,8 +259,8 @@ export async function runWeeklyAnalysis(
     insightIds: insights.map((insight) => insight.insightId),
     insightCount: insights.length,
     missingData: insights.some((insight) => insight.missingData),
-    provider: providerNameUsed,
-    model: modelUsed,
+    provider: RULE_BASED_PROVIDER,
+    model: RULE_BASED_MODEL,
     generatedAt: now,
   });
 }

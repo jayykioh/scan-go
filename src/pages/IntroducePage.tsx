@@ -39,8 +39,8 @@ export default function IntroducePage() {
             ScanGo Lite thiết kế riêng cho quán ăn, quán cà phê nhỏ. Trải nghiệm gọi món bằng QR và NFC chạm cực nhanh, tích hợp AI tự động phân tích vận hành.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/simulator" className="px-8 py-4 bg-zinc-900 text-white font-bold uppercase tracking-widest text-sm border-hard shadow-hard hover:-translate-y-1 hover:shadow-[4px_6px_0px_0px_#27272a] transition-all flex items-center gap-2">
-              Trải Nghiệm Thử <ArrowRight className="w-4 h-4" />
+            <Link to="/operation" className="px-8 py-4 bg-zinc-900 text-white font-bold uppercase tracking-widest text-sm border-hard shadow-hard hover:-translate-y-1 hover:shadow-[4px_6px_0px_0px_#27272a] transition-all flex items-center gap-2">
+              Trải nghiệm vận hành <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </motion.div>

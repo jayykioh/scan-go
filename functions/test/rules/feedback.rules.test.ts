@@ -24,6 +24,7 @@ const OWNER_UID = 'owner-uid';
 const MEMBER_UID = 'member-uid';
 const OTHER_UID = 'other-uid';
 const FEEDBACK_ID = 'feedback-001';
+const TOPIC_KEY = 'service';
 
 const rules = readFileSync(
   new URL('../../../firestore.rules', import.meta.url),
@@ -64,6 +65,12 @@ async function seed(): Promise<void> {
       tenantId: TENANT_A,
       verificationState: 'verified',
       maskedMessage: 'ok',
+    });
+    await setDoc(doc(db, 'tenants', TENANT_A, 'feedbackTopics', TOPIC_KEY), {
+      tenantId: TENANT_A,
+      topicKey: TOPIC_KEY,
+      label: 'Thái độ và tốc độ phục vụ',
+      count: 3,
     });
     await setDoc(doc(db, 'tenants', TENANT_B), { shopName: 'Bravo' });
     await setDoc(doc(db, 'tenants', TENANT_B, 'members', OTHER_UID), {
@@ -126,6 +133,36 @@ describe('tenant feedback write denial', () => {
       setDoc(doc(unauthDb(), 'tenants', TENANT_A, 'feedback', 'forged'), {
         tenantId: TENANT_A,
         maskedMessage: 'forged',
+      }),
+    );
+  });
+});
+
+describe('feedback topic counter boundary (REQ-FDB-007)', () => {
+  it('allows an active Owner and denies a non-Owner member', async () => {
+    await seed();
+    await assertSucceeds(
+      getDoc(doc(ownerDb(), 'tenants', TENANT_A, 'feedbackTopics', TOPIC_KEY)),
+    );
+    // The counter carries feedback IDs, so it follows the report gate.
+    await assertFails(
+      getDoc(doc(memberDb(), 'tenants', TENANT_A, 'feedbackTopics', TOPIC_KEY)),
+    );
+  });
+
+  it('denies cross-tenant, anonymous reads, and every direct write', async () => {
+    await seed();
+    await assertFails(
+      getDoc(doc(otherDb(), 'tenants', TENANT_A, 'feedbackTopics', TOPIC_KEY)),
+    );
+    await assertFails(
+      getDoc(doc(unauthDb(), 'tenants', TENANT_A, 'feedbackTopics', TOPIC_KEY)),
+    );
+    await assertFails(
+      setDoc(doc(ownerDb(), 'tenants', TENANT_A, 'feedbackTopics', 'forged'), {
+        tenantId: TENANT_A,
+        topicKey: 'forged',
+        count: 99,
       }),
     );
   });

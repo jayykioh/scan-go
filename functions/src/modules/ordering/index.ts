@@ -13,6 +13,7 @@ import {
   orderPaymentMutationPlanSchema,
   orderStatusMutationPlanSchema,
   orderSubmitResultSchema,
+  orderTableListInputSchema,
   orderTenantListInputSchema,
   orderTrackingInputSchema,
   orderTrackingResultSchema,
@@ -25,8 +26,10 @@ import {
   type OrderStatusMutationPlan,
   type OrderPaymentMutationPlan,
   type OrderSubmitResult,
+  type OrderTableListInput,
 } from '../../../../shared/contracts/order.contract.js';
 import type { Ingredient } from '../../../../shared/contracts/inventory.contract.js';
+import type { PaymentMethod } from '../../../../shared/contracts/payment.contract.js';
 import {
   TABLE_STATUS_CONTRACT_VERSION,
   tableStatusListResultSchema,
@@ -164,23 +167,34 @@ function assertCashierOrOwner(memberData: DocumentData | undefined): void {
 }
 
 const ORDERING_CREATE_DENIED_MESSAGE =
-  'Chỉ thu ngân hoặc chủ cửa hàng tạo được đơn hàng.';
+  'Chỉ thu ngân, phục vụ hoặc chủ cửa hàng tạo được đơn hàng.';
 
 /**
  * Staff order-entry authorization. Owner is allowed; a Staff membership must
- * carry the `cashier` role (REQ-ORD-005, REQ-ACL-001).
+ * carry the `cashier` or `waiter` role (REQ-ORD-005, REQ-WAI-002, REQ-ACL-001).
+ * A Waiter takes the order at the table it is serving; payment stays cashier-only.
  */
-function assertCashierOrOwnerCreate(
-  memberData: DocumentData | undefined,
-): void {
+function assertOrderCreator(memberData: DocumentData | undefined): void {
   assertActiveOrderingMember(memberData);
-  if (!memberData || !hasOrderingRole(memberData, 'cashier')) {
+  if (
+    !memberData ||
+    (!hasOrderingRole(memberData, 'cashier') &&
+      !hasOrderingRole(memberData, 'waiter'))
+  ) {
     throw new HttpsError('permission-denied', ORDERING_CREATE_DENIED_MESSAGE);
   }
 }
 
 function parseOrderTenantListInput(data: unknown): { tenantId: string } {
   const parsed = orderTenantListInputSchema.safeParse(data ?? {});
+  if (!parsed.success) {
+    throw new HttpsError('invalid-argument', ORDERING_INVALID_MESSAGE);
+  }
+  return parsed.data;
+}
+
+function parseOrderTableListInput(data: unknown): OrderTableListInput {
+  const parsed = orderTableListInputSchema.safeParse(data ?? {});
   if (!parsed.success) {
     throw new HttpsError('invalid-argument', ORDERING_INVALID_MESSAGE);
   }
@@ -711,7 +725,7 @@ export const callableOrderStaffCreate = onCall(
       async (transaction) => {
         // All reads precede all writes (RULES_FIREBASE §4).
         const memberSnap = await transaction.get(memberRef);
-        assertCashierOrOwnerCreate(memberSnap.data());
+        assertOrderCreator(memberSnap.data());
         const idempotencySnap = await transaction.get(idempotencyRef);
         const existing = idempotencySnap.data() as
           | IdempotencyRecord
@@ -1007,7 +1021,7 @@ export interface BuildOrderPaymentMutationInput {
   orderId: string;
   /** Fresh Order snapshot read inside the shared Payment transaction. */
   order: OrderSnapshot;
-  paymentMethod: 'cash' | 'vietQr';
+  paymentMethod: PaymentMethod;
   actorUid: string;
   now: string;
 }
@@ -1197,6 +1211,48 @@ export const callableOrderListUnpaid = onCall(CALL_OPTIONS, async (request) => {
     ),
   });
 });
+
+/**
+ * Cashier reconciliation query: the settled invoices of one Table, newest
+ * first, so the till can check an old bill again (REQ-CAS-003). `orders` stays
+ * client-unreadable, so the read is server-side and bounded.
+ *
+ * shortcut: the query uses the existing (tableId, createdAt) index and drops
+ * the unpaid Orders in the handler, so a Table with more than ORDER_LIST_LIMIT
+ * newer unpaid Orders could push an old invoice out of the window; add a
+ * (tableId, status, createdAt) index when a Table passes that many.
+ */
+export const callableOrderListTableInvoices = onCall(
+  CALL_OPTIONS,
+  async (request) => {
+    const uid = requireUid(request.auth?.uid);
+    assertAppCheck(request);
+    const input = parseOrderTableListInput(request.data);
+    const db = getDb();
+    const memberSnap = await db
+      .doc(`tenants/${input.tenantId}/members/${uid}`)
+      .get();
+    const memberData = memberSnap.data();
+    assertActiveOrderingMember(memberData);
+    if (!memberData || !hasOrderingRole(memberData, 'cashier')) {
+      throw new HttpsError('permission-denied', ORDERING_CASHIER_DENIED_MESSAGE);
+    }
+
+    const snap = await db
+      .collection(`tenants/${input.tenantId}/orders`)
+      .where('tableId', '==', input.tableId)
+      .orderBy('createdAt', 'desc')
+      .limit(ORDER_LIST_LIMIT)
+      .get();
+
+    return orderListResultSchema.parse({
+      schemaVersion: ORDER_CONTRACT_VERSION,
+      orders: snap.docs
+        .filter((docSnap) => docSnap.get('status') === 'paid')
+        .map((docSnap) => mapStoredOrder(docSnap.id, docSnap.data())),
+    });
+  },
+);
 
 /**
  * Floor-plan query: one service state per busy table, folded from live Orders

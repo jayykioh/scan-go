@@ -24,6 +24,28 @@ export const STAFF_INVALID_MESSAGE = 'Dữ liệu nhân viên không hợp lệ.
 export const STAFF_NOT_FOUND_MESSAGE = 'Không tìm thấy nhân viên.';
 export const STAFF_EMAIL_IN_USE_MESSAGE =
   'Email này đã được dùng cho tài khoản khác.';
+
+export function staffPinPolicyMessage(policyLength: number): string {
+  return `PIN phải gồm đúng ${policyLength} chữ số theo chính sách của cửa hàng.`;
+}
+
+/**
+ * The stored PIN must match the resolved `pinPolicy.length` (REQ-AUTH-004).
+ * Verification compares the stored hash, so a PIN of any other length could
+ * never verify: the mismatch has to be rejected where the PIN is *set*, never
+ * where it is checked. Enforced before any Auth account or hash is created.
+ */
+export function assertPinMatchesPolicy(
+  pin: string,
+  policyLength: number,
+): void {
+  if (pin.length !== policyLength) {
+    throw new HttpsError(
+      'invalid-argument',
+      staffPinPolicyMessage(policyLength),
+    );
+  }
+}
 export const STAFF_ALREADY_MEMBER_MESSAGE =
   'Tài khoản này đã là thành viên của cửa hàng.';
 

@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Users, Plus, Pencil, X, AlertTriangle, ShieldCheck, KeyRound, Loader2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type {
   StaffDirectoryEntry,
   StaffRole,
 } from '@contracts/staff.contract';
+import { CONFIG_DEFAULTS } from '@shared/config/defaults';
 import { useToast } from '../../contexts/ToastContext';
 import { useStoreSlice, useStoreTenantId } from '../../data/tenantStore';
+import { getResolvedConfig } from '../../data/adapters/config.adapter';
 import {
   createStaff,
   resetStaffPin,
@@ -98,6 +100,31 @@ export default function StaffPage() {
   const error = staffState.error;
   const [saving, setSaving] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffForm | null>(null);
+  // The server verifies the stored PIN against the resolved policy length, so
+  // the form must ask for that exact length or the account can never sign in
+  // (REQ-AUTH-004).
+  const [pinLength, setPinLength] = useState<number>(
+    CONFIG_DEFAULTS.pinPolicy.length,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void getResolvedConfig()
+      .then((config) => {
+        if (!cancelled && config) {
+          setPinLength(config.values.pinPolicy.length);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const pinProblem = (pin: string): string | null =>
+    /^\d+$/.test(pin) && pin.length === pinLength
+      ? null
+      : `PIN phải gồm đúng ${pinLength} chữ số`;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,8 +144,9 @@ export default function StaffPage() {
     setSaving(true);
     try {
       if (editingStaff.mode === 'create') {
-        if (!/^\d{4,10}$/.test(editingStaff.pin)) {
-          toast.error('PIN phải gồm 4-10 chữ số');
+        const problem = pinProblem(editingStaff.pin);
+        if (problem) {
+          toast.error(problem);
           return;
         }
         await createStaff({
@@ -140,8 +168,9 @@ export default function StaffPage() {
           permissions: [],
         });
         if (editingStaff.pin) {
-          if (!/^\d{4,10}$/.test(editingStaff.pin)) {
-            toast.error('PIN phải gồm 4-10 chữ số');
+          const problem = pinProblem(editingStaff.pin);
+          if (problem) {
+            toast.error(problem);
             return;
           }
           await resetStaffPin({
@@ -374,12 +403,15 @@ export default function StaffPage() {
 
                 <div className="space-y-2">
                   <label className="block font-mono text-xs font-bold uppercase tracking-widest text-zinc-500">
-                    {editingStaff.mode === 'create' ? 'PIN đăng nhập ca' : 'PIN mới (bỏ trống nếu giữ nguyên)'}
+                    {editingStaff.mode === 'create'
+                      ? `PIN đăng nhập ca (${pinLength} chữ số)`
+                      : `PIN mới (${pinLength} chữ số, bỏ trống nếu giữ nguyên)`}
                   </label>
                   <input
                     type="password"
                     inputMode="numeric"
-                    maxLength={10}
+                    minLength={pinLength}
+                    maxLength={pinLength}
                     required={editingStaff.mode === 'create'}
                     value={editingStaff.pin}
                     onChange={(e) =>
@@ -389,7 +421,7 @@ export default function StaffPage() {
                       })
                     }
                     className="w-full bg-zinc-50 border-hard px-4 py-3 font-mono font-bold tracking-[0.4em] text-zinc-900 focus:outline-none focus:border-orange-600 transition-colors"
-                    placeholder="0000"
+                    placeholder={'0'.repeat(pinLength)}
                   />
                 </div>
 

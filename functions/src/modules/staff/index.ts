@@ -10,9 +10,14 @@ import { writeAuditEvent } from '../../shared/audit.js';
 import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import { hashPin } from '../auth/service.js';
 import {
+  readConfigLayers,
+  resolveTenantConfig,
+} from '../config/service.js';
+import {
   STAFF_EMAIL_IN_USE_MESSAGE,
   STAFF_NOT_FOUND_MESSAGE,
   assertActiveOwnerMember,
+  assertPinMatchesPolicy,
   buildStaffMembershipDocument,
   computeNextSessionVersion,
   memberCollectionPath,
@@ -39,6 +44,20 @@ async function requireActiveOwner(
 }
 
 /**
+ * The Owner-set PIN must match the Tenant's resolved `pinPolicy.length`, or the
+ * Staff member could never sign in (REQ-AUTH-004). Checked before the Auth
+ * account exists, so a rejected PIN never leaves an orphan login behind.
+ */
+async function assertOwnerPinPolicy(
+  tenantId: string,
+  pin: string,
+): Promise<void> {
+  const db = getDb();
+  const resolved = resolveTenantConfig(await readConfigLayers(db, tenantId));
+  assertPinMatchesPolicy(pin, resolved.values.pinPolicy.length);
+}
+
+/**
  * Owner command: create one Firebase Auth account plus its Staff membership.
  * The plaintext PIN is hashed before storage and never returned
  * (REQ-AUTH-002, REQ-AUTH-003).
@@ -48,6 +67,7 @@ export const callableStaffCreate = onCall(CALL_OPTIONS, async (request) => {
   assertAppCheck(request);
   const input = parseStaffCreateInput(request.data);
   await requireActiveOwner(input.tenantId, uid);
+  await assertOwnerPinPolicy(input.tenantId, input.pin);
 
   const auth = getAuth();
   try {
@@ -227,6 +247,7 @@ export const callableStaffResetPin = onCall(CALL_OPTIONS, async (request) => {
   assertAppCheck(request);
   const input = parseStaffResetPinInput(request.data);
   await requireActiveOwner(input.tenantId, uid);
+  await assertOwnerPinPolicy(input.tenantId, input.pin);
 
   const db = getDb();
   const memberRef = db.doc(

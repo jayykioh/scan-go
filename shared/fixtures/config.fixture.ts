@@ -105,6 +105,8 @@ export function tenantVisibleResolvedConfigFixture(): TenantVisibleResolvedConfi
         monthlyBudgetVnd: 500000,
         revenueDropPercent: 20,
         lowMarginPercent: 20,
+        feedbackTopicAlertCount: 3,
+        feedbackTopicWindowHours: 24,
       },
     },
     sources: {
@@ -119,6 +121,8 @@ export function tenantVisibleResolvedConfigFixture(): TenantVisibleResolvedConfi
       'ai.monthlyBudgetVnd': 'default',
       'ai.revenueDropPercent': 'default',
       'ai.lowMarginPercent': 'default',
+      'ai.feedbackTopicAlertCount': 'default',
+      'ai.feedbackTopicWindowHours': 'default',
     },
     allowedTenantOverrideKeys: ['locale', 'timezone', 'pinPolicy', 'ai'],
   });

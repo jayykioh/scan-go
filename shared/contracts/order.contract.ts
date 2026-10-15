@@ -298,6 +298,18 @@ export const orderTenantListInputSchema = z.strictObject({
 
 export type OrderTenantListInput = z.infer<typeof orderTenantListInputSchema>;
 
+/**
+ * Cashier reconciliation read: the settled invoices of one Table
+ * (REQ-CAS-003). `orders` stays client-unreadable, so the Cashier reaches its
+ * own table's paid history through this bounded server read.
+ */
+export const orderTableListInputSchema = z.strictObject({
+  tenantId: z.string().min(1),
+  tableId: z.string().min(1).max(128),
+});
+
+export type OrderTableListInput = z.infer<typeof orderTableListInputSchema>;
+
 export const orderListResultSchema = z.strictObject({
   schemaVersion: z.literal(ORDER_CONTRACT_VERSION),
   orders: z.array(orderSnapshotSchema),

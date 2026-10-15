@@ -19,6 +19,7 @@
 - Loyalty welcome points: zero.
 - Tenant timezone: `Asia/Ho_Chi_Minh`.
 - AI provider: deterministic adapter (`rule-based`) with a monthly budget of 500000 VND per tenant.
+- Report-topic surge warning: three reports of one topic inside 24 hours; zero disables it.
 
 ## Commands and queries
 - ADMIN updates product defaults.

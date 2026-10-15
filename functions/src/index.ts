@@ -74,6 +74,7 @@ export {
   callableOrderCancelUnpaid,
   callableOrderGetTracking,
   callableOrderListKitchen,
+  callableOrderListTableInvoices,
   callableOrderListTableStatus,
   callableOrderListUnpaid,
   callableOrderStaffCreate,
@@ -84,9 +85,11 @@ export {
   callablePaymentAutoConfirm,
   callablePaymentConfirm,
   callablePaymentCorrect,
+  callablePaymentCreatePayosLink,
   callablePaymentGetVietQrInstruction,
   callablePaymentProviderSettle,
   paymentWebhookV1,
+  payosWebhookV1,
 } from './modules/payment/index.js';
 
 export {

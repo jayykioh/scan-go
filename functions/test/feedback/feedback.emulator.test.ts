@@ -234,3 +234,129 @@ describe('callableFeedbackSubmit (REQ-FDB-001)', () => {
     );
   });
 });
+
+const SERVICE_MESSAGES = [
+  'Nhân viên phục vụ quá chậm, chờ lâu.',
+  'Phục vụ chậm và nhân viên thái độ.',
+  'Chờ lâu, phục vụ chậm.',
+];
+
+async function submitServiceReport(tenantId: string): Promise<string> {
+  const response = await feedbackCallable()({
+    tenantId,
+    kind: 'issue',
+    message: SERVICE_MESSAGES[0],
+  });
+  return response.data.feedbackId;
+}
+
+describe('callableFeedbackSubmit topic counter (REQ-FDB-007)', () => {
+  it('tags the report and increments that topic counter once', async () => {
+    const feedbackId = await submitServiceReport(TENANT_A);
+
+    const stored = await db
+      .doc(`tenants/${TENANT_A}/feedback/${feedbackId}`)
+      .get();
+    expect(stored.get('topicTags')).toEqual(['service']);
+
+    const topic = await db
+      .doc(`tenants/${TENANT_A}/feedbackTopics/service`)
+      .get();
+    expect(topic.get('label')).toBe('Thái độ và tốc độ phục vụ');
+    expect(topic.get('count')).toBe(1);
+    expect(topic.get('windowCount')).toBe(1);
+    expect(topic.get('recentFeedbackIds')).toEqual([feedbackId]);
+    expect(topic.get('alertState')).toBe('none');
+  });
+
+  it('tags a report that matches no topic as other', async () => {
+    const response = await feedbackCallable()({
+      tenantId: TENANT_A,
+      kind: 'review',
+      rating: 4,
+    });
+    const stored = await db
+      .doc(`tenants/${TENANT_A}/feedback/${response.data.feedbackId}`)
+      .get();
+    expect(stored.get('topicTags')).toEqual(['other']);
+
+    const topic = await db.doc(`tenants/${TENANT_A}/feedbackTopics/other`).get();
+    expect(topic.get('count')).toBe(1);
+  });
+});
+
+describe('callableFeedbackSubmit surge warning (REQ-FDB-008)', () => {
+  it('raises one Insight and one audit event when the topic reaches the threshold', async () => {
+    const feedbackIds: string[] = [];
+    for (const message of SERVICE_MESSAGES) {
+      const response = await feedbackCallable()({
+        tenantId: TENANT_B,
+        kind: 'issue',
+        message,
+      });
+      feedbackIds.push(response.data.feedbackId);
+    }
+
+    const topic = await db
+      .doc(`tenants/${TENANT_B}/feedbackTopics/service`)
+      .get();
+    expect(topic.get('count')).toBe(3);
+    expect(topic.get('windowCount')).toBe(3);
+    expect(topic.get('alertState')).toBe('alerted');
+
+    const insights = await db
+      .collection(`tenants/${TENANT_B}/aiInsights`)
+      .get();
+    expect(insights.size).toBe(1);
+    const insight = insights.docs[0].data();
+    expect(insight.department).toBe('operations');
+    expect(insight.priority).toBe('high');
+    expect(insight.sourceIds.sort()).toEqual([...feedbackIds].sort());
+
+    const audit = await db.collection(`tenants/${TENANT_B}/audit`).get();
+    expect(
+      audit.docs.some((doc) => doc.get('action') === 'FeedbackTopicAlerted'),
+    ).toBe(true);
+  });
+
+  it('does not warn again inside the same window', async () => {
+    for (const message of [...SERVICE_MESSAGES, 'Phục vụ vẫn chậm.']) {
+      await feedbackCallable()({
+        tenantId: TENANT_B,
+        kind: 'issue',
+        message,
+      });
+    }
+
+    const insights = await db
+      .collection(`tenants/${TENANT_B}/aiInsights`)
+      .get();
+    expect(insights.size).toBe(1);
+  });
+
+  it('disables the warning when the configured count is zero', async () => {
+    await db.doc(`tenants/${TENANT_B}`).set({
+      shopName: 'Feedback Tenant B',
+      configOverrides: { ai: { feedbackTopicAlertCount: 0 } },
+    });
+
+    for (const message of SERVICE_MESSAGES) {
+      await feedbackCallable()({
+        tenantId: TENANT_B,
+        kind: 'issue',
+        message,
+      });
+    }
+
+    const topic = await db
+      .doc(`tenants/${TENANT_B}/feedbackTopics/service`)
+      .get();
+    expect(topic.get('windowCount')).toBe(3);
+    expect(topic.get('alertState')).toBe('none');
+
+    const insights = await db
+      .collection(`tenants/${TENANT_B}/aiInsights`)
+      .get();
+    expect(insights.size).toBe(0);
+  });
+});

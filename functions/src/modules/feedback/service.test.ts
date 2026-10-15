@@ -49,12 +49,14 @@ describe('buildFeedbackRecord', () => {
       message: 'Gọi 0912345678 gấp.',
       orderId: 'order-1',
       verificationState: 'verified',
+      topicKey: 'other',
       now: NOW,
     });
     expect(record.message).toBe('Gọi 0912345678 gấp.');
     expect(record.maskedMessage).toBe('Gọi [redacted] gấp.');
     expect(record.actorType).toBe('customer');
     expect(record.actorUid).toBeNull();
+    expect(record.topicTags).toEqual(['other']);
     expect('phone' in record).toBe(false);
   });
 
@@ -66,10 +68,12 @@ describe('buildFeedbackRecord', () => {
       message: 'Thiếu dụng cụ.',
       orderId: null,
       verificationState: 'unverified',
+      topicKey: 'order-accuracy',
       now: NOW,
     });
     expect(record.rating).toBeNull();
     expect(record.maskedMessage).toBe('Thiếu dụng cụ.');
+    expect(record.topicTags).toEqual(['order-accuracy']);
   });
 });
 

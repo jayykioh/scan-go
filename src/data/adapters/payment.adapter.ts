@@ -13,9 +13,13 @@ import {
   paymentConfirmationResultSchema,
   paymentInstructionResultSchema,
   paymentRecordSchema,
+  payosLinkResultSchema,
   type PaymentConfirmationResult,
   type PaymentMethod,
   type PaymentRecord,
+  type PayosLinkInput,
+  type PayosLinkResult,
+  type PayosPaymentLink,
   type VietQrInstruction,
 } from '@contracts/payment.contract';
 import {
@@ -111,6 +115,30 @@ export async function getVietQrInstruction(
 }
 
 /**
+ * Cashier command: open, or reopen, the PayOS payment link for one unpaid Order
+ * (REQ-PAY-003). The server owns the link and its `orderCode`; the browser only
+ * supplies the origin PayOS returns the payer to.
+ */
+export async function createPayosLink(
+  tenantId: string,
+  orderId: string,
+  returnUrl: string,
+): Promise<PayosPaymentLink> {
+  const functions = getFirebaseFunctions();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<PayosLinkInput, PayosLinkResult>(
+    functions,
+    'callablePaymentCreatePayosLink',
+  );
+  const result = payosLinkResultSchema.parse(
+    (await callable({ tenantId, orderId, returnUrl })).data,
+  );
+  return result.link;
+}
+
+/**
  * Cashier unpaid queue. Ordering owns the Order read; Payment owns the
  * Cashier settlement flow, so the queue is exposed beside settlement.
  */
@@ -126,6 +154,29 @@ export async function listUnpaidOrders(
     { orders: OrderSnapshot[] }
   >(functions, 'callableOrderListUnpaid');
   const result = orderListResultSchema.parse((await callable({ tenantId })).data);
+  return result.orders;
+}
+
+/**
+ * The settled invoices of one Table, newest first, for Cashier reconciliation
+ * (REQ-CAS-003). `orders` is not client-readable, so this is a bounded server
+ * read beside the unpaid queue the till already uses.
+ */
+export async function listTableInvoices(
+  tenantId: string,
+  tableId: string,
+): Promise<OrderSnapshot[]> {
+  const functions = getFirebaseFunctions();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<
+    { tenantId: string; tableId: string },
+    { orders: OrderSnapshot[] }
+  >(functions, 'callableOrderListTableInvoices');
+  const result = orderListResultSchema.parse(
+    (await callable({ tenantId, tableId })).data,
+  );
   return result.orders;
 }
 

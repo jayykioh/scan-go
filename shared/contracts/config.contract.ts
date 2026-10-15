@@ -61,6 +61,14 @@ export const aiConfigSchema = z.strictObject({
    */
   revenueDropPercent: z.number().int().min(1).max(100),
   lowMarginPercent: z.number().int().min(1).max(100),
+  /**
+   * Feedback surge threshold (REQ-FDB-008). A topic reaching
+   * `feedbackTopicAlertCount` reports inside `feedbackTopicWindowHours` warns
+   * the Owner. Zero disables the warning; the count and the window are
+   * arithmetic, never a model decision.
+   */
+  feedbackTopicAlertCount: z.number().int().nonnegative(),
+  feedbackTopicWindowHours: z.number().int().positive(),
 });
 
 export type AiConfig = z.infer<typeof aiConfigSchema>;
@@ -155,6 +163,8 @@ export const aiOverrideInputSchema = z.strictObject({
   monthlyBudgetVnd: z.number().int().nonnegative().optional(),
   revenueDropPercent: z.number().int().min(1).max(100).optional(),
   lowMarginPercent: z.number().int().min(1).max(100).optional(),
+  feedbackTopicAlertCount: z.number().int().nonnegative().optional(),
+  feedbackTopicWindowHours: z.number().int().positive().optional(),
 });
 
 /** Tenant Owner input. Only the approved keys are accepted. */

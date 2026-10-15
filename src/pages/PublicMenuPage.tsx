@@ -10,6 +10,7 @@ import {
 } from '../data/adapters/ordering.adapter';
 import { subscribePublicMenu } from '../data/adapters/catalog.adapter';
 import { evaluatePromotions } from '../data/adapters/promotion.adapter';
+import { submitFeedback } from '../data/adapters/feedback.adapter';
 import { buildQrPayload, resolvePublicTable } from '../data/adapters/table.adapter';
 import { toPublicMenuItem, toTrackingOrder } from '../data/adapters/view-mappers';
 import { resolveInterfaceLocale, translate } from '../data/adapters/i18n.adapter';
@@ -215,6 +216,37 @@ export default function PublicMenuPage() {
 
   const customerOrders = tracking ? [toTrackingOrder(tracking)] : [];
 
+  /**
+   * Guest report path (REQ-FDB-001, REQ-FDB-007). The tenant comes from the
+   * resolved table link and the tracking token proves the Order, so the browser
+   * never chooses the tenant and sends no identity data.
+   */
+  const handleSubmitFeedback = useCallback(
+    async (input: {
+      kind: 'review' | 'issue';
+      rating?: number;
+      message?: string;
+    }) => {
+      if (!linkContext) {
+        throw new Error(t('publicMenu.tableUnknown'));
+      }
+      try {
+        await submitFeedback({
+          tenantId: linkContext.tenantId,
+          kind: input.kind,
+          ...(input.rating === undefined ? {} : { rating: input.rating }),
+          ...(input.message === undefined ? {} : { message: input.message }),
+          ...(trackingToken === null ? {} : { trackingToken }),
+        });
+      } catch (error) {
+        throw new Error(friendlyError(error, t('customer.feedback.error')), {
+          cause: error,
+        });
+      }
+    },
+    [linkContext, trackingToken, t],
+  );
+
   return (
     <main className="min-h-dvh bg-[#eef0f4] text-zinc-950 flex justify-center sm:py-6">
       <div className="w-full max-w-[430px] min-h-dvh sm:min-h-[860px] sm:rounded-[44px] overflow-hidden bg-white shadow-2xl border border-white/80">
@@ -230,8 +262,6 @@ export default function PublicMenuPage() {
             tenantConfig={tenantConfig}
             menuItems={menuItems}
             orders={customerOrders}
-            loyaltyMembers={[]}
-            setLoyaltyMembers={() => {}}
             simulationTableId={activeTableId}
             setSimulationTableId={setActiveTableId}
             tables={tables}
@@ -241,6 +271,7 @@ export default function PublicMenuPage() {
             onEvaluatePromotion={handleEvaluatePromotion}
             menuError={menuError}
             tracking={tracking}
+            onSubmitFeedback={handleSubmitFeedback}
           />
         )}
       </div>

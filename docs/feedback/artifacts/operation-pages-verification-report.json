@@ -1,0 +1,497 @@
+{
+  "generatedAt": "2026-10-14T13:53:00.496Z",
+  "base": "http://127.0.0.1:3001",
+  "tenantId": "first-g43h5hgnc4RJ0FJrYHxmd3g7qXl1",
+  "expectedTables": [
+    "Bàn QA 01"
+  ],
+  "passed": 83,
+  "failed": 0,
+  "screenshots": [
+    "docs/feedback/artifacts/operation-a1-hub.png",
+    "docs/feedback/artifacts/operation-a2-cashier-anon.png",
+    "docs/feedback/artifacts/operation-b-phone-cashier.png",
+    "docs/feedback/artifacts/operation-b-desktop-cashier.png",
+    "docs/feedback/artifacts/operation-b-customer.png",
+    "docs/feedback/artifacts/operation-c1-kitchen-filtered.png",
+    "docs/feedback/artifacts/operation-c2-cashier.png",
+    "docs/feedback/artifacts/operation-c3-staff.png",
+    "docs/feedback/artifacts/operation-d1-kitchen-phone.png",
+    "docs/feedback/artifacts/operation-d2-kitchen-phone-inventory.png",
+    "docs/feedback/artifacts/operation-e1-availability.png",
+    "docs/feedback/artifacts/operation-e2-ingredient-page2.png",
+    "docs/feedback/artifacts/operation-e3-waste-reason.png",
+    "docs/feedback/artifacts/operation-f1-bulk-select.png",
+    "docs/feedback/artifacts/operation-f2-bulk-waste-modal.png",
+    "docs/feedback/artifacts/operation-f3-waste-report.png",
+    "docs/feedback/artifacts/operation-g1-owner-inventory-report.png"
+  ],
+  "consoleErrors": [],
+  "findings": [
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Hub render danh sách trang",
+      "detail": ""
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Hub liệt kê trang Thu Ngân",
+      "detail": "/operation/cashier"
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Hub liệt kê trang KDS Bếp",
+      "detail": "/operation/kitchen"
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Hub liệt kê trang Nhân Viên",
+      "detail": "/operation/staff"
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Hub liệt kê trang Khách Hàng",
+      "detail": "/operation/customer"
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Hub chỉ có 4 trang vận hành",
+      "detail": "thấy 4 liên kết"
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Hub có tiêu đề \"Chọn trang vận hành\""
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Đã bỏ \"Test Environment\"",
+      "detail": ""
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Đã bỏ \"Đơn ảo\"",
+      "detail": ""
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Đã bỏ \"Xóa Data\"",
+      "detail": ""
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Đã bỏ \"Reset State\"",
+      "detail": ""
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Đã bỏ \"Thêm màn hình\"",
+      "detail": ""
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Đã bỏ \"Cấu hình quán\"",
+      "detail": ""
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "/simulator chuyển hướng về /operation",
+      "detail": "http://127.0.0.1:3001/operation"
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "/simulator/kitchen chuyển hướng về /operation",
+      "detail": "http://127.0.0.1:3001/operation"
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Trang Thu ngân khi chưa đăng nhập hiện thông báo tiếng Việt"
+    },
+    {
+      "flow": "A-hub",
+      "kind": "pass",
+      "label": "Không lộ lỗi quyền tiếng Anh"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "phone 390x844: trang vận hành render",
+      "detail": "[data-testid=\"operation-frame\"]"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "phone 390x844: không còn thanh trạng thái giả"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "phone 390x844: không còn khung điện thoại giả"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "phone 390x844: không còn bezel",
+      "detail": "bezel=0"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "phone 390x844: khung nằm trong màn hình",
+      "detail": "left=12 right=378 vw=390"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "phone 390x844: nội dung dùng hết bề rộng cho phép",
+      "detail": "366px >= 342px"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "phone 390x844: nội dung lấp đầy chiều cao màn hình",
+      "detail": "755/844px"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "desktop 1440x900: trang vận hành render",
+      "detail": "[data-testid=\"operation-frame\"]"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "desktop 1440x900: không còn thanh trạng thái giả"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "desktop 1440x900: không còn khung điện thoại giả"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "desktop 1440x900: không còn bezel",
+      "detail": "bezel=0"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "desktop 1440x900: khung nằm trong màn hình",
+      "detail": "left=208 right=1232 vw=1440"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "desktop 1440x900: nội dung dùng hết bề rộng cho phép",
+      "detail": "1024px >= 720px"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "desktop 1440x900: nội dung lấp đầy chiều cao màn hình",
+      "detail": "795/900px"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "Khách hàng: trang demo render",
+      "detail": "[data-testid=\"operation-frame\"]"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "Khách hàng: hiện danh sách bàn demo"
+    },
+    {
+      "flow": "B-frame",
+      "kind": "pass",
+      "label": "Khách hàng: không còn thanh trạng thái giả"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Bếp: cổng PIN render"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Trang vận hành không còn ô chuyển sang trang khác"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Chỉ còn nút quay về danh sách trang vận hành"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Bếp: sơ đồ bàn render",
+      "detail": "[data-testid=\"operation-table-board\"]"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Bếp: ô bàn nở theo chỗ trống trên màn hình lớn",
+      "detail": "113px"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Bếp: sơ đồ vẽ đúng bàn của cửa hàng",
+      "detail": "UI=[Bàn QA 01] DB=[Bàn QA 01]"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Bếp: card đơn ở trên, sơ đồ bàn ở dưới",
+      "detail": "Hàng đợi y=141, Sơ đồ bàn y=444"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Bếp: chưa có đơn nào để so vị trí card",
+      "detail": "hàng đợi trống"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Bếp: bấm bàn để lọc hàng đợi",
+      "detail": "Bàn QA 01"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Bếp: bỏ lọc bằng \"xem tất cả\""
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Thu ngân: sơ đồ bàn render",
+      "detail": "[data-testid=\"operation-table-board\"]"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Thu ngân: sơ đồ bàn ở trên danh sách hoá đơn",
+      "detail": "Sơ đồ bàn y=150, Hóa đơn y=603"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Nhân viên: cổng PIN render trong trang vận hành"
+    },
+    {
+      "flow": "C-board",
+      "kind": "pass",
+      "label": "Nhân viên: trang dùng khung vận hành, không khung điện thoại"
+    },
+    {
+      "flow": "D-swipe",
+      "kind": "pass",
+      "label": "Phone: sơ đồ bàn render",
+      "detail": "[data-testid=\"operation-table-scroll\"]"
+    },
+    {
+      "flow": "D-swipe",
+      "kind": "pass",
+      "label": "Phone: sơ đồ cuộn ngang để vuốt xem bàn khác",
+      "detail": "scrollWidth=792 > clientWidth=336"
+    },
+    {
+      "flow": "D-swipe",
+      "kind": "pass",
+      "label": "Phone: ô bàn đủ lớn để bấm",
+      "detail": "88px"
+    },
+    {
+      "flow": "D-swipe",
+      "kind": "pass",
+      "label": "Phone: nhãn ba tab bếp nằm trên một hàng, không bị kéo dãn",
+      "detail": "cao 39/39/39px"
+    },
+    {
+      "flow": "D-swipe",
+      "kind": "pass",
+      "label": "Phone: trang bếp không tràn ngang",
+      "detail": "tràn 0px"
+    },
+    {
+      "flow": "D-swipe",
+      "kind": "pass",
+      "label": "Phone: bảng kho vừa màn hình, không phải cuộn ngang",
+      "detail": "330<=330"
+    },
+    {
+      "flow": "E-tabs",
+      "kind": "pass",
+      "label": "Tab 1: hàng đợi và sơ đồ bàn cùng một tab"
+    },
+    {
+      "flow": "E-tabs",
+      "kind": "pass",
+      "label": "Tab 1: mỗi bàn in số đơn đang đợi",
+      "detail": "[0]"
+    },
+    {
+      "flow": "E-tabs",
+      "kind": "pass",
+      "label": "Tab 2: hiện tình trạng món theo danh mục"
+    },
+    {
+      "flow": "E-tabs",
+      "kind": "pass",
+      "label": "Tab 2: không còn hàng đợi và sơ đồ bàn"
+    },
+    {
+      "flow": "E-tabs",
+      "kind": "pass",
+      "label": "Tab 3: kho nguyên liệu có phân trang"
+    },
+    {
+      "flow": "E-tabs",
+      "kind": "pass",
+      "label": "Tab 3: trang đầu đúng 10 nguyên liệu",
+      "detail": "10 dòng"
+    },
+    {
+      "flow": "E-tabs",
+      "kind": "pass",
+      "label": "Tab 3: \"Sau\" sang trang 2",
+      "detail": "2 dòng"
+    },
+    {
+      "flow": "E-tabs",
+      "kind": "pass",
+      "label": "Tab 3: \"Trước\" quay lại trang 1"
+    },
+    {
+      "flow": "E-tabs",
+      "kind": "pass",
+      "label": "Tab 3: mở được nhập/xuất kho"
+    },
+    {
+      "flow": "E-tabs",
+      "kind": "pass",
+      "label": "Tab 3: hao hụt bắt buộc lý do và ghi chú"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Kho: mỗi nguyên liệu có ô chọn để ghi hao hụt",
+      "detail": "10 ô"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Kho: chọn được 1 nguyên liệu"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Kho: chọn được nhiều nguyên liệu cùng lúc",
+      "detail": "2 nguyên liệu"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Kho: chọn tất cả nguyên liệu trên trang"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Kho: bỏ chọn được toàn bộ"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Kho: mở phiếu ghi hao hụt cho nguyên liệu đã chọn"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Kho: phiếu hao hụt có ô số lượng cho từng nguyên liệu",
+      "detail": "2 ô"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Kho: phiếu hao hụt có nút lưu"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Kho: ghi hao hụt cho nhiều nguyên liệu"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Kho: tồn kho giảm đúng số lượng đã ghi",
+      "detail": "900 / 1800"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Kho: báo cáo hao hụt được ghi vào audit với số lượng âm",
+      "detail": "2 dòng [-200, -100]"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Báo cáo kho: có trang xem lại các thay đổi"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Báo cáo kho: hiện đúng nguyên liệu và ghi chú hao hụt"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Báo cáo kho: dòng hao hụt được đánh dấu riêng",
+      "detail": "42 dòng"
+    },
+    {
+      "flow": "F-waste",
+      "kind": "pass",
+      "label": "Báo cáo kho: lọc riêng các dòng hao hụt",
+      "detail": "42 dòng"
+    },
+    {
+      "flow": "G-owner-kho",
+      "kind": "pass",
+      "label": "Kho (chủ quán): cùng hai view Nguyên liệu / Báo cáo kho"
+    },
+    {
+      "flow": "G-owner-kho",
+      "kind": "pass",
+      "label": "Kho (chủ quán): mở được trang báo cáo"
+    },
+    {
+      "flow": "G-owner-kho",
+      "kind": "pass",
+      "label": "Kho (chủ quán): thấy dòng hao hụt vừa ghi"
+    },
+    {
+      "flow": "G-owner-kho",
+      "kind": "pass",
+      "label": "Không có lỗi console",
+      "detail": ""
+    }
+  ]
+}

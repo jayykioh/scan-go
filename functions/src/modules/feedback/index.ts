@@ -16,6 +16,11 @@ import { assertRateLimit } from '../../shared/rateLimit.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
 import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import { nowIso } from '../reporting/service.js';
+import { resolveFeedbackTopic } from '../ai/feedback-grouping.js';
+import {
+  readConfigLayers,
+  resolveTenantConfig,
+} from '../config/service.js';
 import { resolvePublicOrderRateLimit } from '../table-access/service.js';
 import {
   FEEDBACK_INVALID_MESSAGE,
@@ -24,6 +29,15 @@ import {
   parseFeedbackSubmitInput,
   resolveVerificationState,
 } from './service.js';
+import {
+  applyFeedbackTopicReport,
+  buildFeedbackSurgeInsight,
+  buildFeedbackTopic,
+  feedbackTopicCollectionPath,
+  markFeedbackTopicAlerted,
+  shouldAlertFeedbackTopic,
+  toFeedbackTopic,
+} from './topic.service.js';
 import {
   PRODUCT_FEEDBACK_NOT_FOUND_MESSAGE,
   applyProductFeedbackStatusChange,
@@ -52,6 +66,8 @@ import {
 } from './ticket.service.js';
 
 const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
+
+const FEEDBACK_TOPIC_ALERTED_ACTION = 'FeedbackTopicAlerted';
 
 /**
  * Public Customer command: submit a review or issue. The server derives the
@@ -110,6 +126,9 @@ export const callableFeedbackSubmit = onCall(CALL_OPTIONS, async (request) => {
 
   const now = nowIso();
   const ref = db.collection(`tenants/${tenantId}/feedback`).doc();
+  // The report is tagged once, from the bounded catalog, and the same tag drives
+  // the counter (REQ-FDB-007).
+  const topic = resolveFeedbackTopic(input.message ?? null);
   const record = buildFeedbackRecord({
     feedbackId: ref.id,
     tenantId,
@@ -118,9 +137,74 @@ export const callableFeedbackSubmit = onCall(CALL_OPTIONS, async (request) => {
     message: input.message,
     orderId,
     verificationState: resolveVerificationState(orderExists),
+    topicKey: topic.topicKey,
     now,
   });
-  await ref.set(record);
+
+  const resolvedConfig = resolveTenantConfig(
+    await readConfigLayers(db, tenantId),
+  );
+  const { feedbackTopicAlertCount, feedbackTopicWindowHours } =
+    resolvedConfig.values.ai;
+  const topicInput = {
+    tenantId,
+    topicKey: topic.topicKey,
+    label: topic.label,
+    department: topic.department,
+    feedbackId: ref.id,
+    windowHours: feedbackTopicWindowHours,
+    now,
+  };
+  const topicRef = db.doc(
+    `${feedbackTopicCollectionPath(tenantId)}/${topic.topicKey}`,
+  );
+
+  // The counter and the warning are arithmetic on one document, so two reports
+  // arriving together still count exactly once each (REQ-FDB-007, REQ-FDB-008).
+  await db.runTransaction(async (transaction) => {
+    const topicSnap = await transaction.get(topicRef);
+    const next = topicSnap.exists
+      ? applyFeedbackTopicReport(
+          toFeedbackTopic(tenantId, topicSnap.data() ?? {}),
+          topicInput,
+        )
+      : buildFeedbackTopic(topicInput);
+
+    transaction.set(ref, record);
+    if (!shouldAlertFeedbackTopic(next, feedbackTopicAlertCount)) {
+      transaction.set(topicRef, next);
+      return;
+    }
+
+    const alerted = markFeedbackTopicAlerted(next, now);
+    const insight = buildFeedbackSurgeInsight({
+      topic: alerted,
+      windowHours: feedbackTopicWindowHours,
+      timezone: resolvedConfig.values.timezone,
+      now,
+    });
+    transaction.set(topicRef, alerted);
+    transaction.set(
+      db.doc(`tenants/${tenantId}/aiInsights/${insight.insightId}`),
+      insight,
+    );
+    writeAuditEventInTransaction(transaction, {
+      tenantId,
+      actorUid: null,
+      actorType: 'system',
+      role: null,
+      action: FEEDBACK_TOPIC_ALERTED_ACTION,
+      targetType: 'feedback_topic',
+      targetId: topic.topicKey,
+      reason: null,
+      detail: {
+        topicKey: topic.topicKey,
+        windowCount: alerted.windowCount,
+        windowHours: feedbackTopicWindowHours,
+        insightId: insight.insightId,
+      },
+    });
+  });
 
   return feedbackSubmitResultSchema.parse({
     schemaVersion: FEEDBACK_CONTRACT_VERSION,

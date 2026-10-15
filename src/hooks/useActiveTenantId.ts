@@ -2,34 +2,41 @@ import { useEffect, useState } from 'react';
 import { getActiveTenantId } from '../data/adapters/tenant.adapter';
 import { getFirebaseAuth } from '../services/firebase/client';
 
+export interface ActiveTenantIdState {
+  tenantId: string | null;
+  /** False until the first read settles, so a screen can wait instead of guessing. */
+  resolved: boolean;
+}
+
 /**
  * Resolve the active Tenant id for the signed-in identity. Components use this
  * to open bounded realtime listeners. The value is navigation state only; the
  * server re-verifies membership on every command (REQ-TEN-001).
  */
-export function useActiveTenantId(): string | null {
-  const [tenantId, setTenantId] = useState<string | null>(null);
+export function useActiveTenantIdState(): ActiveTenantIdState {
+  const [state, setState] = useState<ActiveTenantIdState>({
+    tenantId: null,
+    resolved: false,
+  });
 
   useEffect(() => {
     let cancelled = false;
+    const settle = (tenantId: string | null) => {
+      if (!cancelled) {
+        setState({ tenantId, resolved: true });
+      }
+    };
+
     const auth = getFirebaseAuth();
     if (!auth) {
-      setTenantId(null);
+      settle(null);
       return;
     }
 
     const sync = () => {
       void getActiveTenantId()
-        .then((value) => {
-          if (!cancelled) {
-            setTenantId(value);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setTenantId(null);
-          }
-        });
+        .then((value) => settle(value))
+        .catch(() => settle(null));
     };
 
     sync();
@@ -40,5 +47,9 @@ export function useActiveTenantId(): string | null {
     };
   }, []);
 
-  return tenantId;
+  return state;
+}
+
+export function useActiveTenantId(): string | null {
+  return useActiveTenantIdState().tenantId;
 }

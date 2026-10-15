@@ -6,6 +6,7 @@ import {
   type FeedbackTheme,
   type FeedbackThemeSentiment,
 } from '../../../../shared/contracts/ai.contract.js';
+import type { FeedbackTopicKey } from '../../../../shared/contracts/feedback.contract.js';
 import {
   containsPersonalData,
   maskPersonalData,
@@ -48,16 +49,21 @@ export function sanitizeFeedbackText(text: string): string {
   return result;
 }
 
-interface ThemeDefinition {
-  themeId: string;
+/**
+ * The bounded topic catalog (REQ-FDB-007). `matchTheme` is the deterministic
+ * classifier used when a report is stored, and the same catalog drives the
+ * grouping query, so a report and a theme always agree on one topic key.
+ */
+export interface ThemeDefinition {
+  topicKey: FeedbackTopicKey;
   label: string;
   department: AiInsightDepartment;
   keywords: string[];
 }
 
-const THEME_CATALOG: ThemeDefinition[] = [
+export const THEME_CATALOG: ThemeDefinition[] = [
   {
-    themeId: 'food-quality',
+    topicKey: 'food-quality',
     label: 'Chất lượng món ăn',
     department: 'menu',
     keywords: [
@@ -76,7 +82,7 @@ const THEME_CATALOG: ThemeDefinition[] = [
     ],
   },
   {
-    themeId: 'service',
+    topicKey: 'service',
     label: 'Thái độ và tốc độ phục vụ',
     department: 'operations',
     keywords: [
@@ -91,19 +97,19 @@ const THEME_CATALOG: ThemeDefinition[] = [
     ],
   },
   {
-    themeId: 'price',
+    topicKey: 'price',
     label: 'Giá cả và hóa đơn',
     department: 'finance',
     keywords: ['giá', 'đắt', 'rẻ', 'tiền', 'hóa đơn', 'phí', 'tính sai'],
   },
   {
-    themeId: 'cleanliness',
+    topicKey: 'cleanliness',
     label: 'Vệ sinh và không gian',
     department: 'operations',
     keywords: ['vệ sinh', 'sạch', 'bẩn', 'bàn', 'ghế', 'không gian', 'mùi'],
   },
   {
-    themeId: 'order-accuracy',
+    topicKey: 'order-accuracy',
     label: 'Đúng món và đủ món',
     department: 'operations',
     keywords: ['sai món', 'thiếu', 'nhầm', 'đặt', 'đơn'],
@@ -146,18 +152,31 @@ function includesAny(text: string, keywords: string[]): boolean {
   return keywords.some((keyword) => text.includes(keyword));
 }
 
-function matchTheme(text: string): ThemeDefinition {
+/** Classify one already-sanitized message into the bounded catalog. */
+export function matchTheme(text: string): ThemeDefinition {
   for (const theme of THEME_CATALOG) {
     if (includesAny(text, theme.keywords)) {
       return theme;
     }
   }
   return {
-    themeId: 'other',
+    topicKey: 'other',
     label: 'Chủ đề khác',
     department: 'customer',
     keywords: [],
   };
+}
+
+/**
+ * The topic a stored report is tagged with (REQ-FDB-007). A report with no text,
+ * or text that matches no catalog keyword, is tagged `other` rather than forced
+ * onto a topic it does not support.
+ */
+export function resolveFeedbackTopic(message: string | null): ThemeDefinition {
+  if (message === null || message.trim().length === 0) {
+    return matchTheme('');
+  }
+  return matchTheme(sanitizeFeedbackText(message).toLowerCase());
 }
 
 export interface FeedbackAnalysisRow {
@@ -245,7 +264,7 @@ export function groupFeedbackThemes(
       maskedCount += 1;
     }
     const definition = matchTheme(sanitized.toLowerCase());
-    const bucket = buckets.get(definition.themeId) ?? {
+    const bucket = buckets.get(definition.topicKey) ?? {
       definition,
       sourceIds: new Set<string>(),
       examples: [],
@@ -261,12 +280,12 @@ export function groupFeedbackThemes(
     ) {
       bucket.examples.push(sanitized.slice(0, MAX_EXAMPLE_LENGTH));
     }
-    buckets.set(definition.themeId, bucket);
+    buckets.set(definition.topicKey, bucket);
   }
 
   const themes: FeedbackTheme[] = [...buckets.values()]
     .map((bucket) => ({
-      themeId: bucket.definition.themeId,
+      themeId: bucket.definition.topicKey,
       label: bucket.definition.label,
       department: bucket.definition.department,
       sentiment: majoritySentiment(bucket.sentiments),

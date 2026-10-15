@@ -16,12 +16,17 @@ import {
   paymentInstructionResultSchema,
   paymentProviderEvidenceSchema,
   paymentProviderSettleResultSchema,
+  payosLinkResultSchema,
+  payosPaymentLinkSchema,
   providerEvidenceIdFor,
   type PaymentArchivePlan,
   type PaymentAutoConfirmInput,
   type PaymentAutoConfirmResult,
   type PaymentConfirmationResult,
+  type PaymentMethod,
   type PaymentProviderSettleResult,
+  type PayosLinkResult,
+  type PayosPaymentLink,
   type VietQrInstruction,
 } from '../../../../shared/contracts/payment.contract.js';
 import {
@@ -31,6 +36,7 @@ import {
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
+import { payosSecrets } from '../../shared/secrets.js';
 import {
   applyOrderCorrectionMutationPlan,
   applyOrderPaymentMutationPlan,
@@ -43,6 +49,18 @@ import {
   PAYMENT_PROVIDER_SIGNATURE_INVALID_MESSAGE,
   PAYMENT_PROVIDER_UNAVAILABLE_MESSAGE,
 } from './provider.js';
+import {
+  PAYOS_LINK_FAILED_MESSAGE,
+  PAYOS_LINK_NOT_FOUND_MESSAGE,
+  PAYOS_ORDER_CODE_START,
+  PAYOS_UNCONFIGURED_MESSAGE,
+  createPayosPaymentLink,
+  payosDescription,
+  payosWebhookSchema,
+  readPayosSettlementFacts,
+  resolvePayosConfig,
+  verifyPayosSignature,
+} from './payos.js';
 import {
   buildLoyaltyEarnPlan,
   buildLoyaltyRequestHash,
@@ -81,6 +99,7 @@ import {
   parsePaymentCorrectionInput,
   parsePaymentInstructionInput,
   parsePaymentProviderSettleInput,
+  parsePayosLinkInput,
   parseVietQrMerchantConfig,
   requireUid,
   PAYMENT_ALREADY_SETTLED_MESSAGE,
@@ -712,19 +731,27 @@ export const callablePaymentCorrect = onCall(
   },
 );
 
+type SettleProviderPaymentInput = Omit<PaymentAutoConfirmInput, 'signature'>;
+
+interface SettleProviderPaymentOptions {
+  /** Settlement method recorded on the Payment and on the Order. */
+  method: PaymentMethod;
+}
+
 /**
- * Automatic transfer confirmation (REQ-PAY-002, P0-L08 extension).
+ * Idempotent settlement core shared by every automatic provider path.
  *
- * A signed provider event is verified by the replaceable adapter, then the
- * matching Payment is posted inside one transaction together with the Order
- * mutation, provider evidence, idempotency record, and audit event. The
- * deterministic Payment id and event evidence id make a retry a replay, so the
- * Payment posts exactly once. It stays behind two flags and never changes the
- * default manual provider.
+ * The caller has already authenticated the event — the replaceable adapter
+ * verified a signature, or the PayOS handler verified the provider checksum — so
+ * this function only maps the normalized payload, matches the Order, and posts
+ * the Payment inside one transaction with the Order mutation, provider evidence,
+ * idempotency record, and audit event. The deterministic Payment id and evidence
+ * id make a retry a replay, so the Payment posts exactly once.
  */
-export async function processAutomaticProviderEvent(
+async function settleProviderPayment(
   db: Firestore,
-  input: PaymentAutoConfirmInput,
+  input: SettleProviderPaymentInput,
+  options: SettleProviderPaymentOptions,
 ): Promise<PaymentAutoConfirmResult> {
   if (input.payload.tenantId !== input.tenantId) {
     throw new HttpsError(
@@ -733,140 +760,108 @@ export async function processAutomaticProviderEvent(
     );
   }
 
-  const platformSnap = await db.doc('platform/config').get();
-    const values = platformSnap.get('values') as
-      | Record<string, unknown>
-      | undefined;
-    if (
-      values?.[PAYMENT_PROVIDER_FLAG_KEY] !== true ||
-      values?.[PAYMENT_AUTO_CONFIRM_FLAG_KEY] !== true
-    ) {
-      throw new HttpsError(
-        'failed-precondition',
-        PAYMENT_PROVIDER_DISABLED_MESSAGE,
-      );
-    }
+  const adapter = resolvePaymentProviderAdapter(input.providerId);
+  const nowForEvidence = nowIso();
+  const settlement = adapter.mapPayload({
+    providerId: input.providerId,
+    payload: input.payload,
+    now: nowForEvidence,
+  });
+  assertNoSecretMaterial(settlement);
+  const evidenceId = providerEvidenceIdFor(
+    input.payload.orderId,
+    input.payload.providerEventId,
+  );
 
-    const adapter = resolvePaymentProviderAdapter(input.providerId);
-    if (
-      !adapter.verifySignature ||
-      !adapter.verifySignature({
-        payload: input.payload,
-        signature: input.signature,
-      })
-    ) {
-      throw new HttpsError(
-        'permission-denied',
-        PAYMENT_PROVIDER_SIGNATURE_INVALID_MESSAGE,
-      );
-    }
-    if (input.payload.outcome !== 'settled') {
-      throw new HttpsError(
-        'failed-precondition',
-        PAYMENT_PROVIDER_UNAVAILABLE_MESSAGE,
-      );
-    }
-
-    const nowForEvidence = nowIso();
-    const settlement = adapter.mapPayload({
-      providerId: input.providerId,
-      payload: input.payload,
-      now: nowForEvidence,
-    });
-    assertNoSecretMaterial(settlement);
-    const evidenceId = providerEvidenceIdFor(
+  const orderRef = db.doc(
+    `tenants/${input.tenantId}/orders/${input.payload.orderId}`,
+  );
+  const paymentRef = db.doc(
+    `${paymentCollectionPath(input.tenantId)}/${paymentIdFor(
       input.payload.orderId,
-      input.payload.providerEventId,
-    );
+    )}`,
+  );
+  const evidenceRef = db.doc(
+    `tenants/${input.tenantId}/${PAYMENT_ADAPTER_COLLECTION}/${evidenceId}`,
+  );
+  const idempotencyRef = db.doc(
+    `tenants/${input.tenantId}/idempotency/auto_${input.payload.providerEventId}`,
+  );
+  const requestHash = buildPaymentConfirmRequestHash({
+    tenantId: input.tenantId,
+    orderId: input.payload.orderId,
+    method: options.method,
+    amountVnd: input.payload.amountVnd,
+  });
+  const loyaltyConfig = await resolveLoyaltyConfig(db, input.tenantId);
+  const tenantSnap = await db.doc(`tenants/${input.tenantId}`).get();
+  const merchant = parseVietQrMerchantConfig(tenantSnap.get('vietQr'));
 
-    const orderRef = db.doc(
-      `tenants/${input.tenantId}/orders/${input.payload.orderId}`,
-    );
-    const paymentRef = db.doc(
-      `${paymentCollectionPath(input.tenantId)}/${paymentIdFor(
-        input.payload.orderId,
-      )}`,
-    );
-    const evidenceRef = db.doc(
-      `tenants/${input.tenantId}/${PAYMENT_ADAPTER_COLLECTION}/${evidenceId}`,
-    );
-    const idempotencyRef = db.doc(
-      `tenants/${input.tenantId}/idempotency/auto_${input.payload.providerEventId}`,
-    );
-    const requestHash = buildPaymentConfirmRequestHash({
-      tenantId: input.tenantId,
-      orderId: input.payload.orderId,
-      method: 'vietQr',
-      amountVnd: input.payload.amountVnd,
-    });
-    const loyaltyConfig = await resolveLoyaltyConfig(db, input.tenantId);
-    const tenantSnap = await db.doc(`tenants/${input.tenantId}`).get();
-    const merchant = parseVietQrMerchantConfig(tenantSnap.get('vietQr'));
+  const outcome = await db.runTransaction<{
+    replayed: boolean;
+    payment: ReturnType<typeof mapStoredPayment>;
+    orderStatus: PaymentConfirmationResult['orderStatus'];
+    evidence: ReturnType<typeof paymentProviderEvidenceSchema.parse>;
+  }>(async (transaction) => {
+    // All reads precede all writes (RULES_FIREBASE §4).
+    const orderSnap = await transaction.get(orderRef);
+    const paymentSnap = await transaction.get(paymentRef);
+    const evidenceSnap = await transaction.get(evidenceRef);
+    const idempotencySnap = await transaction.get(idempotencyRef);
 
-    const outcome = await db.runTransaction<{
-      replayed: boolean;
-      payment: ReturnType<typeof mapStoredPayment>;
-      orderStatus: PaymentConfirmationResult['orderStatus'];
-      evidence: ReturnType<typeof paymentProviderEvidenceSchema.parse>;
-    }>(async (transaction) => {
-      // All reads precede all writes (RULES_FIREBASE §4).
-      const orderSnap = await transaction.get(orderRef);
-      const paymentSnap = await transaction.get(paymentRef);
-      const evidenceSnap = await transaction.get(evidenceRef);
-      const idempotencySnap = await transaction.get(idempotencyRef);
+    if (!orderSnap.exists) {
+      throw new HttpsError('not-found', PAYMENT_ORDER_NOT_FOUND_MESSAGE);
+    }
+    const order = mapPaymentOrder(input.payload.orderId, orderSnap.data() ?? {});
 
-      if (!orderSnap.exists) {
-        throw new HttpsError('not-found', PAYMENT_ORDER_NOT_FOUND_MESSAGE);
-      }
-      const order = mapPaymentOrder(input.payload.orderId, orderSnap.data() ?? {});
+    const existingIdempotency = idempotencySnap.data() as
+      | PaymentIdempotencyRecord
+      | undefined;
+    if (existingIdempotency) {
+      assertPaymentIdempotencyMatch(existingIdempotency, requestHash);
+    }
 
-      const existingIdempotency = idempotencySnap.data() as
-        | PaymentIdempotencyRecord
-        | undefined;
-      if (existingIdempotency) {
-        assertPaymentIdempotencyMatch(existingIdempotency, requestHash);
-      }
-
-      const existingEvidence = evidenceSnap.exists
-        ? paymentProviderEvidenceSchema.parse({
-            ...evidenceSnap.data(),
-            evidenceId,
-          })
-        : null;
-      if (existingEvidence) {
-        if (!paymentSnap.exists) {
-          throw new HttpsError('internal', PAYMENT_ALREADY_SETTLED_MESSAGE);
-        }
-        return {
-          replayed: true,
-          payment: mapStoredPayment(paymentSnap.id, paymentSnap.data() ?? {}),
-          orderStatus: order.status,
-          evidence: existingEvidence,
-        };
-      }
-
-      if (paymentSnap.exists || orderSnap.get('paidAt') != null) {
-        const existingPayment = mapStoredPayment(
-          paymentSnap.id,
-          paymentSnap.data() ?? {},
-        );
-        const evidence = paymentProviderEvidenceSchema.parse({
-          schemaVersion: PAYMENT_CONTRACT_VERSION,
+    const existingEvidence = evidenceSnap.exists
+      ? paymentProviderEvidenceSchema.parse({
+          ...evidenceSnap.data(),
           evidenceId,
-          settlement,
-          recordedAt: nowForEvidence,
-        });
-        return {
-          replayed: true,
-          payment: existingPayment,
-          orderStatus: order.status,
-          evidence,
-        };
+        })
+      : null;
+    if (existingEvidence) {
+      if (!paymentSnap.exists) {
+        throw new HttpsError('internal', PAYMENT_ALREADY_SETTLED_MESSAGE);
       }
+      return {
+        replayed: true,
+        payment: mapStoredPayment(paymentSnap.id, paymentSnap.data() ?? {}),
+        orderStatus: order.status,
+        evidence: existingEvidence,
+      };
+    }
 
-      assertPaymentAmount(input.payload.amountVnd, order.totalVnd);
+    if (paymentSnap.exists || orderSnap.get('paidAt') != null) {
+      const existingPayment = mapStoredPayment(
+        paymentSnap.id,
+        paymentSnap.data() ?? {},
+      );
+      const evidence = paymentProviderEvidenceSchema.parse({
+        schemaVersion: PAYMENT_CONTRACT_VERSION,
+        evidenceId,
+        settlement,
+        recordedAt: nowForEvidence,
+      });
+      return {
+        replayed: true,
+        payment: existingPayment,
+        orderStatus: order.status,
+        evidence,
+      };
+    }
 
-      const instruction = merchant
+    assertPaymentAmount(input.payload.amountVnd, order.totalVnd);
+
+    const instruction =
+      options.method === 'vietQr' && merchant
         ? buildVietQrInstruction({
             merchant,
             orderId: input.payload.orderId,
@@ -874,92 +869,140 @@ export async function processAutomaticProviderEvent(
           })
         : null;
 
-      const now = nowIso();
-      await awardLoyaltyInOrderTransaction(transaction, db, {
-        tenantId: input.tenantId,
-        orderId: input.payload.orderId,
-        orderData: orderSnap.data() ?? {},
-        amountVnd: order.totalVnd,
-        actorUid: 'provider',
-        now,
-        config: loyaltyConfig,
-      });
-
-      const payment = buildPaymentRecord({
-        paymentId: paymentRef.id,
-        tenantId: input.tenantId,
-        orderId: input.payload.orderId,
-        amountVnd: order.totalVnd,
-        method: 'vietQr',
-        vietQrInstruction: instruction,
-        actorUid: 'provider',
-        idempotencyKey: `auto_${input.payload.providerEventId}`,
-        now,
-      });
-      const providerPayment = {
-        ...payment,
-        providerId: settlement.providerId,
-        providerRef: settlement.providerEventId,
-      };
-      const plan = buildOrderPaymentMutationPlan({
-        tenantId: input.tenantId,
-        orderId: input.payload.orderId,
-        order,
-        paymentMethod: 'vietQr',
-        actorUid: 'provider',
-        now,
-      });
-      const evidence = paymentProviderEvidenceSchema.parse({
-        schemaVersion: PAYMENT_CONTRACT_VERSION,
-        evidenceId,
-        settlement,
-        recordedAt: now,
-      });
-
-      applyOrderPaymentMutationPlan(transaction, db, plan);
-      transaction.set(paymentRef, providerPayment);
-      transaction.set(evidenceRef, evidence);
-      transaction.set(idempotencyRef, {
-        command: 'confirmPayment',
-        requestHash,
-        tenantId: input.tenantId,
-        orderId: input.payload.orderId,
-        paymentId: providerPayment.paymentId,
-        status: 'applied',
-        createdAt: now,
-      } satisfies PaymentIdempotencyRecord);
-      writeAuditEventInTransaction(transaction, {
-        tenantId: input.tenantId,
-        actorUid: null,
-        actorType: 'system',
-        role: input.providerId,
-        action: 'PaymentConfirmed',
-        targetType: 'payment',
-        targetId: providerPayment.paymentId,
-        requestId: input.payload.providerEventId,
-        detail: {
-          providerId: settlement.providerId,
-          providerEventId: settlement.providerEventId,
-          amountVnd: providerPayment.amountVnd,
-          automatic: true,
-        },
-      });
-
-      return {
-        replayed: false,
-        payment: providerPayment,
-        orderStatus: plan.nextStatus,
-        evidence,
-      };
+    const now = nowIso();
+    await awardLoyaltyInOrderTransaction(transaction, db, {
+      tenantId: input.tenantId,
+      orderId: input.payload.orderId,
+      orderData: orderSnap.data() ?? {},
+      amountVnd: order.totalVnd,
+      actorUid: 'provider',
+      now,
+      config: loyaltyConfig,
     });
 
-    return paymentAutoConfirmResultSchema.parse({
+    const payment = buildPaymentRecord({
+      paymentId: paymentRef.id,
+      tenantId: input.tenantId,
+      orderId: input.payload.orderId,
+      amountVnd: order.totalVnd,
+      method: options.method,
+      vietQrInstruction: instruction,
+      actorUid: 'provider',
+      idempotencyKey: `auto_${input.payload.providerEventId}`,
+      now,
+    });
+    const providerPayment = {
+      ...payment,
+      providerId: settlement.providerId,
+      providerRef: settlement.providerEventId,
+    };
+    const plan = buildOrderPaymentMutationPlan({
+      tenantId: input.tenantId,
+      orderId: input.payload.orderId,
+      order,
+      paymentMethod: options.method,
+      actorUid: 'provider',
+      now,
+    });
+    const evidence = paymentProviderEvidenceSchema.parse({
       schemaVersion: PAYMENT_CONTRACT_VERSION,
-      status: outcome.replayed ? 'replayed' : 'confirmed',
-      payment: outcome.payment,
-      orderStatus: outcome.orderStatus,
-      evidence: outcome.evidence,
+      evidenceId,
+      settlement,
+      recordedAt: now,
     });
+
+    applyOrderPaymentMutationPlan(transaction, db, plan);
+    transaction.set(paymentRef, providerPayment);
+    transaction.set(evidenceRef, evidence);
+    transaction.set(idempotencyRef, {
+      command: 'confirmPayment',
+      requestHash,
+      tenantId: input.tenantId,
+      orderId: input.payload.orderId,
+      paymentId: providerPayment.paymentId,
+      status: 'applied',
+      createdAt: now,
+    } satisfies PaymentIdempotencyRecord);
+    writeAuditEventInTransaction(transaction, {
+      tenantId: input.tenantId,
+      actorUid: null,
+      actorType: 'system',
+      role: input.providerId,
+      action: 'PaymentConfirmed',
+      targetType: 'payment',
+      targetId: providerPayment.paymentId,
+      requestId: input.payload.providerEventId,
+      detail: {
+        providerId: settlement.providerId,
+        providerEventId: settlement.providerEventId,
+        amountVnd: providerPayment.amountVnd,
+        automatic: true,
+      },
+    });
+
+    return {
+      replayed: false,
+      payment: providerPayment,
+      orderStatus: plan.nextStatus,
+      evidence,
+    };
+  });
+
+  return paymentAutoConfirmResultSchema.parse({
+    schemaVersion: PAYMENT_CONTRACT_VERSION,
+    status: outcome.replayed ? 'replayed' : 'confirmed',
+    payment: outcome.payment,
+    orderStatus: outcome.orderStatus,
+    evidence: outcome.evidence,
+  });
+}
+
+/**
+ * Automatic transfer confirmation (REQ-PAY-002, P0-L08 extension).
+ *
+ * A signed provider event is verified by the replaceable adapter, then the
+ * matching Payment is posted by the shared idempotent settlement core. It stays
+ * behind two flags and never changes the default manual provider.
+ */
+export async function processAutomaticProviderEvent(
+  db: Firestore,
+  input: PaymentAutoConfirmInput,
+): Promise<PaymentAutoConfirmResult> {
+  const platformSnap = await db.doc('platform/config').get();
+  const values = platformSnap.get('values') as
+    | Record<string, unknown>
+    | undefined;
+  if (
+    values?.[PAYMENT_PROVIDER_FLAG_KEY] !== true ||
+    values?.[PAYMENT_AUTO_CONFIRM_FLAG_KEY] !== true
+  ) {
+    throw new HttpsError(
+      'failed-precondition',
+      PAYMENT_PROVIDER_DISABLED_MESSAGE,
+    );
+  }
+
+  const adapter = resolvePaymentProviderAdapter(input.providerId);
+  if (
+    !adapter.verifySignature ||
+    !adapter.verifySignature({
+      payload: input.payload,
+      signature: input.signature,
+    })
+  ) {
+    throw new HttpsError(
+      'permission-denied',
+      PAYMENT_PROVIDER_SIGNATURE_INVALID_MESSAGE,
+    );
+  }
+  if (input.payload.outcome !== 'settled') {
+    throw new HttpsError(
+      'failed-precondition',
+      PAYMENT_PROVIDER_UNAVAILABLE_MESSAGE,
+    );
+  }
+
+  return settleProviderPayment(db, input, { method: 'vietQr' });
 }
 
 /**
@@ -1019,19 +1062,319 @@ export const paymentWebhookV1 = onRequest(
       response.status(200).json(result);
     } catch (error) {
       const code = error instanceof HttpsError ? error.code : 'internal';
-      const status =
-        code === 'permission-denied'
-          ? 401
-          : code === 'invalid-argument'
-            ? 400
-            : code === 'not-found'
-              ? 404
-              : code === 'failed-precondition' || code === 'already-exists'
-                ? 409
-                : code === 'resource-exhausted'
-                  ? 429
-                  : 500;
-      response.status(status).json({ error: code });
+      response.status(httpStatusForErrorCode(code)).json({ error: code });
+    }
+  },
+);
+
+/** Map one callable error code to the HTTP status a provider webhook sees. */
+function httpStatusForErrorCode(code: string): number {
+  if (code === 'permission-denied') {
+    return 401;
+  }
+  if (code === 'invalid-argument') {
+    return 400;
+  }
+  if (code === 'not-found') {
+    return 404;
+  }
+  if (code === 'failed-precondition' || code === 'already-exists') {
+    return 409;
+  }
+  if (code === 'resource-exhausted') {
+    return 429;
+  }
+  return 500;
+}
+
+const PAYOS_LINK_COLLECTION = 'payosPaymentLinks';
+/** Server-only counter; a PayOS `orderCode` must be a unique positive integer. */
+const PAYOS_COUNTER_PATH = 'platform/payosCounter';
+
+function payosLinkPath(tenantId: string, orderId: string): string {
+  return `tenants/${tenantId}/${PAYOS_LINK_COLLECTION}/${orderId}`;
+}
+
+function mapStoredPayosLink(
+  tenantId: string,
+  orderId: string,
+  data: DocumentData,
+): PayosPaymentLink {
+  return payosPaymentLinkSchema.parse({ ...data, tenantId, orderId });
+}
+
+/**
+ * Cashier command: open, or reopen, the PayOS payment link for one unpaid Order
+ * (REQ-PAY-003).
+ *
+ * The link document is the mapping the webhook resolves `orderCode` through, so
+ * it is written before PayOS is called: a link the provider created can never be
+ * orphaned by a failed write. Reopening an Order that still holds a pending link
+ * returns the stored one instead of minting a second, and `orderCode` comes from
+ * a server-only counter inside the same transaction, so two Orders can never
+ * share one.
+ */
+export const callablePaymentCreatePayosLink = onCall(
+  { ...CALL_OPTIONS, secrets: payosSecrets },
+  async (request): Promise<PayosLinkResult> => {
+    const uid = requireUid(request.auth?.uid);
+    assertAppCheck(request);
+    const input = parsePayosLinkInput(request.data);
+    const config = resolvePayosConfig();
+    if (!config) {
+      throw new HttpsError('failed-precondition', PAYOS_UNCONFIGURED_MESSAGE);
+    }
+
+    const db = getDb();
+    const memberSnap = await db
+      .doc(`tenants/${input.tenantId}/members/${uid}`)
+      .get();
+    assertCashierOrOwnerMember(memberSnap.data());
+
+    const orderSnap = await db
+      .doc(`tenants/${input.tenantId}/orders/${input.orderId}`)
+      .get();
+    if (!orderSnap.exists) {
+      throw new HttpsError('not-found', PAYMENT_ORDER_NOT_FOUND_MESSAGE);
+    }
+    const order = mapPaymentOrder(input.orderId, orderSnap.data() ?? {});
+    if (
+      orderSnap.get('paidAt') != null ||
+      order.status === 'paid' ||
+      order.status === 'cancelled'
+    ) {
+      throw new HttpsError('already-exists', PAYMENT_ALREADY_SETTLED_MESSAGE);
+    }
+
+    const linkRef = db.doc(payosLinkPath(input.tenantId, input.orderId));
+    const pendingSnap = await linkRef.get();
+    if (pendingSnap.exists && pendingSnap.get('status') === 'pending') {
+      return payosLinkResultSchema.parse({
+        schemaVersion: PAYMENT_CONTRACT_VERSION,
+        link: mapStoredPayosLink(
+          input.tenantId,
+          input.orderId,
+          pendingSnap.data() ?? {},
+        ),
+      });
+    }
+
+    const now = nowIso();
+    const counterRef = db.doc(PAYOS_COUNTER_PATH);
+    const orderCode = await db.runTransaction<number | null>(
+      async (transaction) => {
+        // All reads precede all writes (RULES_FIREBASE §4).
+        const [counterSnap, linkSnap] = await Promise.all([
+          transaction.get(counterRef),
+          transaction.get(linkRef),
+        ]);
+        if (linkSnap.exists && linkSnap.get('status') === 'pending') {
+          return null;
+        }
+        const current = counterSnap.get('next');
+        const next =
+          typeof current === 'number' &&
+          Number.isInteger(current) &&
+          current >= PAYOS_ORDER_CODE_START
+            ? current
+            : PAYOS_ORDER_CODE_START;
+        transaction.set(
+          counterRef,
+          { next: next + 1, updatedAt: now },
+          { merge: true },
+        );
+        transaction.set(
+          linkRef,
+          payosPaymentLinkSchema.parse({
+            schemaVersion: PAYMENT_CONTRACT_VERSION,
+            tenantId: input.tenantId,
+            orderId: input.orderId,
+            orderCode: next,
+            amountVnd: order.totalVnd,
+            status: 'pending',
+            checkoutUrl: null,
+            qrCode: null,
+            paymentLinkId: null,
+            createdAt: now,
+            updatedAt: now,
+          }),
+        );
+        return next;
+      },
+    );
+
+    if (orderCode === null) {
+      const racedSnap = await linkRef.get();
+      return payosLinkResultSchema.parse({
+        schemaVersion: PAYMENT_CONTRACT_VERSION,
+        link: mapStoredPayosLink(
+          input.tenantId,
+          input.orderId,
+          racedSnap.data() ?? {},
+        ),
+      });
+    }
+
+    let created;
+    try {
+      created = await createPayosPaymentLink(config, {
+        orderCode,
+        amountVnd: order.totalVnd,
+        description: payosDescription(input.orderId),
+        returnUrl: input.returnUrl,
+        cancelUrl: input.returnUrl,
+      });
+    } catch {
+      await linkRef.set(
+        { status: 'failed', updatedAt: nowIso() },
+        { merge: true },
+      );
+      throw new HttpsError('failed-precondition', PAYOS_LINK_FAILED_MESSAGE);
+    }
+
+    const link = payosPaymentLinkSchema.parse({
+      schemaVersion: PAYMENT_CONTRACT_VERSION,
+      tenantId: input.tenantId,
+      orderId: input.orderId,
+      orderCode,
+      amountVnd: order.totalVnd,
+      status: 'pending',
+      checkoutUrl: created.checkoutUrl,
+      qrCode: created.qrCode,
+      paymentLinkId: created.paymentLinkId,
+      createdAt: now,
+      updatedAt: nowIso(),
+    });
+    await linkRef.set(link);
+
+    return payosLinkResultSchema.parse({
+      schemaVersion: PAYMENT_CONTRACT_VERSION,
+      link,
+    });
+  },
+);
+
+/**
+ * Settle one verified PayOS transfer through the shared idempotent core. The
+ * event was authenticated by the checksum check in the webhook handler, so no
+ * adapter signature is involved and `payos` can never be posted through the
+ * generic signed-event seam.
+ */
+function processPayosProviderEvent(
+  db: Firestore,
+  facts: {
+    tenantId: string;
+    orderId: string;
+    providerEventId: string;
+    amountVnd: number;
+  },
+): Promise<PaymentAutoConfirmResult> {
+  return settleProviderPayment(
+    db,
+    {
+      tenantId: facts.tenantId,
+      providerId: 'payos',
+      payload: {
+        providerEventId: facts.providerEventId,
+        tenantId: facts.tenantId,
+        orderId: facts.orderId,
+        amountVnd: facts.amountVnd,
+        outcome: 'settled',
+      },
+    },
+    { method: 'payos' },
+  );
+}
+
+/**
+ * PayOS webhook (REQ-PAY-004).
+ *
+ * PayOS signs the `data` object with the merchant checksum key, so the signature
+ * is verified before anything is read or written and a forged event never
+ * reaches the settlement transaction. The signed `orderCode` then resolves the
+ * link document, which supplies the Tenant and the Order — the body cannot name
+ * them itself. A replayed webhook settles through the same deterministic ids and
+ * is reported as a replay, so the Payment posts exactly once.
+ *
+ * A non-settled or unreadable event is acknowledged with `ignored` rather than
+ * refused, so PayOS stops retrying a notification this server will never act on.
+ */
+export const payosWebhookV1 = onRequest(
+  { region: FUNCTIONS_REGION, secrets: payosSecrets },
+  async (request, response) => {
+    if (request.method !== 'POST') {
+      response.status(405).json({ error: 'method-not-allowed' });
+      return;
+    }
+    const config = resolvePayosConfig();
+    if (!config) {
+      response.status(503).json({ error: 'payos-unconfigured' });
+      return;
+    }
+
+    let body: unknown;
+    try {
+      body =
+        typeof request.body === 'string'
+          ? JSON.parse(request.body)
+          : request.body;
+    } catch {
+      response.status(400).json({ error: 'invalid-payload' });
+      return;
+    }
+    const parsed = payosWebhookSchema.safeParse(body);
+    if (!parsed.success) {
+      response.status(400).json({ error: 'invalid-payload' });
+      return;
+    }
+    if (
+      !verifyPayosSignature(
+        parsed.data.data,
+        parsed.data.signature,
+        config.checksumKey,
+      )
+    ) {
+      response.status(401).json({ error: 'invalid-signature' });
+      return;
+    }
+
+    const facts = readPayosSettlementFacts(parsed.data);
+    if (!facts) {
+      response.status(200).json({ status: 'ignored' });
+      return;
+    }
+
+    const db = getDb();
+    const links = await db
+      .collectionGroup(PAYOS_LINK_COLLECTION)
+      .where('orderCode', '==', facts.orderCode)
+      .limit(1)
+      .get();
+    const linkSnap = links.docs[0];
+    const tenantId = linkSnap?.ref.parent.parent?.id;
+    if (!linkSnap || !tenantId) {
+      response.status(404).json({ error: PAYOS_LINK_NOT_FOUND_MESSAGE });
+      return;
+    }
+
+    try {
+      const result = await processPayosProviderEvent(db, {
+        tenantId,
+        orderId: linkSnap.id,
+        providerEventId: facts.providerEventId,
+        amountVnd: facts.amountVnd,
+      });
+      await linkSnap.ref.set(
+        { status: 'paid', updatedAt: nowIso() },
+        { merge: true },
+      );
+      response.status(200).json({
+        status: result.status,
+        paymentId: result.payment.paymentId,
+      });
+    } catch (error) {
+      const code = error instanceof HttpsError ? error.code : 'internal';
+      response.status(httpStatusForErrorCode(code)).json({ error: code });
     }
   },
 );

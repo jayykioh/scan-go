@@ -27,11 +27,7 @@ import { assertAppCheck } from '../../shared/appCheck.js';
 import { assertRateLimit } from '../../shared/rateLimit.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
 import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
-import {
-  buildAiUsageRecord,
-  monthKeyFromDayKey,
-  toIsoTimestamp,
-} from '../ai/service.js';
+import { toIsoTimestamp } from '../ai/service.js';
 import {
   buildLoyaltyConfigDocument,
   resolveLoyaltyConfig,
@@ -506,28 +502,10 @@ export const callablePromotionSuggestCampaign = onCall(
       now,
     });
 
-    const usageRef = db.collection(`tenants/${input.tenantId}/aiUsage`).doc();
-    const usage = buildAiUsageRecord({
-      usageId: usageRef.id,
-      tenantId: input.tenantId,
-      response: {
-        provider: 'rule-based',
-        model: 'deterministic-v1',
-        answer: suggestion.rationale,
-        inputTokens: 0,
-        outputTokens: 0,
-        estimatedCostVnd: 0,
-      },
-      monthKey: monthKeyFromDayKey(dayKeyFromIso(now, timezone)),
-      now,
-      purpose: 'campaignSuggestion',
-    });
-
     await db.runTransaction(async (transaction) => {
       const freshMember = await transaction.get(memberRef);
       assertActiveOwnerMember(freshMember.data());
       transaction.set(suggestionRef, suggestion);
-      transaction.set(usageRef, usage);
       writeAuditEventInTransaction(transaction, {
         tenantId: input.tenantId,
         actorUid: uid,

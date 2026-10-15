@@ -30,6 +30,8 @@ export const MAX_AI_MENU_ITEMS = 200;
 export const MAX_AI_INGREDIENTS = 200;
 export const MAX_AI_ITEM_STATS = 100;
 export const MAX_AI_LOT_MOVEMENTS = 400;
+/** Feedback topics carried into the ask context (REQ-AI-009). */
+export const MAX_AI_FEEDBACK_TOPICS = 50;
 /** A stock-in lot above this percent over the prior Cost warns the Owner. */
 export const AI_LOT_PRICE_INCREASE_PERCENT = 10;
 /**
@@ -40,6 +42,11 @@ export const AI_LOT_PRICE_INCREASE_PERCENT = 10;
 export const AI_REVENUE_DROP_PERCENT = 20;
 /** Built-in fallback margin threshold for the low-profit warning (REQ-AI-008). */
 export const AI_LOW_MARGIN_PERCENT = 20;
+/**
+ * Built-in fallback: this many reports of one topic inside the configured window
+ * warns the Owner (REQ-FDB-008). Zero disables the warning.
+ */
+export const AI_FEEDBACK_TOPIC_ALERT_COUNT = 3;
 export const AI_DEFAULT_TIMEZONE = 'Asia/Ho_Chi_Minh';
 
 /** Convert a Firestore timestamp, Date, or ISO string into an ISO string. */
@@ -200,6 +207,39 @@ export async function readIngredients(
     .filter((item) => item.name.length > 0);
 }
 
+/**
+ * Customer report counters per topic (REQ-AI-009). The AI module reads them as
+ * an authorized Feedback output; only counts and bounded recent feedback IDs
+ * travel, never the report text.
+ */
+export async function readFeedbackTopics(
+  db: Firestore,
+  tenantId: string,
+): Promise<AiFeedbackTopicContext[]> {
+  const snap = await db
+    .collection(`tenants/${tenantId}/feedbackTopics`)
+    .limit(MAX_AI_FEEDBACK_TOPICS)
+    .get();
+  return snap.docs
+    .map((docSnap) => ({
+      topicKey: docSnap.id,
+      label:
+        typeof docSnap.get('label') === 'string' ? docSnap.get('label') : '',
+      department:
+        typeof docSnap.get('department') === 'string'
+          ? docSnap.get('department')
+          : 'customer',
+      count: Number(docSnap.get('count') ?? 0),
+      windowCount: Number(docSnap.get('windowCount') ?? 0),
+      recentFeedbackIds: Array.isArray(docSnap.get('recentFeedbackIds'))
+        ? (docSnap.get('recentFeedbackIds') as unknown[])
+            .filter((id): id is string => typeof id === 'string')
+            .slice(0, 20)
+        : [],
+    }))
+    .filter((topic) => topic.label.length > 0);
+}
+
 export const AI_INVALID_MESSAGE = 'Yêu cầu AI không hợp lệ.';
 export const AI_MEMBER_DENIED_MESSAGE = 'Bạn không thuộc cửa hàng này.';
 export const AI_OWNER_DENIED_MESSAGE =
@@ -337,14 +377,33 @@ export interface SafeAiContext {
   }>;
   menuItems: AiMenuItemContext[];
   ingredients: AiIngredientContext[];
+  /**
+   * Customer report counters per topic (REQ-AI-009). Only counts and the bounded
+   * recent feedback IDs travel; the report text itself never leaves the tenant.
+   */
+  feedbackTopics: AiFeedbackTopicContext[];
   sources: AiSource[];
 }
+
+const aiFeedbackTopicContextSchema = z.strictObject({
+  topicKey: z.string().min(1),
+  label: z.string().min(1),
+  department: z.string().min(1),
+  count: nonNegativeIntSchema,
+  windowCount: nonNegativeIntSchema,
+  recentFeedbackIds: z.array(z.string().min(1)).max(20),
+});
+
+export type AiFeedbackTopicContext = z.infer<
+  typeof aiFeedbackTopicContextSchema
+>;
 
 export interface AssembleSafeContextInput {
   tenantId: string;
   dayStats: Array<{ stats: DailyStats; items: DailyItemStats[] }>;
   menuItems: AiMenuItemContext[];
   ingredients: AiIngredientContext[];
+  feedbackTopics?: AiFeedbackTopicContext[];
 }
 
 /**
@@ -406,6 +465,20 @@ export function assembleSafeContext(
     );
   }
 
+  const feedbackTopics = (input.feedbackTopics ?? []).map((topic) =>
+    aiFeedbackTopicContextSchema.parse(topic),
+  );
+  for (const topic of feedbackTopics) {
+    sources.push(
+      aiSourceSchema.parse({
+        type: 'feedback',
+        id: topic.topicKey,
+        label: topic.label,
+        period: null,
+      }),
+    );
+  }
+
   const context: SafeAiContext = {
     tenantId: input.tenantId,
     period:
@@ -421,6 +494,7 @@ export function assembleSafeContext(
     ingredients: input.ingredients.map((item) =>
       aiIngredientContextSchema.parse(item),
     ),
+    feedbackTopics,
     sources,
   };
   assertNoSecretMaterial(context);
@@ -436,11 +510,14 @@ export interface WarningThresholds {
   revenueDropPercent: number;
   /** Margin percent below which the low-profit warning fires. */
   lowMarginPercent: number;
+  /** Reports of one topic that trigger the feedback-surge warning; 0 disables. */
+  feedbackTopicAlertCount: number;
 }
 
 export const DEFAULT_WARNING_THRESHOLDS: WarningThresholds = {
   revenueDropPercent: AI_REVENUE_DROP_PERCENT,
   lowMarginPercent: AI_LOW_MARGIN_PERCENT,
+  feedbackTopicAlertCount: AI_FEEDBACK_TOPIC_ALERT_COUNT,
 };
 
 /**
@@ -588,6 +665,31 @@ export function computeWarnings(
     }
   }
 
+  // Customer report surge (REQ-FDB-008). The count is arithmetic in code and the
+  // warning cites the reports behind it, so a "many people complained" claim is
+  // never made without its sources.
+  for (const topic of context.feedbackTopics) {
+    if (
+      thresholds.feedbackTopicAlertCount <= 0 ||
+      topic.windowCount < thresholds.feedbackTopicAlertCount
+    ) {
+      continue;
+    }
+    warnings.push(
+      aiWarningSchema.parse({
+        kind: 'feedbackSurge',
+        severity: 'warning',
+        subjectId: topic.topicKey,
+        subjectName: topic.label,
+        message:
+          `${topic.windowCount} phản hồi về "${topic.label}" trong thời gian gần đây ` +
+          `(tổng ${topic.count}).`,
+        sourceIds: topic.recentFeedbackIds,
+        formula: `windowCount >= ${thresholds.feedbackTopicAlertCount}`,
+      }),
+    );
+  }
+
   return warnings.slice(0, 20);
 }
 
@@ -652,12 +754,20 @@ function summarizeDay(context: SafeAiContext): string {
 }
 
 /**
+ * The deterministic provider's identity. Work computed in code reports these
+ * names, so an `aiInsights` or `campaignSuggestions` record never claims a model
+ * produced it (ADR 0008).
+ */
+export const RULE_BASED_PROVIDER = 'rule-based';
+export const RULE_BASED_MODEL = 'deterministic-v1';
+
+/**
  * Default safe provider: no external call, no secret, deterministic grounding.
  * A live Gemini adapter replaces it behind the same interface when configured.
  */
 export function createRuleBasedProvider(): AiProviderAdapter {
-  const provider = 'rule-based';
-  const model = 'deterministic-v1';
+  const provider = RULE_BASED_PROVIDER;
+  const model = RULE_BASED_MODEL;
   return {
     provider,
     model,
@@ -676,7 +786,7 @@ export function createRuleBasedProvider(): AiProviderAdapter {
         provider,
         model,
         answer,
-        inputTokens: estimateTokens(request.question),
+        inputTokens: estimateTokens(buildProviderPrompt(request)),
         outputTokens: estimateTokens(answer),
         estimatedCostVnd: 0,
       };
@@ -904,14 +1014,41 @@ export function isJevEnabled(
   return env.TYPESAFE_JEV_ENABLED === 'true';
 }
 
-function buildProviderPrompt(request: AiProviderRequest): string {
+/**
+ * The one prompt every provider sees (REQ-AI-009). It carries the records the
+ * question may be about — daily aggregates, menu price and Cost, ingredient
+ * stock and Cost, and feedback topic counts — so the model answers from data
+ * instead of only from warnings already computed. It is bounded by the module
+ * read limits and holds no other tenant's data and no personal data.
+ */
+export function buildProviderPrompt(request: AiProviderRequest): string {
   const warnings = request.warnings
     .map((warning) => `- ${warning.message} (${warning.formula})`)
     .join('\n');
+  const menu = request.context.menuItems
+    .map((item) => `${item.name}: giá ${item.priceVnd}, giá vốn ${item.costVnd}`)
+    .join('\n');
+  const ingredients = request.context.ingredients
+    .map(
+      (item) =>
+        `${item.name}: tồn ${item.stockQuantity}, ngưỡng tồn thấp ` +
+        `${item.lowStockThreshold}, giá vốn ${item.unitCostVnd}`,
+    )
+    .join('\n');
+  const topics = request.context.feedbackTopics
+    .map(
+      (topic) =>
+        `${topic.label}: ${topic.windowCount} phản hồi gần đây, tổng ${topic.count}`,
+    )
+    .join('\n');
   return (
     `Câu hỏi của chủ cửa hàng: ${request.question}\n` +
-    `Dữ liệu đã tổng hợp: ${JSON.stringify(request.context.dayStats)}\n` +
-    `Cảnh báo: ${warnings || 'không có'}`
+    `Doanh thu và lãi gộp theo ngày: ${JSON.stringify(request.context.dayStats)}\n` +
+    `Món và giá: ${menu || 'không có'}\n` +
+    `Nguyên liệu: ${ingredients || 'không có'}\n` +
+    `Chủ đề phản hồi của khách: ${topics || 'không có'}\n` +
+    `Cảnh báo đã tính sẵn: ${warnings || 'không có'}\n` +
+    'Chỉ trả lời từ dữ liệu trên, dẫn mã nguồn khi có, và nói rõ khi dữ liệu thiếu.'
   );
 }
 

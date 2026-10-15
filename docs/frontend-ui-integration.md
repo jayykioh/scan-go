@@ -7,9 +7,9 @@
 | User-facing area | UI status | Frontend route or file | REQ/NFR | Backend integration contract |
 |---|---|---|---|---|
 | Landing and introduction | DONE | `/`, `/introduce`; `LandingPage`, `IntroducePage` | None | None |
-| Simulator launcher | DONE | `/simulator`; `SimulatorIndex` | None | None |
+| Operating pages launcher | DONE | `/operation`; `OperationIndex` | REQ-UX-002 | None |
 | Owner email sign-in and first Tenant | PARTIAL | `/login`, `/register`; `LoginPage`, `RegisterPage` | REQ-AUTH-001, REQ-TEN-001 | Firebase Auth email/password; `callableAuthRegisterOwner`; `callableTenantBootstrap`; current identity and membership query |
-| Tenant switch and Staff access | PARTIAL | `SimulatorLayout`, `StaffPage`, `StaffView` | REQ-TEN-001, REQ-AUTH-002, REQ-ACL-001 | membership query; `tenant-select-active`; Staff PIN command; authorization decision |
+| Tenant switch and Staff access | PARTIAL | `OperationLayout`, `StaffPage`, `StaffView` | REQ-TEN-001, REQ-AUTH-002, REQ-ACL-001 | membership query; `tenant-select-active`; Staff PIN command; authorization decision |
 | Dashboard shell and navigation | PARTIAL | `DashboardLayout`, `RootLayout`, `AuthLayout` | REQ-TEN-001, REQ-I18N-001 | authenticated active-Tenant context; locale state; route guards |
 | Owner menu | PARTIAL | `/dashboard/menu`; `MenuPage`, `OwnerView` | REQ-CAT-001, REQ-CAT-002 | Catalog create/update/archive/template commands; private menu query; public projection listener |
 | Tables, area assignments, reservations, and QR link | IMPLEMENTED + AMENDMENT APPROVED (implementation pending) | `/dashboard/tables`; `TablesPage`, `OwnerView` | REQ-TBL-001..007, NFR-SEC-002 | Existing table create/rename/archive/regenerate/configure commands; tenant table query through the shared `tables` store slice; public-token resolver; floor plan with drag/keyboard, area filter, list, summary, and detail; pending UI for multi-Waiter area assignments, staff-entered time-bounded reservations, reservation lifecycle, and combined Order/reservation state query |
@@ -17,14 +17,14 @@
 | Staff administration | PARTIAL | `/dashboard/staff`; `StaffPage` | REQ-AUTH-002, REQ-ACL-001 | membership create/update/disable command; membership query; PIN set command |
 | Customer menu and cart | PARTIAL | `/menu/:tableId`; `PublicMenuPage`, `CustomerView` | REQ-ORD-001, REQ-ORD-004, NFR-UX-001 | public Table resolver; public menu query; cart validation and Order-create callable |
 | Customer Order tracking | PARTIAL | `CustomerView` | REQ-ORD-003, NFR-RT-001 | `publicOrderTracking/{trackingToken}` listener |
-| Kitchen | PARTIAL | `KitchenView`, `StaffView` | REQ-KDS-001, REQ-ORD-003 | Kitchen queue query; cooking/ready command; availability command |
-| Waiter | PARTIAL | `StaffView` | REQ-WAI-001, REQ-ORD-003 | ready queue query; served command |
-| Cashier | PARTIAL | `CashierView`, `StaffView` | REQ-CAS-001, REQ-ORD-002 | unpaid query; VietQR instruction query; cash/VietQR confirmation command |
+| Kitchen | PARTIAL | `KitchenView`, `StaffView`, `InventoryPanel` | REQ-KDS-001, REQ-KDS-002, REQ-ORD-003, REQ-INV-001, REQ-INV-008, REQ-INV-009, REQ-UX-003 | Three tabs: queue plus the per-table floor plan from the `tables` store slice with the cooking/ready command; menu state grouped by category through the availability command; ingredient in/out with a waste reason through the adjust command. The Kho screen pages the ingredient list at ten rows, selects one or many ingredients for one waste submission with a shared reason and note, and has its own "Báo cáo kho" view of the append-only change report with a waste-only filter |
+| Waiter | PARTIAL | `StaffView`, `WaiterTableDialog` | REQ-WAI-001, REQ-WAI-002, REQ-ORD-003, REQ-ORD-005, REQ-UX-003 | ready queue query; served command; per-table floor plan that pings a table with ready dishes and opens one table dialog — serve the table's dishes, add dishes through the locked searchable `StaffOrderEntry` (`callableOrderStaffCreate`, now also allowed for the `waiter` role), and, for a Waiter that also carries `cashier`, the till's invoice sheet through `CashierView`'s `focusTableId` mode; dishes and tables come from the shared tenant store |
+| Cashier | PARTIAL | `CashierView`, `StaffView` | REQ-CAS-001, REQ-CAS-003, REQ-ORD-002, REQ-UX-003, REQ-PAY-003 | unpaid query; VietQR instruction query; cash/VietQR confirmation command; per-table floor plan that opens that table's invoice dialog — open bills first, the returning customer's name resolved from `loyaltyMemberId` through the Loyalty member list, then the settled invoices at five rows a page with their immutable Payment record read directly from `payments`, and the PayOS link action that reuses the stored pending link |
 | Owner onboarding and Inventory form | PARTIAL | `OwnerView` | REQ-ONB-001, REQ-ONB-002, REQ-INV-001 | checklist query/command; ingredient/recipe commands and queries |
 | Owner overview | MOCKUP | `/dashboard`; `OverviewPage` | P1 REQ-RPT-001 | Reporting query; no P0 implementation |
 | Owner management | MOCKUP | `/dashboard/manage`; `ManagementPage` | P1 REQ-RPT-001 | Reporting query; no P0 implementation |
 | Subscription | MOCKUP | `/dashboard/subscription`; `SubscriptionPage` | P2 REQ-SUB-001 | Subscription command/query; no P0 implementation |
-| Solo | MOCKUP | `/simulator/solo`; `SoloOperatorView` | P1 REQ-SOLO-001 | Module contracts only; no P0 implementation |
+| Solo | MOCKUP | `/operation` (not listed); `SoloOperatorView` | P1 REQ-SOLO-001 | Module contracts only; no P0 implementation |
 | AI assistant | MOCKUP | `OwnerView`, `SoloOperatorView` | P1 REQ-AI-001 | server-side read-only AI query; no P0 implementation |
 | Promotion | IMPLEMENTED | `/dashboard/promotions`; `PromotionsPage`; `CustomerView` cart; `SettingsPage` quick discount | P2 REQ-PRO-001…REQ-PRO-006 | Promotion upsert/status/list/evaluate callables, direct `promotions` read, AI campaign suggest/approve/measure |
 | Loyalty | PARTIAL | `CustomerView` (mock OTP sheet), `SettingsPage` | P2 REQ-LOY-001, REQ-PRO-004 | Loyalty callables exist and now back `pointsRedemption`; the Customer OTP sheet is still a demo and changes no total |

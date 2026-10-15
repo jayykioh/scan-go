@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertActiveOwnerMember,
+  assertPinMatchesPolicy,
   buildStaffMembershipDocument,
   computeNextSessionVersion,
   parseStaffCreateInput,
   parseStaffResetPinInput,
+  staffPinPolicyMessage,
   toStaffAccount,
   toStaffDirectoryEntry,
 } from './service.js';
@@ -140,5 +142,19 @@ describe('session versioning', () => {
     expect(computeNextSessionVersion(3)).toBe(4);
     expect(computeNextSessionVersion(undefined)).toBe(1);
     expect(computeNextSessionVersion('x')).toBe(1);
+  });
+});
+
+describe('PIN policy length (REQ-AUTH-004)', () => {
+  it('accepts only a PIN of the resolved policy length', () => {
+    expect(() => assertPinMatchesPolicy('123456', 6)).not.toThrow();
+    expect(() => assertPinMatchesPolicy('1234', 6)).toThrow(
+      staffPinPolicyMessage(6),
+    );
+    expect(() => assertPinMatchesPolicy('1234567', 6)).toThrow();
+  });
+
+  it('names the required length so the Owner can fix the PIN', () => {
+    expect(staffPinPolicyMessage(6)).toContain('6');
   });
 });

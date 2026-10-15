@@ -15,6 +15,7 @@ export default defineConfig({
     include: [
       'test/config/**/*.test.ts',
       'test/auth/**/*.test.ts',
+      'test/staff/**/*.test.ts',
       'test/ai/**/*.test.ts',
       'test/feedback/**/*.test.ts',
       'test/tenant/**/*.test.ts',

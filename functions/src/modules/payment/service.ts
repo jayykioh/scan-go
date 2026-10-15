@@ -9,6 +9,7 @@ import {
   paymentInstructionInputSchema,
   paymentProviderSettleInputSchema,
   paymentRecordSchema,
+  payosLinkInputSchema,
   vietQrInstructionSchema,
   vietQrMerchantConfigSchema,
   type PaymentArchivePlan,
@@ -17,6 +18,7 @@ import {
   type PaymentMethod,
   type PaymentProviderSettleInput,
   type PaymentRecord,
+  type PayosLinkInput,
   type VietQrInstruction,
   type VietQrMerchantConfig,
 } from '../../../../shared/contracts/payment.contract.js';
@@ -85,6 +87,10 @@ export function parsePaymentInstructionInput(
     paymentInstructionInputSchema,
     data,
   );
+}
+
+export function parsePayosLinkInput(data: unknown): PayosLinkInput {
+  return parseOrInvalid<PayosLinkInput>(payosLinkInputSchema, data);
 }
 
 export function assertActiveMember(memberData: DocumentData | undefined): void {

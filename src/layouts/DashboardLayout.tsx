@@ -214,7 +214,7 @@ export default function DashboardLayout() {
             <LayoutGrid className="w-4 h-4" />
             Doanh thu
           </NavLink>
-          <NavLink to="/simulator" className={navLinkClass}>
+          <NavLink to="/operation" className={navLinkClass}>
             <MonitorPlay className="w-4 h-4" />
             Vận hành
           </NavLink>

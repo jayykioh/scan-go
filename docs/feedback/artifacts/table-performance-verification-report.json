@@ -1,0 +1,89 @@
+{
+  "generatedAt": "2026-10-14T13:52:21.582Z",
+  "base": "http://127.0.0.1:3001",
+  "tenantId": "first-g43h5hgnc4RJ0FJrYHxmd3g7qXl1",
+  "timeZone": "Asia/Ho_Chi_Minh",
+  "dayKey": "20261014",
+  "expectedTableCountForDay": 0,
+  "expectedTableCountForMonth": 10,
+  "passed": 12,
+  "failed": 0,
+  "screenshots": [
+    "docs/feedback/artifacts/table-performance-desktop.png",
+    "docs/feedback/artifacts/table-performance-month.png",
+    "docs/feedback/artifacts/table-performance-narrow-390.png",
+    "docs/feedback/artifacts/table-performance-english.png"
+  ],
+  "consoleErrors": [],
+  "findings": [
+    {
+      "flow": "t1-panel-present",
+      "kind": "pass",
+      "label": "Khối hiện diện theo aria-labelledby"
+    },
+    {
+      "flow": "t2-matches-firestore",
+      "kind": "pass",
+      "label": "Không có bàn nào trong ngày → hiện trạng thái trống",
+      "detail": "Chưa có bàn nào có đơn đã thu trong kỳ này."
+    },
+    {
+      "flow": "t2-matches-firestore",
+      "kind": "pass",
+      "label": "Trạng thái trống đúng khi Firestore rỗng"
+    },
+    {
+      "flow": "t2b-month-has-rows",
+      "kind": "pass",
+      "label": "Số dòng của kỳ Tháng khớp Firestore",
+      "detail": "màn hình 10 · Firestore 10"
+    },
+    {
+      "flow": "t2b-month-has-rows",
+      "kind": "pass",
+      "label": "Tên bàn và số liệu từng dòng của kỳ Tháng khớp Firestore",
+      "detail": "10 dòng khớp"
+    },
+    {
+      "flow": "t3-ordering-note",
+      "kind": "pass",
+      "label": "Nhãn thứ tự và giới hạn hiện đúng",
+      "detail": "Xếp theo doanh thu · tối đa 50 bàn"
+    },
+    {
+      "flow": "t4-narrow",
+      "kind": "pass",
+      "label": "Khối vẫn hiện ở 390px"
+    },
+    {
+      "flow": "t4-narrow",
+      "kind": "pass",
+      "label": "Khối không tràn ngang ở 390px",
+      "detail": "không tràn"
+    },
+    {
+      "flow": "t5-english",
+      "kind": "pass",
+      "label": "Tiêu đề đổi sang tiếng Anh",
+      "detail": "Performance by table"
+    },
+    {
+      "flow": "t5-english",
+      "kind": "pass",
+      "label": "Tiêu đề cột đổi sang tiếng Anh",
+      "detail": "Table | Paid orders | Revenue | Gross profit"
+    },
+    {
+      "flow": "t5-english",
+      "kind": "pass",
+      "label": "Trạng thái trống cũng đổi sang tiếng Anh",
+      "detail": "No table has a paid order in this period."
+    },
+    {
+      "flow": "t6-console",
+      "kind": "pass",
+      "label": "Không có lỗi console ngoài nhiễu đã biết",
+      "detail": "sạch"
+    }
+  ]
+}

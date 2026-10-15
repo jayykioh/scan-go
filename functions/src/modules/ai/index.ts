@@ -31,12 +31,15 @@ import {
   AI_INVALID_MESSAGE,
   AI_PERMISSION_DENIED_MESSAGE,
   MAX_AI_ITEM_STATS,
+  RULE_BASED_MODEL,
+  RULE_BASED_PROVIDER,
   assembleSafeContext,
   assertAiOwnerMember,
   assertNoSecretMaterial,
   assertQuestionInPermission,
   buildAiResult,
   buildAiUsageRecord,
+  buildProviderPrompt,
   computeWarnings,
   estimateAiReservationVnd,
   hasSecretMaterial,
@@ -44,6 +47,7 @@ import {
   mapDailyStats,
   monthKeyFromDayKey,
   readIngredients,
+  readFeedbackTopics,
   readMenuItems,
   reserveAiBudget,
   resolveAiProvider,
@@ -125,6 +129,7 @@ export const callableAiAsk = onCall(CALL_OPTIONS, async (request) => {
   const warningThresholds = {
     revenueDropPercent: resolvedConfig.values.ai.revenueDropPercent,
     lowMarginPercent: resolvedConfig.values.ai.lowMarginPercent,
+    feedbackTopicAlertCount: resolvedConfig.values.ai.feedbackTopicAlertCount,
   };
 
   // Resolve the concrete adapter first so the reservation matches its real
@@ -148,6 +153,7 @@ export const callableAiAsk = onCall(CALL_OPTIONS, async (request) => {
     previousItemsSnap,
     menuItems,
     ingredients,
+    feedbackTopics,
   ] = await Promise.all([
     dayRef.get(),
     dayRef.collection('items').limit(MAX_AI_ITEM_STATS).get(),
@@ -155,6 +161,7 @@ export const callableAiAsk = onCall(CALL_OPTIONS, async (request) => {
     previousDayRef.collection('items').limit(MAX_AI_ITEM_STATS).get(),
     readMenuItems(db, input.tenantId),
     readIngredients(db, input.tenantId),
+    readFeedbackTopics(db, input.tenantId),
   ]);
 
   const dayStats = [
@@ -199,13 +206,15 @@ export const callableAiAsk = onCall(CALL_OPTIONS, async (request) => {
     dayStats,
     menuItems,
     ingredients,
+    feedbackTopics,
   });
   const warnings = computeWarnings(context, warningThresholds);
   // Reserve only around the provider call, so no failure between the
-  // reservation and the call can leak budget.
+  // reservation and the call can leak budget. The estimate uses the whole
+  // prompt, so a wider context cannot under-reserve (REQ-AI-009).
   const estimatedReservationVnd = estimateAiReservationVnd(
     provider.provider,
-    safeQuestion,
+    buildProviderPrompt({ question: safeQuestion, context, warnings }),
   );
   const reservation = await reserveAiBudget(db, {
     tenantId: input.tenantId,
@@ -375,16 +384,15 @@ export const callableAiGroupFeedback = onCall(
       }),
     );
 
-    const resolvedConfig = resolveTenantConfig(
-      await readConfigLayers(db, input.tenantId),
-    );
-    const provider = resolveAiProvider(resolvedConfig.values.ai.provider);
+    // The grouping is a keyword catalog in code, not a model call. It reports
+    // the deterministic identity so the record never claims a provider produced
+    // it (ADR 0008).
     return aiFeedbackGroupingResultSchema.parse(
       groupFeedbackThemes({
         tenantId: input.tenantId,
         feedback,
-        provider: provider.provider,
-        model: provider.model,
+        provider: RULE_BASED_PROVIDER,
+        model: RULE_BASED_MODEL,
         now: nowIso(),
       }),
     );

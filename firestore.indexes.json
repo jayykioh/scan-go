@@ -163,6 +163,16 @@
           "queryScope": "COLLECTION_GROUP"
         }
       ]
+    },
+    {
+      "collectionGroup": "payosPaymentLinks",
+      "fieldPath": "orderCode",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
     }
   ]
 }

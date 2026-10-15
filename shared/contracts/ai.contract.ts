@@ -21,6 +21,7 @@ export const aiWarningKindSchema = z.enum([
   'lowStock',
   'priceIncrease',
   'revenueDrop',
+  'feedbackSurge',
   'missingData',
 ]);
 

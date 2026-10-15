@@ -37,6 +37,10 @@ import {
   type CampaignSuggestion,
 } from '@contracts/campaign.contract';
 import {
+  feedbackTopicSchema,
+  type FeedbackTopic,
+} from '@contracts/feedback.contract';
+import {
   getFirebaseAuth,
   getFirebaseFirestore,
 } from '../services/firebase/client';
@@ -575,6 +579,45 @@ export async function readCampaignSuggestions(
           ...docSnap.data(),
           suggestionId: docSnap.id,
           tenantId,
+        }),
+      );
+    },
+  );
+}
+
+const FEEDBACK_TOPIC_READ_LIMIT = 50;
+
+/**
+ * Customer report counters per topic (REQ-FDB-007). The Rules grant an active
+ * Owner read and the server is the only writer, so this is a direct read with
+ * no callable in front of it. The counter holds no customer text.
+ */
+export async function readFeedbackTopics(
+  requestedTenantId?: string,
+): Promise<FeedbackTopic[]> {
+  const db = requireDb();
+  const userId = requireUserId();
+  const tenantId = requestedTenantId ?? (await requireTenantId(userId));
+  return readCached(
+    {
+      userId,
+      tenantId,
+      path: `tenants/${tenantId}/feedbackTopics`,
+      query: `orderBy=windowCount:desc;limit=${FEEDBACK_TOPIC_READ_LIMIT}`,
+    },
+    async () => {
+      const snapshot = await getDocs(
+        query(
+          collection(db, 'tenants', tenantId, 'feedbackTopics'),
+          orderBy('windowCount', 'desc'),
+          limit(FEEDBACK_TOPIC_READ_LIMIT),
+        ),
+      );
+      return snapshot.docs.map((docSnap) =>
+        feedbackTopicSchema.parse({
+          ...docSnap.data(),
+          tenantId,
+          topicKey: docSnap.id,
         }),
       );
     },

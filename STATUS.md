@@ -18,30 +18,33 @@ These percentages are engineering estimates for planning, not automated metrics.
 
 ## Verification
 
-Measured on 2026-10-06. Every suite below is green, and all four run in CI
+Measured on 2026-10-13. Every suite below is green, and all four run in CI
 (`.github/workflows/ci.yml`).
 
-- `npm --workspace functions run test`: 44 files, 477 tests pass.
-- `npm run test`: 38 files, 220 web/shared tests pass.
-- `npm run test:rules`: 18 files, 120 Security Rules tests pass (Firestore and Storage emulators).
-- `npm run test:emulator`: 40 files, 248 Functions Emulator callable tests pass (Auth, Firestore, Functions emulators).
+- `npm --workspace functions run test`: 49 files, 542 tests pass.
+- `npm run test`: 50 files, 334 web/shared tests pass.
+- `npm run test:rules`: 19 files, 125 Security Rules tests pass (Firestore and Storage emulators).
+- `npm run test:emulator`: 41 of 42 files, 261 of 263 Functions Emulator callable tests pass (Auth, Firestore, Functions emulators). The two failures are pre-existing: commit `9405e83` changed the promotion contract without updating `test/promotion/promotion.emulator.test.ts`, which an earlier session proved by stashing the promotion change. This change set touches no promotion code and that test imports nothing it changed.
 - `npm run typecheck`, `npm run typecheck:functions`, `npm run lint`, `npm run lint:functions`, `npm run build:functions`, `npm run build`: pass.
 - Java 21+ is required for the Firestore emulator; the CI `emulator` job installs it.
 
 The emulator suites are hermetic. No suite depends on a provider secret: the AI
-tests pin the deterministic provider in their own seed, so a `GEMINI_API_KEY`
-present on a developer machine cannot change a result or incur provider spend.
+tests pin the deterministic provider in their own seed, and `resolvePayosConfig`
+always returns fixed test credentials under the emulator, so a `GEMINI_API_KEY`
+or a real PayOS secret on a developer machine cannot change a result or incur
+provider spend.
 
 ## Implemented (M1, M2, M3 baseline)
 
 - **Auth/Tenant:** Owner email/password, first and additional Tenant, membership list, active-Tenant switch, Staff PIN with lockout and sessionVersion, server ACL, privacy filtering, ADMIN delegation with audit.
 - **Config:** three-layer resolution, allowed-key filtering, versioning, ADMIN platform command, tenant-visible projection.
 - **Catalog/Table Access:** menu and template commands, public menu projection, Table create/rename/archive/regenerate, opaque revocable links, QR payload.
-- **Ordering/Fulfilment/Inventory/Payment:** server-priced Pay-Later and Pay-First Orders, immutable Orders, public tracking, Kitchen `pending -> cooking -> ready -> served`, one-transaction inventory deduction, dynamic VietQR, idempotent cash/VietQR settlement, reversal, refund, signed payment webhook.
+- **Ordering/Fulfilment/Inventory/Payment:** server-priced Pay-Later and Pay-First Orders, immutable Orders, public tracking, Kitchen `pending -> cooking -> ready -> served`, one-transaction inventory deduction, dynamic VietQR, idempotent cash/VietQR settlement, reversal, refund, signed payment webhook, and PayOS QR settlement driven by a signature-verified webhook (REQ-PAY-003, REQ-PAY-004).
 - **Reporting:** paid-order revenue, COGS, gross profit, and rebuildable dailyStats.
-- **AI:** provider adapter with usage and budget, grounded weekly insights, open Q&A, feedback grouping, campaign suggestions with Owner approval, and a TypeSafe Jev evaluation seam (ADR 0008).
-- **Feedback/Workforce:** feedback submit and verification, feedback ticket workflow, shift schedule, clock in/out with correction approval (no payroll), stock count and loss review.
+- **AI:** provider adapter with usage and budget, grounded weekly insights computed in code, open Q&A grounded in menu, ingredient, and report-topic records, feedback grouping, campaign suggestions with Owner approval, and a TypeSafe Jev evaluation seam (ADR 0008, REQ-AI-009).
+- **Feedback/Workforce:** feedback submit and verification, one bounded-catalog topic per report with a per-topic counter and a surge warning, feedback ticket workflow, shift schedule, clock in/out with correction approval (no payroll), stock count and loss review.
 - **Product feedback (added 2026-10-08):** any signed-in member reports a bug, usability problem, or feature request about ScanGo with up to three screenshots uploaded to `tenants/{tenantId}/feedbackAttachments/{uid}/`; the Owner inbox at `/dashboard/feedback` triages it with an append-only history (REQ-FDB-004, REQ-FDB-005, REQ-FDB-006).
+- **Customer reports (added 2026-10-13):** a guest rates or describes the visit from the Order tracking screen; the server tags one topic from a closed catalog, increments that topic's counter in the same transaction, and raises one surge warning plus one Insight per window when the configured count is reached. The Owner sees the counters and the warning at `/dashboard/feedback` and in the assistant, and opens a ticket from the reports behind them (REQ-FDB-007, REQ-FDB-008).
 - **Promotion/Loyalty/Subscription:** deterministic promotion, append-only loyalty ledger, plan entitlements.
 - **Observability:** Sentry monitoring for the frontend and Cloud Functions.
 - **i18n:** typed `vi`/`en` catalog with server locale profile.
@@ -60,11 +63,14 @@ present on a developer machine cannot change a result or incur provider spend.
 |---|---|---|
 | NFC | Server provision/revoke/resolve with opaque tokens | Physical NDEF device write/read |
 | Loyalty | Server-verified earn/redeem/reverse | SMS/Zalo code delivery provider |
-| Payment | Signed provider adapter and webhook | Production provider secret and live transport |
+| Payment | Signed provider adapter and webhook; PayOS link creation and signed webhook settlement are wired end to end (REQ-PAY-003, REQ-PAY-004) | PayOS needs the three Secret Manager credentials, the deployed `payosPaymentLinks.orderCode` index, and a real merchant account; one platform-level PayOS account is shared by every Tenant |
+| Staff accounts | Owner-created accounts, policy-length PIN enforced where it is set, and an idempotent `staffDirectory` backfill for memberships created before the projection existed (REQ-AUTH-004) | No forced PIN reset when a Tenant changes its PIN policy, so a legacy PIN keeps its original length until the Owner resets it |
 | i18n | Typed catalog, Customer and Settings wired | Hardcoded strings in OwnerView, InventoryPanel, MenuPage |
 | Usability evidence | Automated timing harness and budget assertions | Separate timed usability study artifact |
 | PWA | Manifest | Service worker and offline caching |
-| AI live | Adapter and evaluation | Live provider secret; default stays deterministic |
+| AI live | Adapter, evaluation, and grounded Q&A. The weekly analysis and the feedback grouping are computed in code, so the only paid path is the Owner question | Live provider secret; the default stays deterministic |
+| Customer reports | Guest report form after a paid Order, per-topic counters, and a surge warning in the Owner assistant | No push channel outside the dashboard; ticket creation is manual |
+| Report topics | `feedbackTopics` counters, `feedbackSurge` warning, and the Owner topics list on the Feedback page | Topic classification is the keyword catalog, not a model |
 | Deploy pipeline | Manual scripts for rules, storage, indexes, and functions | No staged/production promotion or rollback gate |
 | App Check | Server gate implemented and unit-tested; enforcement temporarily off in `scango-8f0e9` (ADR 0017) | Web client `initializeAppCheck` plus a registered reCAPTCHA v3 provider |
 | NFR-RT-001 | Bounded listeners and a two-second contract | No measured end-to-end latency harness |

@@ -29,6 +29,15 @@ interface StaffOrderEntryProps {
   tenantId: string;
   tenantConfig: TenantConfig;
   tables: TableConfig[];
+  /**
+   * Take the order at this table only (REQ-WAI-002). Hides the dine-in /
+   * takeaway toggle and the table picker, so a Waiter cannot send it elsewhere.
+   */
+  lockedTableId?: string;
+  /** Offer a search box over the dish grid, for a long menu on a phone. */
+  searchable?: boolean;
+  /** Reports the created Order id, e.g. so a dialog can close on success. */
+  onSubmitted?: (orderId: string) => void;
 }
 
 function selectionKey(menuItemId: string, optionIds: string[]): string {
@@ -62,10 +71,30 @@ function unitPriceFor(item: PublicMenuItem, optionIds: string[]): number {
   return price;
 }
 
+/**
+ * The available dishes a search shows: an empty query keeps them all, and the
+ * match ignores case so a Waiter types "pho" for "Phở" (REQ-WAI-002).
+ *
+ * shortcut: plain lowercase match, so a query without diacritics does not find
+ * a diacritic name; add a folded compare when the menu is searched in earnest.
+ */
+export function filterAvailableItems(
+  items: PublicMenuItem[],
+  query: string,
+): PublicMenuItem[] {
+  const available = items.filter((item) => item.isAvailable);
+  const needle = query.trim().toLowerCase();
+  if (!needle) return available;
+  return available.filter((item) => item.name.toLowerCase().includes(needle));
+}
+
 export default function StaffOrderEntry({
   tenantId,
   tenantConfig,
   tables,
+  lockedTableId,
+  searchable = false,
+  onSubmitted,
 }: StaffOrderEntryProps) {
   const [publicMenuItems, menuState] = useStoreSlice('publicMenu');
   const storeTenantId = useStoreTenantId();
@@ -75,6 +104,7 @@ export default function StaffOrderEntry({
   );
   const [orderType, setOrderType] = useState<'dineIn' | 'takeaway'>('dineIn');
   const [tableId, setTableId] = useState('');
+  const [query, setQuery] = useState('');
   const [cart, setCart] = useState<CartLine[]>([]);
   const [picker, setPicker] = useState<PublicMenuItem | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
@@ -84,8 +114,8 @@ export default function StaffOrderEntry({
   const idempotencyKeyRef = useRef<string | null>(null);
 
   const availableItems = useMemo(
-    () => menuItems.filter((item) => item.isAvailable),
-    [menuItems],
+    () => filterAvailableItems(menuItems, query),
+    [menuItems, query],
   );
 
   const total = useMemo(
@@ -189,7 +219,8 @@ export default function StaffOrderEntry({
 
   const submit = async () => {
     if (cart.length === 0 || submitting) return;
-    if (orderType === 'dineIn' && !tableId) {
+    const targetTableId = lockedTableId ?? tableId;
+    if (orderType === 'dineIn' && !targetTableId) {
       setError('Chọn bàn trước khi gửi đơn.');
       return;
     }
@@ -210,7 +241,7 @@ export default function StaffOrderEntry({
       const result = await createStaffOrder({
         tenantId,
         orderType,
-        tableId: orderType === 'dineIn' ? tableId : null,
+        tableId: orderType === 'dineIn' ? targetTableId : null,
         paymentMode,
         idempotencyKey: idempotencyKeyRef.current,
         lines,
@@ -218,6 +249,7 @@ export default function StaffOrderEntry({
       idempotencyKeyRef.current = null;
       setCart([]);
       setMessage(`Đã gửi đơn #${result.order.orderId.slice(-6).toUpperCase()}`);
+      onSubmitted?.(result.order.orderId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không gửi được đơn.');
     } finally {
@@ -230,7 +262,7 @@ export default function StaffOrderEntry({
       <div className="flex items-center justify-between">
         <h3 className="text-[13px] font-bold flex items-center gap-2">
           <ShoppingBag className="w-4 h-4 text-[#155BD0]" />
-          Lên món tại quầy
+          {lockedTableId ? 'Thêm món tại bàn' : 'Lên món tại quầy'}
         </h3>
       </div>
 
@@ -245,44 +277,59 @@ export default function StaffOrderEntry({
         </p>
       )}
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setOrderType('dineIn')}
-          className={`flex-1 py-2 rounded-[21px] text-[11px] font-bold transition-colors cursor-pointer ${
-            orderType === 'dineIn'
-              ? 'bg-[#155BD0] text-white'
-              : 'bg-[#F5F5F7] text-[#707070]'
-          }`}
-        >
-          Tại bàn
-        </button>
-        <button
-          type="button"
-          onClick={() => setOrderType('takeaway')}
-          className={`flex-1 py-2 rounded-[21px] text-[11px] font-bold transition-colors cursor-pointer ${
-            orderType === 'takeaway'
-              ? 'bg-[#155BD0] text-white'
-              : 'bg-[#F5F5F7] text-[#707070]'
-          }`}
-        >
-          Mang về
-        </button>
-      </div>
+      {!lockedTableId && (
+        <>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setOrderType('dineIn')}
+              className={`flex-1 py-2 rounded-[21px] text-[11px] font-bold transition-colors cursor-pointer ${
+                orderType === 'dineIn'
+                  ? 'bg-[#155BD0] text-white'
+                  : 'bg-[#F5F5F7] text-[#707070]'
+              }`}
+            >
+              Tại bàn
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrderType('takeaway')}
+              className={`flex-1 py-2 rounded-[21px] text-[11px] font-bold transition-colors cursor-pointer ${
+                orderType === 'takeaway'
+                  ? 'bg-[#155BD0] text-white'
+                  : 'bg-[#F5F5F7] text-[#707070]'
+              }`}
+            >
+              Mang về
+            </button>
+          </div>
 
-      {orderType === 'dineIn' && (
-        <select
-          value={tableId}
-          onChange={(e) => setTableId(e.target.value)}
+          {orderType === 'dineIn' && (
+            <select
+              value={tableId}
+              onChange={(e) => setTableId(e.target.value)}
+              className="w-full bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] px-3 py-2 text-[11px] font-semibold focus:outline-none focus:border-[#155BD0]"
+            >
+              <option value="">Chọn bàn</option>
+              {tables.map((table) => (
+                <option key={table.id} value={table.id}>
+                  {table.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </>
+      )}
+
+      {searchable && (
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Tìm món..."
+          aria-label="Tìm món"
           className="w-full bg-[#F5F5F7] border border-[#B5C7D8] rounded-[21px] px-3 py-2 text-[11px] font-semibold focus:outline-none focus:border-[#155BD0]"
-        >
-          <option value="">Chọn bàn</option>
-          {tables.map((table) => (
-            <option key={table.id} value={table.id}>
-              {table.name}
-            </option>
-          ))}
-        </select>
+        />
       )}
 
       <div className="grid grid-cols-2 gap-2">
@@ -301,7 +348,7 @@ export default function StaffOrderEntry({
         ))}
         {availableItems.length === 0 && (
           <p className="col-span-2 text-[11px] text-[#8E8E93] text-center py-6">
-            Chưa có món khả dụng.
+            {query.trim() ? 'Không tìm thấy món nào.' : 'Chưa có món khả dụng.'}
           </p>
         )}
       </div>

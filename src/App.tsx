@@ -1,10 +1,10 @@
 import React, { Suspense } from 'react';
-import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Nfc } from 'lucide-react';
 import RootLayout from './layouts/RootLayout';
 import AuthLayout from './layouts/AuthLayout';
-import SimulatorLayout from './layouts/SimulatorLayout';
+import OperationLayout from './layouts/OperationLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import RouteErrorBoundary from './components/RouteErrorBoundary';
 import { lazyRetry } from './utils/lazyRetry';
@@ -27,8 +27,8 @@ const SubscriptionPage = lazyRetry(() => import('./pages/dashboard/SubscriptionP
 const FeedbackPage = lazyRetry(() => import('./pages/dashboard/FeedbackPage'), 'FeedbackPage');
 const PromotionsPage = lazyRetry(() => import('./pages/dashboard/PromotionsPage'), 'PromotionsPage');
 
-const SimulatorIndex = lazyRetry(() => import('./pages/SimulatorIndex'), 'SimulatorIndex');
-const SimulatorRole = lazyRetry(() => import('./pages/SimulatorRole'), 'SimulatorRole');
+const OperationIndex = lazyRetry(() => import('./pages/OperationIndex'), 'OperationIndex');
+const OperationRole = lazyRetry(() => import('./pages/OperationRole'), 'OperationRole');
 const PublicMenuPage = lazyRetry(() => import('./pages/PublicMenuPage'), 'PublicMenuPage');
 
 const FallbackLoader = () => (
@@ -114,19 +114,29 @@ const router = createBrowserRouter([
         ]
       },
       {
-        path: 'simulator',
-        element: <SimulatorLayout />,
+        path: 'operation',
+        element: <OperationLayout />,
         errorElement: <RouteErrorBoundary />,
         children: [
           {
             index: true,
-            element: <SimulatorIndex />
+            element: <OperationIndex />
           },
           {
             path: ':role',
-            element: <SimulatorRole />
+            element: <OperationRole />
           }
         ]
+      },
+      // The old Test Environment URLs stay reachable for existing links and
+      // saved harness runs, including the deep role paths.
+      {
+        path: 'simulator',
+        element: <Navigate to="/operation" replace />
+      },
+      {
+        path: 'simulator/*',
+        element: <Navigate to="/operation" replace />
       }
     ]
   },

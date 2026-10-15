@@ -255,3 +255,31 @@ describe('tenant Payment write denial', () => {
     );
   });
 });
+
+describe('PayOS payment link denial', () => {
+  it('denies every client read and write of the server-side order mapping', async () => {
+    await seed();
+
+    const link = {
+      schemaVersion: 1,
+      tenantId: TENANT_A,
+      orderId: 'order-001',
+      orderCode: 1001,
+      amountVnd: 100000,
+      status: 'pending',
+    };
+
+    await assertFails(
+      getDoc(doc(ownerDb(), 'tenants', TENANT_A, 'payosPaymentLinks', 'order-001')),
+    );
+    await assertFails(
+      getDoc(doc(memberDb(), 'tenants', TENANT_A, 'payosPaymentLinks', 'order-001')),
+    );
+    await assertFails(
+      setDoc(doc(ownerDb(), 'tenants', TENANT_A, 'payosPaymentLinks', 'order-001'), link),
+    );
+    await assertFails(
+      setDoc(doc(unauthDb(), 'tenants', TENANT_A, 'payosPaymentLinks', 'forged'), link),
+    );
+  });
+});

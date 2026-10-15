@@ -711,7 +711,7 @@ export default function SettingsPage() {
         <section className="space-y-5 pt-6 border-t">
           <div>
             <h2 className="font-bold text-lg uppercase tracking-tight text-zinc-900">Thông tin vận hành</h2>
-            <p className="text-sm text-zinc-500">Các giá trị này đồng bộ với dashboard và simulator.</p>
+            <p className="text-sm text-zinc-500">Các giá trị này đồng bộ với dashboard và trang vận hành.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

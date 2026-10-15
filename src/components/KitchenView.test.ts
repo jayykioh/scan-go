@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildKitchenAvailabilityGroups,
   isKitchenQueueOrder,
+  kitchenBoardStates,
   kitchenWaitMinutes,
   kitchenWaitTone,
 } from './KitchenView';
@@ -119,5 +120,47 @@ describe('kitchenWaitTone', () => {
     expect(kitchenWaitTone(19)).toBe('warn');
     expect(kitchenWaitTone(20)).toBe('late');
     expect(kitchenWaitTone(90)).toBe('late');
+  });
+});
+
+/**
+ * The floor plan tells the cook which tables are waiting and how many Orders
+ * each one holds, so the tile prints a count and takes the wait colour
+ * (REQ-KDS-001, REQ-UX-003).
+ */
+describe('kitchenBoardStates', () => {
+  const now = new Date('2026-09-12T07:30:00.000Z').getTime();
+
+  it('counts the queued Orders per table and tones the oldest wait', () => {
+    const states = kitchenBoardStates(
+      [
+        order({ id: 'a', tableId: 't1', timestamp: new Date('2026-09-12T07:25:00.000Z') }),
+        order({ id: 'b', tableId: 't1', timestamp: new Date('2026-09-12T07:29:00.000Z') }),
+        order({ id: 'c', tableId: 't2', timestamp: new Date('2026-09-12T07:00:00.000Z') }),
+      ],
+      now,
+    );
+
+    expect(states.get('t1')).toEqual({
+      state: 'occupied',
+      count: 2,
+      detail: 'chờ 5p',
+      tone: 'calm',
+    });
+    // t2 waited thirty minutes, so its tile goes red.
+    expect(states.get('t2')?.count).toBe(1);
+    expect(states.get('t2')?.tone).toBe('late');
+  });
+
+  it('leaves out a table with nothing waiting and hides unpaid Pay-First', () => {
+    const states = kitchenBoardStates(
+      [
+        order({ id: 'a', tableId: 't1', status: 'ready' }),
+        order({ id: 'b', tableId: 't2', paymentMode: 'Pay-First' }),
+      ],
+      now,
+    );
+
+    expect(states.size).toBe(0);
   });
 });

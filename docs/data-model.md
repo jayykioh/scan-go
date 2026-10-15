@@ -181,6 +181,11 @@ Stores command, request hash, result reference, status, and expiry. Reusing a ke
 ### `tenants/{tenantId}/payments/{paymentId}` — Payment
 Stores order, amount, method, status, VietQR payload snapshot, provider reference, external event ID, linked payment, actor, idempotency key, and lifecycle timestamps. Confirmed records are immutable. Reversal and refund use linked compensating records.
 
+### `tenants/{tenantId}/payosPaymentLinks/{orderId}` — Payment (PayOS)
+One PayOS payment link per Order, keyed by the Order id so a reopen is a single document read. Stores the provider `orderCode`, amount, link state (`pending`, `paid`, `cancelled`, `failed`), checkout URL, QR payload, and provider link id. It never stores PayOS credentials. The document is the only mapping from a webhook's signed `orderCode` back to a Tenant and an Order, so the webhook body cannot name them itself. Server-written and server-read only: the Cashier receives the link through `callablePaymentCreatePayosLink`.
+
+`orderCode` comes from the server-only `platform/payosCounter` document inside the same transaction that writes the link, so two Orders can never share one. The webhook resolves it with a bounded collection-group query on `orderCode`.
+
 ### `tenants/{tenantId}/loyaltyMembers/{memberId}` — Loyalty
 Stores normalized `+84` phone, display name, verified state, point balance, paid total, visit count, and timestamps. Orders reference `memberId` only. Server permission filters phone visibility.
 
@@ -233,6 +238,9 @@ Stores rating or issue text, optional Order reference, verification state, maske
 ### `tenants/{tenantId}/feedbackTickets/{ticketId}` — Feedback
 Stores state (`received`, `in_progress`, `resolved`), owner, priority, linked feedback IDs, and an append-only history of state, actor, time, and reason.
 
+### `tenants/{tenantId}/feedbackTopics/{topicKey}` — Feedback
+Stores one bounded-catalog topic: label, department, all-time `count`, the current window (`windowStartedAt`, `windowCount`), the 20 most recent feedback IDs, first and last report time, and the alert state. Server-written only; an active Owner or ADMIN reads it. It carries no customer text (REQ-FDB-007, REQ-FDB-008).
+
 ### `tenants/{tenantId}/productFeedback/{feedbackId}` — Product feedback
 Stores the operator's report about ScanGo itself: category, severity, status, message, up to three screenshot descriptors (`storagePath`, `contentType`, `sizeBytes`), the reporter uid and derived role, the screen the reporter was on, and an append-only history of status, actor, time, and reason. Server-written only; Owner or ADMIN read.
 
@@ -261,6 +269,8 @@ Stores Staff member, clock in and clock out, source, correction state (`none`, `
 | `aiUsage` | `tenantId`, `createdAt desc` |
 | `feedback` | `createdAt desc`, `verificationState` |
 | `feedbackTickets` | `state`, `updatedAt desc` |
+| `feedbackTopics` | `windowCount desc` |
+| `payosPaymentLinks` | `orderCode` equality, collection-group scope |
 | `productFeedback` | `createdAt desc` |
 | `shifts` | `staffUid`, `date` |
 | `attendance` | `staffUid`, `clockInAt desc` |

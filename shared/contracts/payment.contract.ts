@@ -7,8 +7,12 @@ import {
 
 export const PAYMENT_CONTRACT_VERSION = 1;
 
-/** Manual M1 settlement methods. Automatic provider events are M3. */
-export const paymentMethodSchema = z.enum(['cash', 'vietQr']);
+/**
+ * Manual settlement methods plus the PayOS automatic provider (REQ-PAY-003).
+ * `payos` is only reachable when the PayOS secrets are bound; the default
+ * manual flow never calls a provider.
+ */
+export const paymentMethodSchema = z.enum(['cash', 'vietQr', 'payos']);
 
 export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
 
@@ -132,6 +136,70 @@ export type PaymentInstructionResult = z.infer<
   typeof paymentInstructionResultSchema
 >;
 
+/**
+ * Lifecycle of one PayOS payment link (REQ-PAY-003). `pending` is the only
+ * state a webhook may settle from; `failed` marks a provider call that never
+ * produced a payable link, so a later attempt may allocate a fresh one.
+ */
+export const payosPaymentLinkStatusSchema = z.enum([
+  'pending',
+  'paid',
+  'cancelled',
+  'failed',
+]);
+
+export type PayosPaymentLinkStatus = z.infer<
+  typeof payosPaymentLinkStatusSchema
+>;
+
+/**
+ * One Order's PayOS payment link. `orderCode` is the only identifier PayOS
+ * echoes back on the webhook, so this document is the mapping a settlement
+ * resolves through. It never carries PayOS credentials (REQ-PAY-003).
+ */
+export const payosPaymentLinkSchema = z.strictObject({
+  schemaVersion: z.literal(PAYMENT_CONTRACT_VERSION),
+  tenantId: z.string().min(1),
+  orderId: z.string().min(1),
+  orderCode: z.number().int().positive(),
+  amountVnd: vndSchema,
+  status: payosPaymentLinkStatusSchema,
+  checkoutUrl: z.string().min(1).nullable(),
+  /** EMVCo payload string; rendered as a QR in the Cashier view. */
+  qrCode: z.string().min(1).nullable(),
+  paymentLinkId: z.string().min(1).nullable(),
+  createdAt: isoUtcTimestampSchema,
+  updatedAt: isoUtcTimestampSchema,
+});
+
+export type PayosPaymentLink = z.infer<typeof payosPaymentLinkSchema>;
+
+/**
+ * Cashier request: open, or reopen, the PayOS link for one unpaid Order.
+ * `returnUrl` is where PayOS sends the payer after the hosted checkout, so the
+ * Cashier's own browser origin supplies it; PayOS requires an absolute http(s)
+ * URL and it is validated here before it enters a signed request.
+ */
+export const payosLinkInputSchema = z.strictObject({
+  tenantId: z.string().min(1),
+  orderId: z.string().min(1),
+  returnUrl: z
+    .string()
+    .trim()
+    .min(1)
+    .max(300)
+    .regex(/^https?:\/\/\S+$/),
+});
+
+export type PayosLinkInput = z.infer<typeof payosLinkInputSchema>;
+
+export const payosLinkResultSchema = z.strictObject({
+  schemaVersion: z.literal(PAYMENT_CONTRACT_VERSION),
+  link: payosPaymentLinkSchema,
+});
+
+export type PayosLinkResult = z.infer<typeof payosLinkResultSchema>;
+
 /** Deterministic Payment id so one Order has at most one M1 Payment. */
 export function paymentIdFor(orderId: string): string {
   return `payment_${orderId}`;
@@ -164,9 +232,15 @@ export const PAYMENT_AUTO_CONFIRM_FLAG_KEY = 'paymentAutomaticConfirmEnabled';
 
 /**
  * Replaceable payment provider identities. `manual` stays the default adapter;
- * `automatic` is the test-only signed-event seam and is never the default.
+ * `automatic` is the test-only signed-event seam and is never the default;
+ * `payos` is the live provider (REQ-PAY-003, REQ-PAY-004).
  */
-export const paymentProviderIdSchema = z.enum(['manual', 'fake', 'automatic']);
+export const paymentProviderIdSchema = z.enum([
+  'manual',
+  'fake',
+  'automatic',
+  'payos',
+]);
 
 export type PaymentProviderId = z.infer<typeof paymentProviderIdSchema>;
 

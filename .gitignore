@@ -1,4 +1,5 @@
 node_modules/
+.cache/
 build/
 dist/
 coverage/
@@ -26,6 +27,8 @@ firebase-debug.log
 # Both are regenerable local state, never source.
 /.playwright-cli/
 /.pw-cache/
+# npm needs a writable cache when ~/.npm is read-only (sandboxed agents).
+/.npm-cache/
 
 # Optional local Firebase emulator jar cache, for hosts where the CLI cannot
 # write to ~/.cache/firebase/emulators. Point FIREBASE_EMULATORS_PATH here.

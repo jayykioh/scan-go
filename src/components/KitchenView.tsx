@@ -33,6 +33,13 @@ import {
 } from '../data/adapters/view-mappers';
 import { useStoreSlice, useStoreTenantId } from '../data/tenantStore';
 import { usePersistentState } from '../hooks/usePersistentState';
+import { useOperationTables } from '../hooks/useOperationTables';
+import { resolvePlanLayout } from '../pages/dashboard/tables/tablePlan';
+import OperationTableBoard, {
+  summarizeOrdersByTable,
+  type OperationTableState,
+} from './OperationTableBoard';
+import InventoryPanel from './InventoryPanel';
 import NotificationDialog from './NotificationDialog';
 import { TenantConfig, Order, MenuItem, TableConfig } from '../types';
 import { 
@@ -42,7 +49,10 @@ import {
   AlertCircle, 
   X,
   Volume2,
-  VolumeX
+  VolumeX,
+  ClipboardList,
+  UtensilsCrossed,
+  Boxes
 } from 'lucide-react';
 
 /** A ticket that waited this long turns amber, then red (REQ-KDS-001). */
@@ -51,6 +61,25 @@ const KITCHEN_LATE_MINUTES = 20;
 
 /** One clock for the whole queue: the wait label never re-renders per card. */
 const KITCHEN_CLOCK_MS = 60_000;
+
+/** The Kitchen's three areas (REQ-KDS-002). */
+const KITCHEN_TABS = [
+  {
+    key: 'queue' as const,
+    label: 'Hàng đợi',
+    icon: <ClipboardList className="h-4 w-4" />,
+  },
+  {
+    key: 'availability' as const,
+    label: 'Tình trạng món',
+    icon: <UtensilsCrossed className="h-4 w-4" />,
+  },
+  {
+    key: 'inventory' as const,
+    label: 'Kho nguyên liệu',
+    icon: <Boxes className="h-4 w-4" />,
+  },
+];
 
 const KITCHEN_WAIT_TONE_CLASS = {
   calm: 'text-[#5B5B60]',
@@ -94,6 +123,31 @@ export function isKitchenQueueOrder(order: AppOrder): boolean {
     return Boolean(order.paidAt);
   }
   return true;
+}
+
+/**
+ * Floor-plan state for the Kitchen queue: how many Orders each table is
+ * waiting on, and the wait tone of its oldest one (REQ-KDS-001, REQ-UX-003).
+ */
+export function kitchenBoardStates(
+  orders: Order[],
+  nowMs: number,
+): Map<string, OperationTableState> {
+  const states = new Map<string, OperationTableState>();
+  for (const [tableId, summary] of summarizeOrdersByTable(
+    orders.filter(isKitchenQueueOrder),
+  )) {
+    const waited = summary.oldestAt
+      ? kitchenWaitMinutes(summary.oldestAt, nowMs)
+      : 0;
+    states.set(tableId, {
+      state: 'occupied',
+      count: summary.count,
+      detail: `chờ ${waited}p`,
+      tone: kitchenWaitTone(waited),
+    });
+  }
+  return states;
 }
 
 /**
@@ -391,6 +445,23 @@ export default function KitchenView({
     [availability, availabilityReady, catalogAvailability],
   );
 
+  // The operating floor plan groups the queue by table (REQ-KDS-001). These
+  // hooks run before the sign-in early return, so they must not depend on the
+  // queue slice computed below it.
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    'queue' | 'availability' | 'inventory'
+  >('queue');
+  const { tables: operationTables } = useOperationTables(tables);
+  const layout = useMemo(
+    () => resolvePlanLayout(operationTables),
+    [operationTables],
+  );
+  const boardStates = useMemo(
+    () => kitchenBoardStates(orders, nowMs),
+    [orders, nowMs],
+  );
+
   // Sign in screen matching Apple security design
   if (!embedded && !activeShift) {
     return (
@@ -440,8 +511,11 @@ export default function KitchenView({
   }
 
   const kitchenQueue = orders.filter(isKitchenQueueOrder);
+  const visibleQueue = selectedTableId
+    ? kitchenQueue.filter((order) => order.tableId === selectedTableId)
+    : kitchenQueue;
 
-  // The role frame can be full width or half of a two-panel desktop, so the
+  // The page runs full-width on a tablet and one column on a phone, so the
   // queue/availability split keys off the container width, not the viewport
   // (REQ-KDS-002).
   return (
@@ -484,30 +558,78 @@ export default function KitchenView({
         </p>
       )}
 
-      <div className="flex-grow overflow-y-auto p-[13px] bg-white @lg:grid @lg:grid-cols-[minmax(0,1fr)_minmax(0,min(340px,45%))] @lg:items-start @lg:gap-[13px]">
-        {/* The tile grid measures this column, never the whole KDS: at @lg the
-            queue keeps only about half the width (REQ-KDS-002). */}
-        <div className="@container min-w-0 space-y-[13px]">
+      {/* Tabs (REQ-KDS-002): the queue and its floor plan, the menu state, and
+          the ingredient in/out the Kitchen records. */}
+      <div
+        role="tablist"
+        aria-label="Khu vực bếp"
+        className="flex shrink-0 border-b border-[#B5C7D8]/60 bg-white select-none"
+      >
+        {KITCHEN_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex flex-1 items-center justify-center gap-1 whitespace-nowrap px-1 py-2.5 text-[11px] font-bold uppercase tracking-normal transition-colors cursor-pointer sm:gap-1.5 sm:px-2 sm:tracking-wider ${
+              activeTab === tab.key
+                ? 'border-b-2 border-zinc-900 text-zinc-900'
+                : 'border-b-2 border-transparent text-[#808080]'
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'queue' && (
+        <div className="flex-grow overflow-y-auto p-[13px] bg-white">
+          {/* The ticket grid measures this column (REQ-KDS-002). */}
+          <div className="@container min-w-0 space-y-[13px]">
           <div className="flex justify-between items-center text-xs font-bold text-[#808080] select-none">
-            <span>Hàng đợi</span>
-            <span className="text-xs text-zinc-900 lowercase">sync</span>
+            <span>
+              Hàng đợi
+              {selectedTableId && (
+                <span className="ml-2 text-[#2D2B30]">
+                  {operationTables.find((t) => t.tableId === selectedTableId)?.name}
+                </span>
+              )}
+            </span>
+            {selectedTableId ? (
+              <button
+                type="button"
+                onClick={() => setSelectedTableId(null)}
+                className="text-xs font-bold text-zinc-900 lowercase cursor-pointer"
+              >
+                xem tất cả
+              </button>
+            ) : (
+              <span className="text-xs text-zinc-900 lowercase">sync</span>
+            )}
           </div>
 
-        {kitchenQueue.length === 0 ? (
+        {visibleQueue.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center select-none">
             <div className="w-14 h-14 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center justify-center mb-4">
               <CheckCircle className="w-7 h-7 text-emerald-500" />
             </div>
-            <p className="text-sm font-bold text-zinc-900">Bếp đã rảnh!</p>
-            <p className="text-xs text-zinc-400 mt-1">Chờ đơn mới từ khách</p>
+            <p className="text-sm font-bold text-zinc-900">
+              {selectedTableId ? 'Bàn này chưa có đơn' : 'Bếp đã rảnh!'}
+            </p>
+            <p className="text-xs text-zinc-400 mt-1">
+              {selectedTableId ? 'Bấm "xem tất cả" để xem hàng đợi' : 'Chờ đơn mới từ khách'}
+            </p>
           </div>
         ) : (
           <div className="grid gap-[13px] @md:grid-cols-2 @3xl:grid-cols-3">
-            {kitchenQueue.map((order, index) => {
+            {visibleQueue.map((order) => {
               const isCooking = order.status === 'cooking';
               const tableName = order.tableName ?? tables.find(t => t.id === order.tableId)?.name ?? `Bàn ${order.tableId}`;
-              // The queue arrives oldest first, so #1 is the next to cook.
-              const position = index + 1;
+              // The queue arrives oldest first, so #1 is the next to cook. The
+              // position counts the whole queue, not the filtered slice.
+              const position = kitchenQueue.findIndex((row) => row.id === order.id) + 1;
               const waitMinutes = kitchenWaitMinutes(order.timestamp, nowMs);
               const placedAt = order.timestamp.toLocaleTimeString('vi-VN', {
                 hour: '2-digit',
@@ -602,11 +724,37 @@ export default function KitchenView({
             })}
           </div>
         )}
+
+          {/* Order cards stay on top and the floor plan sits below them: the
+              cook reads the tickets first, then taps a table to jump to it
+              (REQ-UX-003). */}
+          <OperationTableBoard
+            placements={layout.placements}
+            columns={layout.columns}
+            rows={layout.rows}
+            states={boardStates}
+            selectedTableId={selectedTableId}
+            onSelect={(table) =>
+              setSelectedTableId((current) =>
+                current === table.tableId ? null : table.tableId,
+              )
+            }
+          />
+          </div>
         </div>
+      )}
+
+      {activeTab === 'availability' && (
+        <div className="flex-grow overflow-y-auto p-[13px] bg-white">
+        {availabilityGroups.length === 0 && (
+          <p className="py-12 text-center text-sm font-bold text-zinc-400">
+            Chưa có món nào để đổi tình trạng.
+          </p>
+        )}
 
         {/* Availability board: Kitchen toggles one item or a whole category. */}
         {availabilityGroups.length > 0 && (
-          <div className="mt-[13px] min-w-0 space-y-[13px] @lg:mt-0">
+          <div className="mx-auto min-w-0 max-w-3xl space-y-[13px]">
             <div className="flex justify-between items-center text-xs font-bold text-[#808080] select-none">
               <span>Tình trạng món</span>
               <span className="text-xs text-zinc-900 lowercase">catalog</span>
@@ -666,8 +814,14 @@ export default function KitchenView({
             })}
           </div>
         )}
+        </div>
+      )}
 
-      </div>
+      {activeTab === 'inventory' && (
+        <div className="flex-grow overflow-y-auto bg-white">
+          <InventoryPanel embedded />
+        </div>
+      )}
     </div>
   );
 }

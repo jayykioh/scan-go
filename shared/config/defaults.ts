@@ -33,6 +33,10 @@ export const CONFIG_DEFAULTS = {
     // Deterministic warning thresholds (REQ-AI-007, REQ-AI-008).
     revenueDropPercent: 20,
     lowMarginPercent: 20,
+    // Feedback surge threshold (REQ-FDB-008): three reports of one topic inside
+    // a day warns the Owner. Zero disables the warning.
+    feedbackTopicAlertCount: 3,
+    feedbackTopicWindowHours: 24,
   },
 } as const;
 

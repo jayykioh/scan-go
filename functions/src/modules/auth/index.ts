@@ -45,7 +45,6 @@ import {
   requireRegistrationEmail,
   STAFF_ACCESS_DENIED_MESSAGE,
   STAFF_PIN_INCORRECT_MESSAGE,
-  STAFF_PIN_LENGTH_MESSAGE,
   STAFF_PIN_LOCKED_MESSAGE,
   STAFF_REVOKE_DENIED_MESSAGE,
   STAFF_REVOKE_NOT_FOUND_MESSAGE,
@@ -182,10 +181,6 @@ export const callableAuthStaffPinVerify = onCall(
 
         const now = new Date();
         const nowIsoValue = now.toISOString();
-
-        if (input.pin.length !== policy.length) {
-          throw new HttpsError('invalid-argument', STAFF_PIN_LENGTH_MESSAGE);
-        }
 
         const lockedUntil = readString(membership.pinLockedUntil);
         if (isPinLocked(lockedUntil, now)) {

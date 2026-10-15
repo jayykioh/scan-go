@@ -78,6 +78,8 @@ export interface Order {
   status: OrderStatus;
   timestamp: Date;
   customerPhone?: string;
+  /** The Loyalty member this Order belongs to, when the server resolved one. */
+  loyaltyMemberId?: string | null;
   isLoyaltyApplied?: boolean;
   paymentMode: 'Pay-First' | 'Pay-Later';
   paymentMethod?: 'Cash' | 'QR_Transfer';

@@ -36,12 +36,12 @@ ScanGo hiện là một frontend SPA mô phỏng, chưa có backend hoặc datab
 │   ├── /staff
 │   ├── /settings
 │   └── /subscription
-├── /simulator
-│   └── /simulator/:role
+├── /operation
+│   └── /operation/:role
 └── /menu/:tableId
 ```
 
-Dashboard và simulator là hai shell riêng. `DashboardLayout` chứa navigation quản trị; `SimulatorLayout` cung cấp state dùng chung cho các actor trong simulator.
+Dashboard và trang vận hành là hai shell riêng. `DashboardLayout` chứa navigation quản trị; `OperationLayout` cung cấp state dùng chung cho các trang vận hành (Thu ngân, Bếp, Nhân viên, Khách hàng). `/simulator` chuyển hướng về `/operation`.
 
 ### State hiện tại
 

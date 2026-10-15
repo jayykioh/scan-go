@@ -19,7 +19,7 @@ function readSource(relativePath: string): string {
 
 const STAFF_FLOW_FILES = [
   '../../components/StaffView.tsx',
-  '../../layouts/SimulatorLayout.tsx',
+  '../../layouts/OperationLayout.tsx',
   'auth.adapter.ts',
 ] as const;
 

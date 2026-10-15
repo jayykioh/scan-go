@@ -1,34 +1,19 @@
 {
-  "generatedAt": "2026-10-08T10:26:49.645Z",
+  "generatedAt": "2026-10-14T16:16:59.788Z",
   "baseUrl": "http://127.0.0.1:3000",
-  "log": [
-    {
-      "flow": "w6",
-      "label": "after sign out",
-      "detail": "http://127.0.0.1:3000/login",
-      "at": "2026-10-08T10:26:44.255Z"
-    },
-    {
-      "flow": "w6",
-      "label": "after sign in",
-      "detail": "http://127.0.0.1:3000/dashboard",
-      "at": "2026-10-08T10:26:49.640Z"
-    }
-  ],
+  "log": [],
   "flows": [
     {
-      "id": "w6-owner-signout-signin",
-      "name": "Owner: đăng xuất rồi đăng nhập lại",
-      "ok": true,
+      "id": "w1-customer-order",
+      "name": "Khách tự gọi món qua QR (simulator)",
+      "ok": false,
       "screenshots": [],
-      "durationMs": 16655,
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /Bàn 01/ })\u001b[22m\n",
+      "durationMs": 33943,
       "consoleErrors": [],
       "pageErrors": [],
-      "failedRequests": [
-        "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=D5qyievF8dYUfNyGzVqsKIWN1KpWDhIQFtBqX8HtntNgbaYeWmImiQ&VER=8&database=p :: net::ERR_ABORTED",
-        "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=Mm63x1c7UeeZsK5VW9OCu37OJSgdGxzfnsp8n6cpYugUECV8ltJlgw&VER=8&database=p :: net::ERR_ABORTED"
-      ],
-      "finalUrl": "http://127.0.0.1:3000/dashboard"
+      "failedRequests": [],
+      "finalUrl": "http://127.0.0.1:3000/operation"
     }
   ]
 }

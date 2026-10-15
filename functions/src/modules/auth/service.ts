@@ -27,7 +27,6 @@ export const REGISTRATION_EMAIL_REQUIRED_MESSAGE =
 
 export const STAFF_PIN_INVALID_REQUEST_MESSAGE =
   'Yêu cầu xác minh PIN không hợp lệ.';
-export const STAFF_PIN_LENGTH_MESSAGE = 'Mã PIN không đúng định dạng.';
 export const STAFF_ACCESS_DENIED_MESSAGE =
   'Bạn không thuộc cửa hàng này hoặc không phải nhân viên.';
 export const STAFF_PIN_INCORRECT_MESSAGE = 'Mã PIN không đúng.';

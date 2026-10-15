@@ -106,6 +106,18 @@ export const fakePaymentAdapter: PaymentProviderAdapter = {
 };
 
 /**
+ * Live PayOS provider (REQ-PAY-003, REQ-PAY-004). PayOS signs its webhook over
+ * its own body, not over the normalized payload, so `verifySignature` is
+ * deliberately absent: the webhook handler verifies the PayOS checksum before
+ * it reaches the settlement path, and the generic signed-event seam stays
+ * unable to post as `payos`.
+ */
+export const payosPaymentAdapter: PaymentProviderAdapter = {
+  id: 'payos',
+  mapPayload: toSettlement,
+};
+
+/**
  * Resolve the HMAC signing secret. Production must set
  * `PAYMENT_PROVIDER_SIGNING_SECRET`; the emulator falls back to a known test
  * secret so the signed-event seam stays testable. The secret never leaves the
@@ -160,6 +172,7 @@ const registry = new Map<PaymentProviderId, PaymentProviderAdapter>([
   [manualPaymentAdapter.id, manualPaymentAdapter],
   [fakePaymentAdapter.id, fakePaymentAdapter],
   [automaticPaymentAdapter.id, automaticPaymentAdapter],
+  [payosPaymentAdapter.id, payosPaymentAdapter],
 ]);
 
 /** Register or replace one provider mapping without changing callers. */

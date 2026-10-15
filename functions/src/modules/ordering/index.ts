@@ -170,19 +170,27 @@ const ORDERING_CREATE_DENIED_MESSAGE =
   'Chỉ thu ngân, phục vụ hoặc chủ cửa hàng tạo được đơn hàng.';
 
 /**
- * Staff order-entry authorization. Owner is allowed; a Staff membership must
- * carry the `cashier` or `waiter` role (REQ-ORD-005, REQ-WAI-002, REQ-ACL-001).
- * A Waiter takes the order at the table it is serving; payment stays cashier-only.
+ * Staff order-entry authorization. Owner and Cashier may create any Order; a
+ * Waiter may create only a dine-in Order, because the role takes the order at
+ * the table it serves (REQ-ORD-005, REQ-WAI-002, REQ-ACL-001). Takeaway and
+ * every payment action stay cashier-only, so a Waiter token cannot ring a
+ * counter sale just because the create call was widened.
  */
-function assertOrderCreator(memberData: DocumentData | undefined): void {
+function assertOrderCreator(
+  memberData: DocumentData | undefined,
+  orderType: 'dineIn' | 'takeaway',
+): void {
   assertActiveOrderingMember(memberData);
-  if (
-    !memberData ||
-    (!hasOrderingRole(memberData, 'cashier') &&
-      !hasOrderingRole(memberData, 'waiter'))
-  ) {
+  if (!memberData) {
     throw new HttpsError('permission-denied', ORDERING_CREATE_DENIED_MESSAGE);
   }
+  if (hasOrderingRole(memberData, 'cashier')) {
+    return;
+  }
+  if (hasOrderingRole(memberData, 'waiter') && orderType === 'dineIn') {
+    return;
+  }
+  throw new HttpsError('permission-denied', ORDERING_CREATE_DENIED_MESSAGE);
 }
 
 function parseOrderTenantListInput(data: unknown): { tenantId: string } {
@@ -621,8 +629,9 @@ export const callableOrderSubmit = onCall(CALL_OPTIONS, async (request) => {
 
 /**
  * Staff callable: create one Order for a table or for takeaway. Owner and
- * Cashier only. The server owns every price and total, actors are recorded,
- * and a retry never duplicates the Order (REQ-ORD-005, REQ-ORD-001).
+ * Cashier may create either; a Waiter may create only a dine-in Order for a
+ * table (REQ-ORD-005, REQ-WAI-002). The server owns every price and total,
+ * actors are recorded, and a retry never duplicates the Order (REQ-ORD-001).
  */
 export const callableOrderStaffCreate = onCall(
   CALL_OPTIONS,
@@ -725,7 +734,7 @@ export const callableOrderStaffCreate = onCall(
       async (transaction) => {
         // All reads precede all writes (RULES_FIREBASE §4).
         const memberSnap = await transaction.get(memberRef);
-        assertOrderCreator(memberSnap.data());
+        assertOrderCreator(memberSnap.data(), input.orderType);
         const idempotencySnap = await transaction.get(idempotencyRef);
         const existing = idempotencySnap.data() as
           | IdempotencyRecord

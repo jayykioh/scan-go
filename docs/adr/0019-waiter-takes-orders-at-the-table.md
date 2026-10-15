@@ -27,10 +27,12 @@ Three things made the table the natural unit of work instead:
 ## Decision
 
 1. **The `waiter` role may create an Order.** `callableOrderStaffCreate` accepts
-   an active member carrying `cashier` *or* `waiter`. This is the only widened
-   permission: cancellation stays cashier-only (REQ-CAS-002) and payment stays
-   cashier-only (REQ-CAS-001, REQ-PAY-003), so a Waiter that is not also a
-   Cashier can take an order but cannot settle or void it.
+   an active member carrying `cashier` *or* `waiter`. The Waiter branch is
+   bounded to a dine-in Order: the role takes the order at a table, so a
+   takeaway sale still needs a Cashier. This is the only widened permission:
+   cancellation stays cashier-only (REQ-CAS-002) and payment stays cashier-only
+   (REQ-CAS-001, REQ-PAY-003), so a Waiter that is not also a Cashier can take a
+   table's order but cannot ring a counter sale, settle, or void.
 
 2. **The table dialog is the Waiter's workspace**, opened by tapping a table on
    the floor plan: the dishes to carry, the order to add, and — only when the
@@ -64,8 +66,8 @@ Three things made the table the natural unit of work instead:
   and its dish filter became a pure `filterAvailableItems`, so the search is
   unit-tested rather than only seen.
 - The Functions Emulator authorization test changed shape: a Waiter creating a
-  dine-in Order is now expected to succeed, while Kitchen and a cross-Tenant
-  Owner stay denied.
+  dine-in Order is now expected to succeed, a Waiter creating a takeaway Order
+  is expected to fail, and Kitchen and a cross-Tenant Owner stay denied.
 - The dialog opens no new read for dishes or tables. It does read the unpaid
   queue when the "Thu tiền" tab mounts `CashierView`, which is the same read the
   till already makes.

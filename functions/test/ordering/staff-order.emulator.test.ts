@@ -338,6 +338,22 @@ describe('callableOrderStaffCreate: authorization', () => {
     expect((await db.collection(`tenants/${TENANT_A}/orders`).get()).size).toBe(1);
   });
 
+  it('denies a Waiter a takeaway Order', async () => {
+    await signInAs('waiterA');
+    await expectRejection(
+      staffCreateCallable()(
+        input({
+          orderType: 'takeaway',
+          tableId: null,
+          idempotencyKey: 'idem-staff-00000004',
+        }),
+      ),
+      'permission-denied',
+    );
+
+    expect((await db.collection(`tenants/${TENANT_A}/orders`).get()).size).toBe(0);
+  });
+
   it('denies Kitchen and a cross-Tenant Owner', async () => {
     await signInAs('kitchenA');
     await expectRejection(staffCreateCallable()(input()), 'permission-denied');

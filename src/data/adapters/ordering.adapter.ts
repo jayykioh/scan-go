@@ -119,8 +119,9 @@ export async function submitOrder(
 export type StaffCreateOrderRequest = OrderStaffCreateInput;
 
 /**
- * Create one Order as Owner or Cashier through the server callable
- * (REQ-ORD-005). The client sends no price or total.
+ * Create one Order as Owner or Cashier, or as Waiter for a dine-in table,
+ * through the server callable (REQ-ORD-005, REQ-WAI-002). The client sends no
+ * price or total.
  */
 export async function createStaffOrder(
   request: StaffCreateOrderRequest,

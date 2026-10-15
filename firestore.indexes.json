@@ -137,6 +137,14 @@
       ]
     },
     {
+      "collectionGroup": "stockMovements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "reason", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "campaignSuggestions",
       "queryScope": "COLLECTION",
       "fields": [

@@ -129,6 +129,12 @@ export default function SoloOperatorView({
   const [tempPayMode, setTempPayMode] = useState<'Pay-First' | 'Pay-Later'>(tenantConfig.paymentMode || 'Pay-Later');
   const [onboardStep, setOnboardStep] = useState(1);
 
+  useEffect(() => {
+    if (tenantConfig.shopName) {
+      setTempShopName(tenantConfig.shopName);
+    }
+  }, [tenantConfig.shopName]);
+
   const nextStep = () => {
     if (onboardStep < 4) {
       setOnboardStep(prev => prev + 1);

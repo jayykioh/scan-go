@@ -27,13 +27,19 @@ export function usePersistentState<T>(
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(key, serialize(value));
+      const serialized = serialize(value);
+      window.localStorage.setItem(key, serialized);
+      window.dispatchEvent(
+        new CustomEvent('scango:persistent-sync', {
+          detail: { key, newValue: serialized },
+        }),
+      );
     } catch {
       // The app remains usable when storage is unavailable or full.
     }
   }, [key, serialize, value]);
 
-  // Sync state across different tabs/windows
+  // Sync state across different tabs/windows and inside the same window
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === key && e.newValue !== null) {
@@ -44,9 +50,31 @@ export function usePersistentState<T>(
         }
       }
     };
+    const handleLocalSync = (e: Event) => {
+      const customEvent = e as CustomEvent<{ key: string; newValue: string }>;
+      if (
+        customEvent.detail &&
+        customEvent.detail.key === key &&
+        customEvent.detail.newValue !== null
+      ) {
+        try {
+          const nextVal = deserialize(customEvent.detail.newValue);
+          setValue((prev) => {
+            if (serialize(prev) === customEvent.detail.newValue) return prev;
+            return nextVal;
+          });
+        } catch {
+          // ignore parsing error
+        }
+      }
+    };
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [key, deserialize]);
+    window.addEventListener('scango:persistent-sync', handleLocalSync);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('scango:persistent-sync', handleLocalSync);
+    };
+  }, [key, deserialize, serialize]);
 
   return [value, setValue];
 }

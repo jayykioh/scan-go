@@ -172,10 +172,14 @@ export default function SimulatorIndex() {
                       tiem_banh: 'Sweet Crumbs',
                       tra_sua: 'Milky Boba Land'
                     };
+                    const isDefaultTemplateName =
+                      !tenantConfig.shopName ||
+                      Object.values(shopNames).includes(tenantConfig.shopName) ||
+                      tenantConfig.shopName === 'ScanGo Shop';
                     setTenantConfig((prev: any) => ({ 
                       ...prev, 
                       industry, 
-                      shopName: shopNames[industry] || 'ScanGo Shop' 
+                      shopName: isDefaultTemplateName ? (shopNames[industry] || 'ScanGo Shop') : prev.shopName 
                     }));
                   }}
                   className="w-full bg-zinc-50 border-hard rounded-none px-4 py-3 font-mono text-xs text-zinc-900 font-bold focus:outline-none focus:border-orange-600 cursor-pointer transition-colors uppercase"

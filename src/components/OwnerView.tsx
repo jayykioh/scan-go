@@ -189,11 +189,17 @@ export default function OwnerView({
   }, [refreshOnboarding]);
 
   // Onboarding parameters
-  const [tempShopName, setTempShopName] = useState('Phở Kinh Kỳ');
+  const [tempShopName, setTempShopName] = useState(tenantConfig.shopName || 'Phở Kinh Kỳ');
   const [tempIndustry, setTempIndustry] = useState<'quan_an' | 'quan_cafe' | 'nha_hang' | 'tiem_banh' | 'tra_sua'>('quan_an');
   const [tempTier, setTempTier] = useState<'Lite' | 'Pro' | 'Enterprise'>('Pro');
   const [tempPayMode, setTempPayMode] = useState<'Pay-First' | 'Pay-Later'>('Pay-Later');
   const [onboardStep, setOnboardStep] = useState(1);
+
+  useEffect(() => {
+    if (tenantConfig.shopName) {
+      setTempShopName(tenantConfig.shopName);
+    }
+  }, [tenantConfig.shopName]);
 
   // Dish Management parameters
   const [showAddForm, setShowAddForm] = useState(false);

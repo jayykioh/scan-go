@@ -4,6 +4,11 @@ import { TenantConfig, MenuItem, Order, LoyaltyMember, TableConfig, StaffAccount
 import { MOCK_LOYALTY_MEMBERS, MOCK_MENU_ITEMS, INDUSTRY_TEMPLATES, MOCK_STAFF_ACCOUNTS, MOCK_INGREDIENTS } from '../mockData';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { useActiveTenantId } from '../hooks/useActiveTenantId';
+import { useAuthSession } from '../hooks/useAuthSession';
+import {
+  listMemberships,
+  subscribeActiveTenantContext,
+} from '../data/adapters/tenant.adapter';
 import {
   fromPersistedStaffAccounts,
   toPersistedStaffAccounts,
@@ -141,7 +146,65 @@ export default function SimulatorLayout() {
   // Customer dynamic simulator helper values
   const [simulationTableId, setSimulationTableId] = useState<string>('2');
   const [nfcTriggeredAlert, setNfcTriggeredAlert] = useState<string | null>(null);
+  const { configured, user } = useAuthSession();
   const activeTenantId = useActiveTenantId();
+  const syncedShopNameRef = useRef<string | null>(null);
+
+  // Sync shop name from active tenant or user identity
+  useEffect(() => {
+    if (!configured || !user) return;
+    let cancelled = false;
+
+    void listMemberships()
+      .then((result) => {
+        if (cancelled) return;
+        const active =
+          result.tenants.find((t) => t.isActiveTenant) ?? result.tenants[0];
+        const resolvedShopName =
+          active?.shopName?.trim() ||
+          user.displayName?.trim() ||
+          (user.email ? user.email.split('@')[0] : '');
+
+        if (resolvedShopName) {
+          syncedShopNameRef.current = resolvedShopName;
+          setTenantConfig((prev: TenantConfig) => {
+            if (prev.shopName === resolvedShopName) return prev;
+            return { ...prev, shopName: resolvedShopName };
+          });
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [configured, user, setTenantConfig]);
+
+  // Real-time subscription to active tenant context changes
+  useEffect(() => {
+    if (!configured || !activeTenantId) return;
+
+    try {
+      const unsubscribe = subscribeActiveTenantContext(
+        activeTenantId,
+        (context) => {
+          if (context?.shopName && context.shopName.trim()) {
+            const name = context.shopName.trim();
+            syncedShopNameRef.current = name;
+            setTenantConfig((prev: TenantConfig) => {
+              if (prev.shopName === name) return prev;
+              return { ...prev, shopName: name };
+            });
+          }
+        },
+      );
+      return () => {
+        unsubscribe();
+      };
+    } catch {
+      // Ignored if Firestore is unavailable
+    }
+  }, [configured, activeTenantId, setTenantConfig]);
 
   const previousIndustry = useRef(tenantConfig.industry);
 
@@ -203,8 +266,9 @@ export default function SimulatorLayout() {
   };
 
   const handleResetSim = () => {
+    const defaultName = syncedShopNameRef.current || 'Bún Phở Kinh Kỳ';
     setTenantConfig({
-      shopName: 'Bún Phở Kinh Kỳ',
+      shopName: defaultName,
       industry: 'quan_an',
       pricingTier: 'Pro',
       paymentMode: 'Pay-Later',

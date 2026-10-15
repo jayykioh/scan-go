@@ -120,6 +120,10 @@ export default function SettingsPage() {
   const [draft, setDraft] = useState<TenantConfig>(tenantConfig);
   const toast = useToast();
 
+  useEffect(() => {
+    setDraft(tenantConfig);
+  }, [tenantConfig]);
+
   const [configured] = useState(() => isFirebaseConfigured());
   const [resolved, setResolved] = useState<TenantVisibleResolvedConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(false);

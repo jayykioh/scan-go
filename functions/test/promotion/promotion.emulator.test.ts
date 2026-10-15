@@ -17,6 +17,7 @@ import {
   it,
 } from 'vitest';
 import { FUNCTIONS_REGION } from '../../../shared/config/region.js';
+import { EMPTY_PROMOTION_ELIGIBILITY } from '../../../shared/contracts/promotion.contract.js';
 import {
   deleteApp as deleteAdminApp,
   getApps as getAdminApps,
@@ -143,7 +144,10 @@ describe('promotion callables', () => {
       priority: 1,
       startsAt: null,
       endsAt: null,
-      eligibility: { minSubtotalVnd: 50000, menuItemIds: null },
+      eligibility: {
+        ...EMPTY_PROMOTION_ELIGIBILITY,
+        minSubtotalVnd: 50000,
+      },
       benefit: { type: 'percentOff', percent: 10, maxDiscountVnd: null },
     });
     const promotionId = (created.data as { promotion: { promotionId: string } })
@@ -175,7 +179,7 @@ describe('promotion callables', () => {
         promotionId: null,
         name: 'X',
         priority: 1,
-        eligibility: { minSubtotalVnd: null, menuItemIds: null },
+        eligibility: { ...EMPTY_PROMOTION_ELIGIBILITY },
         benefit: { type: 'fixedAmount', amountVnd: 1000 },
       }),
     ).rejects.toMatchObject({ code: expect.stringContaining('permission-denied') });

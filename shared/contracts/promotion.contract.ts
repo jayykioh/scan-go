@@ -174,19 +174,23 @@ export type PromotionCustomerSegment = z.infer<
 
 export const promotionEligibilitySchema = z.strictObject({
   /** Cart subtotal must reach this value when present. */
-  minSubtotalVnd: vndSchema.nullable(),
+  minSubtotalVnd: vndSchema.nullable().default(null),
   /** Total cart quantity must reach this value when present. */
-  minQuantity: positiveIntSchema.nullable(),
+  minQuantity: positiveIntSchema.nullable().default(null),
   /** At least one cart line must reference one of these menu items. */
-  menuItemIds: z.array(z.string().min(1)).nullable(),
+  menuItemIds: z.array(z.string().min(1)).nullable().default(null),
   /** Happy hour: the tenant-local time must fall inside this window. */
-  timeWindow: promotionTimeWindowSchema.nullable(),
+  timeWindow: promotionTimeWindowSchema.nullable().default(null),
   /** Tenant-local weekdays, 0 = Sunday. Null means every day. */
-  daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1).nullable(),
+  daysOfWeek: z
+    .array(z.number().int().min(0).max(6))
+    .min(1)
+    .nullable()
+    .default(null),
   /** Customer must type this code when present. */
-  code: z.string().trim().min(3).max(32).nullable(),
+  code: z.string().trim().min(3).max(32).nullable().default(null),
   /** Customer must match this segment when present. */
-  customerSegment: promotionCustomerSegmentSchema.nullable(),
+  customerSegment: promotionCustomerSegmentSchema.nullable().default(null),
 });
 export type PromotionEligibility = z.infer<typeof promotionEligibilitySchema>;
 

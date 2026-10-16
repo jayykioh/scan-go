@@ -60,7 +60,16 @@ chừng thì hộp thoại ở lại, danh sách tự làm mới, và thông bá
 | `verify-tables-page.mjs` (chủ quán) | 43/43, gồm vòng tạo/đổi tên/xoá khu |
 | `verify-operation-pages.mjs` (nhân viên) | 87/87, gồm sàn chỉ còn khu được gán |
 
-## 6. Không làm trong lượt này
+## 6. Triển khai (đã chạy 2026-10-16)
+
+- `firebase deploy --only firestore:indexes` — thêm index `tables(areaWaiterUids CONTAINS, archivedAt, name)` và `orders(status, tableId, createdAt)`.
+- `firebase deploy --only firestore:rules` — luật đọc `tables` theo khu và collection `tableAreas`.
+- `firebase deploy --only functions:<tên>` — **từng hàm một**: `callableTableCreate`, `callableTableConfigure`, `callableTableAreaAssign`, `callableOrderStaffCreate`, `callableFulfilmentListReady`. CLI bỏ qua một số hàm khi truyền nhiều tên trong một lệnh `--only`.
+- Hàm mới `callableTableAreaAssign` cần quyền gọi công khai ở tầng Cloud Run; nếu gặp 401 khi gọi, chạy:
+  `gcloud run services add-iam-policy-binding callabletableareaassign --region=asia-southeast1 --member=allUsers --role=roles/run.invoker`.
+- `firebase deploy --only functions` (toàn bộ) hiện đang dừng vì production còn 4 hàm không còn trong mã nguồn (`callableLoyaltyGetConfig`, `callablePromotionList`, `callableReportingGetSummary`, `callableStaffList`). Cần quyết định xoá riêng, không nằm trong lượt này.
+
+## 7. Không làm trong lượt này
 
 - Không làm đặt bàn (REQ-TBL-005..007).
 - Không siết các callable lấy `tableId` khác (hoá đơn theo bàn, danh sách chưa

@@ -125,9 +125,30 @@ service cloud.firestore {
         allow write: if false;
       }
 
-      // Table Access private source: active members and ADMIN read; server writes.
+      // Table Access private source: server writes only.
+      //
+      // The Owner and ADMIN read every table. A member who has been given one or
+      // more areas reads only those areas' tables: the server-written
+      // `areaWaiterUids` projection on the table is what makes the scope an
+      // expressible query (`array-contains`), so the floor a Waiter loads is
+      // physically their own zone. A member with no assignment at all keeps the
+      // tenant-wide read, which is also what every table written before this
+      // field existed needs. `.get(key, default)` is used because an absent key
+      // raises a rules evaluation error (REQ-TBL-004, REQ-TBL-010).
       match /tables/{tableId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isActiveOwner(tenantId)
+          || isAdmin()
+          || (isActiveMember(tenantId)
+            && (get(memberPath(tenantId)).data.get('assignedAreas', []).size() == 0
+              || request.auth.uid in resource.data.get('areaWaiterUids', [])));
+        allow write: if false;
+      }
+
+      // Waiter coverage per area (REQ-TBL-004). Owner-only: it is the source of
+      // truth behind the table projection and carries Staff uids; the operating
+      // screens read the projection, never this collection.
+      match /tableAreas/{areaId} {
+        allow read: if isActiveOwner(tenantId) || isAdmin();
         allow write: if false;
       }
 

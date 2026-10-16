@@ -10,6 +10,7 @@ import {
   buildRecipeCostByMenuItemId,
   chunkValues,
   mapStoredOrder,
+  mergeReadyOrderPages,
   parseMarkServedInput,
   type FulfilmentIdempotencyRecord,
 } from './service.js';
@@ -248,5 +249,41 @@ describe('recipe cost index and order mapping', () => {
     expect(order.orderId).toBe(ORDER_ID_FIXTURE);
     expect(order.status).toBe('pending');
     expect(KITCHEN_IDEMPOTENCY_KEY_FIXTURE).toMatch(/^idem-/);
+  });
+});
+
+/** REQ-TBL-010: a scoped Waiter's ready queue is merged from chunked pages. */
+describe('mergeReadyOrderPages', () => {
+  const order = (orderId: string, createdAt: string) => ({ orderId, createdAt });
+
+  it('merges chunks into one page, newest first', () => {
+    const merged = mergeReadyOrderPages(
+      [
+        [order('a', '2026-10-16T08:00:00.000Z'), order('b', '2026-10-16T10:00:00.000Z')],
+        [order('c', '2026-10-16T09:00:00.000Z')],
+      ],
+      (row) => row.createdAt,
+      50,
+    );
+
+    expect(merged.map((row) => row.orderId)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('re-bounds the merged page instead of growing with the chunk count', () => {
+    const merged = mergeReadyOrderPages(
+      [
+        [order('a', '2026-10-16T08:00:00.000Z')],
+        [order('b', '2026-10-16T10:00:00.000Z')],
+        [order('c', '2026-10-16T09:00:00.000Z')],
+      ],
+      (row) => row.createdAt,
+      2,
+    );
+
+    expect(merged.map((row) => row.orderId)).toEqual(['b', 'c']);
+  });
+
+  it('returns nothing for an empty queue', () => {
+    expect(mergeReadyOrderPages([], () => '', 50)).toEqual([]);
   });
 });

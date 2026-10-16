@@ -367,3 +367,40 @@ describe('callableOrderStaffCreate: authorization', () => {
     expect((await db.collection(`tenants/${TENANT_A}/orders`).get()).size).toBe(0);
   });
 });
+
+/** REQ-TBL-010: an assigned Waiter may only order at their own tables. */
+describe('callableOrderStaffCreate: area scope', () => {
+  it('denies a scoped Waiter a table outside their areas', async () => {
+    await db
+      .doc(`tenants/${TENANT_A}/tables/${TABLE_ID}`)
+      .set(
+        { area: 'Tầng 2', areaWaiterUids: ['uid-someone-else'] },
+        { merge: true },
+      );
+    await db
+      .doc(`tenants/${TENANT_A}/members/${USERS.waiterA.uid}`)
+      .set({ assignedAreas: ['Sân vườn'] }, { merge: true });
+
+    await signInAs('waiterA');
+    await expectRejection(staffCreateCallable()(input()), 'permission-denied');
+
+    expect((await db.collection(`tenants/${TENANT_A}/orders`).get()).size).toBe(0);
+  });
+
+  it('still lets a scoped Waiter order at a table of their area', async () => {
+    await db
+      .doc(`tenants/${TENANT_A}/tables/${TABLE_ID}`)
+      .set(
+        { area: 'Sân vườn', areaWaiterUids: [USERS.waiterA.uid] },
+        { merge: true },
+      );
+    await db
+      .doc(`tenants/${TENANT_A}/members/${USERS.waiterA.uid}`)
+      .set({ assignedAreas: ['Sân vườn'] }, { merge: true });
+
+    await signInAs('waiterA');
+    const result = (await staffCreateCallable()(input())).data;
+
+    expect(result.status).toBe('created');
+  });
+});

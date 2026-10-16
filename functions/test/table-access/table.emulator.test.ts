@@ -71,6 +71,7 @@ const AUTH_EMULATOR_URL = 'http://127.0.0.1:9099';
 const USERS = {
   ownerA: { uid: 'uid-owner-a', email: 'owner-a@example.com' },
   staffA: { uid: 'uid-staff-a', email: 'staff-a@example.com' },
+  waiterA: { uid: 'uid-waiter-a', email: 'waiter-a@example.com' },
   ownerB: { uid: 'uid-owner-b', email: 'owner-b@example.com' },
 } as const;
 
@@ -156,6 +157,11 @@ async function seedEmulators(): Promise<void> {
     roles: ['cashier'],
     isActive: true,
   });
+  await db.doc(`tenants/${TENANT_A}/members/${USERS.waiterA.uid}`).set({
+    membershipType: 'staff',
+    roles: ['waiter'],
+    isActive: true,
+  });
 
   await db.doc(`tenants/${TENANT_B}`).set({ shopName: 'Tenant B' });
   await db.doc(`tenants/${TENANT_B}/members/${USERS.ownerB.uid}`).set({
@@ -229,6 +235,161 @@ async function createTable(): Promise<{ tableId: string; token: string }> {
     token: response.data.context?.token as string,
   };
 }
+
+function configureCallable() {
+  return httpsCallable<
+    {
+      tenantId: string;
+      tableId: string;
+      area: string | null;
+      seats: number | null;
+      position: { x: number; y: number } | null;
+    },
+    TableCommandResult
+  >(functions, 'callableTableConfigure');
+}
+
+function assignAreaCallable() {
+  return httpsCallable<
+    { tenantId: string; label: string; waiterUids: string[] },
+    { label: string; waiterUids: string[] }
+  >(functions, 'callableTableAreaAssign');
+}
+
+/** REQ-TBL-004: the assignment and both projections are written together. */
+describe('callableTableAreaAssign', () => {
+  it('writes the area document and projects it onto tables and the member', async () => {
+    const { tableId } = await createTable();
+    await configureCallable()({
+      tenantId: TENANT_A,
+      tableId,
+      area: 'Sân vườn',
+      seats: 4,
+      position: { x: 0, y: 0 },
+    });
+
+    await signInAs('ownerA');
+    const result = await assignAreaCallable()({
+      tenantId: TENANT_A,
+      label: 'Sân vườn',
+      waiterUids: [USERS.waiterA.uid],
+    });
+    expect(result.data.waiterUids).toEqual([USERS.waiterA.uid]);
+
+    const areas = await db
+      .collection(`tenants/${TENANT_A}/tableAreas`)
+      .where('label', '==', 'Sân vườn')
+      .get();
+    expect(areas.size).toBe(1);
+    expect(areas.docs[0].get('waiterUids')).toEqual([USERS.waiterA.uid]);
+
+    const tableSnap = await db.doc(`tenants/${TENANT_A}/tables/${tableId}`).get();
+    expect(tableSnap.get('areaWaiterUids')).toEqual([USERS.waiterA.uid]);
+
+    const memberSnap = await db
+      .doc(`tenants/${TENANT_A}/members/${USERS.waiterA.uid}`)
+      .get();
+    expect(memberSnap.get('assignedAreas')).toEqual(['Sân vườn']);
+  });
+
+  it('gives a new table in an assigned area the same coverage', async () => {
+    await createTable();
+    await signInAs('ownerA');
+    await assignAreaCallable()({
+      tenantId: TENANT_A,
+      label: 'Sân vườn',
+      waiterUids: [USERS.waiterA.uid],
+    });
+
+    const response = await httpsCallable<
+      { tenantId: string; name: string; area: string | null },
+      TableCommandResult
+    >(
+      functions,
+      'callableTableCreate',
+    )({ tenantId: TENANT_A, name: 'Bàn 2', area: 'Sân vườn' });
+
+    const tableSnap = await db
+      .doc(`tenants/${TENANT_A}/tables/${response.data.tableId as string}`)
+      .get();
+    expect(tableSnap.get('areaWaiterUids')).toEqual([USERS.waiterA.uid]);
+  });
+
+  it('removes the assignment and the scope when the list is emptied', async () => {
+    const { tableId } = await createTable();
+    await configureCallable()({
+      tenantId: TENANT_A,
+      tableId,
+      area: 'Sân vườn',
+      seats: null,
+      position: { x: 0, y: 0 },
+    });
+    await signInAs('ownerA');
+    await assignAreaCallable()({
+      tenantId: TENANT_A,
+      label: 'Sân vườn',
+      waiterUids: [USERS.waiterA.uid],
+    });
+
+    await assignAreaCallable()({
+      tenantId: TENANT_A,
+      label: 'Sân vườn',
+      waiterUids: [],
+    });
+
+    const areas = await db.collection(`tenants/${TENANT_A}/tableAreas`).get();
+    expect(areas.size).toBe(0);
+    const tableSnap = await db.doc(`tenants/${TENANT_A}/tables/${tableId}`).get();
+    expect(tableSnap.get('areaWaiterUids')).toEqual([]);
+    const memberSnap = await db
+      .doc(`tenants/${TENANT_A}/members/${USERS.waiterA.uid}`)
+      .get();
+    expect(memberSnap.get('assignedAreas')).toEqual([]);
+  });
+
+  it('rejects a non-Waiter, a stranger, and a call from Staff or another Owner', async () => {
+    await signInAs('ownerA');
+    await expectRejection(
+      assignAreaCallable()({
+        tenantId: TENANT_A,
+        label: 'Sân vườn',
+        waiterUids: [USERS.staffA.uid],
+      }),
+      'invalid-argument',
+    );
+    await expectRejection(
+      assignAreaCallable()({
+        tenantId: TENANT_A,
+        label: 'Sân vườn',
+        waiterUids: ['uid-does-not-exist'],
+      }),
+      'invalid-argument',
+    );
+
+    await signInAs('staffA');
+    await expectRejection(
+      assignAreaCallable()({
+        tenantId: TENANT_A,
+        label: 'Sân vườn',
+        waiterUids: [USERS.waiterA.uid],
+      }),
+      'permission-denied',
+    );
+
+    await signInAs('ownerB');
+    await expectRejection(
+      assignAreaCallable()({
+        tenantId: TENANT_A,
+        label: 'Sân vườn',
+        waiterUids: [USERS.waiterA.uid],
+      }),
+      'permission-denied',
+    );
+
+    const areas = await db.collection(`tenants/${TENANT_A}/tableAreas`).get();
+    expect(areas.size).toBe(0);
+  });
+});
 
 describe('callableTableCreate', () => {
   it('creates a table and one opaque public link', async () => {

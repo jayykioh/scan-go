@@ -168,6 +168,40 @@ async function signIn(page) {
 
 initializeApp({ credential: applicationDefault(), projectId: PROJECT });
 const db = getFirestore();
+
+// A crashed earlier run can leave zone fixtures behind; clear them before the
+// expected state is read, so the checks below compare against a clean shop.
+{
+  const staleTables = await db.collection(`tenants/${TENANT_ID}/tables`).get();
+  for (const doc of staleTables.docs) {
+    const name = String(doc.get('name') ?? '');
+    const area = String(doc.get('area') ?? '');
+    if (name.startsWith('[QA]') && doc.get('archivedAt') == null) {
+      await doc.ref.update({
+        archivedAt: new Date().toISOString(),
+        isActive: false,
+      });
+    }
+    if (area.startsWith('[QA]')) {
+      await doc.ref.set({ area: null, areaWaiterUids: [] }, { merge: true });
+    }
+  }
+  for (const area of (await db.collection(`tenants/${TENANT_ID}/tableAreas`).get()).docs) {
+    if (String(area.get('label') ?? '').startsWith('[QA]')) {
+      await area.ref.delete();
+    }
+  }
+  const staleWaiters = await db
+    .collection(`tenants/${TENANT_ID}/staffDirectory`)
+    .get();
+  for (const doc of staleWaiters.docs) {
+    if (doc.id.startsWith('qa-zone-waiter-')) {
+      await doc.ref.delete();
+      await db.doc(`tenants/${TENANT_ID}/members/${doc.id}`).delete();
+    }
+  }
+}
+
 const tableDocs = await db.collection(`tenants/${TENANT_ID}/tables`).get();
 const expectedNames = tableDocs.docs
   .filter((doc) => doc.get('archivedAt') == null)
@@ -578,6 +612,252 @@ console.log('t7 — Lọc khu vực, đổi chế độ xem, trạng thái bàn'
     .locator('[data-testid="table-plan-canvas"]')
     .count();
   check(backToPlan === 1, 'Quay lại được chế độ Sơ đồ');
+}
+
+// ---------------------------------------------------------------------------
+// t8 — one zone save: tables selected, a table authored, Waiters assigned
+// ---------------------------------------------------------------------------
+currentFlow = 't8-zone-cycle';
+console.log('t8 — Tạo / đổi tên / xoá khu vực và phân công nhân viên');
+{
+  const stamp = Date.now().toString().slice(-6);
+  const zone = `[QA] Khu ${stamp}`;
+  const renamedZone = `[QA] Khu ${stamp} đổi tên`;
+  const authoredName = `[QA] Bàn khu ${stamp}`;
+  const waiterUid = `qa-zone-waiter-${stamp}`;
+  const waiterName = `QA Waiter ${stamp}`;
+  const tablesPath = `tenants/${TENANT_ID}/tables`;
+  const areasPath = `tenants/${TENANT_ID}/tableAreas`;
+  const memberPath = `tenants/${TENANT_ID}/members/${waiterUid}`;
+  const directoryPath = `tenants/${TENANT_ID}/staffDirectory/${waiterUid}`;
+  const areaDocs = (label) =>
+    db.collection(areasPath).where('label', '==', label).get();
+
+  // The assignment command validates a real active Waiter membership, so the
+  // fixture is a membership plus the Owner-readable directory projection.
+  const now = new Date().toISOString();
+  await db.doc(memberPath).set({
+    membershipType: 'staff',
+    roles: ['waiter'],
+    isActive: true,
+  });
+  await db.doc(directoryPath).set({
+    schemaVersion: 1,
+    tenantId: TENANT_ID,
+    email: `${waiterUid}@example.com`,
+    displayName: waiterName,
+    roles: ['waiter'],
+    isActive: true,
+    hasPin: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  // Two tables the zone can take, plus one that stays outside it.
+  const fixtures = [
+    `[QA] Khu A ${stamp}`,
+    `[QA] Khu B ${stamp}`,
+    `[QA] Khu C ${stamp}`,
+  ];
+  for (const name of fixtures) {
+    await page.getByRole('button', { name: /^Thêm Bàn$/i }).first().click();
+    await page.waitForTimeout(600);
+    await page.locator('#table-name').fill(name);
+    await page.getByRole('button', { name: /^Lưu$/i }).first().click();
+    await page.waitForTimeout(2200);
+  }
+
+  await page.getByRole('button', { name: /^Khu vực$/i }).first().click();
+  await page.waitForTimeout(600);
+  const dialog = page.getByTestId('zone-editor');
+  await dialog.locator('#zone-name').fill(zone);
+  const tableChecks = dialog
+    .locator('fieldset')
+    .first()
+    .locator('input[type="checkbox"]');
+  const checkCount = await tableChecks.count();
+  for (let index = 0; index < Math.min(checkCount, 2); index += 1) {
+    await tableChecks.nth(index).check();
+  }
+  await dialog.getByRole('button', { name: /^Thêm bàn$/i }).click();
+  await dialog.locator('input[aria-label="Tên bàn mới 1"]').fill(authoredName);
+  await dialog.locator('input[aria-label="Số ghế bàn mới 1"]').fill('6');
+  await dialog.getByLabel(waiterName).check();
+  await shot(page, 't8-zone-dialog');
+  await dialog.getByRole('button', { name: /^Lưu khu vực$/i }).click();
+
+  const zoneSaved = await eventually(
+    page,
+    async () => (await areaDocs(zone)).size === 1,
+    25000,
+  );
+  check(zoneSaved, 'Lưu một lần ghi document khu vực', zone);
+
+  const savedArea = (await areaDocs(zone)).docs[0];
+  check(
+    savedArea?.get('waiterUids')?.includes(waiterUid) === true,
+    'Khu vực lưu đúng nhân viên phục vụ được gán',
+    JSON.stringify(savedArea?.get('waiterUids') ?? null),
+  );
+
+  const memberSnap = await db.doc(memberPath).get();
+  check(
+    memberSnap.get('assignedAreas')?.includes(zone) === true,
+    'Nhân viên nhận projection assignedAreas (REQ-TBL-010)',
+    JSON.stringify(memberSnap.get('assignedAreas') ?? null),
+  );
+
+  const createdSnap = await db
+    .collection(tablesPath)
+    .where('name', '==', authoredName)
+    .get();
+  check(
+    createdSnap.size === 1 && createdSnap.docs[0].get('area') === zone,
+    'Bàn ảo trong hộp thoại được tạo cùng lần lưu, đúng khu',
+    `${createdSnap.size} bàn`,
+  );
+  check(
+    createdSnap.docs[0]?.get('position') != null,
+    'Bàn ảo nhận một ô trống trên sơ đồ',
+    JSON.stringify(createdSnap.docs[0]?.get('position') ?? null),
+  );
+
+  const projected = await db
+    .collection(tablesPath)
+    .where('area', '==', zone)
+    .get();
+  check(
+    projected.size === 3 &&
+      projected.docs.every((doc) =>
+        doc.get('areaWaiterUids')?.includes(waiterUid),
+      ),
+    'Mọi bàn của khu mang projection areaWaiterUids',
+    `${projected.size} bàn`,
+  );
+
+  // The plan label is rendered uppercase, so compare case-insensitively.
+  const zoneBox = await page.evaluate(
+    (label) =>
+      [...document.querySelectorAll('[data-testid="table-plan-area-box"]')]
+        .map((box) => box.innerText.trim())
+        .find((text) =>
+          text.toLocaleLowerCase('vi').includes(label.toLocaleLowerCase('vi')),
+        ) ?? null,
+    zone,
+  );
+  check(
+    zoneBox !== null,
+    'Sơ đồ bọc khu vực thành một khung',
+    zoneBox ?? '(không có)',
+  );
+  check(
+    typeof zoneBox === 'string' && /\(3\)/.test(zoneBox),
+    'Khung khu hiện số bàn bên trong',
+    zoneBox ?? '',
+  );
+  check(
+    typeof zoneBox === 'string' &&
+      zoneBox.toLocaleLowerCase('vi').includes(waiterName.toLocaleLowerCase('vi')),
+    'Khung khu hiện tên nhân viên phục vụ',
+    zoneBox ?? '',
+  );
+
+  await showListView(page);
+  const listHeader = await page.evaluate(
+    (label) =>
+      [...document.querySelectorAll('main h2')]
+        .map((node) => node.innerText)
+        .find((text) =>
+          text.toLocaleLowerCase('vi').includes(label.toLocaleLowerCase('vi')),
+        ) ?? null,
+    zone,
+  );
+  check(
+    typeof listHeader === 'string' &&
+      listHeader
+        .toLocaleLowerCase('vi')
+        .includes(waiterName.toLocaleLowerCase('vi')),
+    'Tiêu đề nhóm ở dạng Danh sách hiện tên nhân viên',
+    listHeader ?? '(không có)',
+  );
+  await shot(page, 't8-list-zone');
+
+  // Rename the zone from the list header, then delete it from the plan box.
+  await page.getByRole('button', { name: /^Sửa khu vực$/i }).first().click();
+  await page.waitForTimeout(600);
+  await page.getByTestId('zone-editor').locator('#zone-name').fill(renamedZone);
+  await page
+    .getByTestId('zone-editor')
+    .getByRole('button', { name: /^Lưu khu vực$/i })
+    .click();
+  const renamedOk = await eventually(
+    page,
+    async () => (await areaDocs(renamedZone)).size === 1,
+    25000,
+  );
+  check(renamedOk, 'Đổi tên khu ghi document mới', renamedZone);
+  check(
+    (await areaDocs(zone)).size === 0,
+    'Tên cũ không còn document khu vực',
+    zone,
+  );
+  check(
+    (await db.doc(memberPath).get()).get('assignedAreas')?.includes(renamedZone) ===
+      true,
+    'Đổi tên khu cập nhật projection của nhân viên',
+    JSON.stringify((await db.doc(memberPath).get()).get('assignedAreas')),
+  );
+  await showPlanView(page);
+  await page.getByRole('button', { name: /^Tất cả khu vực$/i }).first().click();
+  await page.waitForTimeout(600);
+  await shot(page, 't8-plan-zone');
+
+  // Filter to the zone so the plan offers its edit action, then delete it.
+  await page.getByRole('button', { name: renamedZone, exact: true }).first().click();
+  await page.waitForTimeout(600);
+  await page
+    .getByRole('button', { name: `Sửa khu ${renamedZone}` })
+    .first()
+    .click();
+  await page.waitForTimeout(600);
+  await page
+    .getByTestId('zone-editor')
+    .getByRole('button', { name: /^Xoá khu vực$/i })
+    .click();
+  const zoneDeleted = await eventually(
+    page,
+    async () => (await areaDocs(renamedZone)).size === 0,
+    25000,
+  );
+  check(zoneDeleted, 'Xoá khu vực gỡ document phân công', renamedZone);
+  check(
+    ((await db.doc(memberPath).get()).get('assignedAreas') ?? []).length === 0,
+    'Xoá khu vực trả nhân viên về không giới hạn khu',
+    JSON.stringify((await db.doc(memberPath).get()).get('assignedAreas')),
+  );
+  const reverted = await db
+    .collection(tablesPath)
+    .where('area', '==', renamedZone)
+    .get();
+  check(
+    reverted.size === 0,
+    'Bàn của khu đã xoá trở về khu mặc định',
+    `${reverted.size} bàn`,
+  );
+
+  // Cleanup: archive this flow's tables and drop the Waiter fixture.
+  await showListView(page);
+  for (const name of [...fixtures, authoredName]) {
+    const button = page.getByRole('button', { name: `Lưu trữ ${name}` });
+    if (!(await button.count())) continue;
+    await button.first().click();
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: /^Lưu trữ$/i }).last().click();
+    await page.waitForTimeout(1800);
+  }
+  await showPlanView(page);
+  await db.doc(memberPath).delete();
+  await db.doc(directoryPath).delete();
 }
 
 check(consoleErrors.length === 0, 'Không có lỗi console', consoleErrors.slice(0, 3).join(' | '));

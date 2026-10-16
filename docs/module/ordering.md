@@ -1,6 +1,6 @@
 # Ordering Module
 
-- Serves: REQ-ORD-001, REQ-ORD-002, REQ-ORD-003, REQ-ORD-004, REQ-ORD-005, REQ-WAI-002, REQ-PRO-001, REQ-PRO-003, REQ-TBL-003
+- Serves: REQ-ORD-001, REQ-ORD-002, REQ-ORD-003, REQ-ORD-004, REQ-ORD-005, REQ-WAI-002, REQ-PRO-001, REQ-PRO-003, REQ-TBL-003, REQ-TBL-010
 - Owns: Cart validation, Order creation, Order source record, Customer tracking projection, table service state derived from Orders
 - Does not own: Payment records, stock quantities, or Loyalty balance
 
@@ -32,6 +32,10 @@
   shown.
 - Record `discountVnd`, `promotionSnapshot`, `loyaltyMemberId`,
   `pointsRedeemed`, and each line's `lineDiscountVnd` and `isGift`.
+- A Staff member given table areas may only start a dine-in Order at a table of
+  those areas: `callableOrderStaffCreate` reads `members.assignedAreas` and the
+  table's `areaWaiterUids` projection and rejects anything else. No assignment
+  means no restriction (REQ-TBL-010, ADR 0025).
 - A gift line stores `lineTotalVnd = 0` and its real `lineCostVnd`, so Reporting
   shows zero revenue and a real Cost for what the Promotion gave away.
 - Deduct redeemed Loyalty points in the same transaction, and restore them when

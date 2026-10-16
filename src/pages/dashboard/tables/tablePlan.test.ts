@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { TABLE_FLOOR_COLUMNS, TABLE_FLOOR_ROWS } from '@contracts/table.contract';
+import {
+  TABLE_FLOOR_COLUMNS,
+  TABLE_FLOOR_ROWS,
+  TABLE_MAX_SEATS,
+} from '@contracts/table.contract';
 import {
   MIN_CANVAS_COLUMNS,
   MIN_CANVAS_ROWS,
@@ -8,6 +12,9 @@ import {
   isInsideGrid,
   moveWithinGrid,
   nextFreePosition,
+  allocateFreePositions,
+  parseSeatCount,
+  resolveAreaBoxes,
   TABLE_STATE_LABELS,
   TABLE_STATE_SHORT_LABELS,
   resolveAreaLabel,
@@ -195,5 +202,94 @@ describe('summarizeTableStates', () => {  it('counts every state and treats an u
       foodReady: 0,
       awaitingPayment: 0,
     });
+  });
+});
+
+/** REQ-TBL-009: each area is drawn as the region its own cells occupy. */
+describe('resolveAreaBoxes', () => {
+  const placement = (area: string | null, x: number, y: number) => ({
+    table: { tableId: `${area}-${x}-${y}`, area },
+    position: { x, y },
+    isSaved: true,
+  });
+
+  it('wraps one area in the bounding box of its cells and counts them', () => {
+    expect(
+      resolveAreaBoxes([
+        placement('Sân vườn', 1, 2),
+        placement('Sân vườn', 3, 2),
+      ]),
+    ).toEqual([
+      {
+        area: 'Sân vườn',
+        minX: 1,
+        minY: 2,
+        maxX: 3,
+        maxY: 2,
+        count: 2,
+        overlapping: false,
+      },
+    ]);
+  });
+
+  it('groups a table with no name into the default area', () => {
+    const [box] = resolveAreaBoxes([placement(null, 0, 0)]);
+
+    expect(box.area).toBe('Khu chính');
+    expect(box.count).toBe(1);
+  });
+
+  it('flags the boxes that intersect instead of failing to draw them', () => {
+    const boxes = resolveAreaBoxes([
+      placement('Khu A', 0, 0),
+      placement('Khu A', 2, 2),
+      placement('Khu B', 1, 1),
+    ]);
+
+    expect(boxes.map((box) => [box.area, box.overlapping])).toEqual([
+      ['Khu A', true],
+      ['Khu B', true],
+    ]);
+  });
+
+  it('does not flag areas that sit side by side', () => {
+    const boxes = resolveAreaBoxes([
+      placement('Khu A', 0, 0),
+      placement('Khu B', 2, 0),
+    ]);
+
+    expect(boxes.every((box) => !box.overlapping)).toBe(true);
+  });
+});
+
+describe('allocateFreePositions', () => {
+  it('reserves distinct free cells in reading order', () => {
+    expect(allocateFreePositions(3, [{ x: 0, y: 0 }])).toEqual([
+      { x: 1, y: 0 },
+      { x: 2, y: 0 },
+      { x: 3, y: 0 },
+    ]);
+  });
+
+  it('returns fewer cells when the floor grid is full', () => {
+    const occupied = [];
+    for (let y = 0; y < TABLE_FLOOR_ROWS; y += 1) {
+      for (let x = 0; x < TABLE_FLOOR_COLUMNS; x += 1) {
+        occupied.push({ x, y });
+      }
+    }
+
+    expect(allocateFreePositions(2, occupied)).toEqual([]);
+    expect(allocateFreePositions(2, occupied.slice(1))).toEqual([{ x: 0, y: 0 }]);
+  });
+});
+
+describe('parseSeatCount', () => {
+  it('reads a whole number in range and treats blank as not set', () => {
+    expect(parseSeatCount('4')).toBe(4);
+    expect(parseSeatCount('  ')).toBeNull();
+    expect(parseSeatCount('4.5')).toBeNull();
+    expect(parseSeatCount('0')).toBeNull();
+    expect(parseSeatCount(String(TABLE_MAX_SEATS + 1))).toBeNull();
   });
 });

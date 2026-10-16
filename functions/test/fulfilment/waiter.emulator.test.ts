@@ -413,6 +413,45 @@ describe('Waiter ready queue (REQ-WAI-001, NFR-RT-001)', () => {
   });
 });
 
+/** REQ-TBL-010: a scoped Waiter carries dishes only for their own areas. */
+describe('Waiter ready queue area scope (REQ-TBL-010)', () => {
+  it('keeps the tenant-wide queue for a Waiter with no assignment', async () => {
+    await signInAs('waiterA');
+    const all = await listReadyCallable()({ tenantId: TENANT_A });
+
+    expect(all.data.orders.map((order) => order.orderId)).toEqual([ORDER_ID]);
+  });
+
+  it('hides ready Orders of tables outside the assigned areas', async () => {
+    await db.doc(`tenants/${TENANT_A}/tables/table-01`).set({
+      name: 'Bàn 1',
+      isActive: true,
+      area: 'Sân vườn',
+      areaWaiterUids: [USERS.waiterA.uid],
+    });
+    await db.doc(`tenants/${TENANT_A}/tables/table-02`).set({
+      name: 'Bàn 2',
+      isActive: true,
+      area: 'Tầng 2',
+      areaWaiterUids: ['uid-someone-else'],
+    });
+    await db.doc(`tenants/${TENANT_A}/orders/${ORDER_ID_SECOND}`).set({
+      ...orderData(ORDER_ID_SECOND, TRACKING_TOKEN_SECOND, 'ready'),
+      tableId: 'table-02',
+    });
+    await db
+      .doc(`tenants/${TENANT_A}/members/${USERS.waiterA.uid}`)
+      .set({ assignedAreas: ['Sân vườn'] }, { merge: true });
+
+    await signInAs('waiterA');
+    const scoped = await listReadyCallable()({ tenantId: TENANT_A });
+
+    expect(scoped.data.orders.map((order) => order.orderId)).toEqual([
+      ORDER_ID,
+    ]);
+  });
+});
+
 describe('notification effect dedupe (REQ-NOT-001)', () => {
   it('writes one deterministic ready notification for the Waiter', async () => {
     await signInAs('kitchenA');

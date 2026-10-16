@@ -14,6 +14,8 @@ export const TABLE_MAX_SEATS = 50;
 export const TABLE_AREA_MAX_LENGTH = 60;
 /** Area shown when the Owner never named one. */
 export const DEFAULT_TABLE_AREA = 'Khu chính';
+/** Owner-assigned Waiters per area, and per Staff member, stay bounded. */
+export const TABLE_AREA_MAX_WAITERS = 50;
 
 export const tablePositionSchema = z.strictObject({
   x: z.number().int().min(0).max(TABLE_FLOOR_COLUMNS - 1),
@@ -22,19 +24,39 @@ export const tablePositionSchema = z.strictObject({
 
 export type TablePosition = z.infer<typeof tablePositionSchema>;
 
-/** Stored presentation of one table; every field is nullable for old rows. */
+/**
+ * Stored presentation of one table; every field is nullable for old rows.
+ *
+ * `areaWaiterUids` is the server-written projection of its area's assignment
+ * (REQ-TBL-004): Rules read it, and an assigned Waiter's table query filters on
+ * it, so a zone scope needs no lookup during a read. An empty list means the
+ * area is unassigned and stays visible to every active member.
+ */
 export const tableLayoutSchema = z.strictObject({
   area: z.string().min(1).max(TABLE_AREA_MAX_LENGTH).nullable(),
   seats: z.number().int().min(1).max(TABLE_MAX_SEATS).nullable(),
   position: tablePositionSchema.nullable(),
+  areaWaiterUids: z.array(z.string().min(1)).max(TABLE_AREA_MAX_WAITERS),
 });
 
 export type TableLayout = z.infer<typeof tableLayoutSchema>;
+
+/**
+ * The layout an Owner command sends. `areaWaiterUids` is deliberately absent:
+ * the server projects it from the area assignment, so a client can never set
+ * who may read a table (REQ-TBL-004).
+ */
+export const tableLayoutInputSchema = tableLayoutSchema.omit({
+  areaWaiterUids: true,
+});
+
+export type TableLayoutInput = z.infer<typeof tableLayoutInputSchema>;
 
 export const EMPTY_TABLE_LAYOUT: TableLayout = {
   area: null,
   seats: null,
   position: null,
+  areaWaiterUids: [],
 };
 
 /**
@@ -51,6 +73,11 @@ export function readStoredTableLayout(data: unknown): TableLayout {
       source.position && typeof source.position === 'object'
         ? source.position
         : null,
+    areaWaiterUids: Array.isArray(source.areaWaiterUids)
+      ? source.areaWaiterUids.filter(
+          (uid): uid is string => typeof uid === 'string' && uid.length > 0,
+        )
+      : [],
   });
   return parsed.success ? parsed.data : { ...EMPTY_TABLE_LAYOUT };
 }
@@ -194,3 +221,48 @@ export const tableResolveInputSchema = z.strictObject({
 });
 
 export type TableResolveInput = z.infer<typeof tableResolveInputSchema>;
+
+/** A zone label as stored: trimmed, non-empty, bounded. */
+export const tableAreaLabelSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(TABLE_AREA_MAX_LENGTH);
+
+/**
+ * Waiter coverage per table area (REQ-TBL-004). The document is the source of
+ * truth for one area; the table and member documents carry projections of it so
+ * a read can be authorized without a lookup. An empty `waiterUids` list removes
+ * the assignment altogether.
+ */
+export const TABLE_AREA_CONTRACT_VERSION = 1;
+
+export const tableAreaAssignmentSchema = z.strictObject({
+  schemaVersion: z.literal(TABLE_AREA_CONTRACT_VERSION),
+  tenantId: z.string().min(1),
+  label: tableAreaLabelSchema,
+  waiterUids: z.array(z.string().min(1)).max(TABLE_AREA_MAX_WAITERS),
+  updatedAt: isoUtcTimestampSchema,
+  updatedBy: z.string().min(1),
+});
+
+export type TableAreaAssignment = z.infer<typeof tableAreaAssignmentSchema>;
+
+export const tableAreaAssignInputSchema = z.strictObject({
+  tenantId: z.string().min(1),
+  label: tableAreaLabelSchema,
+  waiterUids: z.array(z.string().min(1)).max(TABLE_AREA_MAX_WAITERS),
+});
+
+export type TableAreaAssignInput = z.infer<typeof tableAreaAssignInputSchema>;
+
+export const tableAreaAssignResultSchema = z.strictObject({
+  schemaVersion: z.literal(TABLE_AREA_CONTRACT_VERSION),
+  label: tableAreaLabelSchema,
+  waiterUids: z.array(z.string().min(1)).max(TABLE_AREA_MAX_WAITERS),
+  appliedAt: isoUtcTimestampSchema,
+});
+
+export type TableAreaAssignResult = z.infer<
+  typeof tableAreaAssignResultSchema
+>;

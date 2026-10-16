@@ -254,6 +254,23 @@ export function chunkValues<T>(
   return chunks;
 }
 
+/**
+ * Merge the per-chunk pages of one Waiter's ready queue into a single bounded
+ * page, newest first. Each chunked `in` query carries the queue limit, so the
+ * merged page is re-bounded instead of silently growing (REQ-TBL-010,
+ * NFR-DATA-002).
+ */
+export function mergeReadyOrderPages<T>(
+  pages: readonly (readonly T[])[],
+  createdAtOf: (row: T) => string,
+  limit: number,
+): T[] {
+  return pages
+    .flat()
+    .sort((left, right) => createdAtOf(right).localeCompare(createdAtOf(left)))
+    .slice(0, limit);
+}
+
 /** Resolve the recipe Cost per menu item for Order line Cost snapshots. */
 export function buildRecipeCostByMenuItemId(
   recipes: Recipe[],

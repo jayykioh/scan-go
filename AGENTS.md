@@ -39,6 +39,9 @@
 - [Developer 3 P0 plan: Ordering, Fulfilment, i18n](docs/plan/p0-developer-3.md)
 - [Developer 4 P0 plan: Inventory, Payment, durable work](docs/plan/p0-developer-4.md)
 - [Insight and growth plan: M2/M3 AI, feedback, workforce, inventory count](docs/plan/insight-growth-plan.md)
+- [Table zones and staff scope plan](docs/plan/table-zones-and-staff-scope.md)
+- [Scale 15-50 tables plan](docs/plan/scale-15-50-tables.md)
+- [Remove the model tier plan](docs/plan/remove-model-tier.md)
 - [Dashboard trust plan: DR-001 reporting](docs/plan/dashboard-trust-plan.md)
 - [Ticket traceability](docs/traceability.md)
 - [Dependency-ready P0 tickets](docs/tickets/p0/README.md)
@@ -64,6 +67,10 @@
 - [ADR 0019: Waiter takes orders at the table](docs/adr/0019-waiter-takes-orders-at-the-table.md)
 - [ADR 0020: Gemini is the only AI model provider](docs/adr/0020-gemini-is-the-only-ai-provider.md)
 - [ADR 0021: The Owner operates without a Staff PIN](docs/adr/0021-owner-operates-without-a-staff-pin.md)
+- [ADR 0022: Settlement uses the shop's bank account](docs/adr/0022-settlement-uses-the-shop-bank-account.md)
+- [ADR 0023: Live table state is a per-table projection](docs/adr/0023-live-table-state-is-a-per-table-projection.md)
+- [ADR 0024: The model tier is removed](docs/adr/0024-remove-the-model-tier.md)
+- [ADR 0025: Table zones and per-Staff area scope](docs/adr/0025-table-zones-and-per-staff-area-scope.md)
 - [Firestore research](research/firestore-foundation.md)
 
 ## Agent constraints

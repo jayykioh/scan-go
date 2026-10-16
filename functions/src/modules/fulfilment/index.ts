@@ -1,5 +1,9 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import type { DocumentReference } from 'firebase-admin/firestore';
+import type {
+  DocumentReference,
+  Firestore,
+  QueryDocumentSnapshot,
+} from 'firebase-admin/firestore';
 import {
   FULFILMENT_CONTRACT_VERSION,
   fulfilmentCommandResultSchema,
@@ -28,6 +32,7 @@ import {
 import { getDb } from '../../shared/firestore.js';
 import { assertAppCheck } from '../../shared/appCheck.js';
 import { writeAuditEventInTransaction } from '../../shared/audit.js';
+import { readAssignedAreas } from '../../shared/areaScope.js';
 import { FUNCTIONS_REGION } from '../../../../shared/config/region.js';
 import {
   applyOrderStatusMutationPlan,
@@ -54,6 +59,7 @@ import {
   FULFILMENT_WAITER_DENIED_MESSAGE,
   FULFILMENT_WAITER_QUEUE_INVALID_MESSAGE,
   mapStoredOrder,
+  mergeReadyOrderPages,
   nowIso,
   parseMarkReadyInput,
   parseMarkServedInput,
@@ -445,6 +451,61 @@ export const callableFulfilmentMarkServed = onCall(
 /** Waiter queue is bounded (docs/RULES_FIREBASE.md §6). */
 export const WAITER_READY_QUEUE_LIMIT = 50;
 
+function readyQueueQuery(db: Firestore, tenantId: string) {
+  return db
+    .collection(`tenants/${tenantId}/orders`)
+    .where('status', '==', 'ready')
+    .orderBy('createdAt', 'desc')
+    .limit(WAITER_READY_QUEUE_LIMIT);
+}
+
+/** Tables of the areas a Waiter covers; `in` accepts at most 30 values. */
+async function readAreaTableIds(
+  db: Firestore,
+  tenantId: string,
+  areas: string[],
+): Promise<string[]> {
+  const tableIds = new Set<string>();
+  for (const chunk of chunkValues(areas)) {
+    const snap = await db
+      .collection(`tenants/${tenantId}/tables`)
+      .where('area', 'in', chunk)
+      .get();
+    for (const docSnap of snap.docs) {
+      tableIds.add(docSnap.id);
+    }
+  }
+  return [...tableIds];
+}
+
+/** Ready Orders of a Waiter's own areas, still bounded by the queue limit. */
+async function readReadyOrdersForAreas(
+  db: Firestore,
+  tenantId: string,
+  areas: string[],
+): Promise<QueryDocumentSnapshot[]> {
+  const tableIds = await readAreaTableIds(db, tenantId, areas);
+  if (tableIds.length === 0) {
+    return [];
+  }
+  const pages: QueryDocumentSnapshot[][] = [];
+  for (const chunk of chunkValues(tableIds)) {
+    const snap = await db
+      .collection(`tenants/${tenantId}/orders`)
+      .where('status', '==', 'ready')
+      .where('tableId', 'in', chunk)
+      .orderBy('createdAt', 'desc')
+      .limit(WAITER_READY_QUEUE_LIMIT)
+      .get();
+    pages.push(snap.docs);
+  }
+  return mergeReadyOrderPages(
+    pages,
+    (row) => String(row.get('createdAt') ?? ''),
+    WAITER_READY_QUEUE_LIMIT,
+  );
+}
+
 /**
  * Waiter query: bounded `ready` queue. Fulfilment owns Waiter workflow
  * coordination, so the query lives here; Ordering owns the Order documents and
@@ -469,18 +530,19 @@ export const callableFulfilmentListReady = onCall(
     const memberSnap = await db.doc(`tenants/${tenantId}/members/${uid}`).get();
     assertWaiterOrOwnerMember(memberSnap.exists ? memberSnap.data() : undefined);
 
-    const snap = await db
-      .collection(`tenants/${tenantId}/orders`)
-      .where('status', '==', 'ready')
-      .orderBy('createdAt', 'desc')
-      .limit(WAITER_READY_QUEUE_LIMIT)
-      .get();
+    // A Waiter given areas carries dishes only for those areas; with no
+    // assignment the tenant-wide queue is unchanged (REQ-TBL-010).
+    const assignedAreas = readAssignedAreas(
+      memberSnap.exists ? memberSnap.data() : undefined,
+    );
+    const docs =
+      assignedAreas.length === 0
+        ? (await readyQueueQuery(db, tenantId).get()).docs
+        : await readReadyOrdersForAreas(db, tenantId, assignedAreas);
 
     return orderListResultSchema.parse({
       schemaVersion: ORDER_CONTRACT_VERSION,
-      orders: snap.docs.map((docSnap) =>
-        mapStoredOrder(docSnap.id, docSnap.data()),
-      ),
+      orders: docs.map((docSnap) => mapStoredOrder(docSnap.id, docSnap.data())),
     });
   },
 );

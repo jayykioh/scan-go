@@ -105,6 +105,11 @@ export interface ActiveMembershipReadContext {
   membershipType: string | null;
   roles: string[];
   sessionVersion: number | null;
+  /**
+   * Areas this member is assigned to (REQ-TBL-010). Empty means no area scope:
+   * the member keeps the tenant-wide table read. Server-written projection.
+   */
+  assignedAreas: string[];
 }
 
 /** Observe the caller's own membership so role revocation clears cached reads. */
@@ -129,6 +134,7 @@ export function subscribeCurrentMembership(
       }
       const roles = snapshot.get('roles');
       const sessionVersion = snapshot.get('sessionVersion');
+      const assignedAreas = snapshot.get('assignedAreas');
       onChange({
         isActive: snapshot.get('isActive') !== false,
         membershipType:
@@ -138,6 +144,11 @@ export function subscribeCurrentMembership(
         roles: Array.isArray(roles) ? roles.map(String).sort() : [],
         sessionVersion:
           typeof sessionVersion === 'number' ? sessionVersion : null,
+        assignedAreas: Array.isArray(assignedAreas)
+          ? assignedAreas
+              .filter((area): area is string => typeof area === 'string')
+              .sort()
+          : [],
       });
     },
     (error) => onError?.(error),

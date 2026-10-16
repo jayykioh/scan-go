@@ -1,6 +1,9 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import type { DocumentData } from 'firebase-admin/firestore';
 import {
+  TABLE_AREA_CONTRACT_VERSION,
   TABLE_CONTRACT_VERSION,
+  tableAreaAssignResultSchema,
   tableCommandResultSchema,
   type TableCommand,
   type TableCommandResult,
@@ -26,8 +29,10 @@ import {
 } from '../subscription/service.js';
 import {
   assertActiveOwnerMember,
+  assertAreaWaiterUids,
   buildPublicNfcLinkDocument,
   buildPublicTableLinkDocument,
+  buildTableAreaDocument,
   buildTableDocument,
   buildTableLayoutPatch,
   computeNextTokenVersion,
@@ -37,11 +42,15 @@ import {
   parseNfcResolveInput,
   parseNfcRevokeInput,
   parseTableArchiveInput,
+  parseTableAreaAssignInput,
   parseTableConfigureInput,
   parseTableCreateInput,
   parseTableRegenerateInput,
   parseTableRenameInput,
   parseTableResolveInput,
+  projectAssignedAreas,
+  readAreaWaiterUids,
+  readStoredAreaAssignment,
   requireUid,
   resolvePublicOrderRateLimit,
   TABLE_NOT_FOUND_MESSAGE,
@@ -49,6 +58,7 @@ import {
   TABLE_TOKEN_INVALID_MESSAGE,
   toNfcSession,
   toTableLinkContext,
+  type StoredAreaAssignment,
 } from './service.js';
 
 const CALL_OPTIONS = { region: FUNCTIONS_REGION, cors: true } as const;
@@ -93,6 +103,9 @@ export const callableTableCreate = onCall(CALL_OPTIONS, async (request) => {
   const linkRef = db.doc(`publicTableLinks/${token}`);
   const memberRef = db.doc(`tenants/${input.tenantId}/members/${uid}`);
   const now = nowIso();
+  // A table created into an already-assigned area carries that coverage, so the
+  // area scope holds without a second command (REQ-TBL-004).
+  const areaWaiterUids = await readAreaWaiterUids(db, input.tenantId, input.area);
 
   const context = await db.runTransaction(async (transaction) => {
     const memberSnap = await transaction.get(memberRef);
@@ -107,6 +120,7 @@ export const callableTableCreate = onCall(CALL_OPTIONS, async (request) => {
         area: input.area,
         seats: input.seats,
         position: input.position,
+        areaWaiterUids,
       }),
     );
     transaction.set(
@@ -247,6 +261,9 @@ export const callableTableConfigure = onCall(CALL_OPTIONS, async (request) => {
   const tableRef = db.doc(tablePath(input.tenantId, input.tableId));
   const memberRef = db.doc(`tenants/${input.tenantId}/members/${uid}`);
   const now = nowIso();
+  // Moving a table into an assigned area re-projects that area's coverage; an
+  // empty result is a deliberate clear (REQ-TBL-004).
+  const areaWaiterUids = await readAreaWaiterUids(db, input.tenantId, input.area);
 
   const outcome = await db.runTransaction(async (transaction) => {
     const memberSnap = await transaction.get(memberRef);
@@ -256,7 +273,7 @@ export const callableTableConfigure = onCall(CALL_OPTIONS, async (request) => {
       throw new HttpsError('not-found', TABLE_NOT_FOUND_MESSAGE);
     }
 
-    transaction.set(tableRef, buildTableLayoutPatch(input, now), {
+    transaction.set(tableRef, buildTableLayoutPatch(input, now, areaWaiterUids), {
       merge: true,
     });
     writeAuditEventInTransaction(transaction, {
@@ -286,6 +303,124 @@ export const callableTableConfigure = onCall(CALL_OPTIONS, async (request) => {
     context: null,
     rotation: null,
     version: outcome.tokenVersion,
+  });
+});
+
+/**
+ * Owner command: replace one area's Waiter coverage (REQ-TBL-004).
+ *
+ * One transaction writes the area document, re-projects `areaWaiterUids` onto
+ * every table of that area, and refreshes `assignedAreas` on every member whose
+ * coverage changed. The area document is the source of truth; both projections
+ * exist so Rules and the client can express the scope without a lookup. An empty
+ * `waiterUids` list removes the assignment instead of leaving an empty document
+ * behind.
+ */
+export const callableTableAreaAssign = onCall(CALL_OPTIONS, async (request) => {
+  const uid = requireUid(request.auth?.uid);
+  assertAppCheck(request);
+  const input = parseTableAreaAssignInput(request.data);
+
+  const db = getDb();
+  const tenantRef = db.doc(`tenants/${input.tenantId}`);
+  const memberRef = tenantRef.collection('members').doc(uid);
+  const areasRef = tenantRef.collection('tableAreas');
+  const now = nowIso();
+  const waiterUids = [...new Set(input.waiterUids)];
+
+  await db.runTransaction(async (transaction) => {
+    const ownerSnap = await transaction.get(memberRef);
+    assertActiveOwnerMember(ownerSnap.data());
+
+    const areaSnaps = await transaction.get(areasRef);
+    const areas = areaSnaps.docs
+      .map((docSnap) => readStoredAreaAssignment(docSnap.id, docSnap.data()))
+      .filter((area): area is StoredAreaAssignment => area !== null);
+    const existing = areas.find((area) => area.label === input.label) ?? null;
+    const otherAreas = areas.filter((area) => area.label !== input.label);
+
+    const tableSnaps = await transaction.get(
+      tenantRef.collection('tables').where('area', '==', input.label),
+    );
+
+    // Members whose coverage may change: the ones leaving and the ones joining.
+    const affectedUids = [
+      ...new Set([...(existing?.waiterUids ?? []), ...waiterUids]),
+    ];
+    const memberData = new Map<string, DocumentData | undefined>();
+    for (const candidate of affectedUids) {
+      const snap = await transaction.get(
+        tenantRef.collection('members').doc(candidate),
+      );
+      memberData.set(candidate, snap.exists ? snap.data() : undefined);
+    }
+    assertAreaWaiterUids(
+      waiterUids.map((candidate) => ({
+        uid: candidate,
+        data: memberData.get(candidate),
+      })),
+    );
+
+    if (waiterUids.length === 0) {
+      if (existing) {
+        transaction.delete(areasRef.doc(existing.id));
+      }
+    } else {
+      const document = buildTableAreaDocument({
+        tenantId: input.tenantId,
+        label: input.label,
+        waiterUids,
+        updatedBy: uid,
+        now,
+      });
+      const areaRef = existing
+        ? areasRef.doc(existing.id)
+        : areasRef.doc();
+      transaction.set(areaRef, document, { merge: true });
+    }
+
+    const finalAreas =
+      waiterUids.length === 0
+        ? otherAreas
+        : [...otherAreas, { id: existing?.id ?? '', label: input.label, waiterUids }];
+    for (const candidate of affectedUids) {
+      // Never invent a membership document for someone who is no longer a
+      // member: dropping them from the projection is enough.
+      if (!memberData.get(candidate)) {
+        continue;
+      }
+      transaction.set(
+        tenantRef.collection('members').doc(candidate),
+        { assignedAreas: projectAssignedAreas(finalAreas, candidate) },
+        { merge: true },
+      );
+    }
+
+    for (const docSnap of tableSnaps.docs) {
+      transaction.set(
+        docSnap.ref,
+        { areaWaiterUids: waiterUids, updatedAt: now },
+        { merge: true },
+      );
+    }
+
+    writeAuditEventInTransaction(transaction, {
+      tenantId: input.tenantId,
+      actorUid: uid,
+      actorType: 'owner',
+      role: 'owner',
+      action: 'TableAreaAssigned',
+      targetType: 'tableArea',
+      targetId: input.label,
+      detail: { waiterUids, tableCount: tableSnaps.size },
+    });
+  });
+
+  return tableAreaAssignResultSchema.parse({
+    schemaVersion: TABLE_AREA_CONTRACT_VERSION,
+    label: input.label,
+    waiterUids,
+    appliedAt: now,
   });
 });
 

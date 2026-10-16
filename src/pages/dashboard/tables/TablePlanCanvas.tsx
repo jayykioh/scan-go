@@ -13,11 +13,18 @@ import {
   moveWithinGrid,
   resolveAreaLabel,
   snapToGrid,
+  type AreaBox,
 } from './tablePlan';
 
 export const PLAN_MIN_CELL_WIDTH = 62;
 // Enough height for two name lines plus the seat and state rows.
 const CELL_ASPECT = 0.95;
+/**
+ * Space reserved above the cells for the area labels, so a zone box that starts
+ * in row 0 can still name itself without covering a tile (REQ-TBL-009). A box's
+ * label sits in this band; the tiles keep their own 4px inset below it.
+ */
+export const ZONE_HEADER_PX = 30;
 
 /** Colour is never the only signal: every tile also prints its state label. */
 const STATE_TILE_CLASS: Record<TableServiceState, string> = {
@@ -50,6 +57,10 @@ interface TablePlanCanvasProps {
   onSelect: (table: TenantTable) => void;
   onMove: (table: TenantTable, position: TablePosition) => void;
   savingTableId: string | null;
+  /** One region per area, drawn behind the tiles (REQ-TBL-009). */
+  areaBoxes: AreaBox[];
+  /** Assigned Waiter names per area label, resolved for display. */
+  areaWaiters: Map<string, string[]>;
 }
 
 interface DragState {
@@ -70,6 +81,8 @@ export default function TablePlanCanvas({
   onSelect,
   onMove,
   savingTableId,
+  areaBoxes,
+  areaWaiters,
 }: TablePlanCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [cellWidth, setCellWidth] = useState(96);
@@ -202,12 +215,48 @@ export default function TablePlanCanvas({
         className="relative"
         style={{
           width: columns * cellWidth,
-          height: rows * cellHeight,
+          height: rows * cellHeight + ZONE_HEADER_PX,
           backgroundImage:
             'linear-gradient(to right, #e4e4e7 1px, transparent 1px), linear-gradient(to bottom, #e4e4e7 1px, transparent 1px)',
           backgroundSize: `${cellWidth}px ${cellHeight}px`,
+          backgroundPosition: `0 ${ZONE_HEADER_PX}px`,
         }}
       >
+        {areaBoxes.map((box) => {
+          const waiters = areaWaiters.get(box.area) ?? [];
+          return (
+            <div
+              key={box.area}
+              data-testid="table-plan-area-box"
+              className={`pointer-events-none absolute rounded-sm border-2 border-dashed ${
+                box.overlapping ? 'border-amber-400' : 'border-zinc-400'
+              }`}
+              style={{
+                left: Math.max(box.minX * cellWidth - 10, 0),
+                top: box.minY * cellHeight + ZONE_HEADER_PX - 24,
+                width: (box.maxX - box.minX + 1) * cellWidth + 8,
+                height: (box.maxY - box.minY + 1) * cellHeight + 22,
+              }}
+            >
+              <p
+                className="absolute -top-[1px] left-0 flex max-w-full items-center gap-1 truncate bg-white px-1.5 text-[9px] font-black uppercase tracking-wider text-zinc-600"
+                title={`Khu ${box.area}: ${box.count} bàn${
+                  waiters.length > 0
+                    ? `, nhân viên: ${waiters.join(', ')}`
+                    : ', chưa gán nhân viên'
+                }`}
+              >
+                <span className="truncate">{box.area}</span>
+                <span className="text-zinc-400">({box.count})</span>
+                {waiters.length > 0 && (
+                  <span className="truncate font-bold text-emerald-700">
+                    {waiters.join(', ')}
+                  </span>
+                )}
+              </p>
+            </div>
+          );
+        })}
         {placements.map((placement) => {
           const state = states.get(placement.table.tableId) ?? 'free';
           const isDragging = drag?.tableId === placement.table.tableId;
@@ -244,7 +293,7 @@ export default function TablePlanCanvas({
               title={label}
               style={{
                 left: position.x * cellWidth + 4,
-                top: position.y * cellHeight + 4,
+                top: position.y * cellHeight + 4 + ZONE_HEADER_PX,
                 width: cellWidth - 8,
                 height: cellHeight - 8,
                 touchAction: 'none',

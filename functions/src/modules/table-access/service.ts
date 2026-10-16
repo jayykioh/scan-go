@@ -3,7 +3,10 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import type { DocumentData, Firestore } from 'firebase-admin/firestore';
 import type { ZodType } from 'zod';
 import {
+  TABLE_AREA_CONTRACT_VERSION,
+  TABLE_AREA_MAX_WAITERS,
   TABLE_CONTRACT_VERSION,
+  tableAreaAssignInputSchema,
   tableArchiveInputSchema,
   tableConfigureInputSchema,
   tableCreateInputSchema,
@@ -12,6 +15,7 @@ import {
   tableRenameInputSchema,
   tableResolveInputSchema,
   type TableArchiveInput,
+  type TableAreaAssignInput,
   type TableConfigureInput,
   type TableCreateInput,
   type TableLinkContext,
@@ -39,6 +43,8 @@ export const TABLE_NOT_FOUND_MESSAGE = 'Không tìm thấy bàn.';
 export const TABLE_TOKEN_INVALID_MESSAGE = 'Link bàn không còn khả dụng.';
 export const TABLE_TOKEN_CROSS_TENANT_MESSAGE =
   'Link bàn không thuộc cửa hàng này.';
+export const TABLE_AREA_WAITER_INVALID_MESSAGE =
+  'Chỉ gán được nhân viên phục vụ đang hoạt động của cửa hàng.';
 
 export function nowIso(): string {
   return new Date().toISOString();
@@ -99,6 +105,10 @@ export function parseTableConfigureInput(data: unknown): TableConfigureInput {
 
 export function parseTableResolveInput(data: unknown): TableResolveInput {
   return parseInput<TableResolveInput>(tableResolveInputSchema, data);
+}
+
+export function parseTableAreaAssignInput(data: unknown): TableAreaAssignInput {
+  return parseInput<TableAreaAssignInput>(tableAreaAssignInputSchema, data);
 }
 
 export function parseNfcProvisionInput(data: unknown): NfcProvisionInput {
@@ -222,6 +232,8 @@ export function buildTableDocument(input: {
   area?: string | null;
   seats?: number | null;
   position?: TableConfigureInput['position'];
+  /** Projection of the area's assignment, copied so Rules can scope a read. */
+  areaWaiterUids?: string[];
 }): Record<string, unknown> {
   return {
     name: input.name,
@@ -236,6 +248,7 @@ export function buildTableDocument(input: {
     area: input.area ?? null,
     seats: input.seats ?? null,
     position: input.position ?? null,
+    areaWaiterUids: input.areaWaiterUids ?? [],
     createdAt: input.now,
     updatedAt: input.now,
   };
@@ -248,13 +261,118 @@ export function buildTableDocument(input: {
 export function buildTableLayoutPatch(
   input: TableConfigureInput,
   now: string,
+  areaWaiterUids: string[] = [],
 ): Record<string, unknown> {
   return {
     area: input.area,
     seats: input.seats,
     position: input.position,
+    areaWaiterUids,
     updatedAt: now,
   };
+}
+
+/** The stored document for one area's Waiter coverage (REQ-TBL-004). */
+export function buildTableAreaDocument(input: {
+  tenantId: string;
+  label: string;
+  waiterUids: string[];
+  updatedBy: string;
+  now: string;
+}): Record<string, unknown> {
+  return {
+    schemaVersion: TABLE_AREA_CONTRACT_VERSION,
+    tenantId: input.tenantId,
+    label: input.label,
+    waiterUids: input.waiterUids,
+    updatedAt: input.now,
+    updatedBy: input.updatedBy,
+  };
+}
+
+/**
+ * Every assigned uid must be an active member holding the Waiter role
+ * (REQ-TBL-004). The assignment never grants a role, so anything else is a
+ * rejected command rather than a silent repair.
+ */
+export function assertAreaWaiterUids(
+  members: readonly { uid: string; data: DocumentData | undefined }[],
+): void {
+  if (members.length > TABLE_AREA_MAX_WAITERS) {
+    throw new HttpsError('invalid-argument', TABLE_AREA_WAITER_INVALID_MESSAGE);
+  }
+  for (const member of members) {
+    const roles = member.data?.roles;
+    const isWaiter =
+      Array.isArray(roles) && roles.some((role) => role === 'waiter');
+    if (!member.data || member.data.isActive === false || !isWaiter) {
+      throw new HttpsError(
+        'invalid-argument',
+        TABLE_AREA_WAITER_INVALID_MESSAGE,
+      );
+    }
+  }
+}
+
+/** Recompute one member's `assignedAreas` projection from the area documents. */
+export function projectAssignedAreas(
+  areas: readonly { label: string; waiterUids: string[] }[],
+  uid: string,
+): string[] {
+  return areas
+    .filter((area) => area.waiterUids.includes(uid))
+    .map((area) => area.label)
+    .sort((left, right) => left.localeCompare(right, 'vi'));
+}
+
+export interface StoredAreaAssignment {
+  id: string;
+  label: string;
+  waiterUids: string[];
+}
+
+/**
+ * Read one stored area document tolerantly: a row written by an older build (or
+ * half-written) contributes what it has instead of failing the whole command.
+ */
+export function readStoredAreaAssignment(
+  id: string,
+  data: DocumentData | undefined,
+): StoredAreaAssignment | null {
+  const label = typeof data?.label === 'string' ? data.label.trim() : '';
+  if (label.length === 0) {
+    return null;
+  }
+  const waiterUids = Array.isArray(data?.waiterUids)
+    ? data.waiterUids.filter(
+        (uid): uid is string => typeof uid === 'string' && uid.length > 0,
+      )
+    : [];
+  return { id, label, waiterUids };
+}
+
+/**
+ * The Waiter uids currently assigned to one area, to project them onto a table
+ * that is created or moved into it. Read outside the write transaction: the
+ * assign command re-projects the whole area afterwards, so a table created
+ * while an assignment is in flight is corrected by that command.
+ */
+export async function readAreaWaiterUids(
+  db: Firestore,
+  tenantId: string,
+  area: string | null,
+): Promise<string[]> {
+  const label = (area ?? '').trim();
+  if (label.length === 0) {
+    return [];
+  }
+  const snap = await db
+    .collection(`tenants/${tenantId}/tableAreas`)
+    .where('label', '==', label)
+    .limit(1)
+    .get();
+  return readStoredAreaAssignment(snap.docs[0]?.id ?? '', snap.docs[0]?.data())
+    ?.waiterUids ?? [];
 }
 
 /**

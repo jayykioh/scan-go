@@ -69,6 +69,7 @@ import {
   ORDER_INVALID_TABLE_MESSAGE,
   ORDER_INVALID_TOKEN_MESSAGE,
   ORDER_NOT_FOUND_MESSAGE,
+  ORDER_TABLE_OUTSIDE_AREA_MESSAGE,
   parseOrderCancelInput,
   parseOrderStaffCreateInput,
   parseOrderSubmitInput,
@@ -85,6 +86,10 @@ import {
   resolveTenantTimezone,
 } from '../promotion/service.js';
 import { loadSubscriptionState } from '../subscription/service.js';
+import {
+  isTableOutsideAssignedAreas,
+  readAssignedAreas,
+} from '../../shared/areaScope.js';
 import type { PromotionCartLine } from '../../../../shared/contracts/promotion.contract.js';
 import {
   buildLoyaltyRedeemPlan,
@@ -649,9 +654,10 @@ export const callableOrderStaffCreate = onCall(
     // Resolve the real Table for a dine-in Order before any write.
     let tableName: string | undefined;
     if (input.orderType === 'dineIn' && input.tableId) {
-      const tableSnap = await db
-        .doc(`tenants/${input.tenantId}/tables/${input.tableId}`)
-        .get();
+      const [tableSnap, creatorSnap] = await Promise.all([
+        db.doc(`tenants/${input.tenantId}/tables/${input.tableId}`).get(),
+        db.doc(`tenants/${input.tenantId}/members/${uid}`).get(),
+      ]);
       const storedName = tableSnap.get('name');
       if (
         !tableSnap.exists ||
@@ -660,6 +666,23 @@ export const callableOrderStaffCreate = onCall(
         typeof storedName !== 'string'
       ) {
         throw new HttpsError('failed-precondition', ORDER_INVALID_TABLE_MESSAGE);
+      }
+      // A Staff member given areas may only start an Order at their own tables,
+      // so the assignment is a boundary and not a board filter (REQ-TBL-010).
+      const areaWaiterUids = tableSnap.get('areaWaiterUids');
+      if (
+        isTableOutsideAssignedAreas({
+          assignedAreas: readAssignedAreas(creatorSnap.data()),
+          areaWaiterUids: Array.isArray(areaWaiterUids)
+            ? areaWaiterUids.map(String)
+            : [],
+          uid,
+        })
+      ) {
+        throw new HttpsError(
+          'permission-denied',
+          ORDER_TABLE_OUTSIDE_AREA_MESSAGE,
+        );
       }
       tableName = storedName;
     }

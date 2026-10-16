@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { HttpsError } from 'firebase-functions/v2/https';
 import {
+  assertAreaWaiterUids,
   buildPublicTableLinkDocument,
+  buildTableAreaDocument,
   buildTableDocument,
   buildTableLayoutPatch,
   computeNextTokenVersion,
@@ -9,6 +11,8 @@ import {
   parseTableConfigureInput,
   parseTableCreateInput,
   parseTableResolveInput,
+  projectAssignedAreas,
+  readStoredAreaAssignment,
   toTableLinkContext,
 } from './service.js';
 import {
@@ -22,7 +26,10 @@ import {
   OLD_TABLE_TOKEN_FIXTURE,
 } from '../../../../shared/fixtures/table.fixture.js';
 import { TENANT_A_FIXTURE } from '../../../../shared/fixtures/identity.fixture.js';
-import { TABLE_CONTRACT_VERSION } from '../../../../shared/contracts/table.contract.js';
+import {
+  TABLE_AREA_CONTRACT_VERSION,
+  TABLE_CONTRACT_VERSION,
+} from '../../../../shared/contracts/table.contract.js';
 
 describe('generateTableToken', () => {
   it('is opaque, random, and URL-safe', () => {
@@ -199,6 +206,7 @@ describe('buildTableLayoutPatch (REQ-TBL-002)', () => {
       area: 'Tầng 2',
       seats: 6,
       position: { x: 1, y: 1 },
+      areaWaiterUids: [],
       updatedAt: '2026-10-08T10:00:00.000Z',
     });
   });
@@ -219,8 +227,98 @@ describe('buildTableLayoutPatch (REQ-TBL-002)', () => {
       area: null,
       seats: null,
       position: null,
+      areaWaiterUids: [],
       updatedAt: '2026-10-08T10:00:00.000Z',
     });
+  });
+
+  it('carries the area coverage the table moves into (REQ-TBL-004)', () => {
+    expect(
+      buildTableLayoutPatch(
+        {
+          tenantId: TENANT_A_FIXTURE,
+          tableId: 'table-1',
+          area: 'Sân vườn',
+          seats: null,
+          position: null,
+        },
+        '2026-10-08T10:00:00.000Z',
+        ['waiter-1', 'waiter-2'],
+      ),
+    ).toMatchObject({ areaWaiterUids: ['waiter-1', 'waiter-2'] });
+  });
+});
+
+describe('table area assignment (REQ-TBL-004)', () => {
+  const activeWaiter = {
+    uid: 'waiter-1',
+    data: { roles: ['waiter'], isActive: true },
+  };
+
+  it('builds the stored area document the projections are computed from', () => {
+    expect(
+      buildTableAreaDocument({
+        tenantId: TENANT_A_FIXTURE,
+        label: 'Sân vườn',
+        waiterUids: ['waiter-1'],
+        updatedBy: 'owner-uid',
+        now: '2026-10-16T10:00:00.000Z',
+      }),
+    ).toEqual({
+      schemaVersion: TABLE_AREA_CONTRACT_VERSION,
+      tenantId: TENANT_A_FIXTURE,
+      label: 'Sân vườn',
+      waiterUids: ['waiter-1'],
+      updatedAt: '2026-10-16T10:00:00.000Z',
+      updatedBy: 'owner-uid',
+    });
+  });
+
+  it('accepts an empty assignment and an active Waiter', () => {
+    expect(() => assertAreaWaiterUids([])).not.toThrow();
+    expect(() => assertAreaWaiterUids([activeWaiter])).not.toThrow();
+  });
+
+  it('rejects a member without the Waiter role, an inactive member, and a stranger', () => {
+    expect(() =>
+      assertAreaWaiterUids([
+        { uid: 'cashier-1', data: { roles: ['cashier'], isActive: true } },
+      ]),
+    ).toThrow(HttpsError);
+    expect(() =>
+      assertAreaWaiterUids([
+        { uid: 'waiter-1', data: { roles: ['waiter'], isActive: false } },
+      ]),
+    ).toThrow(HttpsError);
+    expect(() =>
+      assertAreaWaiterUids([{ uid: 'ghost', data: undefined }]),
+    ).toThrow(HttpsError);
+  });
+
+  it('recomputes one member projection from the area documents', () => {
+    const areas = [
+      { label: 'Sân vườn', waiterUids: ['waiter-1'] },
+      { label: 'Tầng 2', waiterUids: ['waiter-2', 'waiter-1'] },
+      { label: 'Khu chính', waiterUids: [] },
+    ];
+
+    expect(projectAssignedAreas(areas, 'waiter-1')).toEqual([
+      'Sân vườn',
+      'Tầng 2',
+    ]);
+    expect(projectAssignedAreas(areas, 'waiter-2')).toEqual(['Tầng 2']);
+    expect(projectAssignedAreas(areas, 'waiter-3')).toEqual([]);
+  });
+
+  it('reads a stored area row tolerantly', () => {
+    expect(
+      readStoredAreaAssignment('area-1', {
+        label: ' Sân vườn ',
+        waiterUids: ['waiter-1', 7, ''],
+      }),
+    ).toEqual({ id: 'area-1', label: 'Sân vườn', waiterUids: ['waiter-1'] });
+    expect(readStoredAreaAssignment('area-2', { waiterUids: [] })).toBeNull();
+    expect(readStoredAreaAssignment('area-3', undefined)).toBeNull();
   });
 });
 

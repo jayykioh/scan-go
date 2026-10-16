@@ -152,6 +152,28 @@ const collectConsoleErrors = (page) => {
 };
 
 // ---------------------------------------------------------------------------
+// Stale fixture cleanup (a crashed run must not skew the expectations)
+// ---------------------------------------------------------------------------
+{
+  const staleTables = await db.collection(`tenants/${TENANT_ID}/tables`).get();
+  for (const doc of staleTables.docs) {
+    const name = String(doc.get('name') ?? '');
+    if (name.startsWith('[QA] Bàn trong khu') || name.startsWith('[QA] Bàn ngoài khu')) {
+      await doc.ref.set(
+        { archivedAt: new Date().toISOString(), isActive: false },
+        { merge: true },
+      );
+    }
+  }
+  for (const doc of (await db.collection(`tenants/${TENANT_ID}/tableAreas`).get()).docs) {
+    if (String(doc.get('label') ?? '').startsWith('[QA] Khu phục vụ') ||
+        String(doc.get('label') ?? '').startsWith('[QA] Khu ngoài')) {
+      await doc.ref.delete();
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Expected floor plan straight from Firestore
 // ---------------------------------------------------------------------------
 const expectedTables = (
@@ -218,6 +240,62 @@ async function cleanupIngredients() {
     ),
   );
   console.log(`· Đã xoá ${seededIngredientIds.length} nguyên liệu [QA]`);
+}
+
+// ---------------------------------------------------------------------------
+// Callable helpers for the area-scope fixture (REQ-TBL-010)
+// ---------------------------------------------------------------------------
+const WEB_API_KEY =
+  process.env.SCANGO_WEB_API_KEY ?? 'AIzaSyAxuOZQiw-UQHTQev-xfsdgPJAZVDZo0K8';
+
+async function callCallable(name, data, idToken) {
+  const response = await fetch(
+    `https://asia-southeast1-${PROJECT}.cloudfunctions.net/${name}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+      },
+      body: JSON.stringify({ data }),
+    },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      `${name} ${response.status}: ${JSON.stringify(payload).slice(0, 200)}`,
+    );
+  }
+  return payload.result;
+}
+
+async function ownerIdToken() {
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${WEB_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: EMAIL, password: PASSWORD, returnSecureToken: true }),
+    },
+  );
+  const payload = await response.json();
+  if (!payload.idToken) {
+    throw new Error(`Không lấy được ID token: ${JSON.stringify(payload).slice(0, 200)}`);
+  }
+  return payload.idToken;
+}
+
+async function archiveQaTable(name) {
+  const snap = await db
+    .collection(`tenants/${TENANT_ID}/tables`)
+    .where('name', '==', name)
+    .get();
+  for (const doc of snap.docs) {
+    await doc.ref.set(
+      { archivedAt: new Date().toISOString(), isActive: false },
+      { merge: true },
+    );
+  }
 }
 
 const browser = await chromium.launch({ headless: !HEADED });
@@ -515,15 +593,18 @@ try {
   await shot(page, 'c2-cashier');
 
   await page.goto(`${BASE}/operation/staff`, { waitUntil: 'domcontentloaded' });
+  // The Owner is already signed in, so this screen starts their shift directly
+  // instead of asking for a Staff PIN (REQ-AUTH-005). The PIN gate itself is
+  // covered by flow H with a real Staff membership.
   // A fresh load resolves the active Tenant in two steps: the first read can
   // settle as "no Tenant" before Auth restores, so poll instead of assuming a
   // fixed wait is long enough.
-  const staffGate = await eventually(
+  const ownerShift = await eventually(
     page,
-    async () => /Nhập mã PIN cá nhân/.test(await bodyText(page)),
+    async () => (await page.locator(BOARD).count()) === 1,
     30000,
   );
-  check(staffGate, 'Nhân viên: cổng PIN render trong trang vận hành');
+  check(ownerShift, 'Nhân viên: chủ quán vào thẳng ca làm việc, không hỏi mã PIN');
   check(
     (await page.locator(FRAME).count()) === 1,
     'Nhân viên: trang dùng khung vận hành, không khung điện thoại',
@@ -878,6 +959,157 @@ try {
   await shot(page, 'g1-owner-inventory-report');
 
   await authed.close();
+
+
+  // ---------------------------------------------------------------------------
+  // H. An assigned Waiter only sees their own area (REQ-TBL-004, REQ-TBL-010)
+  // ---------------------------------------------------------------------------
+  currentFlow = 'H-waiter-scope';
+  {
+    const stamp = Date.now().toString().slice(-6);
+    const zone = `[QA] Khu phục vụ ${stamp}`;
+    const outsideZone = `[QA] Khu ngoài ${stamp}`;
+    const insideTable = `[QA] Bàn trong khu ${stamp}`;
+    const outsideTable = `[QA] Bàn ngoài khu ${stamp}`;
+    const waiterEmail = `qa.zone.waiter.${stamp}@example.com`;
+    const waiterPin = '246810';
+    let waiterUid = null;
+
+    try {
+      const token = await ownerIdToken();
+      const staff = await callCallable(
+        'callableStaffCreate',
+        {
+          tenantId: TENANT_ID,
+          email: waiterEmail,
+          password: `ScanGo-Zone-${stamp}!`,
+          displayName: `QA Phục vụ ${stamp}`,
+          roles: ['waiter'],
+          permissions: [],
+          pin: waiterPin,
+        },
+        token,
+      );
+      waiterUid = staff.staff.uid;
+      await callCallable(
+        'callableTableCreate',
+        {
+          tenantId: TENANT_ID,
+          name: insideTable,
+          area: zone,
+          seats: 4,
+          position: { x: 0, y: 3 },
+        },
+        token,
+      );
+      await callCallable(
+        'callableTableCreate',
+        {
+          tenantId: TENANT_ID,
+          name: outsideTable,
+          area: outsideZone,
+          seats: 4,
+          position: { x: 6, y: 3 },
+        },
+        token,
+      );
+      await callCallable(
+        'callableTableAreaAssign',
+        { tenantId: TENANT_ID, label: zone, waiterUids: [waiterUid] },
+        token,
+      );
+      check(true, 'Fixture: một nhân viên phục vụ được gán đúng một khu', zone);
+
+      const scoped = await browser.newContext({ viewport: DESKTOP });
+      const scopedPage = await scoped.newPage();
+      scopedPage.on('console', (message) => {
+        if (message.type() === 'error') {
+          consoleErrors.push(message.text().slice(0, 200));
+        }
+      });
+
+      await scopedPage.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
+      await scopedPage.waitForSelector('#email', { timeout: 30000 });
+      await scopedPage.fill('#email', waiterEmail);
+      await scopedPage.fill('#password', `ScanGo-Zone-${stamp}!`);
+      await scopedPage.click('button[type="submit"]');
+      await scopedPage.waitForTimeout(6000);
+      // A Staff membership lands on the PIN gate; reach it by URL so the flow
+      // does not depend on where the sign-in redirect stopped.
+      if (!scopedPage.url().includes('/operation/staff')) {
+        await scopedPage.goto(`${BASE}/operation/staff`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await scopedPage.waitForTimeout(6000);
+      }
+
+      const pinField = scopedPage.locator('input[placeholder="Mã PIN"]');
+      if (await pinField.count()) {
+        await pinField.first().fill(waiterPin);
+        await scopedPage
+          .getByRole('button', { name: /^Đăng nhập$/i })
+          .first()
+          .click();
+        await scopedPage.waitForTimeout(8000);
+      }
+
+      const board = await eventually(
+        scopedPage,
+        async () => (await scopedPage.locator(BOARD).count()) === 1,
+        30000,
+      );
+      check(board, 'Nhân viên vào được sàn vận hành sau mã PIN');
+
+      const visible = await scopedPage.evaluate((selector) => {
+        const node = document.querySelector(selector);
+        return node
+          ? [...node.querySelectorAll('button[aria-label]')].map(
+              (tile) => (tile.getAttribute('aria-label') ?? '').split(',')[0].trim(),
+            )
+          : [];
+      }, BOARD);
+      check(
+        visible.includes(insideTable),
+        'Sàn của nhân viên có bàn thuộc khu được gán',
+        visible.join(', ') || '(không có bàn)',
+      );
+      check(
+        !visible.includes(outsideTable),
+        'Sàn của nhân viên không có bàn ngoài khu',
+        visible.join(', ') || '(không có bàn)',
+      );
+      await shot(scopedPage, 'h1-waiter-scope-board');
+      await scoped.close();
+    } catch (error) {
+      check(false, 'Luồng phạm vi khu vực chạy được', String(error).slice(0, 200));
+    } finally {
+      try {
+        const token = await ownerIdToken();
+        await callCallable(
+          'callableTableAreaAssign',
+          { tenantId: TENANT_ID, label: zone, waiterUids: [] },
+          token,
+        );
+        if (waiterUid) {
+          await callCallable(
+            'callableStaffSetActive',
+            { tenantId: TENANT_ID, uid: waiterUid, isActive: false },
+            token,
+          );
+        }
+        await callCallable(
+          'callableTableAreaAssign',
+          { tenantId: TENANT_ID, label: outsideZone, waiterUids: [] },
+          token,
+        ).catch(() => undefined);
+      } catch (error) {
+        console.log(`   · Dọn fixture khu vực lỗi: ${String(error).slice(0, 120)}`);
+      }
+      await archiveQaTable(insideTable);
+      await archiveQaTable(outsideTable);
+      console.log('   · Đã dọn fixture khu vực và nhân viên phạm vi');
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Report

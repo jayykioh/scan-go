@@ -148,6 +148,7 @@ export {
 
 export {
   callableTableArchive,
+  callableTableAreaAssign,
   callableTableConfigure,
   callableTableCreate,
   callableTableNfcResolve,

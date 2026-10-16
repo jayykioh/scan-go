@@ -42,6 +42,8 @@ import type {
 export const ORDER_INVALID_CART_MESSAGE = 'Giỏ hàng không hợp lệ.';
 export const ORDER_INVALID_TOKEN_MESSAGE = 'Link bàn không còn khả dụng.';
 export const ORDER_INVALID_TABLE_MESSAGE = 'Bàn không hợp lệ hoặc đã đóng.';
+export const ORDER_TABLE_OUTSIDE_AREA_MESSAGE =
+  'Bàn này không thuộc khu vực phục vụ của bạn.';
 export const ORDER_ITEM_CHANGED_MESSAGE =
   'Món ăn đã thay đổi. Vui lòng tải lại thực đơn.';
 export const ORDER_IDEMPOTENCY_CONFLICT_MESSAGE =

@@ -23,11 +23,13 @@ import GuideModal from '../../components/GuideModal';
 import { useToast } from '../../contexts/ToastContext';
 import {
   archiveTenantTable,
+  assignTableArea,
   configureTenantTable,
   createTenantTable,
   regenerateTableToken,
   renameTenantTable,
   type TenantTable,
+  type TenantTableArea,
 } from '../../data/adapters/table.adapter';
 import {
   refreshSlice,
@@ -37,15 +39,23 @@ import {
 import { resolveTableListView } from './tableListView';
 import TableDetailPanel from './tables/TableDetailPanel';
 import TablePlanCanvas from './tables/TablePlanCanvas';
+import ZoneEditorDialog from './tables/ZoneEditorDialog';
 import { useTableServiceStatus } from './tables/useTableServiceStatus';
 import {
   TABLE_STATE_LABELS,
   groupTablesByArea,
   nextFreePosition,
+  parseSeatCount,
+  resolveAreaBoxes,
   resolveAreaLabel,
   resolvePlanLayout,
   summarizeTableStates,
 } from './tables/tablePlan';
+import {
+  buildZoneSavePlan,
+  storedAreaLabel,
+  type ZoneDraftTable,
+} from './tables/zoneEditor';
 
 type ViewMode = 'plan' | 'list';
 
@@ -78,22 +88,13 @@ function draftFromTable(table: TenantTable): TableDraft {
   };
 }
 
-function parseSeats(value: string): number | null {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
-  const parsed = Number(trimmed);
-  return Number.isInteger(parsed) && parsed >= 1 && parsed <= TABLE_MAX_SEATS
-    ? parsed
-    : null;
-}
-
 export default function TablesPage() {
   // The tenant store owns this listener: it waits for the restored Auth session
   // and the resolved active Tenant before it subscribes, so opening the page
   // directly by URL no longer shows an empty shop (IMP-01, F-01).
   const [rows, { loading, error: loadError }] = useStoreSlice('tables');
+  const [areaRows] = useStoreSlice('tableAreas');
+  const [staffRows] = useStoreSlice('staffDirectory');
   const tenantId = useStoreTenantId();
   const toast = useToast();
 
@@ -106,6 +107,11 @@ export default function TablesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [draft, setDraft] = useState<TableDraft | null>(null);
   const [deletingTable, setDeletingTable] = useState<TenantTable | null>(null);
+  /** null = closed; { editingArea } = the zone dialog, null label for a new one. */
+  const [zoneEditor, setZoneEditor] = useState<{ editingArea: string | null } | null>(
+    null,
+  );
+  const [savingZone, setSavingZone] = useState(false);
   // Optimistic cells: a drag must not snap back while the server round-trips.
   const [pendingPositions, setPendingPositions] = useState<
     Map<string, TablePosition>
@@ -147,10 +153,54 @@ export default function TablesPage() {
   );
 
   const layout = useMemo(() => resolvePlanLayout(tables), [tables]);
+  // Areas come from the tables that carry the label and from an assignment that
+  // exists without one, so a zone never loses its Waiters (REQ-TBL-004).
   const areas = useMemo(() => {
     const unique = new Set(rows.map((table) => resolveAreaLabel(table.area)));
+    for (const area of areaRows) {
+      unique.add(area.label);
+    }
     return [...unique].sort((left, right) => left.localeCompare(right, 'vi'));
-  }, [rows]);
+  }, [rows, areaRows]);
+
+  const areaByLabel = useMemo(() => {
+    const map = new Map<string, TenantTableArea>();
+    for (const area of areaRows) {
+      map.set(area.label, area);
+    }
+    return map;
+  }, [areaRows]);
+
+  /** Active Waiters the Owner can assign, newest directory order kept. */
+  const waiterCandidates = useMemo(
+    () =>
+      staffRows.filter(
+        (staff) => staff.isActive && staff.roles.includes('waiter'),
+      ),
+    [staffRows],
+  );
+
+  const waiterNameByUid = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const staff of staffRows) {
+      map.set(staff.uid, staff.displayName ?? staff.email ?? staff.uid);
+    }
+    return map;
+  }, [staffRows]);
+
+  /** Assigned Waiter names per area, resolved for the box and list headers. */
+  const areaWaiters = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const area of areaRows) {
+      map.set(
+        area.label,
+        area.waiterUids.map(
+          (uid) => waiterNameByUid.get(uid) ?? `${uid} (đã nghỉ)`,
+        ),
+      );
+    }
+    return map;
+  }, [areaRows, waiterNameByUid]);
 
   const visibleTables = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -174,6 +224,10 @@ export default function TablesPage() {
   );
   const visiblePlacements = layout.placements.filter((placement) =>
     visibleIds.has(placement.table.tableId),
+  );
+  const areaBoxes = useMemo(
+    () => resolveAreaBoxes(visiblePlacements),
+    [visiblePlacements],
   );
   const summary = summarizeTableStates(
     rows.length,
@@ -229,7 +283,7 @@ export default function TablesPage() {
       return;
     }
     const isNew = !rows.some((table) => table.tableId === draft.id);
-    const seats = parseSeats(draft.seats);
+    const seats = parseSeatCount(draft.seats);
     const area = draft.area.trim();
     void (async () => {
       try {
@@ -253,6 +307,103 @@ export default function TablesPage() {
         setIsModalOpen(false);
       } catch (error) {
         reportError(error, 'Không lưu được bàn.');
+      }
+    })();
+  };
+
+  const handleSaveZone = (input: {
+    originalLabel: string | null;
+    label: string;
+    selectedTableIds: string[];
+    draftTables: ZoneDraftTable[];
+    waiterUids: string[];
+  }) => {
+    const plan = buildZoneSavePlan({
+      originalLabel: input.originalLabel,
+      label: input.label,
+      tables: rows,
+      selectedTableIds: input.selectedTableIds,
+      draftTables: input.draftTables,
+      occupiedPositions: layout.placements.map((placement) => placement.position),
+      waiterUids: input.waiterUids,
+      currentWaiterUids:
+        input.originalLabel === null
+          ? []
+          : areaByLabel.get(input.originalLabel)?.waiterUids ?? [],
+    });
+    if (plan.overflow > 0) {
+      setActionError(
+        `Lưới chỉ còn ${plan.creates.length} ô trống cho ${input.draftTables.length} bàn mới. Hãy bớt bàn hoặc xếp lại sơ đồ.`,
+      );
+      return;
+    }
+    setSavingZone(true);
+    setActionError(null);
+    void (async () => {
+      try {
+        for (const create of plan.creates) {
+          await createTenantTable(requireTenant(), create.name, {
+            area: storedAreaLabel(plan.label),
+            seats: create.seats,
+            position: create.position,
+          });
+        }
+        for (const relabel of plan.relabels) {
+          await configureTenantTable(requireTenant(), relabel.table.tableId, {
+            area: relabel.area,
+            seats: relabel.table.seats,
+            position: relabel.table.position,
+          });
+        }
+        if (plan.releasedLabel) {
+          await assignTableArea(requireTenant(), plan.releasedLabel, []);
+        }
+        if (plan.assign) {
+          await assignTableArea(
+            requireTenant(),
+            plan.assign.label,
+            plan.assign.waiterUids,
+          );
+        }
+        toast.success(`Đã lưu khu ${plan.label}`);
+        setZoneEditor(null);
+      } catch (error) {
+        reportError(
+          error,
+          'Không lưu được khu vực. Kiểm tra lại sơ đồ trước khi thử lại.',
+        );
+      } finally {
+        setSavingZone(false);
+        refreshSlice('tables');
+        refreshSlice('tableAreas');
+      }
+    })();
+  };
+
+  const handleDeleteZone = (label: string) => {
+    const members = rows.filter(
+      (table) => resolveAreaLabel(table.area) === label,
+    );
+    setSavingZone(true);
+    setActionError(null);
+    void (async () => {
+      try {
+        for (const table of members) {
+          await configureTenantTable(requireTenant(), table.tableId, {
+            area: null,
+            seats: table.seats,
+            position: table.position,
+          });
+        }
+        await assignTableArea(requireTenant(), label, []);
+        toast.success(`Đã xoá khu ${label}`);
+        setZoneEditor(null);
+      } catch (error) {
+        reportError(error, 'Không xoá được khu vực.');
+      } finally {
+        setSavingZone(false);
+        refreshSlice('tables');
+        refreshSlice('tableAreas');
       }
     })();
   };
@@ -397,7 +548,7 @@ export default function TablesPage() {
               type="button"
               aria-pressed={viewMode === 'plan'}
               onClick={() => setViewMode('plan')}
-              className={`flex items-center gap-2 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-colors ${
+              className={`flex min-h-11 items-center gap-2 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-colors ${
                 viewMode === 'plan'
                   ? 'bg-zinc-900 text-white'
                   : 'text-zinc-600 hover:bg-zinc-100'
@@ -409,7 +560,7 @@ export default function TablesPage() {
               type="button"
               aria-pressed={viewMode === 'list'}
               onClick={() => setViewMode('list')}
-              className={`flex items-center gap-2 border-l border-zinc-200 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-colors ${
+              className={`flex min-h-11 items-center gap-2 border-l border-zinc-200 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-colors ${
                 viewMode === 'list'
                   ? 'bg-zinc-900 text-white'
                   : 'text-zinc-600 hover:bg-zinc-100'
@@ -418,6 +569,13 @@ export default function TablesPage() {
               <List className="h-4 w-4" /> Danh sách
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => setZoneEditor({ editingArea: null })}
+            className="flex items-center gap-2 border-hard bg-white px-6 py-3 text-sm font-bold uppercase tracking-widest text-zinc-900 shadow-hard transition-transform hover:bg-zinc-100 active:translate-y-1"
+          >
+            <MapPin className="h-5 w-5" /> Khu vực
+          </button>
           <button
             type="button"
             onClick={handleOpenAdd}
@@ -484,6 +642,15 @@ export default function TablesPage() {
               >
                 Tất cả khu vực
               </button>
+              {areaFilter !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => setZoneEditor({ editingArea: areaFilter })}
+                  className="flex min-h-11 items-center gap-1 border border-orange-300 bg-orange-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-orange-800 transition-colors hover:bg-orange-100"
+                >
+                  <MapPin className="h-3 w-3" /> Sửa khu {areaFilter}
+                </button>
+              )}
               {areas.map((area) => (
                 <button
                   key={area}
@@ -542,6 +709,12 @@ export default function TablesPage() {
             <p className="border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800">
               {layout.overflowCount} bàn chưa xếp được vì lưới đã đầy. Hãy lưu
               trữ bớt bàn hoặc gom lại gần nhau.
+            </p>
+          )}
+          {viewMode === 'plan' && areaBoxes.some((box) => box.overlapping) && (
+            <p className="border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800">
+              Các khu vực đang chồng lấn trên sơ đồ. Kéo bàn của mỗi khu lại gần
+              nhau để khung khu tách rõ.
             </p>
           )}
         </div>
@@ -637,6 +810,8 @@ export default function TablesPage() {
               onSelect={(table) => setSelectedTableId(table.tableId)}
               onMove={savePosition}
               savingTableId={savingTableId}
+              areaBoxes={areaBoxes}
+              areaWaiters={areaWaiters}
             />
             <TableDetailPanel
               table={selectedTable}
@@ -669,9 +844,28 @@ export default function TablesPage() {
           viewMode === 'list' &&
           groupTablesByArea(visibleTables).map((group) => (
             <React.Fragment key={group.area}>
-              <h2 className="col-span-full mt-2 flex items-center gap-2 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
+              <h2 className="col-span-full mt-2 flex flex-wrap items-center gap-2 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
                 <MapPin className="h-3.5 w-3.5" /> {group.area}
                 <span className="text-zinc-400">({group.tables.length})</span>
+                {(() => {
+                  const waiters = areaWaiters.get(group.area) ?? [];
+                  return waiters.length > 0 ? (
+                    <span className="font-bold normal-case text-emerald-700">
+                      {waiters.join(', ')}
+                    </span>
+                  ) : (
+                    <span className="normal-case text-zinc-400">
+                      chưa gán nhân viên
+                    </span>
+                  );
+                })()}
+                <button
+                  type="button"
+                  onClick={() => setZoneEditor({ editingArea: group.area })}
+                  className="ml-auto flex min-h-11 items-center border border-zinc-300 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-600 transition-colors hover:bg-zinc-100"
+                >
+                  Sửa khu vực
+                </button>
               </h2>
               {group.tables.map((table) => {
                 const state = status.states.get(table.tableId);
@@ -762,6 +956,24 @@ export default function TablesPage() {
             </React.Fragment>
           ))}
       </div>
+
+      {zoneEditor && (
+        <ZoneEditorDialog
+          editingArea={zoneEditor.editingArea}
+          tables={rows}
+          waiters={waiterCandidates}
+          assignedWaiterUids={
+            zoneEditor.editingArea === null
+              ? []
+              : areaByLabel.get(zoneEditor.editingArea)?.waiterUids ?? []
+          }
+          areaLabels={areas}
+          saving={savingZone}
+          onSave={handleSaveZone}
+          onDelete={handleDeleteZone}
+          onClose={() => setZoneEditor(null)}
+        />
+      )}
 
       {isModalOpen &&
         draft &&
@@ -856,7 +1068,7 @@ export default function TablesPage() {
                     }
                     className="w-full border-hard px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
-                  {draft.seats.trim().length > 0 && parseSeats(draft.seats) === null && (
+                  {draft.seats.trim().length > 0 && parseSeatCount(draft.seats) === null && (
                     <p className="mt-2 text-[11px] font-bold text-red-600">
                       Số ghế phải là số nguyên từ 1 đến {TABLE_MAX_SEATS}.
                     </p>

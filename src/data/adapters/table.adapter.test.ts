@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildQrPayload, mapStoredTable } from './table.adapter';
+import {
+  buildQrPayload,
+  mapStoredTable,
+  mapStoredTableArea,
+} from './table.adapter';
 import {
   NEW_TABLE_TOKEN_FIXTURE,
   TABLE_ID_FIXTURE,
@@ -38,5 +42,36 @@ describe('buildQrPayload', () => {
     expect(buildQrPayload('https://scango.app/', NEW_TABLE_TOKEN_FIXTURE)).toBe(
       `https://scango.app/menu/${NEW_TABLE_TOKEN_FIXTURE}`,
     );
+  });
+});
+
+/** REQ-TBL-004: the Owner console reads one document per assigned area. */
+describe('mapStoredTableArea', () => {
+  const stored = {
+    schemaVersion: 1,
+    tenantId: 'tenant-alpha',
+    label: 'Sân vườn',
+    waiterUids: ['waiter-1'],
+    updatedAt: '2026-10-16T10:00:00.000Z',
+    updatedBy: 'owner-1',
+  };
+
+  it('maps a stored area document', () => {
+    expect(mapStoredTableArea('area-1', 'tenant-alpha', stored)).toEqual({
+      areaId: 'area-1',
+      label: 'Sân vườn',
+      waiterUids: ['waiter-1'],
+      updatedAt: '2026-10-16T10:00:00.000Z',
+    });
+  });
+
+  it('skips a malformed row instead of breaking the Owner console', () => {
+    expect(
+      mapStoredTableArea('area-2', 'tenant-alpha', {
+        ...stored,
+        waiterUids: 'waiter-1',
+      }),
+    ).toBeNull();
+    expect(mapStoredTableArea('area-3', 'tenant-alpha', {})).toBeNull();
   });
 });

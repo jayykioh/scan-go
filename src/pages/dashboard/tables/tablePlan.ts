@@ -2,6 +2,7 @@ import {
   DEFAULT_TABLE_AREA,
   TABLE_FLOOR_COLUMNS,
   TABLE_FLOOR_ROWS,
+  TABLE_MAX_SEATS,
   type TablePosition,
 } from '@contracts/table.contract';
 import type { TableServiceState } from '@contracts/tableStatus.contract';
@@ -53,6 +54,40 @@ export function nextFreePosition(
     }
   }
   return null;
+}
+
+/**
+ * Reserve the first free cells for several tables added in one save, so a
+ * batch of new tables lands side by side instead of all claiming one cell.
+ * Fewer positions than asked means the floor grid is full.
+ */
+export function allocateFreePositions(
+  count: number,
+  occupied: TablePosition[],
+): TablePosition[] {
+  const taken = [...occupied];
+  const allocated: TablePosition[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const position = nextFreePosition(taken);
+    if (!position) {
+      break;
+    }
+    taken.push(position);
+    allocated.push(position);
+  }
+  return allocated;
+}
+
+/** Seat input as stored: a whole number in range, or null for "not set". */
+export function parseSeatCount(value: string): number | null {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= TABLE_MAX_SEATS
+    ? parsed
+    : null;
 }
 
 export function isInsideGrid(position: TablePosition): boolean {
@@ -126,6 +161,66 @@ export function groupTablesByArea<
   return [...groups.entries()].map(([area, grouped]) => ({
     area,
     tables: grouped,
+  }));
+}
+
+/**
+ * The region one area occupies on the plan: the bounding box of its cells, the
+ * number of tables inside it, and whether another area's box intersects it.
+ * Drawn behind the tiles so the Owner sees the zones the tables belong to.
+ */
+export interface AreaBox {
+  area: string;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  count: number;
+  overlapping: boolean;
+}
+
+/** Bounding box per area, in grid cells; sorted by area label. */
+export function resolveAreaBoxes<
+  T extends { area: string | null },
+>(placements: PlanPlacement<T>[]): AreaBox[] {
+  const boxes = new Map<string, Omit<AreaBox, 'overlapping'>>();
+  for (const placement of placements) {
+    const area = resolveAreaLabel(placement.table.area);
+    const existing = boxes.get(area);
+    const { x, y } = placement.position;
+    if (!existing) {
+      boxes.set(area, {
+        area,
+        minX: x,
+        minY: y,
+        maxX: x,
+        maxY: y,
+        count: 1,
+      });
+      continue;
+    }
+    existing.minX = Math.min(existing.minX, x);
+    existing.minY = Math.min(existing.minY, y);
+    existing.maxX = Math.max(existing.maxX, x);
+    existing.maxY = Math.max(existing.maxY, y);
+    existing.count += 1;
+  }
+
+  const ordered = [...boxes.values()].sort((left, right) =>
+    left.area.localeCompare(right.area, 'vi'),
+  );
+  type BoxBounds = Pick<AreaBox, 'minX' | 'minY' | 'maxX' | 'maxY'>;
+  const intersects = (left: BoxBounds, right: BoxBounds): boolean =>
+    left.minX <= right.maxX &&
+    right.minX <= left.maxX &&
+    left.minY <= right.maxY &&
+    right.minY <= left.maxY;
+
+  return ordered.map((box) => ({
+    ...box,
+    overlapping: ordered.some(
+      (other) => other.area !== box.area && intersects(box, other),
+    ),
   }));
 }
 

@@ -11,13 +11,19 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import {
   readStoredTableLayout,
+  tableAreaAssignResultSchema,
+  tableAreaAssignmentSchema,
   tableCommandResultSchema,
   tableLinkContextSchema,
   type TableArchiveInput,
+  type TableAreaAssignment,
+  type TableAreaAssignInput,
+  type TableAreaAssignResult,
   type TableCommandResult,
   type TableConfigureInput,
   type TableCreateInput,
   type TableLayout,
+  type TableLayoutInput,
   type TableLinkContext,
   type TablePosition,
   type TableRegenerateInput,
@@ -61,6 +67,11 @@ export interface TenantTable {
   area: string | null;
   seats: number | null;
   position: TablePosition | null;
+  /**
+   * Server-written projection of the area's Waiters (REQ-TBL-004). Empty means
+   * the area is unassigned and every active member may read the table.
+   */
+  areaWaiterUids: string[];
 }
 
 export function mapStoredTable(
@@ -83,6 +94,7 @@ export function mapStoredTable(
     area: layout.area,
     seats: layout.seats,
     position: layout.position,
+    areaWaiterUids: layout.areaWaiterUids,
   };
 }
 
@@ -102,7 +114,7 @@ async function requireFunctions() {
 export async function createTenantTable(
   tenantId: string,
   name: string,
-  layout: TableLayout = { area: null, seats: null, position: null },
+  layout: TableLayoutInput = { area: null, seats: null, position: null },
 ): Promise<TableCommandResult> {
   const functions = await requireFunctions();
   const callable = httpsCallable<TableCreateInput, TableCommandResult>(
@@ -163,12 +175,13 @@ export async function regenerateTableToken(
 /**
  * Owner command: replace one table's floor-plan layout — area, seat count, and
  * grid position (REQ-TBL-002). Presentation only: the public link, the token,
- * and the Order path are untouched.
+ * and the Order path are untouched. The area's Waiter coverage is projected by
+ * the server from the move, never sent by the client (REQ-TBL-004).
  */
 export async function configureTenantTable(
   tenantId: string,
   tableId: string,
-  layout: TableLayout,
+  layout: TableLayoutInput,
 ): Promise<TableCommandResult> {
   const functions = await requireFunctions();
   const callable = httpsCallable<TableConfigureInput, TableCommandResult>(
@@ -218,9 +231,17 @@ export async function resolvePublicTable(
   return tableLinkContextSchema.parse(result.data);
 }
 
+/**
+ * Which tables one member may load. `all` keeps the tenant-wide listener;
+ * `ownAreas` asks only for the areas that member is assigned to, which Rules
+ * prove from the table's `areaWaiterUids` projection (REQ-TBL-010).
+ */
+export type TenantTableScope = 'all' | { uid: string };
+
 /** Bounded tenant-table listener; archived tables stay out of the list. */
 export function subscribeTenantTables(
   tenantId: string,
+  scope: TenantTableScope,
   onChange: (tables: TenantTable[]) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
@@ -230,12 +251,22 @@ export function subscribeTenantTables(
     return () => undefined;
   }
 
-  const tablesQuery = query(
-    collection(db, 'tenants', tenantId, 'tables'),
-    where('archivedAt', '==', null),
-    orderBy('name'),
-    limit(TENANT_TABLE_LISTENER_LIMIT),
-  );
+  const tables = collection(db, 'tenants', tenantId, 'tables');
+  const tablesQuery =
+    scope === 'all'
+      ? query(
+          tables,
+          where('archivedAt', '==', null),
+          orderBy('name'),
+          limit(TENANT_TABLE_LISTENER_LIMIT),
+        )
+      : query(
+          tables,
+          where('archivedAt', '==', null),
+          where('areaWaiterUids', 'array-contains', scope.uid),
+          orderBy('name'),
+          limit(TENANT_TABLE_LISTENER_LIMIT),
+        );
   return onSnapshot(
     tablesQuery,
     (snap) => {
@@ -247,6 +278,90 @@ export function subscribeTenantTables(
     },
     (error) => onError?.(error),
   );
+}
+
+/** One area's Waiter coverage as the Owner console reads it (REQ-TBL-004). */
+export interface TenantTableArea {
+  areaId: string;
+  label: string;
+  waiterUids: string[];
+  updatedAt: string;
+}
+
+/** A malformed row is skipped instead of breaking the Owner's screen. */
+export function mapStoredTableArea(
+  areaId: string,
+  tenantId: string,
+  data: DocumentData,
+): TenantTableArea | null {
+  const parsed = tableAreaAssignmentSchema.safeParse({
+    schemaVersion: data.schemaVersion,
+    tenantId,
+    label: data.label,
+    waiterUids: data.waiterUids,
+    updatedAt: data.updatedAt,
+    updatedBy: data.updatedBy,
+  });
+  if (!parsed.success) {
+    return null;
+  }
+  return {
+    areaId,
+    label: parsed.data.label,
+    waiterUids: parsed.data.waiterUids,
+    updatedAt: parsed.data.updatedAt,
+  };
+}
+
+/**
+ * Owner-only area assignment listener. The areas are bounded by the same
+ * listener limit as the tables they cover (REQ-TBL-004).
+ */
+export function subscribeTenantTableAreas(
+  tenantId: string,
+  onChange: (areas: TenantTableArea[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const db = getFirebaseFirestore();
+  if (!db) {
+    onChange([]);
+    return () => undefined;
+  }
+  return onSnapshot(
+    query(
+      collection(db, 'tenants', tenantId, 'tableAreas'),
+      limit(TENANT_TABLE_LISTENER_LIMIT),
+    ),
+    (snap) => {
+      onChange(
+        snap.docs
+          .map((docSnap) =>
+            mapStoredTableArea(docSnap.id, tenantId, docSnap.data()),
+          )
+          .filter((area): area is TenantTableArea => area !== null)
+          .sort((left, right) => left.label.localeCompare(right.label, 'vi')),
+      );
+    },
+    (error) => onError?.(error),
+  );
+}
+
+/**
+ * Owner command: replace one area's Waiters (REQ-TBL-004). The server writes
+ * the area document and both projections; an empty list removes the assignment.
+ */
+export async function assignTableArea(
+  tenantId: string,
+  label: string,
+  waiterUids: string[],
+): Promise<TableAreaAssignResult> {
+  const functions = await requireFunctions();
+  const callable = httpsCallable<TableAreaAssignInput, TableAreaAssignResult>(
+    functions,
+    'callableTableAreaAssign',
+  );
+  const result = await callable({ tenantId, label, waiterUids });
+  return tableAreaAssignResultSchema.parse(result.data);
 }
 
 /**

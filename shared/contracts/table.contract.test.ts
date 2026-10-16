@@ -6,6 +6,7 @@ import {
   TABLE_MAX_SEATS,
   readStoredTableLayout,
   tableConfigureInputSchema,
+  tableLayoutInputSchema,
   tableLinkContextSchema,
   tableTokenRotationSchema,
 } from './table.contract.js';
@@ -124,7 +125,32 @@ describe('readStoredTableLayout', () => {
         seats: 6,
         position: { x: 1, y: 9 },
       }),
-    ).toEqual({ area: 'Tầng 2', seats: 6, position: { x: 1, y: 9 } });
+    ).toEqual({
+      area: 'Tầng 2',
+      seats: 6,
+      position: { x: 1, y: 9 },
+      areaWaiterUids: [],
+    });
+  });
+
+  it('reads the area coverage projection and ignores junk in it (REQ-TBL-004)', () => {
+    expect(
+      readStoredTableLayout({
+        area: 'Sân vườn',
+        areaWaiterUids: ['waiter-1', 4, ''],
+      }),
+    ).toMatchObject({ areaWaiterUids: ['waiter-1'] });
+  });
+
+  it('keeps the area coverage out of the layout an Owner command sends', () => {
+    expect(
+      tableLayoutInputSchema.safeParse({
+        area: 'Sân vườn',
+        seats: null,
+        position: null,
+        areaWaiterUids: ['waiter-1'],
+      }).success,
+    ).toBe(false);
   });
 
   it('falls back to empty when a stored value is out of range', () => {

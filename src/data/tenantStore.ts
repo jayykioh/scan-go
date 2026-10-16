@@ -5,7 +5,7 @@ import type {
   CatalogMenuItem,
   PublicMenuItem,
 } from '@contracts/catalog.contract';
-import type { TenantTable } from './adapters/table.adapter';
+import type { TenantTable, TenantTableArea } from './adapters/table.adapter';
 import type { Promotion } from '@contracts/promotion.contract';
 import type { CampaignSuggestion } from '@contracts/campaign.contract';
 import type { LoyaltyConfig } from '@contracts/loyalty.contract';
@@ -25,7 +25,10 @@ import {
   subscribeIngredients,
   subscribeRecipes,
 } from './adapters/inventory.adapter';
-import { subscribeTenantTables } from './adapters/table.adapter';
+import {
+  subscribeTenantTableAreas,
+  subscribeTenantTables,
+} from './adapters/table.adapter';
 import { listPromotions } from './adapters/promotion.adapter';
 import { readCampaignSuggestions } from './firestoreRead';
 import { getLoyaltyConfig } from './adapters/loyalty.adapter';
@@ -51,6 +54,7 @@ export interface TenantStoreState {
   ingredients: Ingredient[];
   recipes: Recipe[];
   tables: TenantTable[];
+  tableAreas: TenantTableArea[];
   promotions: Promotion[];
   campaignSuggestions: CampaignSuggestion[];
   loyaltyConfig: LoyaltyConfig | null;
@@ -62,6 +66,7 @@ export interface TenantStoreState {
     ingredients: boolean;
     recipes: boolean;
     tables: boolean;
+    tableAreas: boolean;
     promotions: boolean;
     campaignSuggestions: boolean;
     loyaltyConfig: boolean;
@@ -77,6 +82,7 @@ type SliceKey =
   | 'ingredients'
   | 'recipes'
   | 'tables'
+  | 'tableAreas'
   | 'promotions'
   | 'campaignSuggestions'
   | 'loyaltyConfig'
@@ -101,6 +107,7 @@ const EMPTY_LOADING = {
   ingredients: false,
   recipes: false,
   tables: false,
+  tableAreas: false,
   promotions: false,
   campaignSuggestions: false,
   loyaltyConfig: false,
@@ -117,6 +124,7 @@ let state: TenantStoreState = {
   ingredients: [],
   recipes: [],
   tables: [],
+  tableAreas: [],
   promotions: [],
   campaignSuggestions: [],
   loyaltyConfig: null,
@@ -134,6 +142,11 @@ let membershipUnsubscribe: (() => void) | null = null;
 let watchedUid: string | null = null;
 let watchedTenantId: string | null = null;
 let authorizationKey: string | null = null;
+/**
+ * The active member's area scope (REQ-TBL-010), kept beside `authorizationKey`
+ * so the `tables` slice can pick its query without re-reading the membership.
+ */
+let assignedAreas: string[] = [];
 let contextGeneration = 0;
 
 function emit(): void {
@@ -192,6 +205,8 @@ function clearSliceData(key: SliceKey): void {
     setState({ subscription: null });
   } else if (key === 'staffDirectory') {
     setState({ staffDirectory: [] });
+  } else if (key === 'tableAreas') {
+    setState({ tableAreas: [] });
   } else {
     setState({ [key]: [] } as Partial<TenantStoreState>);
   }
@@ -336,6 +351,13 @@ function startSlice(key: SliceKey, tenantId: string): void {
   if (key === 'tables') {
     entry.unsubscribe = subscribeTenantTables(
       tenantId,
+      // A member with no area assignment keeps the tenant-wide listener; an
+      // assigned member loads only their areas, because Rules deny the rest
+      // (REQ-TBL-010). Changing an assignment changes the membership access
+      // key, which resets this context and re-subscribes.
+      assignedAreas.length === 0 || !state.userId
+        ? 'all'
+        : { uid: state.userId },
       (items) =>
         publishSlice(key, tenantId, entry, generation, revision, {
           tables: items,
@@ -351,6 +373,18 @@ function startSlice(key: SliceKey, tenantId: string): void {
       (staffDirectory) =>
         publishSlice(key, tenantId, entry, generation, revision, {
           staffDirectory,
+        }),
+      onFailure,
+    );
+    return;
+  }
+
+  if (key === 'tableAreas') {
+    entry.unsubscribe = subscribeTenantTableAreas(
+      tenantId,
+      (tableAreas) =>
+        publishSlice(key, tenantId, entry, generation, revision, {
+          tableAreas,
         }),
       onFailure,
     );
@@ -394,6 +428,11 @@ function resetForContext(
   tenantId: string | null,
   accessKey: string | null,
 ): void {
+  if (accessKey === null) {
+    // No resolved context: drop the area scope with it, so a later context can
+    // never inherit the previous member's zones (REQ-TBL-010).
+    assignedAreas = [];
+  }
   contextGeneration += 1;
   clearReadCache();
   for (const entry of slices.values()) {
@@ -413,6 +452,7 @@ function resetForContext(
     ingredients: [],
     recipes: [],
     tables: [],
+    tableAreas: [],
     promotions: [],
     campaignSuggestions: [],
     loyaltyConfig: null,
@@ -440,6 +480,9 @@ function membershipAccessKey(
     membership.membershipType,
     membership.roles,
     membership.sessionVersion,
+    // An area re-assignment changes what this member may read, so it must reset
+    // the cached slices and re-subscribe the table listener (REQ-TBL-010).
+    membership.assignedAreas,
   ]);
 }
 
@@ -530,9 +573,11 @@ function startTenantWatch(): void {
                 }
                 if (!membership?.isActive) {
                   authorizationKey = null;
+                  assignedAreas = [];
                   resetForContext(uid, null, null);
                   return;
                 }
+                assignedAreas = membership.assignedAreas;
                 const nextAccessKey = membershipAccessKey(membership);
                 if (
                   state.userId !== uid ||
@@ -638,6 +683,7 @@ function cachePathForSlice(key: SliceKey, tenantId: string): string {
     ingredients: 'ingredients',
     recipes: 'recipes',
     tables: 'tables',
+    tableAreas: 'tableAreas',
     promotions: 'promotions',
     campaignSuggestions: 'campaignSuggestions',
     loyaltyConfig: 'loyaltyConfig',

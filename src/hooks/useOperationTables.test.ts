@@ -18,6 +18,7 @@ function tenantTable(overrides: Partial<TenantTable>): TenantTable {
     area: null,
     seats: null,
     position: null,
+    areaWaiterUids: [],
     ...overrides,
   };
 }

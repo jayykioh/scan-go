@@ -227,6 +227,14 @@ page.on('requestfailed', (request) => {
   if (url.startsWith('ws://') || url.includes('/@vite/')) {
     return;
   }
+  // Changing an area assignment resets the store context, so the previous
+  // Firestore listen stream is aborted by the client on purpose (REQ-TBL-010).
+  if (
+    url.includes('firestore.googleapis.com') &&
+    request.failure()?.errorText === 'net::ERR_ABORTED'
+  ) {
+    return;
+  }
   consoleErrors.push(
     `requestfailed: ${url.slice(0, 160)} ${request.failure()?.errorText ?? ''}`,
   );

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarClock, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import type { Shift } from '@contracts/workforce.contract';
 import type { StaffDirectoryEntry } from '@contracts/staff.contract';
@@ -51,6 +51,8 @@ export default function ShiftSchedulePanel() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const nowMs = useNow();
+  const today = todayDayKey(nowMs);
+  const todayRef = useRef<HTMLElement | null>(null);
   const weekEnd = addDays(weekStart, 6);
   const { shifts, attendance, loading, error } = useWorkforceWindow({
     tenantId,
@@ -80,6 +82,12 @@ export default function ShiftSchedulePanel() {
   );
 
   const nameOf = (uid: string): string => names.get(uid) ?? uid;
+
+  // The Owner opens this tab to see today, and today is the sixth of seven
+  // day sections, so bring it into view once per week.
+  useEffect(() => {
+    todayRef.current?.scrollIntoView({ block: 'start' });
+  }, [weekStart]);
 
   const handleSave = async (draft: ShiftDraft): Promise<void> => {
     if (!tenantId || saving) return;
@@ -181,14 +189,21 @@ export default function ShiftSchedulePanel() {
             const rows = shifts
               .filter((shift) => shift.date === dayKey)
               .sort((left, right) => left.startAt.localeCompare(right.startAt));
+            const isToday = dayKey === today;
             return (
               <section
                 key={dayKey}
+                ref={isToday ? todayRef : undefined}
                 className="border-b border-hard last:border-b-0"
               >
                 <header className="flex items-center justify-between bg-zinc-50 px-4 py-2">
-                  <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-900">
+                  <h3
+                    className={`font-mono text-[10px] font-bold uppercase tracking-widest ${
+                      isToday ? 'text-orange-600' : 'text-zinc-900'
+                    }`}
+                  >
                     {formatDayLabel(dayKey)}
+                    {isToday && ' · Hôm nay'}
                   </h3>
                   <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
                     {rows.length} ca

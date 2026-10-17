@@ -132,47 +132,46 @@ export default function ShiftClockBar({
         </div>
       ) : todayShifts.length > 0 ? (
         <ul className="mt-1 space-y-1">
-          {todayShifts.map((shift) => (
-            <li key={shift.shiftId} className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-xs text-[#2D2B30]">
-                {formatClockTime(shift.startAt)}–{formatClockTime(shift.endAt)}
-              </span>
-              {shift.label && (
-                <span className="text-xs text-[#8E8E93]">{shift.label}</span>
-              )}
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() =>
-                  void run(
-                    () =>
-                      clockInToShift({
-                        tenantId,
-                        staffUid,
-                        shiftId: shift.shiftId,
-                      }),
-                    'Đã nhận ca, bắt đầu tính giờ',
-                  )
-                }
-                className="min-h-11 rounded-[21px] bg-[#155BD0] px-4 text-xs font-semibold text-white disabled:opacity-60"
-              >
-                <LogIn className="mr-1 inline-block h-3 w-3" />
-                Nhận ca
-              </button>
-              {byShift.has(shift.shiftId) && (
-                <span className="font-mono text-[10px] uppercase tracking-widest text-[#8E8E93]">
-                  Xong{' '}
-                  {formatMinutes(
-                    shiftMinutes(
-                      shift,
-                      byShift.get(shift.shiftId) ?? null,
-                      nowMs,
-                    ),
-                  )}
+          {todayShifts.map((shift) => {
+            const record = byShift.get(shift.shiftId) ?? null;
+            return (
+              <li key={shift.shiftId} className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-xs text-[#2D2B30]">
+                  {formatClockTime(shift.startAt)}–{formatClockTime(shift.endAt)}
                 </span>
-              )}
-            </li>
-          ))}
+                {shift.label && (
+                  <span className="text-xs text-[#8E8E93]">{shift.label}</span>
+                )}
+                {record ? (
+                  // A closed record offers no second "Nhận ca": the server
+                  // would only replay it, so the button would be a lie.
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-[#8E8E93]">
+                    Đã xong {formatMinutes(shiftMinutes(shift, record, nowMs))}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(
+                        () =>
+                          clockInToShift({
+                            tenantId,
+                            staffUid,
+                            shiftId: shift.shiftId,
+                          }),
+                        'Đã nhận ca, bắt đầu tính giờ',
+                      )
+                    }
+                    className="min-h-11 rounded-[21px] bg-[#155BD0] px-4 text-xs font-semibold text-white disabled:opacity-60"
+                  >
+                    <LogIn className="mr-1 inline-block h-3 w-3" />
+                    Nhận ca
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p className="mt-1 text-xs text-[#8E8E93]">

@@ -1214,13 +1214,16 @@ try {
       );
 
       // The Staff member's own surface: sign in at /staff, clear the PIN gate.
+      // The Staff entry has no `#email` id (that is the Owner login form), so
+      // address its two fields by type.
       const shiftStaff = await browser.newContext({ viewport: PHONE });
       const staffPage = await shiftStaff.newPage();
       collectConsoleErrors(staffPage);
       await staffPage.goto(`${BASE}/staff`, { waitUntil: 'domcontentloaded' });
-      await staffPage.waitForSelector('#email', { timeout: 30000 });
-      await staffPage.fill('#email', shiftStaffEmail);
-      await staffPage.fill('#password', `ScanGo-Shift-${stamp}!`);
+      const staffEmail = staffPage.locator('input[type="email"]');
+      await staffEmail.first().waitFor({ timeout: 30000 });
+      await staffEmail.first().fill(shiftStaffEmail);
+      await staffPage.locator('input[type="password"]').first().fill(`ScanGo-Shift-${stamp}!`);
       await staffPage.click('button[type="submit"]');
       const pinField = staffPage.locator('input[placeholder="Mã PIN"]');
       await pinField.first().waitFor({ timeout: 30000 });

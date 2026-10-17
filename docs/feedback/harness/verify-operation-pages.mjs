@@ -1279,10 +1279,16 @@ try {
         staffPage,
         async () =>
           (await staffPage.getByText(/Đang làm từ/).count()) === 0 &&
-          (await staffPage.getByText(/Xong/).count()) > 0,
+          (await staffPage.getByText(/Đã xong/).count()) > 0,
         25000,
       );
       check(closed, 'Tan ca đóng bản ghi và hiện số phút đã làm');
+      const noSecondClockIn = await eventually(
+        staffPage,
+        async () => (await staffPage.getByRole('button', { name: /Nhận ca/ }).count()) === 0,
+        10000,
+      );
+      check(noSecondClockIn, 'Ca đã tan không còn nút Nhận ca');
       await shot(staffPage, 'i5-staff-clocked-out');
 
       const afterOut = await db

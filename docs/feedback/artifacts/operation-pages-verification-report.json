@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-10-14T13:53:00.496Z",
-  "base": "http://127.0.0.1:3001",
+  "generatedAt": "2026-10-17T04:47:26.269Z",
+  "base": "https://scan-go-ashen.vercel.app",
   "tenantId": "first-g43h5hgnc4RJ0FJrYHxmd3g7qXl1",
   "expectedTables": [
     "Bàn QA 01"
   ],
-  "passed": 83,
-  "failed": 0,
+  "passed": 98,
+  "failed": 1,
   "screenshots": [
     "docs/feedback/artifacts/operation-a1-hub.png",
     "docs/feedback/artifacts/operation-a2-cashier-anon.png",
@@ -24,7 +24,14 @@
     "docs/feedback/artifacts/operation-f1-bulk-select.png",
     "docs/feedback/artifacts/operation-f2-bulk-waste-modal.png",
     "docs/feedback/artifacts/operation-f3-waste-report.png",
-    "docs/feedback/artifacts/operation-g1-owner-inventory-report.png"
+    "docs/feedback/artifacts/operation-g1-owner-inventory-report.png",
+    "docs/feedback/artifacts/operation-h1-waiter-scope-board.png",
+    "docs/feedback/artifacts/operation-i1-shift-planned.png",
+    "docs/feedback/artifacts/operation-i2-staff-clock-in.png",
+    "docs/feedback/artifacts/operation-i3-staff-working.png",
+    "docs/feedback/artifacts/operation-i4-owner-working.png",
+    "docs/feedback/artifacts/operation-i5-staff-clocked-out.png",
+    "docs/feedback/artifacts/operation-i6-owner-shift-done.png"
   ],
   "consoleErrors": [],
   "findings": [
@@ -109,13 +116,13 @@
       "flow": "A-hub",
       "kind": "pass",
       "label": "/simulator chuyển hướng về /operation",
-      "detail": "http://127.0.0.1:3001/operation"
+      "detail": "https://scan-go-ashen.vercel.app/operation"
     },
     {
       "flow": "A-hub",
       "kind": "pass",
       "label": "/simulator/kitchen chuyển hướng về /operation",
-      "detail": "http://127.0.0.1:3001/operation"
+      "detail": "https://scan-go-ashen.vercel.app/operation"
     },
     {
       "flow": "A-hub",
@@ -215,7 +222,7 @@
     },
     {
       "flow": "B-frame",
-      "kind": "pass",
+      "kind": "fail",
       "label": "Khách hàng: hiện danh sách bàn demo"
     },
     {
@@ -294,7 +301,7 @@
     {
       "flow": "C-board",
       "kind": "pass",
-      "label": "Nhân viên: cổng PIN render trong trang vận hành"
+      "label": "Nhân viên: chủ quán vào thẳng ca làm việc, không hỏi mã PIN"
     },
     {
       "flow": "C-board",
@@ -464,13 +471,13 @@
       "flow": "F-waste",
       "kind": "pass",
       "label": "Báo cáo kho: dòng hao hụt được đánh dấu riêng",
-      "detail": "42 dòng"
+      "detail": "50 dòng"
     },
     {
       "flow": "F-waste",
       "kind": "pass",
       "label": "Báo cáo kho: lọc riêng các dòng hao hụt",
-      "detail": "42 dòng"
+      "detail": "50 dòng"
     },
     {
       "flow": "G-owner-kho",
@@ -488,7 +495,94 @@
       "label": "Kho (chủ quán): thấy dòng hao hụt vừa ghi"
     },
     {
-      "flow": "G-owner-kho",
+      "flow": "H-waiter-scope",
+      "kind": "pass",
+      "label": "Fixture: một nhân viên phục vụ được gán đúng một khu",
+      "detail": "[QA] Khu phục vụ 385059"
+    },
+    {
+      "flow": "H-waiter-scope",
+      "kind": "pass",
+      "label": "Nhân viên vào được sàn vận hành sau mã PIN"
+    },
+    {
+      "flow": "H-waiter-scope",
+      "kind": "pass",
+      "label": "Sàn của nhân viên có bàn thuộc khu được gán",
+      "detail": "[QA] Bàn trong khu 385059"
+    },
+    {
+      "flow": "H-waiter-scope",
+      "kind": "pass",
+      "label": "Sàn của nhân viên không có bàn ngoài khu",
+      "detail": "[QA] Bàn trong khu 385059"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Chủ quán mở được tab Ca làm trong dashboard nhân sự"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Ca vừa xếp hiện trong tuần ở trạng thái Chưa nhận ca"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Firestore có đúng một ca cho nhân viên, đúng ngày và có tên ca",
+      "detail": "size=1"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Nhân viên thấy ca được gán và nút Nhận ca",
+      "detail": "11:15–15:15"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Sau khi nhận ca, màn hình nhân viên đếm giờ từ lúc nhận"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Bản ghi chấm công gắn đúng ca và do server đóng dấu giờ vào",
+      "detail": "size=1"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Chủ quán thấy nhân viên đang trong ca"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Tan ca đóng bản ghi và hiện số phút đã làm"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Ca đã tan không còn nút Nhận ca"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Giờ ra do server đóng dấu và không sớm hơn giờ vào",
+      "detail": "2026-10-17T04:47:15.928Z → 2026-10-17T04:47:20.287Z"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Chủ quán thấy ca đã xong kèm số phút"
+    },
+    {
+      "flow": "I-shift-clock",
+      "kind": "pass",
+      "label": "Bảng giờ công tuần này theo nhân viên hiện ra"
+    },
+    {
+      "flow": "I-shift-clock",
       "kind": "pass",
       "label": "Không có lỗi console",
       "detail": ""

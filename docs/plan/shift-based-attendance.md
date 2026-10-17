@@ -76,13 +76,15 @@ nhân viên nhận ca.
 | `npm run test:rules` | pass (19 file / 133 test, gồm ca của người khác bị từ chối và listener không giới hạn bị từ chối) |
 | `npm run test:emulator` | 42 file pass + 2 test promotion hỏng sẵn (đã đối chiếu trên commit trước khi sửa) |
 | `test/workforce/workforce.emulator.test.ts` | pass (9 test: xếp ca theo lô, huỷ ca, giờ server, ca của người khác, tan ca trùng) |
-| `verify-operation-pages.mjs` (production) | xem §7 |
+| `verify-operation-pages.mjs` (production) | 12 phép kiểm mới cho ca/chấm công đạt; cả lượt 99/99, lần chạy sau 98/99 vì phép kiểm "Khách hàng: hiện danh sách bàn demo" flake có sẵn (không liên quan) |
 
 ## 7. Triển khai
 
-Thứ tự: `firestore:rules` (không thêm index) → 4 hàm
+Đã triển khai ngày 2026-10-17: `firestore:rules` (không thêm index) → 4 hàm
 (`callableWorkforceScheduleShift`, `callableWorkforceCancelShift`,
 `callableWorkforceClockIn`, `callableWorkforceClockOut`), mỗi hàm một lệnh vì
-`deploy --only functions` vẫn bị chặn bởi 4 hàm mồ côi ở production → build web →
-chạy lại harness trên production. Hàm mới cần quyền gọi công khai ở tầng Cloud Run
-(`allUsers` → `roles/run.invoker`), giống `callableTableAreaAssign`.
+`deploy --only functions` vẫn bị chặn bởi 4 hàm mồ côi ở production → push
+`release/mvp` để Vercel build web → chạy lại harness trên production. Hàm mới
+`callableWorkforceCancelShift` đã có sẵn quyền gọi công khai ở tầng Cloud Run
+(`allUsers` → `roles/run.invoker`), kiểm tra bằng một lệnh gọi ẩn danh trả về
+`UNAUTHENTICATED` của chính hàm (không phải 401 của hạ tầng).

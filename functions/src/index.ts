@@ -58,6 +58,7 @@ export {
 
 export {
   callableWorkforceApproveCorrection,
+  callableWorkforceCancelShift,
   callableWorkforceClockIn,
   callableWorkforceClockOut,
   callableWorkforceGetAttendanceSummary,

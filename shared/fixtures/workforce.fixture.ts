@@ -18,6 +18,7 @@ export const shiftFixture: Shift = {
   date: '20260914',
   startAt: '2026-09-14T01:00:00.000Z',
   endAt: '2026-09-14T09:00:00.000Z',
+  label: 'Ca sáng',
   role: 'cashier',
   createdAt: WORKFORCE_NOW_FIXTURE,
   updatedAt: WORKFORCE_NOW_FIXTURE,

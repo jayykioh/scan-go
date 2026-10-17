@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Plus, Pencil, X, AlertTriangle, ShieldCheck, KeyRound, Loader2 } from 'lucide-react';
+import { Users, Plus, Pencil, X, AlertTriangle, ShieldCheck, KeyRound, Loader2, CalendarClock } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type {
   StaffDirectoryEntry,
@@ -15,6 +15,7 @@ import {
   setStaffActive,
   updateStaff,
 } from '../../data/adapters/staff.adapter';
+import ShiftSchedulePanel from './shifts/ShiftSchedulePanel';
 
 interface RoleBooleans {
   isKitchen: boolean;
@@ -100,6 +101,7 @@ export default function StaffPage() {
   const error = staffState.error;
   const [saving, setSaving] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffForm | null>(null);
+  const [tab, setTab] = useState<'accounts' | 'shifts'>('accounts');
   // The server verifies the stored PIN against the resolved policy length, so
   // the form must ask for that exact length or the account can never sign in
   // (REQ-AUTH-004).
@@ -221,25 +223,60 @@ export default function StaffPage() {
 
   return (
     <div className="p-6 md:p-12 w-full max-w-6xl mx-auto animate-fadeIn">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-zinc-900 uppercase tracking-tighter flex items-center gap-3">
             <Users className="w-8 h-8" />
             Nhân sự
           </h1>
           <p className="font-mono text-xs text-zinc-500 uppercase tracking-widest mt-2">
-            Tài khoản, vai trò và PIN đăng nhập
+            {tab === 'accounts'
+              ? 'Tài khoản, vai trò và PIN đăng nhập'
+              : 'Xếp ca làm và giờ công theo tuần'}
           </p>
         </div>
+        {tab === 'accounts' && (
+          <button
+            onClick={() => setEditingStaff(emptyForm())}
+            className="bg-orange-600 text-white font-mono font-bold text-xs uppercase tracking-widest px-6 py-3 border-hard shadow-hard flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Thêm nhân sự
+          </button>
+        )}
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-2" role="tablist" aria-label="Nhân sự">
         <button
-          onClick={() => setEditingStaff(emptyForm())}
-          className="bg-orange-600 text-white font-mono font-bold text-xs uppercase tracking-widest px-6 py-3 border-hard shadow-hard flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+          type="button"
+          role="tab"
+          aria-selected={tab === 'accounts'}
+          onClick={() => setTab('accounts')}
+          className={`min-h-11 border-hard px-5 font-mono text-[10px] font-bold uppercase tracking-widest shadow-hard hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none ${
+            tab === 'accounts' ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-900'
+          }`}
         >
-          <Plus className="w-4 h-4" />
-          Thêm nhân sự
+          <KeyRound className="w-4 h-4 inline-block mr-2" />
+          Tài khoản
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'shifts'}
+          onClick={() => setTab('shifts')}
+          className={`min-h-11 border-hard px-5 font-mono text-[10px] font-bold uppercase tracking-widest shadow-hard hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none ${
+            tab === 'shifts' ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-900'
+          }`}
+        >
+          <CalendarClock className="w-4 h-4 inline-block mr-2" />
+          Ca làm
         </button>
       </div>
 
+      {tab === 'shifts' && <ShiftSchedulePanel />}
+
+      {tab === 'accounts' && (
+        <>
       <div className="mb-5 bg-white border-hard shadow-hard p-4 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
         <div className="flex items-center gap-3">
           <ShieldCheck className="w-5 h-5 text-emerald-600" />
@@ -482,6 +519,8 @@ export default function StaffPage() {
           Chủ quán nên đổi mật khẩu tạm cho nhân viên khi bàn giao.
         </p>
       </div>
+        </>
+      )}
     </div>
   );
 }

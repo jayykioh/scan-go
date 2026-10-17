@@ -285,10 +285,13 @@ service cloud.firestore {
         allow write: if false;
       }
 
-      // Workforce Shifts are server-written only. Active tenant members and
-      // ADMIN read; cross-tenant reads stay denied (REQ-HRM-001).
+      // Workforce Shifts are server-written only. An active Owner reads the
+      // tenant's schedule; a Staff member reads only the Shifts assigned to
+      // them, so a listener must carry `staffUid == request.auth.uid`
+      // (REQ-HRM-004). Only the Owner can plan a Shift, and only the server
+      // writes one. Cross-tenant reads stay denied.
       match /shifts/{shiftId} {
-        allow read: if isActiveMember(tenantId) || isAdmin();
+        allow read: if isAdmin() || isActiveOwner(tenantId) || (isActiveMember(tenantId) && resource.data.staffUid == request.auth.uid);
         allow write: if false;
       }
 

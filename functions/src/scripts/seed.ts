@@ -583,6 +583,7 @@ export function buildShifts(
         date: dayKey,
         startAt,
         endAt,
+        label: staffIndex % 2 === 0 ? 'Ca sáng' : 'Ca chiều',
         role: member.roles[0] ?? null,
         createdAt: now,
         updatedAt: now,

@@ -171,6 +171,20 @@ const collectConsoleErrors = (page) => {
       await doc.ref.delete();
     }
   }
+  // Shift fixtures from a crashed run: their QA Staff rows carry the marker.
+  for (const member of (await db.collection(`tenants/${TENANT_ID}/members`).get()).docs) {
+    if (!String(member.get('displayName') ?? '').startsWith('[QA] Ca ')) continue;
+    for (const shift of (
+      await db.collection(`tenants/${TENANT_ID}/shifts`).where('staffUid', '==', member.id).get()
+    ).docs) {
+      await shift.ref.delete();
+    }
+    for (const record of (
+      await db.collection(`tenants/${TENANT_ID}/attendance`).where('staffUid', '==', member.id).get()
+    ).docs) {
+      await record.ref.delete();
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1108,6 +1122,232 @@ try {
       await archiveQaTable(insideTable);
       await archiveQaTable(outsideTable);
       console.log('   · Đã dọn fixture khu vực và nhân viên phạm vi');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // I-shift-clock — the Owner plans a Shift, the Staff member accepts it, and
+  // the worked time is counted from the server's stamp (REQ-HRM-004/005).
+  // ---------------------------------------------------------------------------
+  currentFlow = 'I-shift-clock';
+  {
+    const stamp = Date.now().toString().slice(-6);
+    const shiftStaffEmail = `qa.shift.staff.${stamp}@example.com`;
+    const shiftStaffName = `[QA] Ca ${stamp}`;
+    const shiftStaffPin = '135790';
+    let shiftStaffUid = null;
+    let plannedShiftId = null;
+
+    // A window that contains the run, rounded to five minutes.
+    const pad = (value) => String(value).padStart(2, '0');
+    const clockTime = (date) =>
+      `${pad(date.getHours())}:${pad(Math.floor(date.getMinutes() / 5) * 5)}`;
+    const now = new Date();
+    const startAt = new Date(now.getTime() - 30 * 60 * 1000);
+    const endAt = new Date(now.getTime() + 210 * 60 * 1000);
+    const startTime = clockTime(startAt);
+    const endTime = clockTime(endAt);
+    const dayKey = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+    const dayValue = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+    try {
+      const token = await ownerIdToken();
+      const staff = await callCallable(
+        'callableStaffCreate',
+        {
+          tenantId: TENANT_ID,
+          email: shiftStaffEmail,
+          password: `ScanGo-Shift-${stamp}!`,
+          displayName: shiftStaffName,
+          roles: ['cashier'],
+          permissions: [],
+          pin: shiftStaffPin,
+        },
+        token,
+      );
+      shiftStaffUid = staff.staff.uid;
+
+      const ownerPage = await browser.newPage();
+      collectConsoleErrors(ownerPage);
+      await signIn(ownerPage);
+      await ownerPage.goto(`${BASE}/dashboard/staff`, { waitUntil: 'domcontentloaded' });
+      await ownerPage.getByRole('tab', { name: 'Ca làm' }).click();
+      check(
+        await eventually(
+          ownerPage,
+          async () => (await ownerPage.getByRole('button', { name: 'Thêm ca' }).count()) === 1,
+          20000,
+        ),
+        'Chủ quán mở được tab Ca làm trong dashboard nhân sự',
+      );
+
+      await ownerPage.getByRole('button', { name: 'Thêm ca' }).click();
+      await ownerPage.waitForSelector('[data-testid="shift-scheduler"]', { timeout: 15000 });
+      await ownerPage.fill('#shift-day', dayValue);
+      await ownerPage.fill('#shift-start', startTime);
+      await ownerPage.fill('#shift-end', endTime);
+      await ownerPage.fill('#shift-label', 'Ca QA');
+      await ownerPage.getByLabel(shiftStaffName).check();
+      await ownerPage.getByRole('button', { name: 'Lưu ca làm' }).click();
+
+      const planned = await eventually(
+        ownerPage,
+        async () =>
+          (await ownerPage.getByText(shiftStaffName).count()) > 0 &&
+          (await ownerPage.getByText('Chưa nhận ca').count()) > 0,
+        25000,
+      );
+      check(planned, 'Ca vừa xếp hiện trong tuần ở trạng thái Chưa nhận ca');
+      await shot(ownerPage, 'i1-shift-planned');
+
+      const shiftRows = await db
+        .collection(`tenants/${TENANT_ID}/shifts`)
+        .where('staffUid', '==', shiftStaffUid)
+        .get();
+      plannedShiftId = shiftRows.docs[0]?.id ?? null;
+      check(
+        shiftRows.size === 1 &&
+          shiftRows.docs[0].get('date') === dayKey &&
+          shiftRows.docs[0].get('label') === 'Ca QA',
+        'Firestore có đúng một ca cho nhân viên, đúng ngày và có tên ca',
+        `size=${shiftRows.size}`,
+      );
+
+      // The Staff member's own surface: sign in at /staff, clear the PIN gate.
+      const shiftStaff = await browser.newContext({ viewport: PHONE });
+      const staffPage = await shiftStaff.newPage();
+      collectConsoleErrors(staffPage);
+      await staffPage.goto(`${BASE}/staff`, { waitUntil: 'domcontentloaded' });
+      await staffPage.waitForSelector('#email', { timeout: 30000 });
+      await staffPage.fill('#email', shiftStaffEmail);
+      await staffPage.fill('#password', `ScanGo-Shift-${stamp}!`);
+      await staffPage.click('button[type="submit"]');
+      const pinField = staffPage.locator('input[placeholder="Mã PIN"]');
+      await pinField.first().waitFor({ timeout: 30000 });
+      await pinField.first().fill(shiftStaffPin);
+      await staffPage.getByRole('button', { name: /^Đăng nhập$/i }).first().click();
+
+      const clockBar = await eventually(
+        staffPage,
+        async () =>
+          (await staffPage.getByRole('button', { name: /Nhận ca/ }).count()) > 0,
+        30000,
+      );
+      check(clockBar, 'Nhân viên thấy ca được gán và nút Nhận ca', `${startTime}–${endTime}`);
+      await shot(staffPage, 'i2-staff-clock-in');
+
+      await staffPage.getByRole('button', { name: /Nhận ca/ }).first().click();
+      const working = await eventually(
+        staffPage,
+        async () => (await staffPage.getByText(/Đang làm từ/).count()) > 0,
+        25000,
+      );
+      check(working, 'Sau khi nhận ca, màn hình nhân viên đếm giờ từ lúc nhận');
+      await shot(staffPage, 'i3-staff-working');
+
+      const attendance = await db
+        .collection(`tenants/${TENANT_ID}/attendance`)
+        .where('staffUid', '==', shiftStaffUid)
+        .get();
+      const record = attendance.docs[0];
+      check(
+        attendance.size === 1 &&
+          record.get('shiftId') === plannedShiftId &&
+          typeof record.get('clockInAt') === 'string' &&
+          record.get('clockOutAt') === null &&
+          record.id === `attendance_${shiftStaffUid}_${plannedShiftId}`,
+        'Bản ghi chấm công gắn đúng ca và do server đóng dấu giờ vào',
+        `size=${attendance.size}`,
+      );
+
+      // The Owner sees the same record through the week listener.
+      await ownerPage.reload({ waitUntil: 'domcontentloaded' });
+      await ownerPage.getByRole('tab', { name: 'Ca làm' }).click();
+      const ownerSeesWorking = await eventually(
+        ownerPage,
+        async () => (await ownerPage.getByText('Đang làm', { exact: false }).count()) > 0,
+        25000,
+      );
+      check(ownerSeesWorking, 'Chủ quán thấy nhân viên đang trong ca');
+      await shot(ownerPage, 'i4-owner-working');
+
+      await staffPage.getByRole('button', { name: /Tan ca/ }).click();
+      const closed = await eventually(
+        staffPage,
+        async () =>
+          (await staffPage.getByText(/Đang làm từ/).count()) === 0 &&
+          (await staffPage.getByText(/Xong/).count()) > 0,
+        25000,
+      );
+      check(closed, 'Tan ca đóng bản ghi và hiện số phút đã làm');
+      await shot(staffPage, 'i5-staff-clocked-out');
+
+      const afterOut = await db
+        .doc(`tenants/${TENANT_ID}/attendance/attendance_${shiftStaffUid}_${plannedShiftId}`)
+        .get();
+      const inAt = Date.parse(String(afterOut.get('clockInAt')));
+      const outAt = Date.parse(String(afterOut.get('clockOutAt')));
+      check(
+        afterOut.get('clockOutAt') !== null && outAt >= inAt,
+        'Giờ ra do server đóng dấu và không sớm hơn giờ vào',
+        `${afterOut.get('clockInAt')} → ${afterOut.get('clockOutAt')}`,
+      );
+
+      await ownerPage.reload({ waitUntil: 'domcontentloaded' });
+      await ownerPage.getByRole('tab', { name: 'Ca làm' }).click();
+      const ownerSeesDone = await eventually(
+        ownerPage,
+        async () => (await ownerPage.getByText('Đã xong', { exact: false }).count()) > 0,
+        25000,
+      );
+      check(ownerSeesDone, 'Chủ quán thấy ca đã xong kèm số phút');
+      const totalsShown = await eventually(
+        ownerPage,
+        async () => (await ownerPage.getByText('Giờ công tuần này').count()) > 0,
+        15000,
+      );
+      check(totalsShown, 'Bảng giờ công tuần này theo nhân viên hiện ra');
+      await shot(ownerPage, 'i6-owner-shift-done');
+      await ownerPage.close();
+      await shiftStaff.close();
+    } catch (error) {
+      check(false, 'Luồng xếp ca và chấm công chạy được', String(error).slice(0, 200));
+    } finally {
+      try {
+        const token = await ownerIdToken();
+        if (shiftStaffUid) {
+          const shifts = await db
+            .collection(`tenants/${TENANT_ID}/shifts`)
+            .where('staffUid', '==', shiftStaffUid)
+            .get();
+          for (const doc of shifts.docs) {
+            await callCallable(
+              'callableWorkforceCancelShift',
+              { tenantId: TENANT_ID, shiftId: doc.id },
+              token,
+            ).catch(async () => {
+              // A Shift that already carries attendance cannot be cancelled
+              // through the command, so the QA fixture is removed directly.
+              await doc.ref.delete();
+            });
+          }
+          const attendance = await db
+            .collection(`tenants/${TENANT_ID}/attendance`)
+            .where('staffUid', '==', shiftStaffUid)
+            .get();
+          for (const doc of attendance.docs) {
+            await doc.ref.delete();
+          }
+          await callCallable(
+            'callableStaffSetActive',
+            { tenantId: TENANT_ID, uid: shiftStaffUid, isActive: false },
+            token,
+          ).catch(() => undefined);
+        }
+      } catch (error) {
+        console.log(`   · Dọn fixture ca làm lỗi: ${String(error).slice(0, 120)}`);
+      }
+      console.log('   · Đã dọn fixture ca làm và nhân viên QA');
     }
   }
 

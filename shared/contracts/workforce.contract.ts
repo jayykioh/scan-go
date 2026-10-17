@@ -5,18 +5,26 @@ import {
 } from '../validation.js';
 
 /**
- * Workforce contract baseline (REQ-HRM-001, REQ-HRM-002, REQ-HRM-003).
+ * Workforce contract baseline (REQ-HRM-001 .. REQ-HRM-005).
  *
- * Owner schedules Shifts per Staff member and date. The server rejects two
- * overlapping Shifts for one Staff member. Attendance records clock in and
- * clock out; a correction stays `pending` until an authorized user approves it
- * and history remains. The module never derives or stores payroll, salary, or
- * wage values.
+ * The Owner plans Shifts per Staff member and date, several Staff members per
+ * save, and cancels a planned Shift that has no attendance (REQ-HRM-004). The
+ * server rejects two overlapping Shifts for one Staff member. A Staff member
+ * cannot create, edit, or choose a Shift.
+ *
+ * Attendance records clock in and clock out against an assigned Shift, stamped
+ * with server time, and worked time counts from the moment the Staff member
+ * accepts the Shift (REQ-HRM-005). A correction stays `pending` until an
+ * authorized user approves it and history remains (REQ-HRM-002). The module
+ * never derives or stores payroll, salary, or wage values (REQ-HRM-003).
  */
 export const WORKFORCE_CONTRACT_VERSION = 1;
 
 /** Tenant-local day key `yyyymmdd`; times themselves stay UTC. */
 export const workDayKeySchema = z.string().regex(/^\d{8}$/);
+
+/** Most Staff members one schedule command may plan at once. */
+export const SHIFT_BATCH_MAX_STAFF = 50;
 
 export const shiftSchema = z.strictObject({
   schemaVersion: z.literal(WORKFORCE_CONTRACT_VERSION),
@@ -26,32 +34,57 @@ export const shiftSchema = z.strictObject({
   date: workDayKeySchema,
   startAt: isoUtcTimestampSchema,
   endAt: isoUtcTimestampSchema,
+  /** Optional Owner label, e.g. "Ca sáng". Never a role or a pay figure. */
+  label: z.string().min(1).max(40).nullable(),
   role: z.string().min(1).max(80).nullable(),
   createdAt: isoUtcTimestampSchema,
   updatedAt: isoUtcTimestampSchema,
 });
 export type Shift = z.infer<typeof shiftSchema>;
 
+/**
+ * One interval planned for several Staff members in a single save
+ * (REQ-HRM-004). A Staff member appears at most once: two Shifts for one Staff
+ * in the same batch would violate the per-Staff overlap rule it is checked
+ * against.
+ */
 export const scheduleShiftInputSchema = z
   .strictObject({
     tenantId: z.string().min(1),
-    staffUid: z.string().min(1),
+    staffUids: z.array(z.string().min(1)).min(1).max(SHIFT_BATCH_MAX_STAFF),
     date: workDayKeySchema,
     startAt: isoUtcTimestampSchema,
     endAt: isoUtcTimestampSchema,
+    label: z.string().trim().min(1).max(40).nullable().optional(),
     role: z.string().trim().min(1).max(80).nullable().optional(),
   })
   .refine((input) => Date.parse(input.endAt) > Date.parse(input.startAt), {
     message: 'Shift end must be after its start.',
+  })
+  .refine((input) => new Set(input.staffUids).size === input.staffUids.length, {
+    message: 'A Staff member may appear only once per schedule command.',
   });
 export type ScheduleShiftInput = z.infer<typeof scheduleShiftInputSchema>;
 
 export const shiftCommandResultSchema = z.strictObject({
   schemaVersion: z.literal(WORKFORCE_CONTRACT_VERSION),
   status: z.literal('applied'),
-  shift: shiftSchema,
+  shifts: z.array(shiftSchema).min(1),
 });
 export type ShiftCommandResult = z.infer<typeof shiftCommandResultSchema>;
+
+export const cancelShiftInputSchema = z.strictObject({
+  tenantId: z.string().min(1),
+  shiftId: z.string().min(1),
+});
+export type CancelShiftInput = z.infer<typeof cancelShiftInputSchema>;
+
+export const cancelShiftResultSchema = z.strictObject({
+  schemaVersion: z.literal(WORKFORCE_CONTRACT_VERSION),
+  status: z.literal('applied'),
+  shiftId: z.string().min(1),
+});
+export type CancelShiftResult = z.infer<typeof cancelShiftResultSchema>;
 
 /**
  * Half-open interval overlap: `[startAt, endAt)`. Two Shifts for one Staff
@@ -93,6 +126,11 @@ export type AttendanceHistoryEntry = z.infer<
   typeof attendanceHistoryEntrySchema
 >;
 
+/**
+ * One clock in/out record. `clockInAt` and `clockOutAt` are server stamps, and
+ * `shiftId` binds the record to the Shift that was accepted, so one local day
+ * can hold one record per Shift.
+ */
 export const attendanceSchema = z.strictObject({
   schemaVersion: z.literal(WORKFORCE_CONTRACT_VERSION),
   attendanceId: z.string().min(1),
@@ -113,18 +151,22 @@ export const attendanceSchema = z.strictObject({
 });
 export type Attendance = z.infer<typeof attendanceSchema>;
 
+/**
+ * Clock in. The server stamps the time: a client-supplied instant in a
+ * timekeeping ledger is forgeable, and the sanctioned way to correct a wrong
+ * time is a correction request the Owner approves (REQ-HRM-002).
+ */
 export const clockInInputSchema = z.strictObject({
   tenantId: z.string().min(1),
   staffUid: z.string().min(1),
+  /** The assigned Shift being accepted; required by the Staff surface. */
   shiftId: z.string().min(1).nullable().optional(),
-  clockInAt: isoUtcTimestampSchema,
 });
 export type ClockInInput = z.infer<typeof clockInInputSchema>;
 
 export const clockOutInputSchema = z.strictObject({
   tenantId: z.string().min(1),
   attendanceId: z.string().min(1),
-  clockOutAt: isoUtcTimestampSchema,
 });
 export type ClockOutInput = z.infer<typeof clockOutInputSchema>;
 

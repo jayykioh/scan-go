@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyClockOut,
   applyCorrectionApproval,
   applyCorrectionRequest,
+  attendanceIdForShift,
   buildAttendanceSummary,
   buildNewAttendance,
+  buildNewShift,
+  toShift,
 } from './service.js';
 import {
   computeWorkedMinutes,
@@ -78,6 +82,55 @@ describe('workforce attendance correction (REQ-HRM-002)', () => {
   });
 });
 
+describe('workforce shift planning (REQ-HRM-004)', () => {
+  const input = {
+    tenantId: 'tenant-a',
+    staffUids: ['uid-a', 'uid-b'],
+    date: '20260914',
+    startAt: '2026-09-14T01:00:00.000Z',
+    endAt: '2026-09-14T05:00:00.000Z',
+    label: 'Ca sáng',
+  };
+
+  it('builds one labelled Shift per Staff member from one command', () => {
+    const first = buildNewShift(input, 'uid-a', 'shift-1', NOW);
+    const second = buildNewShift(input, 'uid-b', 'shift-2', NOW);
+    expect(first.label).toBe('Ca sáng');
+    expect(first.staffUid).toBe('uid-a');
+    expect(second.staffUid).toBe('uid-b');
+    expect(first.startAt).toBe(second.startAt);
+  });
+
+  it('reads a stored Shift without a label and defaults it to null', () => {
+    const stored = toShift('shift-1', {
+      ...buildNewShift(input, 'uid-a', 'shift-1', NOW),
+      label: undefined,
+    });
+    expect(stored.label).toBeNull();
+  });
+
+  it('keys attendance by Shift and records the acting clock-out', () => {
+    expect(attendanceIdForShift('uid-a', 'shift-1')).toBe(
+      'attendance_uid-a_shift-1',
+    );
+    const attendance = buildNewAttendance(
+      { tenantId: 'tenant-a', staffUid: 'uid-a', shiftId: 'shift-1' },
+      'attendance_uid-a_shift-1',
+      NOW,
+    );
+    const closed = applyClockOut(
+      attendance,
+      '2026-09-14T05:00:00.000Z',
+      'uid-owner',
+      '2026-09-14T05:00:00.000Z',
+    );
+    expect(closed.history.at(-1)?.actorUid).toBe('uid-owner');
+    expect(() =>
+      applyClockOut(closed, '2026-09-14T06:00:00.000Z', 'uid-a', NOW),
+    ).toThrow();
+  });
+});
+
 describe('workforce attendance summary (REQ-HRM-003)', () => {
   it('computes worked minutes without any payroll figure', () => {
     const attendance = buildNewAttendance(
@@ -85,11 +138,11 @@ describe('workforce attendance summary (REQ-HRM-003)', () => {
         tenantId: 'tenant-a',
         staffUid: 'uid-staff',
         shiftId: null,
-        clockInAt: '2026-09-14T01:00:00.000Z',
       },
       'attendance-1',
       NOW,
     );
+    expect(attendance.clockInAt).toBe(NOW);
     const summary = buildAttendanceSummary(
       'tenant-a',
       'uid-staff',
@@ -110,7 +163,6 @@ describe('workforce attendance summary (REQ-HRM-003)', () => {
         tenantId: 'tenant-a',
         staffUid: 'uid-staff',
         shiftId: null,
-        clockInAt: '2026-09-14T01:00:00.000Z',
       },
       'attendance-1',
       NOW,

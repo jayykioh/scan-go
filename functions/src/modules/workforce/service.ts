@@ -6,6 +6,7 @@ import {
   approveCorrectionInputSchema,
   attendanceSchema,
   attendanceSummarySchema,
+  cancelShiftInputSchema,
   clockInInputSchema,
   clockOutInputSchema,
   computeWorkedMinutes,
@@ -15,6 +16,7 @@ import {
   type ApproveCorrectionInput,
   type Attendance,
   type AttendanceSummary,
+  type CancelShiftInput,
   type ClockInInput,
   type ClockOutInput,
   type RequestCorrectionInput,
@@ -35,6 +37,13 @@ export const WORKFORCE_ALREADY_CLOCKED_OUT_MESSAGE =
   'Ca đã được chấm công ra.';
 export const WORKFORCE_NO_PENDING_CORRECTION_MESSAGE =
   'Không có yêu cầu sửa giờ nào đang chờ.';
+export const WORKFORCE_SHIFT_NOT_FOUND_MESSAGE =
+  'Không tìm thấy ca làm việc.';
+export const WORKFORCE_SHIFT_NOT_YOURS_MESSAGE = 'Ca này không phải của bạn.';
+export const WORKFORCE_ALREADY_ON_SHIFT_MESSAGE =
+  'Bạn đang trong ca chưa tan ca.';
+export const WORKFORCE_SHIFT_HAS_ATTENDANCE_MESSAGE =
+  'Ca đã có chấm công, nên không thể xoá.';
 
 export function nowIso(): string {
   return new Date().toISOString();
@@ -60,6 +69,10 @@ function parseOrInvalid<T>(schema: ZodType<T>, data: unknown): T {
 
 export function parseScheduleShiftInput(data: unknown): ScheduleShiftInput {
   return parseOrInvalid<ScheduleShiftInput>(scheduleShiftInputSchema, data);
+}
+
+export function parseCancelShiftInput(data: unknown): CancelShiftInput {
+  return parseOrInvalid<CancelShiftInput>(cancelShiftInputSchema, data);
 }
 
 export function parseClockInInput(data: unknown): ClockInInput {
@@ -107,18 +120,36 @@ export function shiftCollectionPath(tenantId: string): string {
   return `tenants/${tenantId}/shifts`;
 }
 
+export function shiftDocPath(tenantId: string, shiftId: string): string {
+  return `${shiftCollectionPath(tenantId)}/${shiftId}`;
+}
+
 export function attendanceCollectionPath(tenantId: string): string {
   return `tenants/${tenantId}/attendance`;
 }
 
-/** Deterministic clock-in id: one attendance record per Staff and UTC day. */
+/**
+ * Attendance id for a Shift-less clock in: one record per Staff and UTC day.
+ * Kept for the legacy path only; the Staff surface always clocks in from an
+ * assigned Shift.
+ */
 export function attendanceIdFor(staffUid: string, clockInAt: string): string {
   const dayKey = clockInAt.slice(0, 10).replace(/-/g, '');
   return `attendance_${staffUid}_${dayKey}`;
 }
 
+/**
+ * Deterministic clock-in id per Staff and Shift (REQ-HRM-005). Keying by Shift
+ * rather than by day lets one Staff member work two Shifts on one local day
+ * and makes a repeated "Nhận ca" a replay instead of a second record.
+ */
+export function attendanceIdForShift(staffUid: string, shiftId: string): string {
+  return `attendance_${staffUid}_${shiftId}`;
+}
+
 export function buildNewShift(
   input: ScheduleShiftInput,
+  staffUid: string,
   shiftId: string,
   now: string,
 ): Shift {
@@ -126,10 +157,11 @@ export function buildNewShift(
     schemaVersion: WORKFORCE_CONTRACT_VERSION,
     shiftId,
     tenantId: input.tenantId,
-    staffUid: input.staffUid,
+    staffUid,
     date: input.date,
     startAt: input.startAt,
     endAt: input.endAt,
+    label: input.label ?? null,
     role: input.role ?? null,
     createdAt: now,
     updatedAt: now,
@@ -145,12 +177,14 @@ export function toShift(shiftId: string, data: DocumentData): Shift {
     date: data.date,
     startAt: data.startAt,
     endAt: data.endAt,
+    label: data.label ?? null,
     role: data.role ?? null,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   });
 }
 
+/** A new record starts at the server's instant, not at a client-supplied one. */
 export function buildNewAttendance(
   input: ClockInInput,
   attendanceId: string,
@@ -162,7 +196,7 @@ export function buildNewAttendance(
     tenantId: input.tenantId,
     staffUid: input.staffUid,
     shiftId: input.shiftId ?? null,
-    clockInAt: input.clockInAt,
+    clockInAt: now,
     clockOutAt: null,
     source: 'staff',
     correctionState: 'none',
@@ -211,6 +245,7 @@ export function toAttendance(
 export function applyClockOut(
   current: Attendance,
   clockOutAt: string,
+  actorUid: string,
   now: string,
 ): Attendance {
   if (current.clockOutAt !== null) {
@@ -226,7 +261,7 @@ export function applyClockOut(
       ...current.history,
       {
         at: now,
-        actorUid: current.staffUid,
+        actorUid,
         action: 'clock_out',
         state: current.correctionState,
         reason: null,

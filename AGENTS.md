@@ -39,6 +39,7 @@
 - [Developer 3 P0 plan: Ordering, Fulfilment, i18n](docs/plan/p0-developer-3.md)
 - [Developer 4 P0 plan: Inventory, Payment, durable work](docs/plan/p0-developer-4.md)
 - [Insight and growth plan: M2/M3 AI, feedback, workforce, inventory count](docs/plan/insight-growth-plan.md)
+- [Shift-based attendance plan](docs/plan/shift-based-attendance.md)
 - [Table zones and staff scope plan](docs/plan/table-zones-and-staff-scope.md)
 - [Scale 15-50 tables plan](docs/plan/scale-15-50-tables.md)
 - [Remove the model tier plan](docs/plan/remove-model-tier.md)
@@ -71,6 +72,7 @@
 - [ADR 0023: Live table state is a per-table projection](docs/adr/0023-live-table-state-is-a-per-table-projection.md)
 - [ADR 0024: The model tier is removed](docs/adr/0024-remove-the-model-tier.md)
 - [ADR 0025: Table zones and per-Staff area scope](docs/adr/0025-table-zones-and-per-staff-area-scope.md)
+- [ADR 0026: Owner-planned Shifts and server-time attendance](docs/adr/0026-owner-planned-shifts-and-server-time-attendance.md)
 - [Firestore research](research/firestore-foundation.md)
 
 ## Agent constraints

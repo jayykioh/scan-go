@@ -38,6 +38,7 @@ import {
 } from '../data/adapters/auth.adapter';
 import { isTenantOwner, useActiveMembership } from '../hooks/useActiveMembership';
 import KitchenView from './KitchenView';
+import ShiftClockBar from './ShiftClockBar';
 import CashierView from './CashierView';
 import InventoryPanel from './InventoryPanel';
 import StaffOrderEntry from './StaffOrderEntry';
@@ -385,6 +386,13 @@ export default function StaffView({
           </button>
         </div>
       </div>
+
+      {/* The Shift the Owner assigned, and the "Nhận ca" that starts the
+          clock. Only in a real Tenant context: the /operation simulator runs
+          on a demo Tenant with no workforce records (REQ-HRM-005). */}
+      {membership.tenantId === tenantId && currentStaff.uid && (
+        <ShiftClockBar tenantId={tenantId} staffUid={currentStaff.uid} />
+      )}
 
       {/* One centred alert per server notification effect */}
       <NotificationDialog

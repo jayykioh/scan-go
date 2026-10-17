@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-08T17:12:52.840Z",
-  "base": "http://127.0.0.1:3000",
+  "generatedAt": "2026-10-16T15:42:35.076Z",
+  "base": "https://scan-go-ashen.vercel.app",
   "tenantId": "first-g43h5hgnc4RJ0FJrYHxmd3g7qXl1",
   "expectedNames": [
     "Bàn QA 01"
   ],
-  "passed": 27,
+  "passed": 43,
   "failed": 0,
   "screenshots": [
     "docs/feedback/artifacts/tables-t1-hard-load.png",
@@ -13,7 +13,10 @@
     "docs/feedback/artifacts/tables-t4-a11y.png",
     "docs/feedback/artifacts/tables-t5-crud-loop.png",
     "docs/feedback/artifacts/tables-t6-drag-position.png",
-    "docs/feedback/artifacts/tables-t7-list-view.png"
+    "docs/feedback/artifacts/tables-t7-list-view.png",
+    "docs/feedback/artifacts/tables-t8-zone-dialog.png",
+    "docs/feedback/artifacts/tables-t8-list-zone.png",
+    "docs/feedback/artifacts/tables-t8-plan-zone.png"
   ],
   "consoleErrors": [],
   "findings": [
@@ -50,13 +53,13 @@
       "flow": "t3-guide-overlay",
       "kind": "pass",
       "label": "Thẻ hướng dẫn nằm trong khung nhìn",
-      "detail": "{\"top\":329,\"left\":1030,\"width\":380,\"height\":547}"
+      "detail": "{\"top\":337,\"left\":1030,\"width\":380,\"height\":540}"
     },
     {
       "flow": "t3-guide-overlay",
       "kind": "pass",
       "label": "Thẻ neo đúng góc dưới phải",
-      "detail": "cách đáy 24px"
+      "detail": "cách đáy 23px"
     },
     {
       "flow": "t3-guide-overlay",
@@ -86,7 +89,7 @@
       "flow": "t5-crud-loop",
       "kind": "pass",
       "label": "Bàn mới xuất hiện trên sơ đồ (không tải lại)",
-      "detail": "[QA] Bàn 560448"
+      "detail": "[QA] Bàn 323058"
     },
     {
       "flow": "t5-crud-loop",
@@ -98,13 +101,13 @@
       "flow": "t5-crud-loop",
       "kind": "pass",
       "label": "Bàn mới có vị trí trên lưới ngay từ đầu",
-      "detail": "{\"x\":1,\"y\":0}"
+      "detail": "{\"x\":0,\"y\":0}"
     },
     {
       "flow": "t5-crud-loop",
       "kind": "pass",
       "label": "Đổi tên cập nhật ngay trên sơ đồ",
-      "detail": "[QA] Bàn 560448 đổi tên"
+      "detail": "[QA] Bàn 323058 đổi tên"
     },
     {
       "flow": "t5-crud-loop",
@@ -116,7 +119,7 @@
       "flow": "t5-crud-loop",
       "kind": "pass",
       "label": "Bàn đã lưu trữ biến mất khỏi sơ đồ",
-      "detail": "[QA] Bàn 560448 đổi tên"
+      "detail": "[QA] Bàn 323058 đổi tên"
     },
     {
       "flow": "t5-crud-loop",
@@ -128,19 +131,19 @@
       "flow": "t6-drag-position",
       "kind": "pass",
       "label": "Kéo bàn ghi vị trí mới xuống Firestore",
-      "detail": "{\"x\":0,\"y\":0} → {\"x\":1,\"y\":1}"
+      "detail": "{\"y\":4,\"x\":0} → {\"x\":1,\"y\":5}"
     },
     {
       "flow": "t6-drag-position",
       "kind": "pass",
       "label": "Vị trí lưu nằm trong lưới 12×10",
-      "detail": "{\"x\":1,\"y\":1}"
+      "detail": "{\"x\":1,\"y\":5}"
     },
     {
       "flow": "t6-drag-position",
       "kind": "pass",
       "label": "Phím mũi tên dịch bàn được (không chỉ kéo chuột)",
-      "detail": "{\"x\":1,\"y\":1} → x-1"
+      "detail": "{\"x\":1,\"y\":5} → x-1"
     },
     {
       "flow": "t7-plan-tools",
@@ -152,7 +155,7 @@
       "flow": "t7-plan-tools",
       "kind": "pass",
       "label": "Mỗi ô bàn in ra trạng thái phục vụ bằng chữ",
-      "detail": "Bàn QA 01, 4 ghế, khu Khu chính, Trống, cột 1 hàng 2"
+      "detail": "Bàn QA 01, 4 ghế, khu Khu chính, Trống, cột 1 hàng 6"
     },
     {
       "flow": "t7-plan-tools",
@@ -172,7 +175,103 @@
       "label": "Quay lại được chế độ Sơ đồ"
     },
     {
-      "flow": "t7-plan-tools",
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Lưu một lần ghi document khu vực",
+      "detail": "[QA] Khu 333784"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Khu vực lưu đúng nhân viên phục vụ được gán",
+      "detail": "[\"qa-zone-waiter-333784\"]"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Nhân viên nhận projection assignedAreas (REQ-TBL-010)",
+      "detail": "[\"[QA] Khu 333784\"]"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Bàn ảo trong hộp thoại được tạo cùng lần lưu, đúng khu",
+      "detail": "1 bàn"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Bàn ảo nhận một ô trống trên sơ đồ",
+      "detail": "{\"x\":3,\"y\":0}"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Mọi bàn của khu mang projection areaWaiterUids",
+      "detail": "3 bàn"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Sơ đồ bọc khu vực thành một khung",
+      "detail": "[QA] KHU 333784\n(3)\nQA WAITER 333784"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Khung khu hiện số bàn bên trong",
+      "detail": "[QA] KHU 333784\n(3)\nQA WAITER 333784"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Khung khu hiện tên nhân viên phục vụ",
+      "detail": "[QA] KHU 333784\n(3)\nQA WAITER 333784"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Tiêu đề nhóm ở dạng Danh sách hiện tên nhân viên",
+      "detail": "[QA] KHU 333784\n(3)\nQA Waiter 333784\nSỬA KHU VỰC"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Đổi tên khu ghi document mới",
+      "detail": "[QA] Khu 333784 đổi tên"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Tên cũ không còn document khu vực",
+      "detail": "[QA] Khu 333784"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Đổi tên khu cập nhật projection của nhân viên",
+      "detail": "[\"[QA] Khu 333784 đổi tên\"]"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Xoá khu vực gỡ document phân công",
+      "detail": "[QA] Khu 333784 đổi tên"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Xoá khu vực trả nhân viên về không giới hạn khu",
+      "detail": "[]"
+    },
+    {
+      "flow": "t8-zone-cycle",
+      "kind": "pass",
+      "label": "Bàn của khu đã xoá trở về khu mặc định",
+      "detail": "0 bàn"
+    },
+    {
+      "flow": "t8-zone-cycle",
       "kind": "pass",
       "label": "Không có lỗi console",
       "detail": ""

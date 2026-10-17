@@ -60,5 +60,5 @@ This set contains the dependency-ready M1 wave. P0-L01 through P0-L09 remain sep
 ## Gaps
 
 - Rules tests were stubs; each ticket replaced its real test files. The remaining placeholder names under `functions/test/rules/` are not included by the vitest configs.
-- Deferred integrations: NFC physical device write, loyalty SMS/Zalo code delivery, live payment provider transport and secret, a separate timed usability artifact, PWA service-worker caching, and a live AI provider secret.
-- SRS Q-4 (TypeSafe Jev) is closed with no contract: Gemini is the only AI model provider (ADR 0020). SRS Q-5 (minimum data per shop type) remains open and affects M2/M3 quality, not the implemented flows.
+- Deferred integrations: NFC physical device write, loyalty SMS/Zalo code delivery, live payment provider transport and secret, a separate timed usability artifact, and PWA service-worker caching. There is no AI provider secret to defer any more: the model tier is removed (ADR 0024).
+- SRS Q-4 (TypeSafe Jev) is closed with no contract and is moot — no model provider is used at all (ADR 0024). SRS Q-5 (minimum data per shop type) remains open and affects M2/M3 quality, not the implemented flows.

@@ -2,7 +2,7 @@
 
 - Serves: REQ-FDB-001, REQ-FDB-002, REQ-FDB-003, REQ-FDB-004, REQ-FDB-005, REQ-FDB-006, REQ-FDB-007, REQ-FDB-008, NFR-PRIV-002
 - Owns: Customer reviews and issues, verification state, report topic counters, Feedback tickets, and product feedback about ScanGo with its screenshots
-- Does not own: Orders, Loyalty points, AI provider calls, or Storage lifecycle
+- Does not own: Orders, Loyalty points, model calls, or Storage lifecycle
 
 The module has two directions:
 

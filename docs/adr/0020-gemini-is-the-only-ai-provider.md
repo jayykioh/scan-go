@@ -1,6 +1,6 @@
 # ADR 0020 — Gemini is the only AI model provider
 
-- Status: Decided
+- Status: Superseded by ADR 0024 (2026-10-15), which removes the model tier. Kept for rationale.
 - Date: 2026-10-15
 - Supersedes: ADR 0008 (AI provider adapter with Gemini default and Jev evaluation)
 - Serves: REQ-AI-001, REQ-AI-004, REQ-AI-005, REQ-AI-009, NFR-AI-001, NFR-AI-002

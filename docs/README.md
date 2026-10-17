@@ -33,6 +33,10 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[plan/p0-developer-4.md](plan/p0-developer-4.md)** | Developer 4 P0 plan | Inventory, Payment, durable work |
 | **[plan/initial-p0-ticket-plan.md](plan/initial-p0-ticket-plan.md)** | First ten assignable P0 tickets | Team delivery |
 | **[plan/insight-growth-plan.md](plan/insight-growth-plan.md)** | M2/M3 tickets: AI insight, feedback, workforce, inventory count | Growth delivery |
+| **[plan/scale-15-50-tables.md](plan/scale-15-50-tables.md)** | P1 tickets for the 5–50 table target: live table projection, queue order, plan enforcement, shop-owned settlement, no silent truncation | Target-segment scale-out |
+| **[plan/shift-based-attendance.md](plan/shift-based-attendance.md)** | Delivered P2 work for Owner-planned Shifts, one-save multi-Staff scheduling, and server-stamped attendance | Shift scheduling and timekeeping |
+| **[plan/table-zones-and-staff-scope.md](plan/table-zones-and-staff-scope.md)** | Delivered P1 work for table zones, one-save zone authoring, and the per-area read scope | Floor-plan work and staff visibility |
+| **[plan/remove-model-tier.md](plan/remove-model-tier.md)** | P1 tickets for removing the model tier and shipping the Owner warnings panel first | Analysis and cost cleanup |
 | **[traceability.md](traceability.md)** | P0 requirement-to-ticket mapping | Scope verification |
 | **[ADR 0001](adr/0001-use-firestore-and-cloud-functions.md)** | Firestore and Cloud Functions | Database changes |
 | **[ADR 0002](adr/0002-use-independent-product-modules.md)** | Independent modules | Module boundary changes |
@@ -41,7 +45,7 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[ADR 0005](adr/0005-use-rebuildable-daily-stats.md)** | Rebuildable daily stats | Reporting storage changes |
 | **[ADR 0006](adr/0006-use-real-firestore-and-defer-emulator-tests.md)** | Real Firestore and deferred Emulator tests | Bootstrap and test setup |
 | **[ADR 0007](adr/0007-switch-owner-auth-to-email-password.md)** | Email/password Owner auth | Auth changes |
-| **[ADR 0008](adr/0008-ai-provider-adapter-and-jev-evaluation.md)** | AI provider adapter and Jev evaluation (superseded by ADR 0020) | AI provider changes |
+| **[ADR 0008](adr/0008-ai-provider-adapter-and-jev-evaluation.md)** | AI provider adapter and Jev evaluation (superseded by ADR 0020, then ADR 0024) | AI provider changes |
 | **[ADR 0009](adr/0009-defer-reservations-and-separate-payment-state.md)** | Customer reservations deferred; staff table bookings approved; payment and preparation remain separate | Scope changes |
 | **[ADR 0010](adr/0010-do-not-audit-read-access.md)** | Audit records changes only; read access is not audited | Audit and privacy changes |
 | **[ADR 0011](adr/0011-deploy-cloud-functions-in-asia-southeast1.md)** | Cloud Functions deploy in asia-southeast1 | Region and deployment changes |
@@ -55,6 +59,11 @@ This folder contains the complete strategic planning documentation for ScanGo, a
 | **[ADR 0019](adr/0019-waiter-takes-orders-at-the-table.md)** | Waiter takes orders at the table | Waiter and order-entry permission changes |
 | **[ADR 0020](adr/0020-gemini-is-the-only-ai-provider.md)** | Gemini is the only AI model provider (supersedes ADR 0008) | AI provider changes |
 | **[ADR 0021](adr/0021-owner-operates-without-a-staff-pin.md)** | The Owner operates without a Staff PIN, and a Staff membership never opens the Owner console | Auth, role, and console-access changes |
+| **[ADR 0022](adr/0022-settlement-uses-the-shop-bank-account.md)** | Settlement uses the shop's own bank account; PayOS is withdrawn | Payment provider and settlement changes |
+| **[ADR 0023](adr/0023-live-table-state-is-a-per-table-projection.md)** | Live table state is a per-table projection, not a bounded Order window | Floor-plan state, queue bounds, and scale changes |
+| **[ADR 0024](adr/0024-remove-the-model-tier.md)** | The model tier is removed; deterministic analysis stays (supersedes ADR 0008 and ADR 0020) | Analysis, warnings, and any proposal to use a model |
+| **[ADR 0025](adr/0025-table-zones-and-per-staff-area-scope.md)** | Table zones are a label plus one assignment document; an assigned staff member reads only their own areas | Area assignment, table reads, and any per-area restriction |
+| **[ADR 0026](adr/0026-owner-planned-shifts-and-server-time-attendance.md)** | The Owner plans Shifts for several Staff members in one save; attendance is keyed to the accepted Shift and stamped by the server | Shift scheduling, timekeeping, and worked-minutes data |
 | **[USP.md](USP.md)** | Unique Selling Proposition | Writing marketing copy, sales pitches, positioning |
 | **[SWOT.md](SWOT.md)** | Strategic analysis | Quarterly reviews, investor updates, risk assessment |
 | **[PESTEL.md](PESTEL.md)** | Macro-environment analysis | Quarterly strategy reviews, investor discussions, regulatory tracking |

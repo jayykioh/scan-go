@@ -18,7 +18,7 @@
 - Backup: daily with 30-day retention.
 - Loyalty welcome points: zero.
 - Tenant timezone: `Asia/Ho_Chi_Minh`.
-- AI provider: deterministic adapter (`rule-based`) with a monthly budget of 500000 VND per tenant.
+- Warning thresholds: a revenue drop of 20 percent against the previous day with data, and a menu-item margin below 20 percent.
 - Report-topic surge warning: three reports of one topic inside 24 hours; zero disables it.
 
 ## Commands and queries
@@ -31,3 +31,4 @@
 - Reject unknown keys, invalid values, and forbidden tenant overrides.
 - Tenant overrides are limited to `locale`, `timezone`, `pinPolicy`, and `ai`.
 - Version every change and emit `ConfigurationChanged`.
+- The Tenant's receiving bank account (`tenants/{tenantId}.vietQr`) is **deliberately not a Config key**, and ADMIN deliberately has no write path to it. The platform layer exists so ADMIN can set product defaults, and a bank account is not a default: putting it here would let ADMIN choose where a shop's money goes. Payment owns that map and writes it through its own Owner-only command (ADR 0022, REQ-PAY-005). Do not add it to `configValuesSchema`, `tenantOverridableConfigKeySchema`, `platformConfigOverrideInputSchema`, or `TENANT_VISIBLE_VALUE_KEYS`.

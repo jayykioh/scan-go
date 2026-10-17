@@ -1,15 +1,15 @@
 # Payment Module
 
-- Serves: REQ-CAS-001, REQ-CAS-002, REQ-PAY-001, REQ-PAY-002, REQ-PAY-003, REQ-PAY-004
-- Owns: Payment, VietQR payload, settlement, reversal, refund, provider idempotency, PayOS payment links
+- Serves: REQ-CAS-001, REQ-CAS-002, REQ-PAY-001, REQ-PAY-002, REQ-PAY-005, REQ-PAY-006
+- Owns: Payment, VietQR payload, settlement, reversal, refund, provider idempotency
 - Does not own: Order item prices, Loyalty rules, or report presentation
 
 ## Commands
-- Generate dynamic VietQR instructions.
+- Generate dynamic VietQR instructions from the bank account the Owner stores on the Tenant.
+- Let the Owner store the shop's receiving bank account.
 - Confirm cash or VietQR manually.
-- Verify and apply an automatic provider event.
+- Verify and apply an automatic provider event (seam only; no live provider, ADR 0022).
 - Create a linked reversal or refund.
-- Open, or reopen, one PayOS payment link for an unpaid Order.
 
 ## Rules
 - Confirmed Payment records are immutable.
@@ -18,17 +18,25 @@
 - Provider events need valid signatures and unique external event IDs.
 - Compose Payment, Ordering, Loyalty, and Reporting mutation plans before one atomic commit.
 - Only each owning module prepares mutations for its documents.
+- Settlement money reaches the shop's own bank account, never a platform account (ADR 0022).
+- The Tenant's `vietQr` map is written only by one audited server command that requires an **active Owner membership**. No client writes it, and **ADMIN has no write path to it** — no `isAdmin` bypass, unlike the read paths that carry one. A money destination is the shop's decision alone.
+- The receiving account is **not** a Config key, on purpose. `platform/config` is ADMIN-writable, so a bank account there would let ADMIN choose where a shop's money goes. See `docs/module/config.md`.
 
-## PayOS
-PayOS is the live automatic provider (REQ-PAY-003, REQ-PAY-004). It is available exactly when `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, and `PAYOS_CHECKSUM_KEY` are bound from Secret Manager; the Functions emulator always uses a fixed test credential set so the signed-webhook evidence stays hermetic.
+## VietQR and the shop's account (ADR 0022)
+VietQR is the only online settlement method. The Owner stores the shop's own receiving account — `bankBin`, `accountNo`, `accountName`, `template` — through a server-only audited command that writes the Tenant's `vietQr` map. `buildVietQrInstruction` then builds the `img.vietqr.io` instruction from those values plus the server-authoritative integer VND amount and a `SCANGO {orderId}` note. The Cashier shows it and confirms the transfer manually, which posts one immutable Payment with `method: 'vietQr'`.
 
-- `callablePaymentCreatePayosLink` is a Cashier/Owner command. It refuses an Order that is already paid or cancelled, returns the stored link when one is still pending, and otherwise allocates a unique `orderCode` from the server-only `platform/payosCounter` in the same transaction that writes `payosPaymentLinks/{orderId}`. The link is written before PayOS is called, so a link the provider created can never be orphaned by a failed write.
-- `payosWebhookV1` is a public HTTP endpoint. It verifies the HMAC-SHA256 checksum over the signed `data` object **before any read**, then resolves the Tenant and Order through the signed `orderCode`. The request body cannot name the Tenant or the Order.
-- The signature string is every non-null key sorted alphabetically as `key=value`, joined with `&` — one function builds it for both the outbound request and the inbound webhook. A null-valued field is omitted, which is what PayOS sends.
-- Settlement reuses the shared idempotent core with `method: 'payos'` and `providerId: 'payos'`. The deterministic Payment id and the evidence id keyed on the PayOS `reference` make a replayed webhook a replay, and the link is marked `paid` only after the settlement commits.
-- The `payos` adapter deliberately has no `verifySignature`: PayOS signs its own body, not the normalized payload, so the generic signed-event seam can never post as `payos`.
-- A non-settled or unreadable event is acknowledged with `ignored` rather than refused, so PayOS stops retrying a notification this server will never act on. A forged signature (401), an unknown `orderCode` (404), and an amount that does not match the Order (400) are refused instead.
-- The webhook needs the collection-group index on `payosPaymentLinks.orderCode`; deploy it with `npm run deploy:indexes` before the first live payment.
+- The bank account is not a Config layer key; it stays on the Tenant document, so ADR 0003 layering and the approved tenant override keys are untouched.
+- Only two stored fields route money: `bankBin` and `accountNo`.
+  - `bankBin` is chosen from the checked-in VietQR bank list, never typed. VietQR accepts a BANK_ID as the BIN, the common name, or the NAPAS code; the BIN is the stable one to store.
+  - `accountNo` has no free API check: VietQR's account-lookup service is discontinued and its replacement is a registered integration. The settings screen therefore renders the real QR for the entered account and the Owner confirms by scanning it with their own banking app before saving.
+    `shortcut: the account number is confirmed by the Owner's own banking app, not by API; add API lookup when a supported bankHub integration exists.`
+- `template` is a closed enum of VietQR's five themes: `compact`, `compact2`, `qr_only`, `print`, `loax`. A free string would let a typo produce a broken QR image with no error.
+- `accountName` is a caption rendered on the QR image. VietQR states it "is not part of the VietQR standard", so it never routes money, it is optional, and it must never be treated as verification.
+- `addInfo` is `SCANGO {orderId}` — under VietQR's 50-character limit and without special characters, because the Order id is alphanumeric.
+- An Order created before the shop stored an account has no instruction; the Cashier is told the shop has not set one rather than shown a QR for an unknown account.
+
+## The automatic adapter seam
+`functions/src/modules/payment/provider.ts` keeps the replaceable signed-event adapter interface (REQ-PAY-002). **No live provider implements it.** The PayOS provider that used to implement it is withdrawn: `payos.ts`, `callablePaymentCreatePayosLink`, the public `payosWebhookV1` endpoint, the `payosPaymentLinks` collection, the `platform/payosCounter` allocator, the collection-group index on `payosPaymentLinks.orderCode`, and the three `PAYOS_*` secrets are all removed. Picking a provider later needs its own ADR.
 
 ## Contracts
 - Emits `PaymentConfirmed`, `PaymentReversed`, and `PaymentRefunded`.

@@ -36,7 +36,10 @@
 
 - Deny access by default.
 - Scope tenant reads through active-membership Rules. A Staff membership document is private to its user; Owner Staff listings read only the bounded `staffDirectory` projection, which excludes PIN hashes and permission internals.
-- Keep the PayOS link mapping server-only. `payosPaymentLinks/{orderId}` joins a provider `orderCode` to a Tenant and an Order, so no client reads or writes it; the Cashier receives the link through `callablePaymentCreatePayosLink` (REQ-PAY-003, REQ-PAY-004).
+- Keep the Tenant's receiving bank account server-written. The Tenant's `vietQr` map decides where a shop's money goes, so only an Owner/ADMIN-audited server command writes it and no client writes it at all (REQ-PAY-005, ADR 0022).
+- Keep the area scope honest. `tenants/{tenantId}/tableAreas/{areaId}` is readable by the Owner and ADMIN and written only by the server; `tables.areaWaiterUids` and `members.assignedAreas` are server-written projections of it. `tables` is readable by the Owner/ADMIN in full, by an active member with no assignment in full, and by an assigned member only through `where('areaWaiterUids','array-contains',uid)` — an unconstrained listener is denied, so another area's tables never reach the device (REQ-TBL-004, REQ-TBL-010, ADR 0025). Missing projections are read with `.get(key, default)` because an absent key raises a rules evaluation error.
+- Keep a table's live service counters server-written. `activeOrderCount`, `readyOrderCount`, `unsettledOrderCount`, and `oldestActiveOrderAt` on `tenants/{tenantId}/tables/{tableId}` are readable by any active member so every role's floor plan is live, and `write: if false` so no client can set a table's state (REQ-TBL-008, ADR 0023).
+- Keep the schedule Owner-only and each Staff member's own. `shifts` and `attendance` are server-written (`write: if false`). The Owner and ADMIN read the tenant's records; a Staff member reads only rows whose `staffUid` is their uid, so a listener must carry `where('staffUid','==',uid)` and an unconstrained listener is denied. Only the Owner schedules or cancels a Shift, and clock in/out instants come from the server, never from the client (REQ-HRM-001, REQ-HRM-004, REQ-HRM-005, ADR 0026).
 - Treat `users/{uid}.activeTenantId` as navigation state, not authorization proof.
 - Permit table-link reads only at `publicTableLinks/{token}`.
 - Permit Customer and cashier menu reads only from tenant `publicMenuItems` projections; private `menuItems` carrying cost/recipe/stock fields are Owner/Kitchen-only.
@@ -61,6 +64,7 @@
 
 - Keep the approved React and TypeScript stack.
 - Use bounded Firestore listeners owned and deduplicated by the shared client store; preserve them across route changes and dispose them when auth/tenant context becomes invalid.
+- Never let a bounded read hide a tenant's own data. A listener, query, or page limit either covers the tenant's whole set for that view or the screen states the bound; a count, total, or warning is never computed from a partially read set as if it were complete (NFR-DATA-002, REQ-CAT-004, REQ-INV-013, REQ-RPT-005).
 - Client cache is in-memory, read-only, identity/tenant scoped, and invalidated after relevant writes or explicit refresh. Cached values may render immediately but never authorize access.
 - Never put Firebase Admin credentials, Gemini secrets, or payment secrets in the web client.
 
@@ -71,7 +75,10 @@
 - Authorization based only on `activeTenantId`.
 - Plaintext Staff PIN storage.
 - Unbounded listeners or collection-wide scans.
+- A bound that hides records without saying so — a menu, ingredient, or report page that silently drops rows, or a floor-plan state derived from a truncated Order window (NFR-DATA-002, ADR 0023).
+- A plan limit that exists only in the UI, so a tenant exceeds what it pays for (REQ-SUB-002).
 - Payment posting without signature verification and idempotency.
+- Routing a shop's settlement into an account the Tenant does not own (REQ-PAY-006, ADR 0022).
 - Secrets committed to Git.
 
 ## 8. Traceability

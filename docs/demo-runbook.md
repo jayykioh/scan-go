@@ -35,23 +35,26 @@ Do this before the audience arrives.
    [market price survey](market-price-survey.md) for why a retail price is not a
    purchase cost.
 5. Open the Owner dashboard and confirm the revenue cards show numbers.
-6. To demo PayOS in the Cashier, bind the three PayOS credentials once, then
-   deploy. `firebase deploy --only functions` **fails while a bound secret is
-   missing**, so create the secrets first. Without them the Cashier's PayOS
-   button refuses with a stated reason instead of failing halfway.
+6. To demo bank-transfer settlement in the Cashier, no provider credentials are
+   needed. As the Owner, open Cài đặt and store the shop's own receiving bank
+   account: **pick the bank from the list** (never type a BIN), enter the account
+   number, **scan the preview QR with your own banking app to confirm the account
+   holder**, then save. The Cashier's VietQR button then builds the QR for an
+   unpaid Order from that account and the server-authoritative amount; the Cashier
+   confirms the transfer manually, which posts one immutable Payment with
+   `method: 'vietQr'`. Money reaches the shop's own account, so there is no
+   platform merchant account, no webhook, and nothing to register in a provider
+   dashboard (ADR 0022).
    ```bash
-   firebase functions:secrets:set PAYOS_CLIENT_ID
-   firebase functions:secrets:set PAYOS_API_KEY
-   firebase functions:secrets:set PAYOS_CHECKSUM_KEY
    npm run deploy:rules
    npm run deploy:indexes
    npm run deploy:functions
    ```
-   Then register the webhook URL in the PayOS dashboard:
-   `https://asia-southeast1-<project-id>.cloudfunctions.net/payosWebhookV1`.
-   The Functions emulator needs none of this: it always uses fixed test
-   credentials, so the PayOS QR step can be demonstrated only against a real
-   PayOS account.
+   The `accountName` field is only a caption on the QR image — VietQR states it is
+   not part of the QR standard — so it proves nothing about the account. The
+   account number is what matters, which is why the scan step exists. Without a
+   stored account the Cashier is told the shop has not set one, instead of being
+   shown a QR for an unknown account.
 7. If the Owner Staff list is empty for a Tenant whose Staff were created before
    the `staffDirectory` projection existed, fill the missing rows:
    ```bash
@@ -195,12 +198,9 @@ Run the flow in this order. It follows one Order from scan to revenue.
 - The Customer page of the operating hub (`/operation/customer`) still uses browser demo state, not Firestore; the Cashier, Kitchen, and Staff pages need a signed-in Tenant.
 - NFC needs a physical NDEF device step (REQ-NFC-001 is partial).
 - Loyalty phone delivery provider is not live (REQ-LOY-001).
-- Payment provider secret and live transport are not configured (REQ-PAY-002).
-- PayOS is wired end to end (REQ-PAY-003, REQ-PAY-004) but needs the three
-  Secret Manager credentials, the deployed `payosPaymentLinks.orderCode` index,
-  and a real merchant account before a live QR can be paid. It is one
-  platform-level PayOS account shared by every Tenant, so onboarding a second
-  shop that collects into its own account needs per-tenant credentials.
+- Payment provider secret and live transport are not configured (REQ-PAY-002). No live provider implements the seam; the PayOS provider was withdrawn by ADR 0022.
+- Settlement is VietQR into the shop's own account plus a manual Cashier confirmation (REQ-PAY-005, REQ-PAY-006). It needs no provider credentials, but it does need the Owner to store the shop's bank account before the QR is usable.
+- The Owner bank-account screen is not built yet, so a real shop cannot enter its account; only the seed script writes it today.
 - The floor plan shows table state from a ten-second poll, not a realtime push; printing a real QR
   sheet is still open (IMP-15), so the plan copies or opens the link instead.
 - PWA service worker and offline caching are not finished.

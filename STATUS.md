@@ -28,20 +28,20 @@ Measured on 2026-10-13. Every suite below is green, and all four run in CI
 - `npm run typecheck`, `npm run typecheck:functions`, `npm run lint`, `npm run lint:functions`, `npm run build:functions`, `npm run build`: pass.
 - Java 21+ is required for the Firestore emulator; the CI `emulator` job installs it.
 
-The emulator suites are hermetic. No suite depends on a provider secret: the AI
-tests pin the deterministic provider in their own seed, and `resolvePayosConfig`
-always returns fixed test credentials under the emulator, so a `GEMINI_API_KEY`
-or a real PayOS secret on a developer machine cannot change a result or incur
-provider spend.
+The emulator suites are hermetic. No suite depends on a provider secret, because
+analysis makes no model call at all (ADR 0024) — the model tier is specified for
+removal and is still present in code. Payment needs no provider secret either:
+settlement is VietQR into the shop's own bank account
+with a manual Cashier confirmation (ADR 0022).
 
 ## Implemented (M1, M2, M3 baseline)
 
 - **Auth/Tenant:** Owner email/password, first and additional Tenant, membership list, active-Tenant switch, Staff PIN with lockout and sessionVersion, server ACL, privacy filtering, ADMIN delegation with audit.
 - **Config:** three-layer resolution, allowed-key filtering, versioning, ADMIN platform command, tenant-visible projection.
 - **Catalog/Table Access:** menu and template commands, public menu projection, Table create/rename/archive/regenerate, opaque revocable links, QR payload.
-- **Ordering/Fulfilment/Inventory/Payment:** server-priced Pay-Later and Pay-First Orders, immutable Orders, public tracking, Kitchen `pending -> cooking -> ready -> served`, one-transaction inventory deduction, dynamic VietQR, idempotent cash/VietQR settlement, reversal, refund, signed payment webhook, and PayOS QR settlement driven by a signature-verified webhook (REQ-PAY-003, REQ-PAY-004).
+- **Ordering/Fulfilment/Inventory/Payment:** server-priced Pay-Later and Pay-First Orders, immutable Orders, public tracking, Kitchen `pending -> cooking -> ready -> served`, one-transaction inventory deduction, dynamic VietQR, idempotent cash/VietQR settlement, reversal, and refund. Settlement is VietQR into the shop's own bank account with a manual Cashier confirmation (REQ-PAY-005, REQ-PAY-006, ADR 0022); the Owner bank-account screen is not built yet. The PayOS link and its signature-verified webhook are still in code and are specified for removal (REQ-PAY-003/004 withdrawn).
 - **Reporting:** paid-order revenue, COGS, gross profit, and rebuildable dailyStats.
-- **AI:** provider adapter with usage and budget, grounded weekly insights computed in code, open Q&A grounded in menu, ingredient, and report-topic records, feedback grouping, and campaign suggestions with Owner approval (REQ-AI-009). Gemini is the only AI model provider (ADR 0020); the TypeSafe Jev candidate is specified for removal and is still present in code.
+- **AI:** deterministic warnings (seven kinds, each with a formula and source ids), grounded weekly insights computed in code, feedback topic classification with a surge warning, and campaign suggestions with Owner approval. **No model, no provider, no per-call cost** (ADR 0024, superseding ADR 0020 and ADR 0008). The model tier — provider adapter, `aiUsage`, the budget ledger, the Gemini secret, `callableAiAsk`, the chat widget, and the `ai:evaluate` harness — is specified for removal and is still in code. The Owner warnings panel that replaces the chat is not built yet, and it must land first so the shop keeps seeing its own findings.
 - **Feedback/Workforce:** feedback submit and verification, one bounded-catalog topic per report with a per-topic counter and a surge warning, feedback ticket workflow, shift schedule, clock in/out with correction approval (no payroll), stock count and loss review.
 - **Product feedback (added 2026-10-08):** any signed-in member reports a bug, usability problem, or feature request about ScanGo with up to three screenshots uploaded to `tenants/{tenantId}/feedbackAttachments/{uid}/`; the Owner inbox at `/dashboard/feedback` triages it with an append-only history (REQ-FDB-004, REQ-FDB-005, REQ-FDB-006).
 - **Customer reports (added 2026-10-13):** a guest rates or describes the visit from the Order tracking screen; the server tags one topic from a closed catalog, increments that topic's counter in the same transaction, and raises one surge warning plus one Insight per window when the configured count is reached. The Owner sees the counters and the warning at `/dashboard/feedback` and in the assistant, and opens a ticket from the reports behind them (REQ-FDB-007, REQ-FDB-008).
@@ -51,7 +51,7 @@ provider spend.
 - **Access control:** Security Rules gate money, Cost, and customer personal data
   by membership *and* role. `payments` needs Owner or Cashier, `ingredients`,
   `recipes`, `stockMovements`, and `stockCounts` need Owner or Kitchen,
-  `dailyStats`, `aiUsage`, `aiInsights`, `feedback`, and `feedbackTickets` are
+  `dailyStats`, `aiInsights`, `feedback`, and `feedbackTickets` are
   Owner-only. Storage writes accept an explicit raster image allowlist.
 - **Durable work:** every scheduled job has a retry policy and reports a failed
   run instead of swallowing the error, so Cloud Scheduler retries and the
@@ -63,12 +63,12 @@ provider spend.
 |---|---|---|
 | NFC | Server provision/revoke/resolve with opaque tokens | Physical NDEF device write/read |
 | Loyalty | Server-verified earn/redeem/reverse | SMS/Zalo code delivery provider |
-| Payment | Signed provider adapter and webhook; PayOS link creation and signed webhook settlement are wired end to end (REQ-PAY-003, REQ-PAY-004) | PayOS needs the three Secret Manager credentials, the deployed `payosPaymentLinks.orderCode` index, and a real merchant account; one platform-level PayOS account is shared by every Tenant |
+| Payment | Dynamic VietQR from the shop's own stored bank account plus manual Cashier confirmation; settlement idempotency, reversal, and refund are wired end to end (REQ-PAY-005, REQ-PAY-006, ADR 0022) | The Owner bank-account screen is not built, so only the seed script sets a shop account today. `bankBin` and `accountNo` are stored without an API check: the bank is picked from a list and the account number is confirmed by the Owner scanning the QR with their own banking app. `accountName` is only a caption and routes nothing. The PayOS provider is still in code pending removal |
 | Staff accounts | Owner-created accounts, policy-length PIN enforced where it is set, and an idempotent `staffDirectory` backfill for memberships created before the projection existed (REQ-AUTH-004) | No forced PIN reset when a Tenant changes its PIN policy, so a legacy PIN keeps its original length until the Owner resets it |
 | i18n | Typed catalog, Customer and Settings wired | Hardcoded strings in OwnerView, InventoryPanel, MenuPage |
 | Usability evidence | Automated timing harness and budget assertions | Separate timed usability study artifact |
 | PWA | Manifest | Service worker and offline caching |
-| AI live | Adapter, evaluation, and grounded Q&A. The weekly analysis and the feedback grouping are computed in code, so the only paid path is the Owner question | Live provider secret; the default stays deterministic |
+| AI | Deterministic warnings, weekly insights, feedback topic classification, and campaign suggestions. All computed in code; no provider, no secret, no spend (ADR 0024) | The Owner warnings panel is not built, and the chat it replaces is still the only surface that shows warnings. Until the panel ships, removing the model tier would hide the findings |
 | Customer reports | Guest report form after a paid Order, per-topic counters, and a surge warning in the Owner assistant | No push channel outside the dashboard; ticket creation is manual |
 | Report topics | `feedbackTopics` counters, `feedbackSurge` warning, and the Owner topics list on the Feedback page | Topic classification is the keyword catalog, not a model |
 | Deploy pipeline | Manual scripts for rules, storage, indexes, and functions | No staged/production promotion or rollback gate |

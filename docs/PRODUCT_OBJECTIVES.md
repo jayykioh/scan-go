@@ -2,7 +2,7 @@
 
 > Cập nhật: 2026-09-29. Tài liệu định hướng theo ý tưởng của Founder, dùng để thống nhất giá trị sản phẩm và các cơ hội mở rộng. Đây không phải kế hoạch triển khai hay bản sửa đổi SRS. Các đề xuất mới cần được chuyển thành yêu cầu có tiêu chí nghiệm thu trước khi viết code.
 >
-> **Đã chốt 2026-09-30, cập nhật 2026-10-15:** cọc full nghĩa là đủ tiền món; đặt bàn để sau (ADR 0009). Nhóm thử đầu tiên: quán cà phê/trà sữa và quán có bếp. Gemini là provider model duy nhất, không còn đánh giá TypeSafe Jev (ADR 0020). Các mở rộng đã thành yêu cầu trong SRS 1.3 và `docs/plan/insight-growth-plan.md`.
+> **Đã chốt 2026-09-30, cập nhật 2026-10-15:** cọc full nghĩa là đủ tiền món; đặt bàn để sau (ADR 0009). Nhóm thử đầu tiên: quán cà phê/trà sữa và quán có bếp. Không dùng model: phân tích là code tất định (ADR 0024). Các mở rộng đã thành yêu cầu trong SRS 1.5 và `docs/plan/insight-growth-plan.md`.
 
 ## 1. Mục tiêu chung
 
@@ -14,7 +14,7 @@ Chủ quán có thể hỏi bằng ngôn ngữ tự nhiên: “Tuần này cần
 
 ## 2. Phù hợp với các nhóm khách hàng F&B
 
-“Toàn bộ loại khách hàng” trong định hướng này được hiểu là các mô hình F&B và các vai trò tham gia vận hành, không mở rộng mặc định sang mọi ngành kinh doanh. Phạm vi nền tảng hiện tại vẫn theo [SRS](SRS.md), tập trung quán nhỏ khoảng 5–15 bàn.
+“Toàn bộ loại khách hàng” trong định hướng này được hiểu là các mô hình F&B và các vai trò tham gia vận hành, không mở rộng mặc định sang mọi ngành kinh doanh. Phạm vi nền tảng hiện tại vẫn theo [SRS](SRS.md), tập trung quán **5–50 bàn**: quán 5–15 bàn là phân khúc thí điểm và gói Free/Lite, quán 15–50 bàn là mục tiêu gói Pro. Xem `docs/plan/scale-15-50-tables.md`.
 
 | Mô hình | Nhu cầu nổi bật | Cách ScanGo tạo giá trị |
 |---|---|---|
@@ -62,13 +62,13 @@ Chủ quán có thể hỏi mọi mảng mà hệ thống có dữ liệu và h�
 
 Ví dụ: “Hôm nay có bao nhiêu bàn đặt trước?”, “Khách chê điều gì nhiều nhất?”, “Món nào nên xem lại giá?”, “Ca nào thường chậm ra món?”. Nếu chưa có dữ liệu, AI trả lời rõ chưa thể kết luận và cho biết cần bổ sung gì.
 
-### Chi phí AI
+### Phân tích, không dùng model
 
-Gemini là provider model duy nhất, gọi qua một adapter phía server (ADR 0020). Adapter tất định `rule-based` là fallback khi chưa bind secret, nên tenant chưa cấu hình vẫn chạy được và không tốn tiền. TypeSafe Jev từng là ứng viên đánh giá nhưng đã bỏ: không có hợp đồng và không có lệnh gọi thật nào.
+Không có model và không có provider. Cảnh báo, insight tuần và phân loại chủ đề phản hồi đều là code tất định (ADR 0024). Nhờ vậy chi phí phân tích bằng **không**, không cần secret, không có độ trễ mạng, và không có rủi ro model đọc sai một con số tiền.
 
-Định hướng tối ưu gồm tổng hợp bằng logic xác định trước khi gọi AI, chỉ gửi dữ liệu liên quan, xử lý phần thay đổi và đặt ngân sách theo tenant. Đánh giá model dựa trên tổng chi phí cho một phân tích hữu ích, chất lượng tiếng Việt, khả năng dẫn nguồn, độ trễ và cách xử lý dữ liệu, đo offline bằng `npm --workspace functions run ai:evaluate`.
+Định hướng vẫn giữ nguyên tinh thần cũ: tổng hợp bằng logic xác định trước, chỉ đọc dữ liệu liên quan, và giữ số học — tiền, giá vốn, so sánh ngày — trong code. Trước đây đó là cách chuẩn bị dữ liệu cho model; nay nó là toàn bộ phân tích.
 
-Chi phí thật mỗi lệnh gọi Gemini được ghi vào `aiUsage` theo provider, model, token và VND, và bị chặn bởi `ai.monthlyBudgetVnd`. Việc lưu kết quả tuần hoặc tái sử dụng câu trả lời cũ vẫn cần đặc tả lưu trữ và thời hạn lưu, vì [module AI](module/ai.md) hiện không lưu câu trả lời mặc định.
+Chủ quán thấy cảnh báo trên một panel trong dashboard, không phải hỏi. Mỗi cảnh báo in công thức, mã nguồn, kỳ và thời điểm cập nhật. Cảnh báo nào tính từ một tập dữ liệu bị chặn thì phải nói rõ đã xét bao nhiêu — xem REQ-AI-010. Việc lưu kết quả tuần vẫn cần đặc tả thời hạn lưu, vì [module AI](module/ai.md) chỉ lưu Insight chứ không lưu văn bản sinh tự động.
 
 ## 4. Hiểu hao hụt, giá vốn và hiệu quả món ăn
 

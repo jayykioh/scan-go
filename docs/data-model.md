@@ -138,7 +138,21 @@ Stores name, active state, token version, active token reference, QR payload met
 
 Written only by `callableTableConfigure` (`TableConfigured`), or supplied on `callableTableCreate` so a new table lands in its cell in one command. A row written before table contract v2 has none of these fields; `readStoredTableLayout` reads each back as `null` and the plan shows such a table in the first free cell with a dashed border until the Owner saves the arrangement.
 
-Area assignments are tenant-owned and keyed by the normalized area label; each stores zero or more active Waiter UIDs. The server validates each UID against active membership and the Waiter role. Names are resolved from the Staff directory for display, not used as identity keys (REQ-TBL-004).
+| `areaWaiterUids` | string array; the server-written projection of the area's assignment. `[]` means the area is unassigned and every active member may read the table. Rules and the client query both read this field, so an assigned Waiter's scope needs no lookup |
+
+### `tenants/{tenantId}/tableAreas/{areaId}` — Table Access / zone assignment
+Stores one area's Waiter coverage: `label` (the area name as the Owner typed it), `waiterUids` (zero or more active Waiter UIDs), `updatedAt`, and `updatedBy`. It is the source of truth for the assignment; `tables.areaWaiterUids` and `members.assignedAreas` are projections of it (ADR 0025).
+
+| Field | Type |
+|---|---|
+| `label` | string, 1–60 characters, trimmed; matched exactly, so `Tầng 1` and `tầng 1` are different areas |
+| `waiterUids` | string array, at most `TABLE_AREA_MAX_WAITERS` (50) |
+| `updatedAt`, `updatedBy` | server timestamp and the Owner uid that wrote it |
+
+Written only by `callableTableAreaAssign` (Owner-only, audited as `TableAreaAssigned`), which in one transaction also re-projects `areaWaiterUids` onto every table of the area and recomputes `assignedAreas` for the members whose coverage changed. An empty `waiterUids` deletes the document, so a zone with no Waiters leaves nothing behind. The command validates each uid against active membership and the Waiter role; names are resolved from the Staff directory for display, never used as identity keys (REQ-TBL-004, REQ-TBL-009).
+
+### `tenants/{tenantId}/members/{memberUid}.assignedAreas`
+Server-written projection of the areas a member serves. An empty list means the member has no area scope and keeps the tenant-wide table read; a non-empty list makes the member's `tables` query `areaWaiterUids array-contains uid` and nothing else (REQ-TBL-010, ADR 0025).
 
 ### `tenants/{tenantId}/reservations/{reservationId}` — Table Access / Reservations
 Stores one table booking separately from Orders and Payments. Fields: `tableId`, `startsAt`, `endsAt` (UTC timestamps interpreted/displayed in tenant timezone), `partySize`, `status` (`booked | arrived | cancelled | completed | no_show`), optional `customerName`/`customerPhone`, `version`, `createdAt`, `updatedAt`, and transition history with actor/time. Reads of contact fields are Owner/authorized-Staff-only; the shared floor status and Waiter projection exclude them. Only Cloud Functions write bookings. Active `booked` intervals for the same table cannot overlap, enforced atomically. `arrived` marks current occupancy until completion; terminal states release the table. A booking never creates or mutates an Order, Payment, or Inventory movement (REQ-TBL-005..007).
@@ -181,10 +195,11 @@ Stores command, request hash, result reference, status, and expiry. Reusing a ke
 ### `tenants/{tenantId}/payments/{paymentId}` — Payment
 Stores order, amount, method, status, VietQR payload snapshot, provider reference, external event ID, linked payment, actor, idempotency key, and lifecycle timestamps. Confirmed records are immutable. Reversal and refund use linked compensating records.
 
-### `tenants/{tenantId}/payosPaymentLinks/{orderId}` — Payment (PayOS)
-One PayOS payment link per Order, keyed by the Order id so a reopen is a single document read. Stores the provider `orderCode`, amount, link state (`pending`, `paid`, `cancelled`, `failed`), checkout URL, QR payload, and provider link id. It never stores PayOS credentials. The document is the only mapping from a webhook's signed `orderCode` back to a Tenant and an Order, so the webhook body cannot name them itself. Server-written and server-read only: the Cashier receives the link through `callablePaymentCreatePayosLink`.
+### Removed: PayOS payment links (ADR 0022, 2026-10-15)
+`tenants/{tenantId}/payosPaymentLinks/{orderId}` and the server-only `platform/payosCounter` allocator are removed. Settlement uses the Tenant's own stored bank account through VietQR and a manual Cashier confirmation (REQ-PAY-005, REQ-PAY-006), so no Payment ever settles into a platform account. The `paymentMethod` values are `cash` and `vietQr`; `payos` is not a stored method. Verified 2026-10-15 before removal: 0 of 238 stored Payments carried `method: 'payos'`, so no record migration is required. One leftover link document existed and is deleted with the collection.
 
-`orderCode` comes from the server-only `platform/payosCounter` document inside the same transaction that writes the link, so two Orders can never share one. The webhook resolves it with a bounded collection-group query on `orderCode`.
+### `tenants/{tenantId}/tables/{tableId}` — live service projection (ADR 0023)
+Beyond table identity, token state, and layout, each table carries its own live service facts: `activeOrderCount`, `readyOrderCount`, `unsettledOrderCount`, and `oldestActiveOrderAt`. Ordering and Payment write them inside the transactions that already write the Order or Payment, so they are always consistent with the immutable records. The floor plan reads them from the `tables` collection every active member may already read, which is why the board needs no Order query and no poll.
 
 ### `tenants/{tenantId}/loyaltyMembers/{memberId}` — Loyalty
 Stores normalized `+84` phone, display name, verified state, point balance, paid total, visit count, and timestamps. Orders reference `memberId` only. Server permission filters phone visibility.
@@ -227,10 +242,10 @@ The initiating command composes mutation plans from each owning module before on
 Append-only actor, actor type, role, action, target, request ID, optional reason, metadata, and server timestamp. Audit stores create, update, and delete events only. ADMIN changes require no approval prompt but always create an application audit event; ADMIN reads are not audited (ADR 0010).
 
 ### `tenants/{tenantId}/aiInsights/{insightId}` — AI
-Stores department, priority, period start and end, source references, confidence, missing-data notes, status (`new`, `acknowledged`, `done`), and timestamps. It never stores raw model text.
+Stores department, priority, period start and end, source references, confidence, missing-data notes, status (`new`, `acknowledged`, `done`), and timestamps. It never stores generated text: the insight text is Vietnamese prose written in code (ADR 0024).
 
-### `tenants/{tenantId}/aiUsage/{usageId}` — AI and Config
-Stores provider, model, token counts, estimated cost, budget reference, call purpose, and server timestamp. It supports per-tenant budget enforcement and provider evaluation.
+### Removed: AI cost records (ADR 0024, 2026-10-15)
+`tenants/{tenantId}/aiUsage/{usageId}` and `tenants/{tenantId}/aiBudget/{monthKey}` are removed, along with their rules blocks and everything that wrote them. With no model call there is no provider, no token count, no cost, and no spend to cap. Any historical cost data must be exported before the collections are deleted.
 
 ### `tenants/{tenantId}/feedback/{feedbackId}` — Feedback
 Stores rating or issue text, optional Order reference, verification state, masked analysis input, topic tags, actor, and timestamps. Raw text is permission-controlled.
@@ -248,10 +263,10 @@ Stores the operator's report about ScanGo itself: category, severity, status, me
 One screenshot per object, under the reporter's own tenant and uid prefix. Reads require an active Tenant member or ADMIN; writes require the matching uid, a raster content type from the allowlist, and at most 5 MB; client deletes are denied (REQ-FDB-005).
 
 ### `tenants/{tenantId}/shifts/{shiftId}` — Workforce
-Stores Staff member, date, start and end time, role, and audit metadata. Times store as UTC and render in tenant time. Two overlapping Shifts for one Staff are rejected.
+Stores Staff member, date (`yyyymmdd` in the shop's local day), start and end time, optional label, role, and audit metadata. Times store as UTC and render in tenant time. One Shift is one Staff member: planning one interval for five Staff members writes five documents in one transaction (REQ-HRM-004). Two overlapping Shifts for one Staff member are rejected, including inside a single batch. Only the Owner plans or cancels a Shift; a Staff member reads only their own.
 
 ### `tenants/{tenantId}/attendance/{recordId}` — Workforce
-Stores Staff member, clock in and clock out, source, correction state (`none`, `pending`, `approved`), requested values, approver, and history. It never stores payroll values.
+Stores Staff member, the accepted Shift, clock in and clock out, source, correction state (`none`, `pending`, `approved`), requested values, approver, and history. It never stores payroll values. Clock in and clock out are server stamps; the client supplies no instant (ADR 0026). A record accepted against a Shift is keyed `attendance_{staffUid}_{shiftId}`, so one local day can hold one record per Shift and a repeated "Nhận ca" replays the same record. At most one record per Staff member is open (no clock out), so worked minutes never overlap.
 
 ## 8. Required indexes
 | Collection | Composite order or filter |
@@ -266,14 +281,14 @@ Stores Staff member, clock in and clock out, source, correction state (`none`, `
 | `promotions` | `isActive`, `startsAt`, `endsAt` |
 | `dailyStats` | document ID `yyyymmdd` range for week and month reads |
 | `aiInsights` | `status`, `periodStart desc` |
-| `aiUsage` | `tenantId`, `createdAt desc` |
 | `feedback` | `createdAt desc`, `verificationState` |
 | `feedbackTickets` | `state`, `updatedAt desc` |
 | `feedbackTopics` | `windowCount desc` |
-| `payosPaymentLinks` | `orderCode` equality, collection-group scope |
 | `productFeedback` | `createdAt desc` |
 | `shifts` | `staffUid`, `date` |
 | `attendance` | `staffUid`, `clockInAt desc` |
+| `shifts` | `date` range for the Owner's week (single field) |
+| `attendance` | `clockInAt` range for the Owner's week (single field) |
 | `stockCounts` | `ingredientId`, `createdAt desc` |
 | `audit` | `action`, `createdAt desc` |
 
@@ -286,7 +301,7 @@ All queries remain tenant-scoped. Public listeners read only one table link, one
 - Payment confirmation writes immutable Payment, marks Order paid, updates Loyalty, and updates financial daily stats once.
 - Reversal or refund writes a compensating Payment and adjusts Loyalty and daily stats once.
 - Table token regeneration creates the new token and revokes the old token atomically.
-- AI analysis writes `aiInsights` and `aiUsage` without changing any business state.
+- Analysis writes `aiInsights` without changing any business state. It makes no model call and records no cost (ADR 0024).
 - Attendance correction approval records the new state and its history in one transaction.
 - Stock count computes variance from recorded movements and never rewrites paid records.
 

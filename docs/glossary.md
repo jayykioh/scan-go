@@ -5,13 +5,14 @@ This glossary follows `docs/context.md` and the approved SRS.
 | Term | Meaning |
 |---|---|
 | ADMIN | The ScanGo system owner with unrestricted platform and tenant access. |
-| AI assistant | A read-only assistant that explains Cost, gross profit, stock, feedback, and priority findings from tenant data. |
-| AI provider adapter | The one replaceable interface the AI module calls. Gemini is the only model provider; the deterministic adapter is the fallback when no provider secret is bound (ADR 0020). |
-| Deterministic adapter | The `rule-based` provider. It calls no model, costs nothing, and is what the server falls back to when no provider secret is bound. |
+| Warning | One deterministic finding computed in code, with a severity, a Vietnamese message, the source ids it cites, and the arithmetic formula behind it. Shown on the Owner warnings panel (ADR 0024). |
 | Insight | One weekly finding with department, priority, period, source data, confidence, and suggested action. |
-| Weekly analysis | A scheduled per-tenant AI run that ranks operational findings. |
+| Weekly analysis | A scheduled per-tenant run that ranks operational findings in deterministic code. It calls no model (ADR 0024). |
+| AI module | The module that computes warnings, weekly insights, and feedback topic classification. It keeps the `ai` name for stability although no model is involved (ADR 0024). |
 | Feedback ticket | A Customer review or issue tracked from `received` to `resolved`. |
-| Shift | A scheduled work period for one Staff member on one date. |
+| Shift (Ca làm) | A scheduled work period for one Staff member on one date, planned by the Owner. Several Staff members on one interval are several Shifts; a Staff member never chooses their own. |
+| Nhận ca | The Staff member's explicit acceptance of an assigned Shift. It is the clock in, the store stamps the instant, and worked time counts from there (ADR 0026). |
+| Attendance record | One clock in/out record, keyed to the accepted Shift, with correction state and history. It holds minutes, never a wage. |
 | Stock count | A recorded physical quantity used to find variance and support loss review. |
 | Cashier | A Staff role that settles or cancels orders and handles Loyalty operations. |
 | Cost | Deterministic ingredient cost calculated from recipe quantities and ingredient unit values. |
@@ -45,10 +46,13 @@ This glossary follows `docs/context.md` and the approved SRS.
 | Table position | A table's cell on the floor grid, stored as integer `x`/`y` rather than pixels, so the same arrangement renders the same on every screen. |
 | Table service state | A table's display state combines live Order state with effective reservations: `reserved` means a future booking, not current occupancy; an arrived booking or open Order shows current occupancy, while `foodReady` and `awaitingPayment` keep their existing urgency. |
 | Reservation | A staff-entered booking for one table and a tenant-local time interval, separate from Order, Payment, and preparation; Customer self-service, deposits, and pre-orders remain deferred. |
-| Waiter area assignment | One or more active Waiter UIDs assigned by the Owner to an area; it helps show service responsibility but does not grant or change permissions. |
+| Waiter area assignment | One or more active Waiter UIDs assigned by the Owner to an area; it helps show service responsibility but does not grant or change permissions. Stored in `tableAreas` and projected onto the table and the member (ADR 0025). |
+| Zone (khu vực) | A named area of the shop — `Sân vườn`, `Tầng 2`. It is the `area` label of its tables plus one assignment document; the plan draws it as the region its own tables occupy, with the table count and assigned Waiters. |
+| Virtual table (bàn ảo) | A table authored inside the zone dialog that exists only on screen until the Owner saves; saving creates it in a free floor cell with the zone's label. |
+| Area scope | The restriction that a Staff member assigned to areas reads only those areas' tables, ready dishes, and new dine-in Orders. A member with no assignment keeps the tenant-wide view; Owners and ADMIN are never restricted (REQ-TBL-010). |
 | Awaiting payment | A table whose Order is `served` but not settled. The most urgent state on the floor plan. |
 | Tenant | One isolated shop workspace and its data. |
 | Tracking token | An opaque Order-specific token that lets Customer read only one tracking projection. |
-| VietQR | The QR payment payload used for bank-transfer instructions. |
+| VietQR | The QR payment payload used for bank-transfer instructions. It is built from the receiving bank account the Owner stores on the Tenant, so the money reaches the shop's own account; the Cashier confirms the transfer manually (ADR 0022). |
 | Waiter | A Staff role that views ready orders and marks them served. |
 | Fulfilment | The Kitchen and Waiter work that moves an order toward service. |

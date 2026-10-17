@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | TECH-SCANGO-001 |
-| Version | 1.4 |
+| Version | 1.6 |
 | Date | 2026-10-15 |
 | Companion to | `SRS.md` §3 |
 | Status | Approved foundation |
@@ -28,8 +28,8 @@
 | Cache | No server cache in v1; Firestore web persistence for cached menu reads | DECIDED | REQ-ORD-004, NFR-CFG-001 |
 | Object storage | Firebase Storage | DECIDED | REQ-CAT-001, NFR-SEC-001 |
 | Auth | Firebase Auth email/password for Owner (ADR 0007); server-issued Staff sessions | DECIDED | REQ-AUTH-001, REQ-AUTH-002 |
-| Payment | Dynamic VietQR plus manual Cashier confirmation; replaceable automatic adapter | DECIDED | REQ-CAS-001, REQ-PAY-002 |
-| AI | One replaceable provider adapter; Gemini is the only model provider, deterministic adapter as fallback (ADR 0020) | DECIDED | REQ-AI-001, REQ-AI-004, NFR-AI-001, NFR-AI-002 |
+| Payment | Dynamic VietQR into the bank account the Owner stores on the Tenant, plus manual Cashier confirmation; replaceable automatic adapter seam with no live provider (ADR 0022) | DECIDED | REQ-CAS-001, REQ-PAY-002, REQ-PAY-005, REQ-PAY-006 |
+| AI | No model and no provider. Deterministic analysis in the `ai` module: warnings, weekly insights, feedback topic classification (ADR 0024) | DECIDED | REQ-AI-001, REQ-AI-002, REQ-AI-010, NFR-AI-001 |
 | Runtime config | Versioned typed `config.ts`, Firestore ADMIN defaults, allowed tenant overrides | DECIDED | REQ-CFG-001, NFR-CFG-001 |
 | Observability | Firebase logging; Sentry for P1 web errors | DECIDED | NFR-OBS-001 |
 | Analytics | Firebase Analytics with privacy review before production | DECIDED | NFR-PRIV-001 |
@@ -95,16 +95,16 @@ Only `docs/RULES_FIREBASE.md` is active for the database-specific rules.
 - ADMIN settings may override product defaults through Firestore.
 - Allowed tenant settings override ADMIN product defaults.
 - Scheduled Cloud Functions handle retention, archival, weekly analysis, and report maintenance.
-- AI calls go through one provider adapter, record provider, model, tokens, and cost in `aiUsage`, and obey a per-tenant budget from configuration.
-- Keep arithmetic, money, Cost, and date comparison in deterministic code, not in an AI call.
+- Analysis makes no model call and no provider call: warnings, weekly insights, and feedback topic classification are computed in code (ADR 0024).
+- Keep arithmetic, money, Cost, and date comparison in deterministic code. This is no longer a rule about an AI call; it is the whole analysis.
 - Payment callbacks use idempotency keys and transaction-backed posting.
 
 ## 7. Open Decisions
 
 | State | Decision |
 |---|---|
-| Q-3 RESOLVED 2026-09-30; amended 2026-10-15 | Gemini is the only AI model provider, behind one replaceable adapter; TypeSafe Jev is dropped (ADR 0020). |
-| Q-4 RESOLVED 2026-10-15 | Closed without a TypeSafe contract. TypeSafe is no longer a candidate, so its terms and Vietnamese quality gate nothing (ADR 0020). |
+| Q-3 RESOLVED 2026-09-30; amended 2026-10-15 | There is no AI model provider at all. The model tier is removed and analysis is deterministic (ADR 0024, superseding ADR 0020 and ADR 0008). |
+| Q-4 RESOLVED 2026-10-15 | Closed without a TypeSafe contract, and moot: no provider is evaluated or used (ADR 0024). |
 | Foundation | The Founder approved all foundation choices on 2026-09-12. |
 
 ## 8. Version Pinning
@@ -122,3 +122,5 @@ Only `docs/RULES_FIREBASE.md` is active for the database-specific rules.
 | 1.2 | 2026-09-27 | ADR 0007: switched Owner auth from phone OTP to email/password. |
 | 1.3 | 2026-09-30 | ADR 0008: replaceable AI provider adapter, Gemini default, TypeSafe Jev evaluation candidate. |
 | 1.4 | 2026-10-15 | ADR 0020: Gemini is the only AI model provider; the TypeSafe Jev candidate, its feature flag, and its secret slot are removed. |
+| 1.5 | 2026-10-15 | ADR 0022: settlement uses the shop's own bank account through VietQR; PayOS, its webhook, and its three secrets are removed. ADR 0023: live table state is a per-table projection, not a bounded Order window. |
+| 1.6 | 2026-10-15 | ADR 0024: the model tier is removed. No provider adapter, no provider secret, no per-call cost record, no budget ledger. Deterministic warnings, weekly insights, and feedback topic classification stay. |

@@ -1,15 +1,17 @@
 # Kế hoạch M2/M3 — Insight, Feedback, Workforce, Inventory count
 
-**Nguồn:** SRS 1.3, ADR 0020, ADR 0009, `PRODUCT_OBJECTIVES.md`.
+> **Cập nhật 2026-10-15:** tầng model đã bị bỏ (ADR 0024). **G2-01** (adapter provider, `aiUsage`, budget) và **G2-06** (đánh giá TypeSafe Jev) **rút lại**; phần xoá code của chúng nằm ở [`docs/plan/remove-model-tier.md`](remove-model-tier.md) A-02 và A-04. **G2-02** (phân tích tuần), **G2-05** (gom chủ đề phản hồi) và mọi ticket M3 giữ nguyên, vì chúng vốn đã tất định. **G2-03** (hỏi đáp Owner) rút lại theo REQ-AI-003.
+
+**Nguồn:** SRS 1.5, ADR 0024, ADR 0009, `PRODUCT_OBJECTIVES.md`.
 **Phạm vi:** P1 và P2 mới. P0 không đổi. Đặt trước do khách tự yêu cầu/gọi món trước vẫn hoãn; đặt bàn do nhân viên nhập được duyệt riêng tại REQ-TBL-005..007.
 **Điều kiện vào:** M1 đã đạt P0 acceptance. Không bắt đầu ticket nào khi M1 còn thiếu bằng chứng.
 
 ## Nguyên tắc
 
 - Mọi thay đổi business state đi qua Cloud Functions và một command xác định.
-- AI chỉ đọc dữ liệu được phép, dẫn nguồn, nêu dữ liệu thiếu và không tự đổi tiền, giá, quyền hay tồn kho.
+- Phân tích chỉ đọc dữ liệu được phép, dẫn nguồn, nêu dữ liệu thiếu, và không tự đổi tiền, giá, quyền hay tồn kho. Không có model nào tham gia (ADR 0024).
 - Mỗi ticket giữ tenant isolation, UTC, integer VND và REQ traceability.
-- Ưu tiên dữ liệu đáng tin trước khi thêm AI. Không kết luận hao hụt chỉ từ lượng bán.
+- Ưu tiên dữ liệu đáng tin trước khi thêm phân tích. Không kết luận hao hụt chỉ từ lượng bán.
 
 ## Đồ thị phụ thuộc
 

@@ -90,7 +90,7 @@ export default function ShiftSchedulePanel() {
   useEffect(() => {
     if (shifts.length === 0 || scrolledWeekRef.current === weekStart) return;
     scrolledWeekRef.current = weekStart;
-    todayRef.current?.scrollIntoView({ block: 'start' });
+    todayRef.current?.scrollIntoView({ block: 'nearest' });
   }, [weekStart, shifts.length]);
 
   const handleSave = async (draft: ShiftDraft): Promise<void> => {
@@ -179,7 +179,9 @@ export default function ShiftSchedulePanel() {
         </div>
       )}
 
-      <div className="border-hard bg-white shadow-hard">
+      {/* The week is its own scroll area so the tabs, the week header, and the
+          hours summary stay put while the Owner looks through the days. */}
+      <div className="max-h-[60vh] overflow-y-auto border-hard bg-white shadow-hard">
         {loading && shifts.length === 0 ? (
           <p className="p-8 text-center font-mono text-sm uppercase tracking-widest text-zinc-500">
             Đang tải ca làm

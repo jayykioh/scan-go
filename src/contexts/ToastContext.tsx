@@ -70,6 +70,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <span className="text-white">{t.message}</span>
               <button 
                 onClick={() => removeToast(t.id)}
+                aria-label="Đóng thông báo"
                 className="text-zinc-400 hover:text-white transition-colors cursor-pointer shrink-0 ml-4"
               >
                 <X className="w-4 h-4" />

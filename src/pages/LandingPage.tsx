@@ -2,8 +2,16 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Nfc, ChevronRight, Store, ChefHat, Wallet, Smartphone, ArrowDownRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import {
+  SIGNED_IN_HOME_PATH,
+  useAuthSession,
+} from '../hooks/useAuthSession';
 
 export default function LandingPage() {
+  // The homepage reads the session too: an Owner who is already signed in gets
+  // the way back into the console, not the entry buttons (REQ-AUTH-007).
+  const { user } = useAuthSession();
+
   return (
     <div className="flex-1 flex flex-col items-center bg-noise min-h-dvh overflow-hidden relative">
       {/* Decorative architectural grid lines */}
@@ -45,12 +53,20 @@ export default function LandingPage() {
           </motion.span>
         </motion.div>
         <div className="flex items-center gap-6">
-          <Link to="/login" className="font-mono text-xs font-bold text-zinc-600 hover:text-orange-600 uppercase tracking-widest cursor-pointer transition-colors">
-            Đăng nhập
-          </Link>
-          <Link to="/register" className="font-mono text-xs font-bold bg-zinc-950 text-white px-5 py-2.5 hover:bg-zinc-800 transition-colors cursor-pointer border-hard shadow-hard active:translate-x-0.5 active:translate-y-0.5 active:shadow-none uppercase tracking-widest hidden sm:block">
-            Khởi tạo
-          </Link>
+          {user ? (
+            <Link to={SIGNED_IN_HOME_PATH} className="font-mono text-xs font-bold bg-zinc-950 text-white px-5 py-2.5 hover:bg-zinc-800 transition-colors cursor-pointer border-hard shadow-hard active:translate-x-0.5 active:translate-y-0.5 active:shadow-none uppercase tracking-widest">
+              Vào Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link to="/login" className="font-mono text-xs font-bold text-zinc-600 hover:text-orange-600 uppercase tracking-widest cursor-pointer transition-colors">
+                Đăng nhập
+              </Link>
+              <Link to="/register" className="font-mono text-xs font-bold bg-zinc-950 text-white px-5 py-2.5 hover:bg-zinc-800 transition-colors cursor-pointer border-hard shadow-hard active:translate-x-0.5 active:translate-y-0.5 active:shadow-none uppercase tracking-widest hidden sm:block">
+                Khởi tạo
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -80,7 +96,7 @@ export default function LandingPage() {
             
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-8">
               <Link 
-                to="/register" 
+                to={user ? SIGNED_IN_HOME_PATH : '/register'} 
                 className="flex items-center gap-3 bg-orange-600 text-white px-8 py-4 font-mono font-bold text-sm uppercase tracking-widest transition-all cursor-pointer border-hard shadow-hard hover:-translate-y-1 hover:shadow-[6px_8px_0px_0px_#27272a] active:translate-x-1 active:translate-y-1 active:shadow-none group"
               >
                 Vận hành ngay

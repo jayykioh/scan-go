@@ -1,8 +1,17 @@
 import React from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Navigate, Outlet, Link } from 'react-router-dom';
 import { Nfc } from 'lucide-react';
+import { signedInRedirect, useAuthSession } from '../hooks/useAuthSession';
 
 export default function AuthLayout() {
+  // Đăng nhập and Đăng ký are entry screens: a session that already exists is
+  // not asked to sign in again (REQ-AUTH-007).
+  const session = useAuthSession();
+  const redirect = signedInRedirect(session);
+  if (redirect) {
+    return <Navigate to={redirect} replace />;
+  }
+
   return (
     <div className="min-h-dvh flex flex-col md:flex-row font-sans antialiased selection:bg-zinc-900 selection:text-white bg-noise">
       {/* Left Panel - Editorial Impact */}
@@ -40,7 +49,13 @@ export default function AuthLayout() {
       {/* Right Panel - Stark Form Area */}
       <main className="w-full md:w-7/12 lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-white relative">
         <div className="w-full max-w-md">
-          <Outlet />
+          {session.loading ? (
+            <p className="font-mono text-xs text-zinc-500 uppercase tracking-widest">
+              Đang kiểm tra phiên đăng nhập...
+            </p>
+          ) : (
+            <Outlet />
+          )}
         </div>
       </main>
     </div>

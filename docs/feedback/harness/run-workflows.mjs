@@ -125,6 +125,23 @@ for (const [id, name, url] of dashboardPages) {
   step(id, name, { url, viewport: DESKTOP, authenticated: true, ready: 'main' });
 }
 
+// REQ-AUTH-007: the entry screens and the homepage must see the existing session.
+step('auth-entry-guard', 'Đã đăng nhập: /login và /register về dashboard', {
+  url: '/',
+  viewport: DESKTOP,
+  authenticated: true,
+  run: async (page, ctx) => {
+    for (const entry of ['/login', '/register']) {
+      await page.goto(`${BASE}${entry}`, { waitUntil: 'domcontentloaded' });
+      await page.waitForURL('**/dashboard', { timeout: 25000 });
+    }
+    ctx.entryGuard = '/login + /register → /dashboard';
+    // Settle on the homepage so the screenshot shows the signed-in header.
+    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  },
+  ready: 'main',
+});
+
 // ---------------------------------------------------------------- simulator
 step('simulator-index', 'Simulator — chọn vai trò', {
   url: '/simulator',

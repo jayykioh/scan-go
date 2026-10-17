@@ -53,6 +53,7 @@ export default function ShiftSchedulePanel() {
   const nowMs = useNow();
   const today = todayDayKey(nowMs);
   const todayRef = useRef<HTMLElement | null>(null);
+  const scrolledWeekRef = useRef<string | null>(null);
   const weekEnd = addDays(weekStart, 6);
   const { shifts, attendance, loading, error } = useWorkforceWindow({
     tenantId,
@@ -84,10 +85,13 @@ export default function ShiftSchedulePanel() {
   const nameOf = (uid: string): string => names.get(uid) ?? uid;
 
   // The Owner opens this tab to see today, and today is the sixth of seven
-  // day sections, so bring it into view once per week.
+  // day sections, so bring it into view once the week has loaded and once per
+  // week — before that the sections are not rendered yet.
   useEffect(() => {
+    if (shifts.length === 0 || scrolledWeekRef.current === weekStart) return;
+    scrolledWeekRef.current = weekStart;
     todayRef.current?.scrollIntoView({ block: 'start' });
-  }, [weekStart]);
+  }, [weekStart, shifts.length]);
 
   const handleSave = async (draft: ShiftDraft): Promise<void> => {
     if (!tenantId || saving) return;

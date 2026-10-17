@@ -7,7 +7,7 @@
 - main:
   - heading "Đăng nhập" [level=1]
   - paragraph: Truy cập hệ thống POS của bạn
-  - text: Local emulator Email Bắt buộc
+  - text: Cloud backend Email Bắt buộc
   - textbox "Email Bắt buộc":
     - /placeholder: nam@scango.vn
   - text: Mật khẩu

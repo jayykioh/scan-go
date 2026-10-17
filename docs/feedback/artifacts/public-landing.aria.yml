@@ -9,8 +9,8 @@
   - heading "Hệ thống Đặt món QR Không POS." [level=1]
   - link "Vận hành ngay":
     - /url: /register
-  - link "Xem mô phỏng":
-    - /url: /simulator
+  - link "Xem vận hành":
+    - /url: /operation
   - paragraph: / Tối ưu quy trình gọi món, nấu nướng và thanh toán chỉ với thiết bị di động cá nhân.
   - paragraph: / Cấu trúc máy chủ độc lập, hoạt động bền bỉ, loại bỏ chi phí phần cứng cồng kềnh.
   - heading "Cấu trúc Hệ thống" [level=2]

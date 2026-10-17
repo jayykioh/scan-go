@@ -4,11 +4,13 @@
     - link "Doanh thu":
       - /url: /dashboard
     - link "Vận hành":
-      - /url: /simulator
+      - /url: /operation
     - link "Quản lý quán":
       - /url: /dashboard/manage
     - link "Thực đơn":
       - /url: /dashboard/menu
+    - link "Khuyến mãi":
+      - /url: /dashboard/promotions
     - link "Kho nguyên liệu":
       - /url: /dashboard/inventory
     - link "Sơ đồ Bàn":
@@ -19,18 +21,22 @@
       - /url: /dashboard/subscription
     - link "Cấu hình":
       - /url: /dashboard/settings
-  - paragraph: g43h5hgnc4RJ0FJrYHxmd3g7qXl1
-  - text: local
+    - link "Phản hồi":
+      - /url: /dashboard/feedback
+  - paragraph: WsEgGg18pmWV5kFumWgzkW4zqS63
+  - text: cloud
   - paragraph: Cửa hàng
-  - button "Tạo cửa hàng mới" [disabled]
-  - paragraph: Đang tải...
-  - list
+  - button "Tạo cửa hàng mới"
+  - list:
+    - listitem:
+      - button "Cửa hàng của tôi"
+  - paragraph: "Bối cảnh: Cửa hàng của tôi"
   - button "Thoát"
 - main:
   - heading "Tổng quan Kinh doanh" [level=1]
   - paragraph: Số liệu trực tiếp hôm nay.Số liệu thật
-  - link "Mở Máy Trạm (Simulator)":
-    - /url: /simulator
+  - link "Mở trang Vận hành":
+    - /url: /operation
   - group "Chọn kỳ báo cáo":
     - button "Hôm nay" [pressed]
     - button "Tuần"
@@ -53,5 +59,11 @@
   - text: Chưa có đơn đã thu.
   - link "Nâng cấp AI báo cáo":
     - /url: /dashboard/subscription
+  - region "Hiệu suất theo bàn":
+    - heading "Hiệu suất theo bàn" [level=3]
+    - text: Xếp theo doanh thu · tối đa 50 bàn
+    - paragraph: Chưa có bàn nào có đơn đã thu trong kỳ này.
+- button "Mở trợ lý AI"
+- button "Gửi phản hồi"
 - text: Khởi tạo thành công.
-- button
+- button "Đóng thông báo"

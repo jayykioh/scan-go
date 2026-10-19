@@ -11,7 +11,7 @@
  * ones, and so a real shop can compare its own invoices against them.
  *
  * Sellers: WinMart (retail), Kamereo (bán buôn) (wholesale), Co.op Online (retail)
- * Observed: 2026-10-07
+ * Observed: 2026-10-19
  * Region: HCM+HN
  */
 import type { PackBaseUnit } from './market-prices/pack-size.js';
@@ -45,7 +45,7 @@ export interface MarketPriceObservation {
 }
 
 export const MARKET_PRICE_SURVEY = {
-  observedAt: '2026-10-07',
+  observedAt: '2026-10-19',
   region: 'HCM+HN',
   marketType: 'retail' satisfies MarketType,
   sources: [
@@ -100,26 +100,22 @@ export const MARKET_PRICE_SURVEY = {
     {
       ingredientId: 'seed-ing-gao-te',
       seedName: 'Gạo tẻ',
-      sourceId: 'cooponline',
-      sourceName: "Co.op Online",
+      sourceId: 'winmart',
+      sourceName: "WinMart",
       region: 'HCM',
       marketType: 'retail',
-      productName: "Gạo thông dụng Coop Happy 5kg",
-      packPriceVnd: 75000,
-      listPriceVnd: 77500,
-      unitCostVnd: 15,
+      productName: "Gạo Ngọc Nương ST 25 đặc sản 3Kg ",
+      packPriceVnd: 123000,
+      listPriceVnd: null,
+      unitCostVnd: 41,
       baseUnit: 'g',
-      packLabel: "5kg",
+      packLabel: "3kg",
       quotes: [
-        { sourceId: 'cooponline', sourceName: "Co.op Online", marketType: 'retail', productName: "Gạo thông dụng Coop Happy 5kg", unitCostVnd: 15, packLabel: "5kg" },
-        { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "Gạo Ngọc Nương ST 25 đặc sản 3Kg ", unitCostVnd: 27, packLabel: "3kg" },
+        { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "Gạo Ngọc Nương ST 25 đặc sản 3Kg ", unitCostVnd: 41, packLabel: "3kg" },
       ],
-      spreadPercent: 80,
+      spreadPercent: null,
       alternatives: [
-        { sourceName: "Co.op Online", marketType: 'retail', productName: "Gạo thông dụng Coop Happy 5kg", unitCostVnd: 15 },
-        { sourceName: "Co.op Online", marketType: 'retail', productName: "Gạo thông dụng Coop Happy 5kg", unitCostVnd: 15 },
-        { sourceName: "Co.op Online", marketType: 'retail', productName: "Gạo trắng hạt dài Tấn Vương 5kg", unitCostVnd: 16 },
-        { sourceName: "Co.op Online", marketType: 'retail', productName: "Gạo trắng hạt dài Tấn Vương 5kg", unitCostVnd: 16 },
+        { sourceName: "WinMart", marketType: 'retail', productName: "Gạo ST25 Bảo Minh lúa ruộng rươi 3kg", unitCostVnd: 49 },
       ],
     },
     {
@@ -137,7 +133,7 @@ export const MARKET_PRICE_SURVEY = {
       packLabel: "1 kg",
       quotes: [
         { sourceId: 'cooponline', sourceName: "Co.op Online", marketType: 'retail', productName: "Nạc vụn bò Úc-AHT990", unitCostVnd: 199, packLabel: "1 kg" },
-        { sourceId: 'kamereo', sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Thịt Bò Úc Xay Đông Lạnh 1kg (PACK)", unitCostVnd: 253, packLabel: "1kg" },
+        { sourceId: 'kamereo', sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Bắp Bò Đông First-Y Vinabeef (Mua Cây Tính Tiền Kg) (KILOGRAM)", unitCostVnd: 247, packLabel: "1 kg" },
         { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "Nạm bò", unitCostVnd: 282, packLabel: "1 kg" },
       ],
       spreadPercent: 42,
@@ -155,19 +151,19 @@ export const MARKET_PRICE_SURVEY = {
       sourceName: "Kamereo (bán buôn)",
       region: 'HCM',
       marketType: 'wholesale',
-      productName: "Nọng Heo Đông Lạnh JAPFA 1kg (PACK)",
-      packPriceVnd: 102900,
+      productName: "Thịt Vụn Heo Đông Lạnh CP 5kg (PACK)",
+      packPriceVnd: 409500,
       listPriceVnd: null,
-      unitCostVnd: 103,
+      unitCostVnd: 82,
       baseUnit: 'g',
-      packLabel: "1kg",
+      packLabel: "5kg",
       quotes: [
-        { sourceId: 'kamereo', sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Nọng Heo Đông Lạnh JAPFA 1kg (PACK)", unitCostVnd: 103, packLabel: "1kg" },
-        { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "BAF Dựng heo ăn chay", unitCostVnd: 119, packLabel: "1 kg" },
+        { sourceId: 'kamereo', sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Thịt Vụn Heo Đông Lạnh CP 5kg (PACK)", unitCostVnd: 82, packLabel: "5kg" },
+        { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "MEATDELI Thịt đùi heo (S)", unitCostVnd: 139, packLabel: "1 kg" },
       ],
-      spreadPercent: 16,
+      spreadPercent: 70,
       alternatives: [
-        { sourceName: "WinMart", marketType: 'retail', productName: "BAF Dựng heo ăn chay", unitCostVnd: 119 },
+        { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Nọng Heo Đông Lạnh JAPFA 1kg (PACK)", unitCostVnd: 103 },
         { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Thịt Thăn Heo Đông Lạnh CP 1kg (PACK)", unitCostVnd: 121 },
         { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Thịt Heo Xay Đông Lạnh JAPFA 1kg (PACK)", unitCostVnd: 122 },
         { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Ba Rọi Heo Đông Lạnh CP 1kg (PACK)", unitCostVnd: 131 },
@@ -258,7 +254,7 @@ export const MARKET_PRICE_SURVEY = {
       packLabel: "10 trứng",
       quotes: [
         { sourceId: 'cooponline', sourceName: "Co.op Online", marketType: 'retail', productName: "Trứng gà Co.op Select loại 1- 10 trứng", unitCostVnd: 2690, packLabel: "10 trứng" },
-        { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "Trứng gà Ba Huân hộp 10 quả", unitCostVnd: 3400, packLabel: "10 quả" },
+        { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "Trứng gà tươi Dabaco hộp 10 quả", unitCostVnd: 3870, packLabel: "10 quả" },
         { sourceId: 'kamereo', sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Trứng Gà ISE Vĩnh Thành Đạt Hộp 10 Quả (TRAY)", unitCostVnd: 5250, packLabel: "10 quả" },
       ],
       spreadPercent: 95,
@@ -276,17 +272,19 @@ export const MARKET_PRICE_SURVEY = {
       sourceName: "WinMart",
       region: 'HCM',
       marketType: 'retail',
-      productName: "Tàu hũ mềm Ichiban hộp 300g",
-      packPriceVnd: 15300,
+      productName: "Đậu phụ tươi Làng Mơ hộp 400g",
+      packPriceVnd: 13100,
       listPriceVnd: null,
-      unitCostVnd: 51,
+      unitCostVnd: 33,
       baseUnit: 'g',
-      packLabel: "300g",
+      packLabel: "400g",
       quotes: [
-        { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "Tàu hũ mềm Ichiban hộp 300g", unitCostVnd: 51, packLabel: "300g" },
+        { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "Đậu phụ tươi Làng Mơ hộp 400g", unitCostVnd: 33, packLabel: "400g" },
       ],
       spreadPercent: null,
       alternatives: [
+        { sourceName: "WinMart", marketType: 'retail', productName: "Tàu hũ bổ dưỡng Tafu gói 300g", unitCostVnd: 37 },
+        { sourceName: "WinMart", marketType: 'retail', productName: "Tàu hũ mềm Ichiban hộp 300g", unitCostVnd: 51 },
       ],
     },
     {
@@ -304,14 +302,14 @@ export const MARKET_PRICE_SURVEY = {
       packLabel: "1 kg",
       quotes: [
         { sourceId: 'cooponline', sourceName: "Co.op Online", marketType: 'retail', productName: "Xà lách lô lô Co.op Select kg – TNX", unitCostVnd: 48, packLabel: "1 kg" },
-        { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "Xà lách lolo xanh WinEco 300g", unitCostVnd: 66, packLabel: "300g" },
+        { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "Xà lách mỡ 300g", unitCostVnd: 63, packLabel: "300g" },
       ],
-      spreadPercent: 38,
+      spreadPercent: 31,
       alternatives: [
         { sourceName: "Co.op Online", marketType: 'retail', productName: "Xà lách lô lô Co.op Select kg – TNX", unitCostVnd: 48 },
         { sourceName: "Co.op Online", marketType: 'retail', productName: "Xà lách lô lô Co.op Select kg – TNX", unitCostVnd: 48 },
-        { sourceName: "WinMart", marketType: 'retail', productName: "Xà lách lolo xanh WinEco 300g", unitCostVnd: 66 },
-        { sourceName: "WinMart", marketType: 'retail', productName: "Xà lách lolo xanh WinEco 300g", unitCostVnd: 66 },
+        { sourceName: "WinMart", marketType: 'retail', productName: "Xà lách mỡ 300g", unitCostVnd: 63 },
+        { sourceName: "WinMart", marketType: 'retail', productName: "Xà lách mỡ 300g", unitCostVnd: 63 },
       ],
     },
     {
@@ -342,22 +340,22 @@ export const MARKET_PRICE_SURVEY = {
       sourceName: "Kamereo (bán buôn)",
       region: 'HCM',
       marketType: 'wholesale',
-      productName: "Cà Chua Beef Đà Lạt Cỡ Trung (KILOGRAM)",
-      packPriceVnd: 23100,
-      listPriceVnd: 27720,
-      unitCostVnd: 23,
+      productName: "Cà Chua Rita Đà Lạt Cỡ Vừa (KILOGRAM)",
+      packPriceVnd: 22050,
+      listPriceVnd: 26355,
+      unitCostVnd: 22,
       baseUnit: 'g',
       packLabel: "1 kg",
       quotes: [
-        { sourceId: 'kamereo', sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Cà Chua Beef Đà Lạt Cỡ Trung (KILOGRAM)", unitCostVnd: 23, packLabel: "1 kg" },
+        { sourceId: 'kamereo', sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Cà Chua Rita Đà Lạt Cỡ Vừa (KILOGRAM)", unitCostVnd: 22, packLabel: "1 kg" },
         { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "WINECO Cà chua đỏ 500gr", unitCostVnd: 32, packLabel: "500gr" },
       ],
-      spreadPercent: 39,
+      spreadPercent: 45,
       alternatives: [
-        { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Cà Chua Rita Đà Lạt Cỡ Vừa (KILOGRAM)", unitCostVnd: 25 },
-        { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Cà Chua Rita Đà Lạt Loại 1 (KILOGRAM)", unitCostVnd: 28 },
-        { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Cà Chua Beef Đà Lạt Loại 1 (KILOGRAM)", unitCostVnd: 30 },
+        { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Cà Chua Beef Đà Lạt Cỡ Trung (KILOGRAM)", unitCostVnd: 25 },
+        { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Cà Chua Rita Đà Lạt Loại 1 (KILOGRAM)", unitCostVnd: 25 },
         { sourceName: "WinMart", marketType: 'retail', productName: "WINECO Cà chua đỏ 500gr", unitCostVnd: 32 },
+        { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Cà Chua Beef Đà Lạt Loại 1 (KILOGRAM)", unitCostVnd: 34 },
       ],
     },
     {
@@ -380,8 +378,8 @@ export const MARKET_PRICE_SURVEY = {
       alternatives: [
         { sourceName: "WinMart", marketType: 'retail', productName: "Củ sả 100g", unitCostVnd: 45 },
         { sourceName: "WinMart", marketType: 'retail', productName: "Củ sả 100g Gtech", unitCostVnd: 55 },
+        { sourceName: "WinMart", marketType: 'retail', productName: "Măng đắng đặc sản Kim Bôi gói 500g", unitCostVnd: 96 },
         { sourceName: "WinMart", marketType: 'retail', productName: "Măng giang đặc sản Kim Bôi gói 300g", unitCostVnd: 133 },
-        { sourceName: "WinMart", marketType: 'retail', productName: "Măng trúc đặc sản gói 300g", unitCostVnd: 155 },
       ],
     },
     {
@@ -436,27 +434,27 @@ export const MARKET_PRICE_SURVEY = {
     {
       ingredientId: 'seed-ing-nuoc-dua',
       seedName: 'Nước dừa',
-      sourceId: 'kamereo',
-      sourceName: "Kamereo (bán buôn)",
+      sourceId: 'cooponline',
+      sourceName: "Co.op Online",
       region: 'HCM',
-      marketType: 'wholesale',
-      productName: "Nước Dừa Xiêm Xanh Cocoxim 1L  (BOX)",
+      marketType: 'retail',
+      productName: "Nước dừa xiêm xanh CoCo hộp giấy 1L",
       packPriceVnd: 40500,
-      listPriceVnd: null,
+      listPriceVnd: 45000,
       unitCostVnd: 41,
       baseUnit: 'ml',
       packLabel: "1l",
       quotes: [
+        { sourceId: 'cooponline', sourceName: "Co.op Online", marketType: 'retail', productName: "Nước dừa xiêm xanh CoCo hộp giấy 1L", unitCostVnd: 41, packLabel: "1l" },
         { sourceId: 'kamereo', sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Nước Dừa Xiêm Xanh Cocoxim 1L  (BOX)", unitCostVnd: 41, packLabel: "1l" },
         { sourceId: 'winmart', sourceName: "WinMart", marketType: 'retail', productName: "VIETCOCO Nước dừa tươi 330ml", unitCostVnd: 44, packLabel: "330ml" },
-        { sourceId: 'cooponline', sourceName: "Co.op Online", marketType: 'retail', productName: "Nước dừa xiêm xanh CoCo hộp giấy 1L", unitCostVnd: 45, packLabel: "1l" },
       ],
-      spreadPercent: 10,
+      spreadPercent: 7,
       alternatives: [
+        { sourceName: "Co.op Online", marketType: 'retail', productName: "Nước dừa xiêm xanh CoCo hộp giấy 1L", unitCostVnd: 41 },
+        { sourceName: "Co.op Online", marketType: 'retail', productName: "Nước dừa xiêm xanh CoCo hộp giấy 1L", unitCostVnd: 41 },
+        { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Nước Dừa Xiêm Xanh Cocoxim 1L  (BOX)", unitCostVnd: 41 },
         { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Nước Dừa Xiêm Sen Cocoxim 1L  (BOX)", unitCostVnd: 42 },
-        { sourceName: "WinMart", marketType: 'retail', productName: "VIETCOCO Nước dừa tươi 330ml", unitCostVnd: 44 },
-        { sourceName: "Co.op Online", marketType: 'retail', productName: "Nước dừa xiêm xanh CoCo hộp giấy 1L", unitCostVnd: 45 },
-        { sourceName: "Co.op Online", marketType: 'retail', productName: "Nước dừa xiêm xanh CoCo hộp giấy 1L", unitCostVnd: 45 },
       ],
     },
     {
@@ -518,6 +516,27 @@ export const MARKET_PRICE_SURVEY = {
       spreadPercent: null,
       alternatives: [
         { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Ba Chỉ Heo Nhập Khẩu Đông Lạnh Cắt Lát 2mm 500g (PACK)", unitCostVnd: 200 },
+        { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Bánh Xếp Nhật Gyoza Ajinomoto Heo Và Gà 760g (PACK)", unitCostVnd: 298 },
+      ],
+    },
+    {
+      ingredientId: 'seed-ing-ga-ta',
+      seedName: 'Gà ta',
+      sourceId: 'kamereo',
+      sourceName: "Kamereo (bán buôn)",
+      region: 'HN',
+      marketType: 'wholesale',
+      productName: "Bánh Xếp Nhật Gyoza Ajinomoto Heo Và Gà 760g (PACK)",
+      packPriceVnd: 226800,
+      listPriceVnd: null,
+      unitCostVnd: 298,
+      baseUnit: 'g',
+      packLabel: "760g",
+      quotes: [
+        { sourceId: 'kamereo', sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Bánh Xếp Nhật Gyoza Ajinomoto Heo Và Gà 760g (PACK)", unitCostVnd: 298, packLabel: "760g" },
+      ],
+      spreadPercent: null,
+      alternatives: [
       ],
     },
     {
@@ -539,6 +558,26 @@ export const MARKET_PRICE_SURVEY = {
       spreadPercent: null,
       alternatives: [
         { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Trứng Gà Ba Huân Size L Hộp 10 Quả (BOX)", unitCostVnd: 3518 },
+      ],
+    },
+    {
+      ingredientId: 'seed-ing-rau-song',
+      seedName: 'Rau sống',
+      sourceId: 'kamereo',
+      sourceName: "Kamereo (bán buôn)",
+      region: 'HN',
+      marketType: 'wholesale',
+      productName: "Húng Lủi (Húng Bạc Hà) (KILOGRAM)",
+      packPriceVnd: 114500,
+      listPriceVnd: null,
+      unitCostVnd: 115,
+      baseUnit: 'g',
+      packLabel: "1 kg",
+      quotes: [
+        { sourceId: 'kamereo', sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Húng Lủi (Húng Bạc Hà) (KILOGRAM)", unitCostVnd: 115, packLabel: "1 kg" },
+      ],
+      spreadPercent: null,
+      alternatives: [
       ],
     },
     {
@@ -619,7 +658,7 @@ export const MARKET_PRICE_SURVEY = {
       ],
       spreadPercent: null,
       alternatives: [
-        { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Hành Tím Lột (KILOGRAM)", unitCostVnd: 40 },
+        { sourceName: "Kamereo (bán buôn)", marketType: 'wholesale', productName: "Hành Tím Lột (KILOGRAM)", unitCostVnd: 42 },
       ],
     },
     {

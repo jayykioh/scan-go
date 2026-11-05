@@ -2,9 +2,10 @@
  * Cashier invoice verification — REQ-CAS-003.
  *
  * Picking a table on the Cashier floor plan opens that table's invoice dialog:
- * the open bill first (lines, prices, table, returning customer's name), then
- * the settled invoices at five rows a page, each opening its immutable Payment
- * record. A table with no open bill opens straight onto its history.
+ * the open bill first — one merged bill for every unpaid Order of the table,
+ * with its dishes folded into one line each and one settle action (REQ-CAS-004)
+ * — then the settled invoices at five rows a page, each opening its immutable
+ * Payment record. A table with no open bill opens straight onto its history.
  *
  * The fixtures are real Firestore documents (`[QA]` orders, payments, one
  * loyalty member, one empty table) written through the admin SDK, so the dialog
@@ -58,10 +59,18 @@ const QA_FREE_TABLE_NAME = '[QA] Bàn hoá đơn trống';
 const QA_MEMBER_ID = 'member_84900009999';
 const QA_CUSTOMER_NAME = '[QA] Khách cũ';
 const QA_OPEN_ITEM = '[QA] Món hoá đơn';
+const QA_OPEN_ITEM_2 = '[QA] Món hoá đơn 2';
+const QA_OPEN_ORDER_ID = 'qa-invoice-open';
+const QA_OPEN_ORDER_ID_2 = 'qa-invoice-open-2';
+const QA_OPEN_TOTAL_VND = 123000;
+const QA_OPEN_TOTAL_VND_2 = 45000;
+/** The merged bill of the two unpaid Orders (REQ-CAS-004). */
+const QA_BILL_TOTAL_VND = QA_OPEN_TOTAL_VND + QA_OPEN_TOTAL_VND_2;
 const QA_PAID_ORDERS = 6;
 const QA_FREE_ORDERS = 2;
 const SEEDED_ORDER_IDS = [
-  'qa-invoice-open',
+  QA_OPEN_ORDER_ID,
+  QA_OPEN_ORDER_ID_2,
   ...Array.from({ length: QA_PAID_ORDERS }, (_, index) => `qa-invoice-${index + 1}`),
   ...Array.from({ length: QA_FREE_ORDERS }, (_, index) => `qa-invoice-free-${index + 1}`),
 ];
@@ -102,6 +111,15 @@ async function eventually(page, predicate, timeout = 20000, step = 400) {
 }
 
 const bodyText = (page) => page.evaluate(() => document.body.innerText);
+
+/** The till's "N hoá đơn chưa thu" count, or null when the badge is absent. */
+async function billBadgeCount(page) {
+  const badge = page.locator('[data-testid="till-bill-count"]');
+  if ((await badge.count()) === 0) return null;
+  const text = await badge.innerText();
+  const match = /(\d+)/.exec(text);
+  return match ? Number(match[1]) : null;
+}
 
 const collectConsoleErrors = (page) => {
   page.on('console', (message) => {
@@ -161,13 +179,23 @@ function orderDoc({
 }
 
 async function cleanupFixtures() {
+  // A settlement also writes an idempotency record and a Loyalty transaction
+  // keyed by the Order. Leaving the idempotency record behind would make the
+  // next run replay a settlement whose Payment no longer exists, so both go too.
+  const idempotency = await db
+    .collection(`tenants/${TENANT_ID}/idempotency`)
+    .where('orderId', 'in', SEEDED_ORDER_IDS)
+    .get()
+    .catch(() => null);
   const refs = [
     ...SEEDED_ORDER_IDS.map((id) => db.doc(`tenants/${TENANT_ID}/orders/${id}`)),
     ...SEEDED_ORDER_IDS.map((id) =>
       db.doc(`tenants/${TENANT_ID}/payments/payment_${id}`),
     ),
+    db.doc(`tenants/${TENANT_ID}/loyaltyTransactions/loyalty_earn_${QA_OPEN_ORDER_ID}`),
     db.doc(`tenants/${TENANT_ID}/tables/${QA_FREE_TABLE_ID}`),
     db.doc(`tenants/${TENANT_ID}/loyaltyMembers/${QA_MEMBER_ID}`),
+    ...(idempotency?.docs ?? []).map((doc) => doc.ref),
   ];
   await Promise.all(refs.map((ref) => ref.delete().catch(() => undefined)));
 }
@@ -208,16 +236,29 @@ async function seedFixtures(tableId, tableName) {
   });
 
   batch.set(
-    db.doc(`tenants/${TENANT_ID}/orders/qa-invoice-open`),
+    db.doc(`tenants/${TENANT_ID}/orders/${QA_OPEN_ORDER_ID}`),
     orderDoc({
-      orderId: 'qa-invoice-open',
+      orderId: QA_OPEN_ORDER_ID,
       tableId,
       tableName,
       status: 'pending',
       createdAt: now,
-      totalVnd: 123000,
+      totalVnd: QA_OPEN_TOTAL_VND,
       itemName: QA_OPEN_ITEM,
       loyaltyMemberId: QA_MEMBER_ID,
+    }),
+  );
+  // The table ordered a second round: the till must print one bill, not two.
+  batch.set(
+    db.doc(`tenants/${TENANT_ID}/orders/${QA_OPEN_ORDER_ID_2}`),
+    orderDoc({
+      orderId: QA_OPEN_ORDER_ID_2,
+      tableId,
+      tableName,
+      status: 'pending',
+      createdAt: new Date(Date.now() + 60000).toISOString(),
+      totalVnd: QA_OPEN_TOTAL_VND_2,
+      itemName: QA_OPEN_ITEM_2,
     }),
   );
 
@@ -281,7 +322,7 @@ async function seedFixtures(tableId, tableName) {
 
   await batch.commit();
   console.log(
-    `· Fixture: ${QA_PAID_ORDERS} hoá đơn đã thu + 1 đơn đang mở trên "${tableName}", ${QA_FREE_ORDERS} hoá đơn trên "${QA_FREE_TABLE_NAME}"`,
+    `· Fixture: ${QA_PAID_ORDERS} hoá đơn đã thu + 2 đơn đang mở (một bill ${QA_BILL_TOTAL_VND}) trên "${tableName}", ${QA_FREE_ORDERS} hoá đơn trên "${QA_FREE_TABLE_NAME}"`,
   );
 }
 
@@ -400,15 +441,40 @@ try {
     currentText.split('\n').slice(0, 4).join(' / '),
   );
 
-  // The same open bill is also listed behind the dialog, so the action is
-  // scoped to the dialog itself.
+  // REQ-CAS-004: the table ordered twice, so the till must print one bill.
+  const billCards = await page.locator(`${DIALOG} [data-testid="invoice-card"]`).count();
+  check(
+    billCards === 1,
+    'Dialog: hai đơn chưa trả của bàn gộp thành MỘT hoá đơn',
+    `${billCards} tấm bill`,
+  );
+  const mergedBill = await currentSection.innerText();
+  check(
+    mergedBill.includes(QA_OPEN_ITEM) &&
+      mergedBill.includes(QA_OPEN_ITEM_2) &&
+      new RegExp(QA_BILL_TOTAL_VND.toLocaleString('vi-VN').replace(/\./g, '[.,]')).test(mergedBill) &&
+      /2 lượt gọi/.test(mergedBill),
+    'Hoá đơn gộp: in cả hai lượt gọi, tổng gộp và số lượt',
+    mergedBill.split('\n').slice(0, 6).join(' / '),
+  );
+
+  // The per-Order actions live behind one detail control.
+  await page.locator(`${DIALOG} [data-testid="bill-order-detail-toggle"]`).click();
+  const detailRows = await eventually(
+    page,
+    async () =>
+      (await page.locator(`${DIALOG} [data-testid="bill-order-row"]`).count()) === 2,
+    20000,
+  );
+  check(detailRows, 'Chi tiết: mở ra đúng 2 lượt gọi của bàn');
+
   const payosButton = page
     .locator(DIALOG)
     .getByRole('button', { name: /Tạo mã PayOS/i })
     .first();
   check(
     (await payosButton.count()) === 1,
-    'Dialog: có nút tạo/mở lại mã thanh toán PayOS',
+    'Chi tiết: mỗi lượt gọi giữ nút tạo/mở lại mã thanh toán PayOS',
   );
   if (CLICK_PAYOS && (await payosButton.count()) === 1) {
     await payosButton.click();
@@ -529,6 +595,17 @@ try {
   // -------------------------------------------------------------------------
   currentFlow = 'D-phone';
   await page.setViewportSize(PHONE);
+  // Photograph the merged bill itself, not the empty table the previous flow
+  // left open: the bill is what the Customer reads on the phone.
+  await page.locator('[data-testid="invoice-dialog-close"]').click();
+  await page.waitForTimeout(400);
+  await tile(qaTable.name).click();
+  await eventually(
+    page,
+    async () =>
+      (await page.locator(`${DIALOG} [data-testid="invoice-card"]`).count()) === 1,
+    20000,
+  );
   await page.waitForTimeout(800);
   const metrics = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -557,6 +634,82 @@ try {
   check(
     (await page.locator(DIALOG).count()) === 0,
     'Đóng dialog trả lại sơ đồ bàn',
+  );
+
+  // -------------------------------------------------------------------------
+  // E. One press collects the whole bill (REQ-CAS-004)
+  // -------------------------------------------------------------------------
+  currentFlow = 'E-merged-settle';
+  await page.setViewportSize(DESKTOP);
+  await page.waitForTimeout(400);
+  await tile(qaTable.name).click();
+  await eventually(
+    page,
+    async () => (await page.locator(DIALOG).count()) === 1,
+    20000,
+  );
+  const badgeBefore = await billBadgeCount(page);
+  const settleGone = await eventually(
+    page,
+    async () => {
+      const button = page.locator(`${DIALOG} [data-testid="bill-settle-cash"]`);
+      if ((await button.count()) !== 1) return false;
+      await button.click();
+      return true;
+    },
+    20000,
+  );
+  check(settleGone, 'Hoá đơn gộp: có nút thu tiền một lần cho cả bàn');
+  const billCleared = await eventually(
+    page,
+    async () => {
+      const current = await page
+        .locator('[data-testid="invoice-dialog-current"]')
+        .innerText();
+      return /Bàn này không còn nợ/.test(current);
+    },
+    30000,
+  );
+  check(
+    billCleared,
+    'Một lần bấm thu tiền: cả hai lượt gọi của bàn đều đã thu',
+    billCleared
+      ? ''
+      : await page
+          .locator('[role="alert"]')
+          .first()
+          .innerText()
+          .catch(() => 'không rõ lý do'),
+  );
+  await shot(page, 'e1-bill-settled');
+
+  // The two newly settled Orders are the newest rows of the table's history.
+  const settledRows = await eventually(
+    page,
+    async () => (await page.locator('[data-testid="invoice-history-row"]').count()) === INVOICE_ROWS,
+    20000,
+  );
+  check(
+    settledRows,
+    'Hoá đơn cũ nhận thêm hai lượt vừa thu (một trang năm dòng)',
+  );
+
+  await page.locator('[data-testid="invoice-dialog-close"]').click();
+  await page.waitForTimeout(600);
+  const clearedFromTill = await eventually(
+    page,
+    async () => !(await bodyText(page)).includes(QA_OPEN_ITEM),
+    20000,
+  );
+  check(
+    clearedFromTill,
+    'Trang thu ngân: bàn đã thu không còn trong danh sách hoá đơn',
+  );
+  const badgeAfter = await billBadgeCount(page);
+  check(
+    badgeBefore !== null && badgeAfter !== null && badgeAfter === badgeBefore - 1,
+    'Trang thu ngân: số hoá đơn chưa thu giảm đúng một',
+    `${badgeBefore} → ${badgeAfter}`,
   );
 
   await context.close();

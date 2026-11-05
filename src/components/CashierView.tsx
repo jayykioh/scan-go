@@ -12,6 +12,12 @@ import {
 } from '../data/adapters/payment.adapter';
 import { listLoyaltyMembers } from '../data/adapters/loyalty.adapter';
 import { cancelUnpaidOrder } from '../data/adapters/ordering.adapter';
+import {
+  groupUnpaidBills,
+  resolveBillCustomerName,
+  settleTableBill,
+  type TableBill,
+} from './cashierBill';
 import { toViewOrder } from '../data/adapters/view-mappers';
 import { useOperationTables } from '../hooks/useOperationTables';
 import { resolvePlanLayout } from '../pages/dashboard/tables/tablePlan';
@@ -72,16 +78,6 @@ const PAYMENT_STATUS_LABEL: Record<PaymentRecord['status'], string> = {
 };
 
 /**
- * The unpaid Orders of one Table, oldest first, so the till settles the bill
- * that has been open longest (REQ-CAS-003).
- */
-export function ordersForTable(orders: Order[], tableId: string): Order[] {
-  return orders
-    .filter((order) => order.tableId === tableId && order.status !== 'paid')
-    .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-}
-
-/**
  * One page of settled invoices. The page is clamped, so a reload that returns
  * fewer invoices never leaves the dialog on an empty page.
  */
@@ -96,84 +92,87 @@ export function paginateInvoices(
   return { rows: invoices.slice(start, start + size), page: current, pageCount };
 }
 
-/**
- * The name a bill prints for an existing (returning) customer. The Order
- * snapshot carries only the member id, so the name comes from the Loyalty
- * member list (REQ-CAS-003).
- *
- * shortcut: the member list is bounded to 100 rows, so a member outside it
- * prints no name; add a read-by-id when a shop passes that many members.
- */
-export function resolveCustomerName(
-  members: LoyaltyMemberView[],
-  order: Order,
-): string | null {
-  const memberId = order.loyaltyMemberId;
-  if (!memberId) return null;
-  const name = members.find((member) => member.memberId === memberId)?.displayName;
-  return name && name.trim().length > 0 ? name : null;
-}
-
-interface InvoiceCardProps {
-  order: Order;
-  tableName: string;
+interface TableBillCardProps {
+  bill: TableBill;
+  shopName: string;
   customerName: string | null;
   pending: boolean;
-  /** The PayOS link on screen, when it belongs to this Order. */
+  /** The PayOS link on screen, when it belongs to one of this bill's Orders. */
   payosLink: PayosPaymentLink | null;
-  onSettle: (orderId: string, method: 'cash' | 'vietQr') => void;
-  onCancel: (orderId: string) => void;
+  payosOrderId: string | null;
+  onSettle: (method: 'cash' | 'vietQr') => void;
+  onCancelOrder: (orderId: string) => void;
   onPayos: (orderId: string) => void;
   onClosePayos: () => void;
 }
 
-/** One unpaid bill: lines, prices, table, customer, and its actions. */
-function InvoiceCard({
-  order,
-  tableName,
+/**
+ * One table's bill as the Customer reads it: every unpaid Order of the table
+ * folded into one total and one settle action (REQ-CAS-004). The per-Order
+ * actions sit behind the detail toggle, because a Payment, a cancellation, and
+ * a PayOS link each belong to exactly one Order.
+ */
+function TableBillCard({
+  bill,
+  shopName,
   customerName,
   pending,
   payosLink,
+  payosOrderId,
   onSettle,
-  onCancel,
+  onCancelOrder,
   onPayos,
   onClosePayos,
-}: InvoiceCardProps) {
+}: TableBillCardProps) {
+  const [showOrders, setShowOrders] = useState(false);
   return (
     <div
       data-testid="invoice-card"
       className="rounded-[21px] border border-[#B5C7D8] bg-white overflow-hidden shadow-xs hover:border-zinc-900 transition-colors"
     >
-      <div className="bg-zinc-50 px-4 py-3 border-b border-zinc-100 flex justify-between items-center select-none">
-        <span className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-blue-500" />
-          {tableName}
+      <div className="bg-zinc-50 px-4 py-3 border-b border-zinc-100 flex justify-between items-start gap-3 select-none">
+        <span className="min-w-0">
+          <span className="block text-[10px] font-bold uppercase tracking-widest text-[#808080] truncate">
+            {shopName}
+          </span>
+          <span className="flex items-center gap-2 text-sm font-bold text-zinc-900">
+            <DollarSign className="w-4 h-4 shrink-0 text-blue-500" />
+            <span className="truncate">{bill.tableName}</span>
+          </span>
         </span>
-        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-          order.status === 'ready' ? 'bg-emerald-100 text-emerald-700' :
-          order.status === 'cooking' ? 'bg-amber-100 text-amber-700' :
-          'bg-zinc-100 text-zinc-500'
-        }`}>
-          {order.status === 'ready' ? 'Sẵn sàng' : order.status === 'cooking' ? 'Đang nấu' : 'Chờ'}
+        <span className="shrink-0 text-right">
+          <span className="block text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+            Chưa thanh toán
+          </span>
+          <span className="mt-1 block whitespace-nowrap text-[11px] font-semibold text-[#808080]">
+            {bill.orderCount} lượt gọi · {bill.itemCount} món
+          </span>
         </span>
       </div>
 
       <div className="p-[13px] space-y-[13px] text-[#2D2B30]">
-        {/* Item lines */}
+        {/* Every dish of every Order of this table, folded into one line each. */}
         <div className="space-y-1.5 border-b border-[#B5C7D8]/20 pb-2.5">
-          {order.items.map(item => (
-            <div key={item.id} className="flex justify-between text-sm text-[#454547]">
+          {bill.lines.map(line => (
+            <div key={line.key} className="flex justify-between gap-3 text-sm text-[#454547]">
               <span className="font-sans font-medium text-[#2D2B30]">
-                {item.name} <span className="text-[#808080] ml-1 font-semibold text-xs ">x{item.quantity}</span>
+                {line.name} <span className="text-[#808080] ml-1 font-semibold text-xs ">x{line.quantity}</span>
+                {line.quantity > 1 && (
+                  <span className="block text-[11px] text-[#808080]">
+                    {line.unitPriceVnd.toLocaleString()}đ / phần
+                  </span>
+                )}
               </span>
-              <span>{item.price.toLocaleString()}đ</span>
+              <span className="shrink-0">{line.totalVnd.toLocaleString()}đ</span>
             </div>
           ))}
+          {bill.discountVnd > 0 && (
+            <div className="flex justify-between text-sm text-emerald-600 font-semibold">
+              <span>Giảm giá (khuyến mãi)</span>
+              <span>-{bill.discountVnd.toLocaleString()}đ</span>
+            </div>
+          )}
         </div>
-
-        {order.customerNote && (
-          <p className="text-xs text-[#808080] italic">Ghi chú: {order.customerNote}</p>
-        )}
 
         {/* A returning customer keeps their name on the bill (REQ-CAS-003). */}
         {customerName && (
@@ -184,57 +183,40 @@ function InvoiceCard({
                 Khách hàng: {customerName}
               </span>
             </div>
-            <span className="shrink-0 text-[#808080] text-xs ">+{Math.floor(order.total / 10000)}đ tích</span>
+            <span className="shrink-0 text-[#808080] text-xs ">+{Math.floor(bill.totalVnd / 10000)}đ tích</span>
           </div>
         )}
 
-        {/* Payment row */}
-        <div className="flex justify-between items-center pt-2 border-t border-zinc-100">
+        {/* One settle action for the whole bill, so a table that ordered twice
+            is not sent through the till twice (REQ-CAS-004). */}
+        <div className="flex justify-between items-center gap-3 pt-2 border-t border-zinc-100">
           <div>
             <span className="text-xs text-zinc-400 block font-bold">Tổng tiền</span>
             <span className="text-xl font-bold text-zinc-900 ">
-              {order.total.toLocaleString()}đ
+              {bill.totalVnd.toLocaleString()}đ
             </span>
           </div>
 
           <div className="flex flex-wrap justify-end gap-2">
-            <button 
+            <button
               type="button"
-              onClick={() => onCancel(order.id)}
-              className="p-2 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
-              title="Huỷ đơn chưa thanh toán"
-              aria-label="Huỷ đơn chưa thanh toán"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-            
-            <button 
-              type="button"
-              onClick={() => onSettle(order.id, 'cash')}
+              data-testid="bill-settle-cash"
+              onClick={() => onSettle('cash')}
               disabled={pending}
               className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
             >
               <CheckCircle className="w-4 h-4" />
               Thu tiền
             </button>
-            <button 
+            <button
               type="button"
-              onClick={() => onSettle(order.id, 'vietQr')}
+              data-testid="bill-settle-vietqr"
+              onClick={() => onSettle('vietQr')}
               disabled={pending}
               className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
             >
               <CreditCard className="w-4 h-4" />
               VietQR
-            </button>
-            <button
-              type="button"
-              onClick={() => onPayos(order.id)}
-              disabled={pending}
-              aria-label={`Tạo mã PayOS cho đơn ${order.id}`}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <QrCode className="w-4 h-4" />
-              PayOS
             </button>
           </div>
 
@@ -245,7 +227,7 @@ function InvoiceCard({
                   <QRCodeSVG
                     value={payosLink.qrCode}
                     size={176}
-                    aria-label={`Mã QR PayOS cho đơn ${order.id}`}
+                    aria-label={`Mã QR PayOS cho đơn ${payosOrderId}`}
                   />
                 </div>
               ) : (
@@ -279,6 +261,72 @@ function InvoiceCard({
             </div>
           )}
         </div>
+
+        {/* The Orders this bill was built from. Their actions stay per Order:
+            a PayOS link and a cancellation each belong to exactly one. */}
+        <button
+          type="button"
+          onClick={() => setShowOrders((current) => !current)}
+          data-testid="bill-order-detail-toggle"
+          aria-expanded={showOrders}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#B5C7D8] bg-[#F5F5F7] px-3 py-2 text-xs font-bold text-[#454547] cursor-pointer"
+        >
+          <History className="w-4 h-4 text-zinc-500" />
+          {showOrders ? 'Ẩn chi tiết' : `Chi tiết ${bill.orderCount} lượt gọi`}
+        </button>
+
+        {showOrders && (
+          <div data-testid="bill-order-detail" className="space-y-2">
+            {bill.orders.map((order) => (
+              <div
+                key={order.id}
+                data-testid="bill-order-row"
+                className="rounded-xl border border-[#B5C7D8] bg-[#F5F5F7] p-2.5 text-xs text-[#454547]"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="min-w-0">
+                    <span className="block font-bold text-[#2D2B30]">
+                      {order.timestamp.toLocaleTimeString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                      {' · '}
+                      {order.items.reduce((sum, item) => sum + item.quantity, 0)} món
+                    </span>
+                    {order.customerNote && (
+                      <span className="block italic">Ghi chú: {order.customerNote}</span>
+                    )}
+                  </span>
+                  <span className="shrink-0 font-bold text-[#2D2B30]">
+                    {order.total.toLocaleString()}đ
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onCancelOrder(order.id)}
+                    disabled={pending}
+                    aria-label={`Huỷ đơn ${order.id}`}
+                    className="flex items-center gap-1 rounded-xl border border-red-100 bg-white px-2.5 py-1.5 font-bold text-red-500 cursor-pointer disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Huỷ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onPayos(order.id)}
+                    disabled={pending}
+                    aria-label={`Tạo mã PayOS cho đơn ${order.id}`}
+                    className="flex items-center gap-1 rounded-xl bg-blue-600 px-2.5 py-1.5 font-bold text-white cursor-pointer disabled:opacity-50"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    PayOS
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -300,7 +348,9 @@ export default function CashierView({
   // False until the first unpaid read settles, so the till never calls a table
   // empty while the queue is still arriving.
   const [queueLoaded, setQueueLoaded] = useState(false);
-  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  // The bill whose settlement or PayOS request is in flight, so one control is
+  // never pressed twice (REQ-CAS-004).
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -362,40 +412,53 @@ export default function CashierView({
     );
   }, [tenantId, payosOrderId, refreshUnpaid]);
 
-  // Confirm a settlement and refresh the queue from the committed result.
-  const handleSettleOrder = async (orderId: string, method: 'cash' | 'vietQr') => {
-    const activeOrderObj = orders.find(o => o.id === orderId);
-    if (!activeOrderObj || !tenantId) return;
-
+  /**
+   * Collect a whole bill in one press: every unpaid Order of the table is
+   * confirmed in turn, so the Customer pays once and the till records one
+   * immutable Payment per Order (REQ-CAS-004, ADR 0027). A failure stops the
+   * run and the remaining Orders stay on the bill, because a half-read queue
+   * must never look paid.
+   */
+  const handleSettleBill = async (bill: TableBill, method: 'cash' | 'vietQr') => {
+    if (!tenantId) return;
     setSettlementError(null);
-    setPendingOrderId(orderId);
+    setPendingKey(bill.key);
 
-    const idempotencyKey = settlementKeys.current.keyFor(orderId);
-
-    try {
+    const result = await settleTableBill(bill, async (order) => {
       await confirmPayment({
         tenantId,
-        orderId,
+        orderId: order.id,
         method,
-        amountVnd: activeOrderObj.total,
-        idempotencyKey,
+        amountVnd: order.total,
+        idempotencyKey: settlementKeys.current.keyFor(order.id),
       });
       // A confirmed result is final; drop the key and the settled Order.
-      settlementKeys.current.clear(orderId);
-      setOrders(prev => prev.filter(o => o.id !== orderId));
-      if (payosOrderId === orderId) {
+      settlementKeys.current.clear(order.id);
+    });
+
+    if (result.settledOrderIds.length > 0) {
+      const settled = new Set(result.settledOrderIds);
+      setOrders((prev) => prev.filter((order) => !settled.has(order.id)));
+      // The settled bills are now part of the table's history (REQ-CAS-003).
+      setInvoiceReload((count) => count + 1);
+      if (payosOrderId && settled.has(payosOrderId)) {
         setPayosLink(null);
         setPayosOrderId(null);
       }
-      // The settled bill is now part of the table's history (REQ-CAS-003).
-      setInvoiceReload((count) => count + 1);
-    } catch (error) {
-      setSettlementError(
-        error instanceof Error ? error.message : 'Không thể xác nhận thanh toán.',
-      );
-    } finally {
-      setPendingOrderId(null);
     }
+
+    if (result.failedOrderId) {
+      setSettlementError(
+        `Đã thu ${result.settledOrderIds.length}/${bill.orderCount} lượt. ` +
+          `Đơn #${result.failedOrderId.slice(-6).toUpperCase()} chưa thu được: ` +
+          (result.error instanceof Error
+            ? result.error.message
+            : 'không xác nhận được thanh toán.'),
+      );
+      // The server is the source of truth for what actually settled.
+      void refreshUnpaid();
+    }
+    setPendingKey(null);
   };
 
   /**
@@ -407,7 +470,7 @@ export default function CashierView({
   const handleCreatePayosLink = async (orderId: string) => {
     if (!tenantId) return;
     setSettlementError(null);
-    setPendingOrderId(orderId);
+    setPendingKey(`payos:${orderId}`);
     try {
       const link = await createPayosLink(
         tenantId,
@@ -421,7 +484,7 @@ export default function CashierView({
         error instanceof Error ? error.message : 'Không tạo được mã PayOS.',
       );
     } finally {
-      setPendingOrderId(null);
+      setPendingKey(null);
     }
   };
 
@@ -489,7 +552,7 @@ export default function CashierView({
   // The till picks the table to collect from on the same floor plan the other
   // operating pages use (REQ-TBL-002, REQ-CAS-001), and the pick opens that
   // table's invoice dialog (REQ-CAS-003). This runs before the PIN early
-  // return below, so it must not depend on `activeUnpaidOrders`.
+  // return below, so it must not depend on the derived bills.
   const [selectedTableId, setSelectedTableId] = useState<string | null>(
     focusTableId ?? null,
   );
@@ -611,33 +674,31 @@ export default function CashierView({
     );
   }
 
-  // Active unsettled orders logic
-  const activeUnpaidOrders = orders.filter(o => o.status !== 'paid');
+  // One bill per open table (and one per takeaway Order), so a table that
+  // ordered three times still has one bill to settle (REQ-CAS-004).
+  const bills = groupUnpaidBills(orders);
   const dialogTable = selectedTableId
     ? operationTables.find((table) => table.tableId === selectedTableId) ?? null
     : null;
-  const dialogOrders = selectedTableId
-    ? ordersForTable(activeUnpaidOrders, selectedTableId)
-    : [];
+  const dialogBill = selectedTableId
+    ? bills.find((bill) => bill.key === `table:${selectedTableId}`) ?? null
+    : null;
   const history = paginateInvoices(tableInvoices, invoicePage);
   // A free table opens straight onto its invoice history; a busy one shows the
   // open bill first and offers the history below (REQ-CAS-003).
-  const historyVisible = showHistory || dialogOrders.length === 0;
+  const historyVisible = showHistory || !dialogBill;
 
-  const renderInvoiceCard = (order: Order) => (
-    <InvoiceCard
-      key={order.id}
-      order={order}
-      tableName={
-        order.tableName ??
-        tables.find(t => t.id === order.tableId)?.name ??
-        `Bàn ${order.tableId}`
-      }
-      customerName={resolveCustomerName(members, order)}
-      pending={pendingOrderId === order.id}
-      payosLink={payosOrderId === order.id ? payosLink : null}
-      onSettle={(orderId, method) => void handleSettleOrder(orderId, method)}
-      onCancel={(orderId) => {
+  const renderBillCard = (bill: TableBill) => (
+    <TableBillCard
+      key={bill.key}
+      bill={bill}
+      shopName={tenantConfig.shopName}
+      customerName={resolveBillCustomerName(members, bill)}
+      pending={pendingKey === bill.key}
+      payosLink={payosLink}
+      payosOrderId={payosOrderId}
+      onSettle={(method) => void handleSettleBill(bill, method)}
+      onCancelOrder={(orderId) => {
         setCancelError(null);
         setCancelReason('');
         setCancelTargetId(orderId);
@@ -670,7 +731,7 @@ export default function CashierView({
           <p className="rounded-[21px] border border-dashed border-[#B5C7D8] bg-[#F5F5F7] px-4 py-5 text-center text-xs font-semibold text-[#808080]">
             Đang tải hoá đơn...
           </p>
-        ) : dialogOrders.length === 0 ? (
+        ) : !dialogBill ? (
           <div className="rounded-[21px] border border-dashed border-[#B5C7D8] bg-[#F5F5F7] px-4 py-5 text-center">
             <p className="text-sm font-bold text-zinc-900">
               Bàn này không còn nợ
@@ -682,12 +743,12 @@ export default function CashierView({
             </p>
           </div>
         ) : (
-          dialogOrders.map(renderInvoiceCard)
+          renderBillCard(dialogBill)
         )}
       </div>
 
       <div className="rounded-[21px] border border-[#B5C7D8] bg-white">
-        {dialogOrders.length > 0 && (
+        {dialogBill && (
           <button
             type="button"
             onClick={() => setShowHistory((current) => !current)}
@@ -891,8 +952,11 @@ export default function CashierView({
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
           <span className="text-sm font-bold text-[#2D2B30] ">Thu Ngân</span>
         </div>
-        <span className="text-sm bg-zinc-900 text-white font-semibold rounded-[21px] px-2.5 py-0.5 ">
-          {activeUnpaidOrders.length} Đơn Nợ
+        <span
+          data-testid="till-bill-count"
+          className="text-sm bg-zinc-900 text-white font-semibold rounded-[21px] px-2.5 py-0.5 "
+        >
+          {bills.length} Hoá đơn chưa thu
         </span>
       </div>
 
@@ -915,7 +979,7 @@ export default function CashierView({
           <span className="text-xs text-zinc-900 lowercase">sync</span>
         </div>
 
-        {activeUnpaidOrders.length === 0 ? (
+        {bills.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center select-none">
             <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4">
               <CheckCircle className="w-7 h-7 text-emerald-500" />
@@ -925,7 +989,7 @@ export default function CashierView({
           </div>
         ) : (
           <div className="space-y-[13px]">
-            {activeUnpaidOrders.map(renderInvoiceCard)}
+            {bills.map(renderBillCard)}
           </div>
         )}
 
@@ -987,7 +1051,7 @@ export default function CashierView({
                   <p className="text-[11px] font-semibold text-[#808080]">
                     {!queueLoaded
                       ? 'Đang tải...'
-                      : dialogOrders.length > 0
+                      : dialogBill
                         ? 'Đang có khách'
                         : 'Bàn trống'}
                     {dialogTable.area ? ` · khu ${dialogTable.area}` : ''}

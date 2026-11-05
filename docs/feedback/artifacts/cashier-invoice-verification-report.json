@@ -1,19 +1,20 @@
 {
-  "generatedAt": "2026-10-14T13:51:22.678Z",
+  "generatedAt": "2026-11-05T15:22:13.680Z",
   "base": "http://127.0.0.1:3000",
   "tenantId": "first-g43h5hgnc4RJ0FJrYHxmd3g7qXl1",
   "table": {
     "tableId": "aSXum1V3IFEXmAlsJZR7",
     "name": "Bàn QA 01"
   },
-  "passed": 18,
+  "passed": 25,
   "failed": 0,
   "screenshots": [
     "docs/feedback/artifacts/cashier-invoice-a1-dialog.png",
     "docs/feedback/artifacts/cashier-invoice-b1-history-page2.png",
     "docs/feedback/artifacts/cashier-invoice-b2-payment-record.png",
     "docs/feedback/artifacts/cashier-invoice-c1-empty-table-history.png",
-    "docs/feedback/artifacts/cashier-invoice-d1-dialog-phone.png"
+    "docs/feedback/artifacts/cashier-invoice-d1-dialog-phone.png",
+    "docs/feedback/artifacts/cashier-invoice-e1-bill-settled.png"
   ],
   "consoleErrors": [],
   "findings": [
@@ -44,17 +45,29 @@
       "flow": "A-invoice-dialog",
       "kind": "pass",
       "label": "Dialog: hoá đơn đang mở in món, tổng tiền, số bàn và tên khách hàng cũ",
-      "detail": "Bàn QA 01 / Chờ / [QA] Món hoá đơn x1 / 123,000đ"
+      "detail": "BÚN PHỞ KINH KỲ / Bàn QA 01 / Chưa thanh toán / 2 lượt gọi · 2 món"
     },
     {
       "flow": "A-invoice-dialog",
       "kind": "pass",
-      "label": "Dialog: có nút tạo/mở lại mã thanh toán PayOS"
+      "label": "Dialog: hai đơn chưa trả của bàn gộp thành MỘT hoá đơn",
+      "detail": "1 tấm bill"
     },
     {
       "flow": "A-invoice-dialog",
       "kind": "pass",
-      "label": "Dialog: mở lại mã PayOS trả lời rõ ràng (QR hoặc lý do từ chối)"
+      "label": "Hoá đơn gộp: in cả hai lượt gọi, tổng gộp và số lượt",
+      "detail": "BÚN PHỞ KINH KỲ / Bàn QA 01 / Chưa thanh toán / 2 lượt gọi · 2 món / [QA] Món hoá đơn x1 / 123,000đ"
+    },
+    {
+      "flow": "A-invoice-dialog",
+      "kind": "pass",
+      "label": "Chi tiết: mở ra đúng 2 lượt gọi của bàn"
+    },
+    {
+      "flow": "A-invoice-dialog",
+      "kind": "pass",
+      "label": "Chi tiết: mỗi lượt gọi giữ nút tạo/mở lại mã thanh toán PayOS"
     },
     {
       "flow": "B-history",
@@ -112,7 +125,34 @@
       "label": "Đóng dialog trả lại sơ đồ bàn"
     },
     {
-      "flow": "D-phone",
+      "flow": "E-merged-settle",
+      "kind": "pass",
+      "label": "Hoá đơn gộp: có nút thu tiền một lần cho cả bàn"
+    },
+    {
+      "flow": "E-merged-settle",
+      "kind": "pass",
+      "label": "Một lần bấm thu tiền: cả hai lượt gọi của bàn đều đã thu",
+      "detail": ""
+    },
+    {
+      "flow": "E-merged-settle",
+      "kind": "pass",
+      "label": "Hoá đơn cũ nhận thêm hai lượt vừa thu (một trang năm dòng)"
+    },
+    {
+      "flow": "E-merged-settle",
+      "kind": "pass",
+      "label": "Trang thu ngân: bàn đã thu không còn trong danh sách hoá đơn"
+    },
+    {
+      "flow": "E-merged-settle",
+      "kind": "pass",
+      "label": "Trang thu ngân: số hoá đơn chưa thu giảm đúng một",
+      "detail": "1 → 0"
+    },
+    {
+      "flow": "E-merged-settle",
       "kind": "pass",
       "label": "Không có lỗi console",
       "detail": ""

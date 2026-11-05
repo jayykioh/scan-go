@@ -35,6 +35,14 @@ VietQR is the only online settlement method. The Owner stores the shop's own rec
 - `addInfo` is `SCANGO {orderId}` — under VietQR's 50-character limit and without special characters, because the Order id is alphanumeric.
 - An Order created before the shop stored an account has no instruction; the Cashier is told the shop has not set one rather than shown a QR for an unknown account.
 
+## The till presents one bill per table (ADR 0027)
+A dine-in table's unpaid Orders print as **one invoice** in the Cashier view: `src/components/cashierBill.ts` groups the Orders of a table, folds their dishes into one line each, and sums the Orders' own totals, so a per-Order Promotion stays applied and the difference prints as a discount. The bill is derived in the browser and is not a stored document.
+
+- One press collects the bill: the Orders are confirmed oldest first through `callablePaymentConfirm`, so each still posts its own immutable Payment, awards its own Loyalty points, and records its own audit event (ADR 0004). A failure stops the run and the remaining Orders stay payable, retried with their own idempotency keys.
+- A takeaway Order stays its own bill, because it shares no table.
+- Per-Order actions — a PayOS link, a cancellation with a reason — stay per Order behind one detail control in the bill.
+- The VietQR instruction remains per Order (`addInfo` is `SCANGO {orderId}`); the Cashier confirms the merged transfer per Order. A QR for a merged total would be a separate decision.
+
 ## The automatic adapter seam
 `functions/src/modules/payment/provider.ts` keeps the replaceable signed-event adapter interface (REQ-PAY-002). **No live provider implements it.** The PayOS provider that used to implement it is withdrawn: `payos.ts`, `callablePaymentCreatePayosLink`, the public `payosWebhookV1` endpoint, the `payosPaymentLinks` collection, the `platform/payosCounter` allocator, the collection-group index on `payosPaymentLinks.orderCode`, and the three `PAYOS_*` secrets are all removed. Picking a provider later needs its own ADR.
 

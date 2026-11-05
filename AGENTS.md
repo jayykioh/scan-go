@@ -73,6 +73,7 @@
 - [ADR 0024: The model tier is removed](docs/adr/0024-remove-the-model-tier.md)
 - [ADR 0025: Table zones and per-Staff area scope](docs/adr/0025-table-zones-and-per-staff-area-scope.md)
 - [ADR 0026: Owner-planned Shifts and server-time attendance](docs/adr/0026-owner-planned-shifts-and-server-time-attendance.md)
+- [ADR 0027: A table's open bill is one invoice, settled per Order](docs/adr/0027-a-table-bill-is-one-invoice.md)
 - [Firestore research](research/firestore-foundation.md)
 
 ## Agent constraints

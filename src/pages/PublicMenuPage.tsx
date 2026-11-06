@@ -214,7 +214,7 @@ export default function PublicMenuPage() {
     [linkContext, t],
   );
 
-  const customerOrders = tracking ? [toTrackingOrder(tracking)] : [];
+  const customerOrders = tracking ? [toTrackingOrder(tracking, activeTableId)] : [];
 
   /**
    * Guest report path (REQ-FDB-001, REQ-FDB-007). The tenant comes from the
@@ -249,7 +249,7 @@ export default function PublicMenuPage() {
 
   return (
     <main className="min-h-dvh bg-[#eef0f4] text-zinc-950 flex justify-center sm:py-6">
-      <div className="w-full max-w-[430px] min-h-dvh sm:min-h-[860px] sm:rounded-[44px] overflow-hidden bg-white shadow-2xl border border-white/80">
+      <div className="w-full max-w-[430px] h-dvh sm:h-[860px] sm:rounded-[44px] overflow-hidden bg-white shadow-2xl border border-white/80">
         {resolveError ? (
           <div role="alert" className="flex h-full items-center justify-center p-8 text-center">
             <div>

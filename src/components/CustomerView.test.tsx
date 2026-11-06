@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import CustomerView from './CustomerView';
 import type { Order, TenantConfig } from '../types';
 import type { PromotionEvaluationResult } from '../../shared/contracts/promotion.contract';
@@ -48,7 +48,94 @@ const emptyPromotion: PromotionEvaluationResult = {
   evaluatedAt: new Date().toISOString(),
 };
 
+afterEach(cleanup);
+
+const dish = { id: 'item-1', name: 'Phở', category: 'Món ăn', type: 'Đồ ăn', price: 65000, costPrice: 0, image: 'https://example.test/pho.png', description: '', inStock: true, stockCount: 10, toppings: [] };
+
+function addDish() {
+  fireEvent.click(screen.getByRole('button', { name: /Phở Phở 65\.000đ/i }));
+  fireEvent.click(screen.getByRole('button', { name: /add to cart/i }));
+}
+
+function openCart() {
+  fireEvent.click(screen.getByRole('button', { name: /1 items.*65\.000đ/i }));
+}
+
 describe('CustomerView public menu', () => {
+  it('keeps the menu after submitting and lets the customer order again', async () => {
+    const onSubmitOrder = vi.fn().mockResolvedValue(undefined);
+    renderCustomer({ menuItems: [dish], onSubmitOrder });
+    addDish();
+    openCart();
+    fireEvent.click(screen.getByRole('button', { name: /^place order$/i }));
+    await waitFor(() => expect(onSubmitOrder).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByRole('heading', { name: /^cart$/i })).toBeNull());
+    expect(screen.getByRole('button', { name: 'Order food' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.queryByText(/all done/i)).toBeNull();
+    addDish();
+    openCart();
+    fireEvent.click(screen.getByRole('button', { name: /^place order$/i }));
+    await waitFor(() => expect(onSubmitOrder).toHaveBeenCalledTimes(2));
+  });
+
+  it('keeps the cart and feedback draft when switching pages, then keeps the sent confirmation', async () => {
+    const onSubmitFeedback = vi.fn().mockResolvedValue(undefined);
+    renderCustomer({ menuItems: [dish], onSubmitFeedback });
+    addDish();
+    fireEvent.click(screen.getByRole('button', { name: 'Reviews / Feedback' }));
+    fireEvent.click(screen.getByRole('button', { name: '4/5' }));
+    fireEvent.change(screen.getByPlaceholderText(/what went wrong/i), { target: { value: 'Great food' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Order food' }));
+    expect(screen.getByRole('button', { name: /1 items.*65\.000đ/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Reviews / Feedback' }));
+    expect((screen.getByPlaceholderText(/what went wrong/i) as HTMLTextAreaElement).value).toBe('Great food');
+    expect(screen.getByRole('button', { name: '4/5' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: /send feedback/i }));
+    await screen.findByText(/thank you for the feedback/i);
+    expect(onSubmitFeedback).toHaveBeenCalledWith({ kind: 'review', rating: 4, message: '[Service / staff] Great food' });
+    fireEvent.click(screen.getByRole('button', { name: 'Order food' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reviews / Feedback' }));
+    expect(screen.getByText(/thank you for the feedback/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /send feedback/i })).toBeNull();
+  });
+
+  it.each([false, true])('retains cart on offline or rejected submission (online=%s)', async (isOnline) => {
+    const onSubmitOrder = vi.fn().mockRejectedValue(new Error('Try again'));
+    renderCustomer({ menuItems: [dish], onSubmitOrder, isOnline });
+    addDish();
+    openCart();
+    fireEvent.click(screen.getByRole('button', { name: isOnline ? /^place order$/i : /^offline$/i }));
+    await screen.findAllByRole('alert');
+    expect(screen.getByRole('button', { name: 'Order food' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('heading', { name: /^cart$/i })).toBeTruthy();
+    expect(onSubmitOrder).toHaveBeenCalledTimes(isOnline ? 1 : 0);
+  });
+
+  it.each(['paid', 'cancelled'] as const)('keeps %s orders visible without including another table', (status) => {
+    const order = { id: 'order-123456', tableId: 'table-token', items: [], total: 10000, status, timestamp: new Date(), paymentMode: 'Pay-Later' } as Order;
+    renderCustomer({ orders: [order, { ...order, id: 'other-999999', tableId: 'other-table' }] });
+    expect(screen.getByText('#123456')).toBeTruthy();
+    expect(screen.getByText(status === 'paid' ? 'Paid' : 'Cancelled')).toBeTruthy();
+    expect(screen.queryByText('#999999')).toBeNull();
+  });
+
+  it('prevents another feedback submission while sending and keeps the draft on failure', async () => {
+    let rejectSubmission!: (error: Error) => void;
+    const onSubmitFeedback = vi.fn(() => new Promise<void>((_resolve, reject) => { rejectSubmission = reject; }));
+    renderCustomer({ onSubmitFeedback });
+    fireEvent.click(screen.getByRole('button', { name: 'Reviews / Feedback' }));
+    fireEvent.change(screen.getByPlaceholderText(/what went wrong/i), { target: { value: 'Please check my order' } });
+    fireEvent.click(screen.getByRole('button', { name: /send feedback/i }));
+    const sendingButton = screen.getByRole('button', { name: /sending/i }) as HTMLButtonElement;
+    expect(sendingButton.disabled).toBe(true);
+    fireEvent.click(sendingButton);
+    expect(onSubmitFeedback).toHaveBeenCalledTimes(1);
+    rejectSubmission(new Error('Feedback unavailable'));
+    await screen.findByText('Feedback unavailable');
+    expect((screen.getByPlaceholderText(/what went wrong/i) as HTMLTextAreaElement).value).toBe('Please check my order');
+    expect((screen.getByRole('button', { name: /send feedback/i }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('does not offer fake phone lookup or reveal client-side loyalty data', () => {
     renderCustomer();
     fireEvent.click(screen.getAllByRole('button', { name: /^member$/i })[0]);
@@ -87,7 +174,7 @@ describe('CustomerView public menu', () => {
     const onSubmitFeedback = vi.fn().mockResolvedValue(undefined);
     renderCustomer({ orders: [order], onSubmitFeedback });
 
-    fireEvent.click(screen.getByRole('button', { name: /track/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reviews / Feedback' }));
     fireEvent.change(screen.getByRole('combobox', { name: /main topic/i }), { target: { value: 'amenities' } });
     fireEvent.change(screen.getByPlaceholderText(/what went wrong/i), { target: { value: 'The restroom needs attention' } });
     fireEvent.click(screen.getByRole('button', { name: /send feedback/i }));

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, Check, ChevronLeft, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Star, Ticket, X } from 'lucide-react';
+import { AlertCircle, Check, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Star, Ticket, X } from 'lucide-react';
 import { INDUSTRY_TEMPLATES } from '../mockData';
 import { MenuItem, Order, OrderItem, TableConfig, TenantConfig } from '../types';
 import type { PublicOrderTracking } from '@contracts/order.contract';
@@ -61,7 +61,7 @@ interface CustomerProps {
   }) => Promise<void>;
 }
 
-type CustomerStep = 'table_pick' | 'menu' | 'tracking';
+type CustomerStep = 'table_pick' | 'menu' | 'feedback';
 
 const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`;
 
@@ -106,7 +106,7 @@ export default function CustomerView({
 
   const template = INDUSTRY_TEMPLATES[tenantConfig.industry] || INDUSTRY_TEMPLATES.quan_an;
   const tableName = tables.find(table => table.id === simulationTableId)?.name || `${t('customer.table.badge')} ${simulationTableId}`;
-  const activeCustomerOrders = orders.filter(order => order.tableId === simulationTableId && order.status !== 'paid');
+  const activeCustomerOrders = orders.filter(order => order.tableId === simulationTableId);
   const availableTypes = ['Tất cả', ...Array.from(new Set(menuItems.map(inferItemType)))];
 
   const filteredItems = menuItems.filter(item => {
@@ -245,7 +245,7 @@ export default function CustomerView({
     setCart([]);
     setCustomerNote('');
     setShowCart(false);
-    setStep('tracking');
+    setStep('menu');
     // The Order is committed; confirm it on screen for a beat (REQ-NOT-001).
     setPlacedNotice(true);
     window.setTimeout(() => setPlacedNotice(false), NOTIFICATION_BANNER_MS);
@@ -289,7 +289,7 @@ export default function CustomerView({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -12, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 520, damping: 18 }}
-            className="absolute inset-x-4 top-4 z-50 rounded-[24px] bg-emerald-600 px-4 py-3 text-center shadow-xl"
+            className="mx-4 mt-3 shrink-0 rounded-[24px] bg-emerald-600 px-4 py-3 text-center shadow-xl"
           >
             <p className="flex items-center justify-center gap-2 text-sm font-bold text-white">
               <Check className="h-4 w-4" />
@@ -299,16 +299,29 @@ export default function CustomerView({
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="relative flex-1 overflow-y-auto pb-28">
-        {step === 'tracking' ? (
-          <TrackingScreen
-            orders={activeCustomerOrders}
-            tableName={tableName}
-            onBack={() => setStep('menu')}
-            onSubmitFeedback={onSubmitFeedback}
-          />
-        ) : (
-          <>
+      <nav aria-label={t('customer.navigation.label')} className="shrink-0 grid grid-cols-2 gap-2 border-b border-zinc-200 bg-white p-3">
+        {(['menu', 'feedback'] as const).map(page => (
+          <button
+            key={page}
+            type="button"
+            aria-pressed={step === page}
+            aria-controls={`customer-${page}`}
+            onClick={() => setStep(page)}
+            className={`min-h-11 rounded-full px-3 py-2 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${step === page ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600'}`}
+          >
+            {t(page === 'menu' ? 'customer.navigation.menu' : 'customer.navigation.feedback')}
+          </button>
+        ))}
+      </nav>
+      <div className="relative min-h-0 flex-1 overflow-y-auto pb-28">
+        <div id="customer-feedback" hidden={step !== 'feedback'} className="p-4 space-y-4">
+          <p className="text-xs font-bold text-zinc-500">{tableName}</p>
+          <h1 className="text-2xl font-black">{t('customer.navigation.feedback')}</h1>
+          {onSubmitFeedback
+            ? <TrackingFeedbackForm onSubmitFeedback={onSubmitFeedback} />
+            : <p className="text-sm text-zinc-500">{t('customer.feedback.unavailable')}</p>}
+        </div>
+        <div id="customer-menu" hidden={step !== 'menu'}>
             <section className="sticky top-0 z-20 bg-[#f7f7f8]/90 backdrop-blur-xl px-4 pt-4 pb-3 border-b border-white/70">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -329,6 +342,7 @@ export default function CustomerView({
             </section>
 
             <section className="px-4 pt-4 space-y-4">
+              {activeCustomerOrders.length > 0 && <TrackingScreen orders={activeCustomerOrders} />}
               <div className="rounded-[30px] bg-zinc-950 text-white p-5 overflow-hidden relative shadow-xl">
                 <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-orange-500/40 blur-2xl" />
                 <div className="relative flex items-start justify-between gap-4">
@@ -408,8 +422,7 @@ export default function CustomerView({
                 </div>
               )}
             </section>
-          </>
-        )}
+        </div>
       </div>
 
       {connectionProblem && step === 'menu' && (
@@ -424,13 +437,6 @@ export default function CustomerView({
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
           <p className="text-xs font-bold leading-relaxed">{menuError}</p>
         </div>
-      )}
-
-      {activeCustomerOrders.length > 0 && step === 'menu' && (
-        <button type="button" onClick={() => setStep('tracking')} className="absolute bottom-24 left-4 right-4 z-30 rounded-full bg-white/95 px-4 py-3 text-sm font-black text-zinc-950 shadow-lg border border-zinc-100 flex items-center justify-between backdrop-blur">
-          <span className="flex items-center gap-2"><Clock className="h-4 w-4 text-emerald-600" /> {t('customer.tracking.button')}</span>
-          <span className="text-zinc-400">{activeCustomerOrders.length}</span>
-        </button>
       )}
 
       {cart.length > 0 && step === 'menu' && (
@@ -640,32 +646,12 @@ function LoyaltySheet({ onClose }: { onClose: () => void }) {
   );
 }
 
-function TrackingScreen({
-  orders,
-  tableName,
-  onBack,
-  onSubmitFeedback,
-}: {
-  orders: Order[];
-  tableName: string;
-  onBack: () => void;
-  onSubmitFeedback?: CustomerProps['onSubmitFeedback'];
-}) {
+function TrackingScreen({ orders }: { orders: Order[] }) {
   const t = (key: I18nMessageKey) => translate(resolveInterfaceLocale(), key);
   return (
-    <div className="min-h-full p-4 space-y-4">
-      <button type="button" onClick={onBack} className="mt-2 flex items-center gap-1 text-sm font-black text-zinc-500"><ChevronLeft className="h-4 w-4" /> {t('customer.tracking.menu')}</button>
-      <div className="rounded-[32px] bg-zinc-950 text-white p-5">
-        <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.16em]">{tableName}</p>
-        <h1 className="mt-2 text-[31px] leading-none font-black tracking-[-0.06em]">{t('customer.tracking.titleShort')}</h1>
-      </div>
-      {orders.length === 0 ? (
-        <div className="rounded-[28px] bg-white p-8 text-center border border-zinc-100">
-          <Check className="mx-auto h-10 w-10 text-emerald-600" />
-          <p className="mt-3 font-black text-zinc-950">{t('customer.tracking.doneTitleShort')}</p>
-          <p className="mt-1 text-sm text-zinc-500">{t('customer.tracking.doneHintShort')}</p>
-        </div>
-      ) : orders.map(order => (
+    <section aria-label={t('customer.tracking.titleShort')} className="space-y-3">
+      <h2 className="flex items-center gap-2 text-base font-black"><Clock className="h-4 w-4 text-emerald-600" />{t('customer.tracking.titleShort')}</h2>
+      {orders.map(order => (
         <div key={order.id} className="rounded-[28px] bg-white p-4 shadow-sm border border-zinc-100 space-y-4">
           <div className="flex justify-between gap-3">
             <div>
@@ -674,7 +660,9 @@ function TrackingScreen({
             </div>
             <span className="font-black">{money(order.total)}</span>
           </div>
-          <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-black">
+          {order.status === 'paid' || order.status === 'cancelled' ? (
+            <p className="rounded-full bg-zinc-100 px-3 py-2 text-sm font-bold">{t(order.status === 'paid' ? 'customer.status.paid' : 'customer.status.cancelled')}</p>
+          ) : <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-black">
             {[
               ['pending', t('customer.status.pendingShort')],
               ['cooking', t('customer.status.cookingShort')],
@@ -685,11 +673,10 @@ function TrackingScreen({
               const active = index <= Math.max(activeIndex, 0);
               return <div key={status} className={`rounded-full py-2 ${active ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-400'}`}>{label}</div>;
             })}
-          </div>
+          </div>}
         </div>
       ))}
-      {onSubmitFeedback && <TrackingFeedbackForm onSubmitFeedback={onSubmitFeedback} />}
-    </div>
+    </section>
   );
 }
 
@@ -742,7 +729,7 @@ function TrackingFeedbackForm({
 
   if (sent) {
     return (
-      <div className="rounded-[28px] bg-white p-6 text-center border border-emerald-100">
+      <div role="status" className="rounded-[28px] bg-white p-6 text-center border border-emerald-100">
         <Check className="mx-auto h-8 w-8 text-emerald-600" />
         <p className="mt-2 font-black text-zinc-950">{t('customer.feedback.success')}</p>
       </div>

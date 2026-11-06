@@ -132,10 +132,11 @@ export function toViewOrder(order: OrderSnapshot): Order {
 }
 
 /** Map one public tracking projection to the Customer tracking view model. */
-export function toTrackingOrder(tracking: PublicOrderTracking): Order {
+export function toTrackingOrder(tracking: PublicOrderTracking, tableId: string): Order {
   return {
     id: tracking.orderId,
-    tableId: tracking.tableName,
+    tableId,
+    tableName: tracking.tableName,
     items: [
       {
         id: `${tracking.orderId}-summary`,

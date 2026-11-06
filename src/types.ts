@@ -62,7 +62,7 @@ export interface OrderItem {
   selectedOptionIds?: string[];
 }
 
-export type OrderStatus = 'pending' | 'cooking' | 'ready' | 'served' | 'paid';
+export type OrderStatus = 'pending' | 'cooking' | 'ready' | 'served' | 'paid' | 'cancelled';
 
 export interface Order {
   id: string;

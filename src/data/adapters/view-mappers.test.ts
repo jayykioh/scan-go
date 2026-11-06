@@ -87,7 +87,9 @@ describe('toViewOrder', () => {
 
 describe('toTrackingOrder', () => {
   it('maps the public tracking projection onto the Customer view model', () => {
-    const order = toTrackingOrder(publicOrderTrackingFixture);
+    const order = toTrackingOrder(publicOrderTrackingFixture, 'opaque-table-token');
+    expect(order.tableId).toBe('opaque-table-token');
+    expect(order.tableName).toBe(publicOrderTrackingFixture.tableName);
     expect(order.id).toBe(publicOrderTrackingFixture.orderId);
     expect(order.total).toBe(publicOrderTrackingFixture.totalVnd);
     expect(order.status).toBe(publicOrderTrackingFixture.status);

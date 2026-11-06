@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-11-06T04:01:48.036Z",
+  "generatedAt": "2026-11-06T04:39:59.318Z",
   "base": "https://scan-go-ashen.vercel.app",
   "token": "seed-table-token-06",
-  "passed": 17,
+  "passed": 19,
   "failed": 0,
   "screenshots": [
     "docs/feedback/artifacts/public-menu-a1-phone-page1.png",
@@ -26,7 +26,7 @@
     {
       "kind": "pass",
       "label": "Thực đơn đủ dài để kiểm tra phân trang",
-      "detail": "37 món"
+      "detail": "Trang 1/4"
     },
     {
       "kind": "pass",
@@ -55,13 +55,23 @@
     },
     {
       "kind": "pass",
-      "label": "Trang cuối: nút Tiếp bị khoá",
-      "detail": "Trang 4/4"
+      "label": "Bấm Trước từ trang 2: quay lại trang 1",
+      "detail": "Trang 1/4"
     },
     {
       "kind": "pass",
-      "label": "Trang cuối hiện đúng số món còn lại",
-      "detail": "7 món"
+      "label": "Mỗi trang trước trang cuối đủ 10 món",
+      "detail": "10 + 10 + 10 + 7"
+    },
+    {
+      "kind": "pass",
+      "label": "Trang cuối là phần còn lại, số trang khớp tổng món",
+      "detail": "7 món cuối / 37 món / 4 trang"
+    },
+    {
+      "kind": "pass",
+      "label": "Trang cuối: nút Tiếp bị khoá",
+      "detail": "Trang 4/4"
     },
     {
       "kind": "pass",

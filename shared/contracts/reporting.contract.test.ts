@@ -5,6 +5,7 @@ import {
   dailyStatsSchema,
   dailyTableStatsSchema,
   reportingRebuildResultSchema,
+  reportingSummaryInputSchema,
   reportingSummaryResultSchema,
 } from './reporting.contract.js';
 import {
@@ -120,5 +121,46 @@ describe('reporting summary and rebuild schemas', () => {
         ),
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('reporting summary input (REQ-RPT-001)', () => {
+  it('accepts a custom range with both day keys', () => {
+    expect(
+      reportingSummaryInputSchema.safeParse({
+        tenantId: 'tenant-alpha',
+        period: 'custom',
+        fromDay: '20261101',
+        toDay: '20261107',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects a custom range without both bounds or with the days reversed', () => {
+    expect(
+      reportingSummaryInputSchema.safeParse({
+        tenantId: 'tenant-alpha',
+        period: 'custom',
+        fromDay: '20261101',
+      }).success,
+    ).toBe(false);
+    expect(
+      reportingSummaryInputSchema.safeParse({
+        tenantId: 'tenant-alpha',
+        period: 'custom',
+        fromDay: '20261107',
+        toDay: '20261101',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('keeps the quick periods anchor-based', () => {
+    expect(
+      reportingSummaryInputSchema.safeParse({
+        tenantId: 'tenant-alpha',
+        period: 'week',
+        anchorDay: '20261106',
+      }).success,
+    ).toBe(true);
   });
 });

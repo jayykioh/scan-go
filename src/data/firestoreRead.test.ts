@@ -67,6 +67,24 @@ describe('resolvePeriodRange', () => {
       toDay: '20260930',
     });
   });
+
+  it('uses a custom range and rejects a missing or oversized one', () => {
+    expect(
+      resolvePeriodRange('custom', undefined, {
+        fromDay: '20261101',
+        toDay: '20261107',
+      }),
+    ).toEqual({ fromDay: '20261101', toDay: '20261107' });
+    expect(() => resolvePeriodRange('custom', undefined)).toThrow(
+      'Khoảng ngày chưa được chọn',
+    );
+    expect(() =>
+      resolvePeriodRange('custom', undefined, {
+        fromDay: '20260101',
+        toDay: '20260331',
+      }),
+    ).toThrow('Chọn tối đa 62 ngày');
+  });
 });
 
 describe('readReportingSummary', () => {
@@ -115,6 +133,29 @@ describe('readReportingSummary', () => {
     await expect(readReportingSummary('day', REPORTING_DAY_FIXTURE)).rejects.toThrow(
       'Chưa chọn cửa hàng',
     );
+  });
+
+  it('reads a custom range without resolving the tenant "today"', async () => {
+    mocks.getFirebaseFirestore.mockReturnValue({});
+    mocks.getFirebaseAuth.mockReturnValue({ currentUser: { uid: 'u1' } });
+    mocks.getDocs
+      .mockResolvedValueOnce({
+        docs: [docSnapshot(REPORTING_DAY_FIXTURE, dailyStatsFixture)],
+      })
+      .mockResolvedValueOnce({ docs: [] })
+      .mockResolvedValueOnce({ docs: [] });
+
+    const result = await readReportingSummary(
+      'custom',
+      undefined,
+      't1',
+      { fromDay: REPORTING_DAY_FIXTURE, toDay: REPORTING_DAY_FIXTURE },
+    );
+
+    expect(result.fromDay).toBe(REPORTING_DAY_FIXTURE);
+    expect(result.toDay).toBe(REPORTING_DAY_FIXTURE);
+    expect(result.period).toBe('custom');
+    expect(mocks.getDoc).not.toHaveBeenCalled();
   });
 });
 

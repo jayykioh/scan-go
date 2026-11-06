@@ -15,6 +15,10 @@
 ## Queries
 - Customer tracking by an Order-specific `trackingToken`.
 - Authorized Kitchen, Waiter, Cashier, Owner, and Solo Order views.
+- Owner order history: `callableOrderListHistory` returns 15 Orders a page for one tenant-local day
+  range, newest first, with each Order's `paidAt`, `paymentMethod`, cancellation reason, and
+  `statusEvents`. `orders` is not client-readable, so the read is server-side and gated to the Owner
+  or an active Cashier; the day range is resolved in the tenant's IANA timezone (REQ-ORD-007).
 - Table service state for the floor plan: `callableOrderListTableStatus` folds the tenant's open
   Orders into one state per table. Ordering owns this read because Orders are the source of truth,
   and Table Access only draws it. The projection is deliberately narrow — `tableId`, `state`, three

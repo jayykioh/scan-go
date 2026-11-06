@@ -16,6 +16,7 @@ import {
   type OrderArchivePlan,
   type OrderCancelInput,
   type OrderCorrectionMutationPlan,
+  type OrderHistoryStatusFilter,
   type OrderLineSnapshot,
   type OrderSnapshot,
   type OrderStaffCreateInput,
@@ -55,6 +56,92 @@ export const ORDER_ALREADY_CANCELLED_MESSAGE = 'Đơn hàng đã được huỷ 
 
 export function nowIso(): string {
   return new Date().toISOString();
+}
+
+/** Open statuses are the product's existing "unpaid" definition (REQ-ORD-007). */
+const ORDER_HISTORY_OPEN_STATUSES: OrderStatus[] = [
+  'pending',
+  'cooking',
+  'ready',
+  'served',
+];
+
+/** Status filter of an Owner history page; null means every status. */
+export function orderHistoryStatuses(
+  filter: OrderHistoryStatusFilter,
+): OrderStatus[] | null {
+  if (filter === 'all') return null;
+  if (filter === 'unpaid') return ORDER_HISTORY_OPEN_STATUSES;
+  if (filter === 'paid') return ['paid'];
+  return ['cancelled'];
+}
+
+/**
+ * UTC instant of a tenant-local midnight, so a history day range means the
+ * same thing to the Owner and to Firestore (REQ-ORD-007).
+ */
+export function tenantDayStartUtc(dayKey: string, timezone: string): string {
+  const year = Number(dayKey.slice(0, 4));
+  const month = Number(dayKey.slice(4, 6));
+  const day = Number(dayKey.slice(6, 8));
+  const midnightUtc = Date.UTC(year, month - 1, day, 0, 0, 0);
+  const probe = new Date(midnightUtc);
+  if (
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  ) {
+    throw new Error(`Invalid day key: ${dayKey}`);
+  }
+  // Two passes settle the offset when the zone changes on that midnight.
+  const firstPass = midnightUtc - timezoneOffsetMs(midnightUtc, timezone);
+  const settled = midnightUtc - timezoneOffsetMs(firstPass, timezone);
+  return new Date(settled).toISOString();
+}
+
+/** The tenant-local day after `dayKey`, used as an exclusive upper bound. */
+export function nextDayKey(dayKey: string): string {
+  const date = new Date(
+    Date.UTC(
+      Number(dayKey.slice(0, 4)),
+      Number(dayKey.slice(4, 6)) - 1,
+      Number(dayKey.slice(6, 8)),
+    ),
+  );
+  date.setUTCDate(date.getUTCDate() + 1);
+  const year = String(date.getUTCFullYear()).padStart(4, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
+
+function timezoneOffsetMs(instantMs: number, timezone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(new Date(instantMs));
+  const read = (type: Intl.DateTimeFormatPartTypes): number => {
+    const value = Number(
+      parts.find((part) => part.type === type)?.value ?? '0',
+    );
+    // Some ICU builds render midnight as 24.
+    return type === 'hour' && value === 24 ? 0 : value;
+  };
+  const asUtcMs = Date.UTC(
+    read('year'),
+    read('month') - 1,
+    read('day'),
+    read('hour'),
+    read('minute'),
+    read('second'),
+  );
+  return asUtcMs - Math.floor(instantMs / 1000) * 1000;
 }
 
 /** Parse a strict callable payload or reject with invalid-argument. */

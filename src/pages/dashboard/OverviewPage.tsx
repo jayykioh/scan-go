@@ -6,6 +6,13 @@ import { formatVnd, getReportingSummary } from '../../data/adapters/reporting.ad
 import { useStoreSlice } from '../../data/tenantStore';
 import { formatPlanLabel } from '../../data/adapters/subscription-view';
 import { useStoreTenantId } from '../../data/tenantStore';
+import {
+  dateInputFromDayKey,
+  dayKeyFromDateInput,
+  formatDayKeyLabel,
+  localDayKey,
+  validateDayRange,
+} from '../../utils/dayRange';
 import TablePerformance from './overview/TablePerformance';
 
 interface TopItem {
@@ -36,6 +43,12 @@ function formatDayLabel(dayKey: string): string {
 export default function OverviewPage() {
   const tenantId = useStoreTenantId();
   const [period, setPeriod] = useState<ReportingPeriod>('day');
+  // A custom range is independent of the quick day/week/month buttons.
+  const today = localDayKey();
+  const [fromDay, setFromDay] = useState(today);
+  const [toDay, setToDay] = useState(today);
+  const [customRange, setCustomRange] = useState(false);
+  const [rangeProblem, setRangeProblem] = useState<string | null>(null);
   const [summary, setSummary] = useState<ReportingSummaryResult | null>(null);
   const [subscription, subscriptionState] = useStoreSlice('subscription');
   const [reportError, setReportError] = useState<string | null>(null);
@@ -47,9 +60,21 @@ export default function OverviewPage() {
       setReportError(null);
       return;
     }
+    const problem = customRange ? validateDayRange(fromDay, toDay) : null;
+    setRangeProblem(problem);
+    // An invalid range must not leave older figures under the new range label.
+    if (problem) {
+      setSummary(null);
+      setReportError(null);
+      return;
+    }
     let cancelled = false;
     setReportError(null);
-    void getReportingSummary({ tenantId, period })
+    void getReportingSummary({
+      tenantId,
+      period: customRange ? 'custom' : period,
+      range: customRange ? { fromDay, toDay } : undefined,
+    })
       .then((result) => {
         if (!cancelled) setSummary(result);
       })
@@ -64,13 +89,14 @@ export default function OverviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [tenantId, period]);
+  }, [tenantId, period, customRange, fromDay, toDay]);
 
   const currentPlan = subscription ? formatPlanLabel(subscription.plan) : '—';
   const hasLiveData = summary !== null;
-  const periodLabel =
-    PERIOD_OPTIONS.find((option) => option.value === period)?.rangeLabel ??
-    'Hôm nay';
+  const periodLabel = customRange
+    ? `${formatDayKeyLabel(fromDay)} – ${formatDayKeyLabel(toDay)}`
+    : PERIOD_OPTIONS.find((option) => option.value === period)?.rangeLabel ??
+      'Hôm nay';
   const periodRevenue = summary?.totals.revenueVnd ?? 0;
   const grossProfitVnd = summary?.totals.grossProfitVnd ?? null;
   const totalOrders = summary?.totals.createdOrderCount ?? 0;
@@ -109,23 +135,72 @@ export default function OverviewPage() {
         </Link>
       </div>
 
-      {/* Period selector */}
-      <div className="flex items-center gap-2 mb-6" role="group" aria-label="Chọn kỳ báo cáo">
-        {PERIOD_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={period === option.value}
-            onClick={() => setPeriod(option.value)}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-colors ${
-              period === option.value
-                ? 'bg-zinc-900 text-white border-zinc-900'
-                : 'bg-white text-zinc-500 border-zinc-300 hover:border-zinc-900 hover:text-zinc-900'
-            }`}
+      {/* Period selector: quick periods or one custom day range */}
+      <div className="mb-6 space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+          <div
+            className="flex items-center gap-2"
+            role="group"
+            aria-label="Chọn kỳ báo cáo"
           >
-            {option.label}
-          </button>
-        ))}
+            {PERIOD_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={!customRange && period === option.value}
+                onClick={() => {
+                  setPeriod(option.value);
+                  setCustomRange(false);
+                }}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-colors ${
+                  !customRange && period === option.value
+                    ? 'bg-zinc-900 text-white border-zinc-900'
+                    : 'bg-white text-zinc-500 border-zinc-300 hover:border-zinc-900 hover:text-zinc-900'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-end gap-3 lg:ml-auto">
+            <label className="flex flex-col gap-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+              Từ ngày
+              <input
+                type="date"
+                value={dateInputFromDayKey(fromDay)}
+                max={dateInputFromDayKey(toDay)}
+                onChange={(event) => {
+                  const next = dayKeyFromDateInput(event.target.value);
+                  if (!next) return;
+                  setFromDay(next);
+                  setCustomRange(true);
+                }}
+                className="border-hard bg-white px-3 py-2 font-sans text-sm font-bold text-zinc-900 focus:outline-none focus:border-orange-600"
+              />
+            </label>
+            <label className="flex flex-col gap-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+              Đến ngày
+              <input
+                type="date"
+                value={dateInputFromDayKey(toDay)}
+                min={dateInputFromDayKey(fromDay)}
+                onChange={(event) => {
+                  const next = dayKeyFromDateInput(event.target.value);
+                  if (!next) return;
+                  setToDay(next);
+                  setCustomRange(true);
+                }}
+                className="border-hard bg-white px-3 py-2 font-sans text-sm font-bold text-zinc-900 focus:outline-none focus:border-orange-600"
+              />
+            </label>
+          </div>
+        </div>
+        {rangeProblem && (
+          <p role="alert" className="text-xs font-bold text-red-600">
+            {rangeProblem}
+          </p>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -292,6 +367,42 @@ export default function OverviewPage() {
           </div>
         </div>
       </div>
+
+      {/* A day-by-day list stays readable on a phone, where the chart's hover
+          tooltip is not reachable. */}
+      {dailyBreakdown.length > 0 && (
+        <details className="mt-6 border-hard bg-white">
+          <summary className="cursor-pointer select-none p-4 font-bold text-xs uppercase tracking-widest text-zinc-700">
+            Chi tiết theo ngày
+          </summary>
+          <div className="border-t border-zinc-100">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-100 text-left font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+                  <th className="px-4 py-2 font-bold">Ngày</th>
+                  <th className="px-4 py-2 font-bold text-right">Đơn đã thu</th>
+                  <th className="px-4 py-2 font-bold text-right">Doanh thu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailyBreakdown.map((day) => (
+                  <tr key={day.dayKey} className="border-b border-zinc-50 last:border-0">
+                    <td className="px-4 py-2 font-medium text-zinc-700">
+                      {formatDayKeyLabel(day.dayKey)}
+                    </td>
+                    <td className="px-4 py-2 text-right text-zinc-500">
+                      {day.totals.paidOrderCount}
+                    </td>
+                    <td className="px-4 py-2 text-right font-bold text-zinc-900">
+                      {formatVnd(day.totals.revenueVnd)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
 
       {/* Table stats were already returned by the summary but never shown
           (REQ-RPT-001). */}

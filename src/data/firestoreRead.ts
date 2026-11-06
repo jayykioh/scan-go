@@ -16,6 +16,7 @@ import {
   dailyTableStatsSchema,
   reportingSummaryResultSchema,
   REPORTING_CONTRACT_VERSION,
+  REPORTING_MAX_RANGE_DAYS,
   type DailyItemStats,
   type DailyStats,
   type DailyTableStats,
@@ -45,6 +46,7 @@ import {
   getFirebaseFirestore,
 } from '../services/firebase/client';
 import { readCached } from './readCache';
+import { validateDayRange } from '../utils/dayRange';
 
 /**
  * Direct Firestore reads for surfaces where the security rules already grant
@@ -52,7 +54,7 @@ import { readCached } from './readCache';
  * data stay on the server callables. See docs/RULES_FIREBASE.md.
  */
 
-const MAX_PERIOD_DAYS = 62;
+const MAX_PERIOD_DAYS = REPORTING_MAX_RANGE_DAYS;
 const MAX_ITEMS_PER_DAY = 100;
 const MAX_TABLES_PER_DAY = 100;
 const PROMOTION_READ_LIMIT = 100;
@@ -168,8 +170,22 @@ function addDays(dayKey: string, amount: number): string {
 /** Inclusive tenant-local day range for a period; week starts on Monday. */
 export function resolvePeriodRange(
   period: ReportingPeriod,
-  anchorDay: string,
+  anchorDay: string | undefined,
+  range?: { fromDay: string; toDay: string },
 ): { fromDay: string; toDay: string } {
+  if (period === 'custom') {
+    if (!range) {
+      throw new Error('Khoảng ngày chưa được chọn.');
+    }
+    const problem = validateDayRange(range.fromDay, range.toDay);
+    if (problem) {
+      throw new Error(problem);
+    }
+    return range;
+  }
+  if (!anchorDay) {
+    throw new Error('Ngày mốc chưa được chọn.');
+  }
   const anchor = parseDayKey(anchorDay);
   if (period === 'day') {
     return { fromDay: anchorDay, toDay: anchorDay };
@@ -367,13 +383,17 @@ export async function readReportingSummary(
   period: ReportingPeriod,
   anchorDay?: string,
   requestedTenantId?: string,
+  range?: { fromDay: string; toDay: string },
 ): Promise<ReportingSummaryResult> {
   const db = requireDb();
   const userId = requireUserId();
   const tenantId = requestedTenantId ?? (await requireTenantId(userId));
+  // A custom range carries its own bounds, so it needs no "today" read.
   const resolvedAnchor =
-    anchorDay ?? (await readTenantToday(db, tenantId, userId));
-  const { fromDay, toDay } = resolvePeriodRange(period, resolvedAnchor);
+    period === 'custom'
+      ? anchorDay
+      : anchorDay ?? (await readTenantToday(db, tenantId, userId));
+  const { fromDay, toDay } = resolvePeriodRange(period, resolvedAnchor, range);
 
   return readCached(
     {

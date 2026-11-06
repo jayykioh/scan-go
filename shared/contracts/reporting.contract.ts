@@ -1,9 +1,12 @@
 import { z } from 'zod';
 import {
+  dayKeySchema,
   isoUtcTimestampSchema,
   nonNegativeIntSchema,
   vndSchema,
 } from '../validation.js';
+
+export { dayKeySchema };
 
 /**
  * Reporting contract (REQ-RPT-001, REQ-RPT-002, ADR 0005).
@@ -14,11 +17,10 @@ import {
  */
 export const REPORTING_CONTRACT_VERSION = 1;
 
-export const dayKeySchema = z
-  .string()
-  .regex(/^\d{8}$/, 'Expected a tenant-local yyyymmdd day key');
+/** Largest custom day range one reporting read covers (REQ-RPT-001). */
+export const REPORTING_MAX_RANGE_DAYS = 62;
 
-export const reportingPeriodSchema = z.enum(['day', 'week', 'month']);
+export const reportingPeriodSchema = z.enum(['day', 'week', 'month', 'custom']);
 export type ReportingPeriod = z.infer<typeof reportingPeriodSchema>;
 
 /** Gross profit may be negative, so it is a signed integer, never a float. */
@@ -84,11 +86,28 @@ export const dailyTableStatsSchema = z.strictObject({
 
 export type DailyTableStats = z.infer<typeof dailyTableStatsSchema>;
 
-export const reportingSummaryInputSchema = z.strictObject({
-  tenantId: z.string().min(1),
-  period: reportingPeriodSchema,
-  anchorDay: dayKeySchema.optional(),
-});
+export const reportingSummaryInputSchema = z
+  .strictObject({
+    tenantId: z.string().min(1),
+    period: reportingPeriodSchema,
+    anchorDay: dayKeySchema.optional(),
+    /** Inclusive tenant-local range; required when `period` is `custom`. */
+    fromDay: dayKeySchema.optional(),
+    toDay: dayKeySchema.optional(),
+  })
+  .refine(
+    (input) =>
+      input.period !== 'custom' ||
+      (input.fromDay !== undefined && input.toDay !== undefined),
+    'A custom period needs fromDay and toDay',
+  )
+  .refine(
+    (input) =>
+      input.fromDay === undefined ||
+      input.toDay === undefined ||
+      input.fromDay <= input.toDay,
+    'fromDay must not be after toDay',
+  );
 
 export type ReportingSummaryInput = z.infer<
   typeof reportingSummaryInputSchema

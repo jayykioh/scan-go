@@ -17,6 +17,7 @@ const RegisterPage = lazyRetry(() => import('./pages/RegisterPage'), 'RegisterPa
 const StaffLoginPage = lazyRetry(() => import('./pages/StaffLoginPage'), 'StaffLoginPage');
 
 const OverviewPage = lazyRetry(() => import('./pages/dashboard/OverviewPage'), 'OverviewPage');
+const OrderHistoryPage = lazyRetry(() => import('./pages/dashboard/OrderHistoryPage'), 'OrderHistoryPage');
 const ManagementPage = lazyRetry(() => import('./pages/dashboard/ManagementPage'), 'ManagementPage');
 const StaffPage = lazyRetry(() => import('./pages/dashboard/StaffPage'), 'StaffPage');
 const SettingsPage = lazyRetry(() => import('./pages/dashboard/SettingsPage'), 'SettingsPage');
@@ -102,6 +103,7 @@ const router = createBrowserRouter([
         errorElement: <RouteErrorBoundary />,
         children: [
           { index: true, element: <OverviewPage /> },
+          { path: 'orders', element: <OrderHistoryPage /> },
           { path: 'manage', element: <ManagementPage /> },
           { path: 'menu', element: <MenuPage /> },
           { path: 'promotions', element: <PromotionsPage /> },

@@ -10,6 +10,8 @@ import {
   buildOrderStaffCreateRequestHash,
   buildPublicOrderTracking,
   computeOrderTotal,
+  nextDayKey,
+  orderHistoryStatuses,
   parseOrderCancelInput,
   parseOrderStaffCreateInput,
   parseOrderSubmitInput,
@@ -17,6 +19,7 @@ import {
   resolveSelectedModifiers,
   resolveStaffOrderTable,
   summarizeItems,
+  tenantDayStartUtc,
   type BuildOrderInput,
 } from './service.js';
 import {
@@ -662,5 +665,41 @@ describe('staff order entry (REQ-ORD-005)', () => {
         tableId: 'table-02',
       }),
     );
+  });
+});
+
+describe('order history day window (REQ-ORD-007)', () => {
+  it('resolves a tenant-local midnight to the matching UTC instant', () => {
+    expect(tenantDayStartUtc('20261106', 'Asia/Ho_Chi_Minh')).toBe(
+      '2026-11-05T17:00:00.000Z',
+    );
+    // New York is on standard time from 2026-11-01 (UTC-5).
+    expect(tenantDayStartUtc('20261106', 'America/New_York')).toBe(
+      '2026-11-06T05:00:00.000Z',
+    );
+  });
+
+  it('rejects a day key that is not a real date', () => {
+    expect(() => tenantDayStartUtc('20261340', 'Asia/Ho_Chi_Minh')).toThrow(
+      'Invalid day key',
+    );
+  });
+
+  it('moves to the next tenant-local day across month and leap boundaries', () => {
+    expect(nextDayKey('20261231')).toBe('20270101');
+    expect(nextDayKey('20240228')).toBe('20240229');
+    expect(nextDayKey('20261231') > '20261231').toBe(true);
+  });
+
+  it('maps each history filter to the statuses the till already uses', () => {
+    expect(orderHistoryStatuses('all')).toBeNull();
+    expect(orderHistoryStatuses('unpaid')).toEqual([
+      'pending',
+      'cooking',
+      'ready',
+      'served',
+    ]);
+    expect(orderHistoryStatuses('paid')).toEqual(['paid']);
+    expect(orderHistoryStatuses('cancelled')).toEqual(['cancelled']);
   });
 });

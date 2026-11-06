@@ -77,9 +77,27 @@ describe('getReportingSummary', () => {
       'day',
       undefined,
       'tenant-alpha',
+      undefined,
     );
     expect(result.totals.revenueVnd).toBe(200000);
     expect(Number.isInteger(result.totals.grossProfitVnd)).toBe(true);
+  });
+
+  it('passes a custom day range through to the daily stats read', async () => {
+    mocks.readReportingSummary.mockResolvedValue(reportingSummaryResultFixture);
+
+    await getReportingSummary({
+      tenantId: 'tenant-alpha',
+      period: 'custom',
+      range: { fromDay: '20261101', toDay: '20261107' },
+    });
+
+    expect(mocks.readReportingSummary).toHaveBeenCalledWith(
+      'custom',
+      undefined,
+      'tenant-alpha',
+      { fromDay: '20261101', toDay: '20261107' },
+    );
   });
 });
 

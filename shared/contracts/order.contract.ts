@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  dayKeySchema,
   isoUtcTimestampSchema,
   nonNegativeIntSchema,
   positiveIntSchema,
@@ -316,6 +317,57 @@ export const orderListResultSchema = z.strictObject({
 });
 
 export type OrderListResult = z.infer<typeof orderListResultSchema>;
+
+/**
+ * Owner order history (REQ-ORD-007). `orders` is not client-readable, so the
+ * screen reads one bounded server page of 15 Orders at a time.
+ */
+export const ORDER_HISTORY_PAGE_SIZE = 15;
+
+export const orderHistoryStatusFilterSchema = z.enum([
+  'all',
+  'unpaid',
+  'paid',
+  'cancelled',
+]);
+
+export type OrderHistoryStatusFilter = z.infer<
+  typeof orderHistoryStatusFilterSchema
+>;
+
+export const orderHistoryListInputSchema = z.strictObject({
+  tenantId: z.string().min(1),
+  /** Inclusive tenant-local day range; the server resolves the UTC bounds. */
+  fromDay: dayKeySchema,
+  toDay: dayKeySchema,
+  status: orderHistoryStatusFilterSchema.default('all'),
+  page: positiveIntSchema.default(1),
+});
+
+export type OrderHistoryListInput = z.infer<typeof orderHistoryListInputSchema>;
+
+/** One history row: the Order plus its payment and status history. */
+export const orderHistoryRowSchema = z.strictObject({
+  order: orderSnapshotSchema,
+  /** Server-set when a Payment settled this Order; null while unpaid. */
+  paidAt: isoUtcTimestampSchema.nullable(),
+  paymentMethod: paymentMethodSchema.nullable(),
+  cancellationReason: z.string().min(1).max(500).nullable(),
+  statusEvents: z.array(orderStatusEventSchema).max(20),
+});
+
+export type OrderHistoryRow = z.infer<typeof orderHistoryRowSchema>;
+
+export const orderHistoryPageSchema = z.strictObject({
+  schemaVersion: z.literal(ORDER_CONTRACT_VERSION),
+  tenantId: z.string().min(1),
+  page: positiveIntSchema,
+  pageSize: z.literal(ORDER_HISTORY_PAGE_SIZE),
+  hasMore: z.boolean(),
+  rows: z.array(orderHistoryRowSchema).max(ORDER_HISTORY_PAGE_SIZE),
+});
+
+export type OrderHistoryPage = z.infer<typeof orderHistoryPageSchema>;
 
 export const orderTrackingInputSchema = z.strictObject({
   trackingToken: z.string().min(1).max(256),

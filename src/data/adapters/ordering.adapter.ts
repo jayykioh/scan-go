@@ -2,6 +2,7 @@ import { doc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import {
   orderCancellationResultSchema,
+  orderHistoryPageSchema,
   orderSnapshotSchema,
   orderSubmitResultSchema,
   orderTrackingResultSchema,
@@ -9,6 +10,8 @@ import {
   type OrderCancelInput,
   type OrderCancellationResult,
   type OrderCartLineInput,
+  type OrderHistoryListInput,
+  type OrderHistoryPage,
   type OrderPaymentMode,
   type OrderSnapshot,
   type OrderStaffCreateInput,
@@ -212,6 +215,25 @@ export function mapStoredOrder(
     ...data,
     orderId,
   });
+}
+
+/**
+ * One bounded page of the Owner order history (REQ-ORD-007). `orders` is not
+ * client-readable, so this is a server read with the tenant-local day range.
+ */
+export async function listOrderHistory(
+  request: OrderHistoryListInput,
+): Promise<OrderHistoryPage> {
+  const functions = getFirebaseFunctions();
+  if (!functions) {
+    throw new Error('Firebase chưa được cấu hình.');
+  }
+  const callable = httpsCallable<OrderHistoryListInput, OrderHistoryPage>(
+    functions,
+    'callableOrderListHistory',
+  );
+  const result = await callable(request);
+  return orderHistoryPageSchema.parse(result.data);
 }
 
 /** Bounded listener for one Customer tracking document; unsubscribe on exit. */

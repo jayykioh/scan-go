@@ -20,6 +20,7 @@ import {
   MessageSquarePlus,
   MonitorPlay,
   BadgePercent,
+  ReceiptText,
   X,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -226,6 +227,10 @@ export default function DashboardLayout() {
           <NavLink end to="/dashboard" className={navLinkClass}>
             <LayoutGrid className="w-4 h-4" />
             Doanh thu
+          </NavLink>
+          <NavLink to="/dashboard/orders" className={navLinkClass}>
+            <ReceiptText className="w-4 h-4" />
+            Lịch sử đơn
           </NavLink>
           <NavLink to="/operation" className={navLinkClass}>
             <MonitorPlay className="w-4 h-4" />

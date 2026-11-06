@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   CUSTOMER_NOTE_MAX_LENGTH,
+  ORDER_HISTORY_PAGE_SIZE,
+  orderHistoryListInputSchema,
+  orderHistoryPageSchema,
+  orderHistoryRowSchema,
   orderSubmitInputSchema,
   orderSnapshotSchema,
 } from './order.contract';
-import { pendingOrderFixture } from '@shared/fixtures/order.fixture';
+import {
+  orderStatusEventFixture,
+  pendingOrderFixture,
+} from '@shared/fixtures/order.fixture';
 
 const submitInput = {
   token: 'tok_1',
@@ -53,5 +60,82 @@ describe('customerNote', () => {
     const stored: Record<string, unknown> = { ...pendingOrderFixture };
     delete stored.customerNote;
     expect(orderSnapshotSchema.parse(stored).customerNote).toBeUndefined();
+  });
+});
+
+describe('order history contract (REQ-ORD-007)', () => {
+  const row = {
+    order: pendingOrderFixture,
+    paidAt: null,
+    paymentMethod: null,
+    cancellationReason: null,
+    statusEvents: [orderStatusEventFixture],
+  };
+
+  it('defaults the filter and page, and accepts one tenant-local day range', () => {
+    const parsed = orderHistoryListInputSchema.parse({
+      tenantId: 'tenant-alpha',
+      fromDay: '20261101',
+      toDay: '20261107',
+    });
+    expect(parsed.status).toBe('all');
+    expect(parsed.page).toBe(1);
+  });
+
+  it('rejects a malformed day key, an unknown filter, and a page below one', () => {
+    expect(
+      orderHistoryListInputSchema.safeParse({
+        tenantId: 'tenant-alpha',
+        fromDay: '2026-11-01',
+        toDay: '20261107',
+      }).success,
+    ).toBe(false);
+    expect(
+      orderHistoryListInputSchema.safeParse({
+        tenantId: 'tenant-alpha',
+        fromDay: '20261101',
+        toDay: '20261107',
+        status: 'refunded',
+      }).success,
+    ).toBe(false);
+    expect(
+      orderHistoryListInputSchema.safeParse({
+        tenantId: 'tenant-alpha',
+        fromDay: '20261101',
+        toDay: '20261107',
+        page: 0,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('parses one row with its payment facts and status history', () => {
+    const parsed = orderHistoryRowSchema.parse(row);
+    expect(parsed.order.orderId).toBe(pendingOrderFixture.orderId);
+    expect(parsed.paidAt).toBeNull();
+    expect(parsed.statusEvents).toHaveLength(1);
+  });
+
+  it('bounds one page to fifteen rows and the fixed page size', () => {
+    const page = {
+      schemaVersion: 2,
+      tenantId: 'tenant-alpha',
+      page: 1,
+      pageSize: ORDER_HISTORY_PAGE_SIZE,
+      hasMore: false,
+      rows: [row],
+    };
+    expect(orderHistoryPageSchema.safeParse(page).success).toBe(true);
+    expect(
+      orderHistoryPageSchema.safeParse({
+        ...page,
+        pageSize: ORDER_HISTORY_PAGE_SIZE + 1,
+      }).success,
+    ).toBe(false);
+    expect(
+      orderHistoryPageSchema.safeParse({
+        ...page,
+        rows: Array.from({ length: ORDER_HISTORY_PAGE_SIZE + 1 }, () => row),
+      }).success,
+    ).toBe(false);
   });
 });

@@ -14,6 +14,8 @@ export interface ReportingSummaryRequest {
   tenantId: string;
   period: ReportingPeriod;
   anchorDay?: string;
+  /** Inclusive tenant-local range, used when `period` is `custom`. */
+  range?: { fromDay: string; toDay: string };
 }
 
 /** Format integer VND for display. Money never becomes a float. */
@@ -84,6 +86,7 @@ export async function getReportingSummary(
     request.period,
     request.anchorDay,
     request.tenantId,
+    request.range,
   );
 }
 

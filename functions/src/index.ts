@@ -74,6 +74,7 @@ export {
 export {
   callableOrderCancelUnpaid,
   callableOrderGetTracking,
+  callableOrderListHistory,
   callableOrderListKitchen,
   callableOrderListTableInvoices,
   callableOrderListTableStatus,

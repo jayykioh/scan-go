@@ -21,4 +21,9 @@ export type AppLocale = z.infer<typeof localeSchema>;
 
 export const timezoneSchema = z.string().min(1);
 
+/** Tenant-local calendar day, `yyyymmdd` (REQ-RPT-002). */
+export const dayKeySchema = z
+  .string()
+  .regex(/^\d{8}$/, 'Expected a tenant-local yyyymmdd day key');
+
 export const schemaVersionSchema = z.number().int().positive();

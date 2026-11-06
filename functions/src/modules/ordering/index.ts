@@ -8,9 +8,14 @@ import type {
 } from 'firebase-admin/firestore';
 import {
   ORDER_CONTRACT_VERSION,
+  ORDER_HISTORY_PAGE_SIZE,
   orderCancellationResultSchema,
+  orderHistoryListInputSchema,
+  orderHistoryPageSchema,
+  orderHistoryRowSchema,
   orderListResultSchema,
   orderPaymentMutationPlanSchema,
+  orderStatusEventSchema,
   orderStatusMutationPlanSchema,
   orderSubmitResultSchema,
   orderTableListInputSchema,
@@ -64,7 +69,9 @@ import {
   buildOrderStaffCreateRequestHash,
   buildPublicOrderTracking,
   isOrderStatus,
+  nextDayKey,
   nowIso,
+  orderHistoryStatuses,
   ORDER_IDEMPOTENCY_CONFLICT_MESSAGE,
   ORDER_INVALID_TABLE_MESSAGE,
   ORDER_INVALID_TOKEN_MESSAGE,
@@ -75,6 +82,7 @@ import {
   parseOrderSubmitInput,
   parsePublicMenuItem,
   resolveStaffOrderTable,
+  tenantDayStartUtc,
   type IdempotencyRecord,
 } from './service.js';
 import {
@@ -126,6 +134,7 @@ const ORDERING_CASHIER_DENIED_MESSAGE =
 const ORDERING_KITCHEN_DENIED_MESSAGE =
   'Chỉ bếp hoặc chủ cửa hàng xem được danh sách này.';
 const ORDERING_INVALID_MESSAGE = 'Yêu cầu không hợp lệ.';
+const ORDER_HISTORY_RANGE_INVALID_MESSAGE = 'Khoảng ngày không hợp lệ.';
 const ORDER_PROMOTION_MEMBER_MISSING_MESSAGE =
   'Không tìm thấy hội viên để trừ điểm.';
 
@@ -1285,6 +1294,98 @@ export const callableOrderListTableInvoices = onCall(
     });
   },
 );
+
+/**
+ * Owner order history (REQ-ORD-007): one bounded page of Orders for a
+ * tenant-local day range, with the payment facts and the status history each
+ * row prints. `orders` is not client-readable, so the read is server-side and
+ * gated to the Owner or an active Cashier.
+ *
+ * shortcut: "unpaid" maps to the open statuses the till already treats as
+ * unpaid, so a Pay-First Order that was prepaid but is still in preparation
+ * appears there too (its row prints "Đã trả trước"); add a stored `isPaid`
+ * flag and composite index when a Pay-First shop needs exact filtering.
+ */
+export const callableOrderListHistory = onCall(CALL_OPTIONS, async (request) => {
+  const uid = requireUid(request.auth?.uid);
+  assertAppCheck(request);
+  const parsed = orderHistoryListInputSchema.safeParse(request.data ?? {});
+  if (!parsed.success) {
+    throw new HttpsError('invalid-argument', ORDERING_INVALID_MESSAGE);
+  }
+  const input = parsed.data;
+  if (input.fromDay > input.toDay) {
+    throw new HttpsError(
+      'invalid-argument',
+      ORDER_HISTORY_RANGE_INVALID_MESSAGE,
+    );
+  }
+
+  const db = getDb();
+  const memberSnap = await db
+    .doc(`tenants/${input.tenantId}/members/${uid}`)
+    .get();
+  const memberData = memberSnap.data();
+  assertActiveOrderingMember(memberData);
+  if (!memberData || !hasOrderingRole(memberData, 'cashier')) {
+    throw new HttpsError('permission-denied', ORDERING_CASHIER_DENIED_MESSAGE);
+  }
+
+  const tenantSnap = await db.doc(`tenants/${input.tenantId}`).get();
+  const timezone = resolveTenantTimezone(tenantSnap.get('timezone'));
+  const fromIso = tenantDayStartUtc(input.fromDay, timezone);
+  // The exclusive bound of the next tenant-local midnight, so the last day is
+  // included regardless of month length or a zone offset.
+  const toIso = tenantDayStartUtc(nextDayKey(input.toDay), timezone);
+
+  let ordersQuery = db
+    .collection(`tenants/${input.tenantId}/orders`)
+    .where('createdAt', '>=', fromIso)
+    .where('createdAt', '<', toIso);
+  const statuses = orderHistoryStatuses(input.status);
+  if (statuses) {
+    ordersQuery = ordersQuery.where('status', 'in', statuses);
+  }
+
+  const offset = (input.page - 1) * ORDER_HISTORY_PAGE_SIZE;
+  const snap = await ordersQuery
+    .orderBy('createdAt', 'desc')
+    .offset(offset)
+    .limit(ORDER_HISTORY_PAGE_SIZE + 1)
+    .get();
+
+  const pageDocs = snap.docs.slice(0, ORDER_HISTORY_PAGE_SIZE);
+  const rows = await Promise.all(
+    pageDocs.map(async (docSnap) => {
+      const eventsSnap = await docSnap.ref
+        .collection(ORDER_STATUS_EVENT_COLLECTION)
+        .orderBy('createdAt', 'asc')
+        .limit(20)
+        .get();
+      const paidAt = docSnap.get('paidAt');
+      const cancellationReason = docSnap.get('cancellationReason');
+      return orderHistoryRowSchema.parse({
+        order: mapStoredOrder(docSnap.id, docSnap.data()),
+        paidAt: typeof paidAt === 'string' ? paidAt : null,
+        paymentMethod: docSnap.get('paymentMethod') ?? null,
+        cancellationReason:
+          typeof cancellationReason === 'string' ? cancellationReason : null,
+        statusEvents: eventsSnap.docs.map((eventSnap) =>
+          orderStatusEventSchema.parse({ ...eventSnap.data() }),
+        ),
+      });
+    }),
+  );
+
+  return orderHistoryPageSchema.parse({
+    schemaVersion: ORDER_CONTRACT_VERSION,
+    tenantId: input.tenantId,
+    page: input.page,
+    pageSize: ORDER_HISTORY_PAGE_SIZE,
+    hasMore: snap.docs.length > ORDER_HISTORY_PAGE_SIZE,
+    rows,
+  });
+});
 
 /**
  * Floor-plan query: one service state per busy table, folded from live Orders

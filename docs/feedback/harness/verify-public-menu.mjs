@@ -71,18 +71,6 @@ const shot = async (page, name) => {
   screenshots.push(path.relative(process.cwd(), file));
 };
 
-/** Click next until the pager says it is on the last page. */
-const goToLastPage = async (page, pageCount) => {
-  for (let guard = 0; guard < pageCount; guard += 1) {
-    const label = await text(page, LABEL);
-    if (label === `Trang ${pageCount}/${pageCount}`) return true;
-    if (await page.locator(NEXT).isDisabled()) return false;
-    await page.locator(NEXT).click();
-    await page.waitForTimeout(150);
-  }
-  return (await text(page, LABEL)) === `Trang ${pageCount}/${pageCount}`;
-};
-
 const browser = await chromium.launch({ headless: !HEADED });
 const consoleErrors = [];
 
@@ -107,11 +95,12 @@ try {
   const title = await page.getByRole('heading', { level: 1, name: 'Thực đơn' }).innerText();
   check(title === 'Thực đơn' && badge, 'Header: số bàn là nhãn, tiêu đề là thực đơn', `BÀN 6 / ${title}`);
 
-  // B. Five rows of two dishes, ten a page, with a pager.
-  const chipText = await page.locator('main').innerText().then((body) => body.match(/(\d+)\s*món/)?.[1] ?? '');
-  const total = Number(chipText);
-  check(total > PAGE_SIZE, 'Thực đơn đủ dài để kiểm tra phân trang', `${total} món`);
-  const pageCount = Math.max(Math.ceil(total / PAGE_SIZE), 1);
+  // B. Five rows of two dishes, ten a page, with a pager. The menu prints no
+  // total any more, so the pager label is the only source and the walk below
+  // counts the dishes itself.
+  const firstLabelText = await text(page, LABEL);
+  const pageCount = Number(firstLabelText.match(/^Trang 1\/(\d+)$/)?.[1] ?? 1);
+  check(pageCount > 1, 'Thực đơn đủ dài để kiểm tra phân trang', firstLabelText || 'không có pager');
 
   const firstPage = await cardTexts(page);
   check(firstPage.length === PAGE_SIZE, 'Trang 1: 5 dòng × 2 món = 10 món', `${firstPage.length} món`);
@@ -143,14 +132,30 @@ try {
   await page.waitForTimeout(200);
   await shot(page, 'a3-phone-pager');
 
-  const last = await goToLastPage(page, pageCount);
-  check(last && (await page.locator(NEXT).isDisabled()), 'Trang cuối: nút Tiếp bị khoá', await text(page, LABEL));
-  const lastCount = (await cardTexts(page)).length;
+  // Count the dishes page by page, so a duplicated or dropped page shows up.
+  await page.locator(PREV).click();
+  const backToFirst = await eventually(page, async () => (await text(page, LABEL)) === `Trang 1/${pageCount}`);
+  check(backToFirst, 'Bấm Trước từ trang 2: quay lại trang 1', await text(page, LABEL));
+  const counts = [];
+  for (let index = 1; index <= pageCount; index += 1) {
+    counts.push((await cardTexts(page)).length);
+    if (index < pageCount) {
+      await page.locator(NEXT).click();
+      await eventually(page, async () => (await text(page, LABEL)) === `Trang ${index + 1}/${pageCount}`);
+    }
+  }
+  const total = counts.reduce((sum, count) => sum + count, 0);
   check(
-    lastCount === total - PAGE_SIZE * (pageCount - 1),
-    'Trang cuối hiện đúng số món còn lại',
-    `${lastCount} món`,
+    counts.slice(0, -1).every((count) => count === PAGE_SIZE),
+    'Mỗi trang trước trang cuối đủ 10 món',
+    counts.join(' + '),
   );
+  check(
+    counts.at(-1) >= 1 && counts.at(-1) <= PAGE_SIZE && pageCount === Math.ceil(total / PAGE_SIZE),
+    'Trang cuối là phần còn lại, số trang khớp tổng món',
+    `${counts.at(-1)} món cuối / ${total} món / ${pageCount} trang`,
+  );
+  check((await page.locator(NEXT).isDisabled()), 'Trang cuối: nút Tiếp bị khoá', await text(page, LABEL));
 
   await page.locator(PREV).click();
   const backToSecond = await eventually(page, async () => (await text(page, LABEL)) === `Trang ${pageCount - 1}/${pageCount}`);

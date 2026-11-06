@@ -152,7 +152,7 @@ describe('CustomerView public menu', () => {
   it('opens the menu after selecting a table', () => {
     renderCustomer({ directMenu: false });
     fireEvent.click(screen.getAllByRole('button', { name: /Bàn 1Open menu/i })[0]);
-    expect(screen.getAllByRole('heading', { name: /Order quickly/i }).length).toBeGreaterThan(0);
+    expect(screen.getByPlaceholderText(/search dishes/i)).toBeTruthy();
   });
 
   it('keeps promotion pricing server-authoritative', async () => {

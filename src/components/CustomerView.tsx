@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, Check, ChevronLeft, ChevronRight, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Star, Ticket, Utensils, X } from 'lucide-react';
+import { AlertCircle, Check, ChevronLeft, ChevronRight, Clock, Gift, Minus, Plus, Search, ShoppingBag, Star, Ticket, Utensils, X } from 'lucide-react';
 import { INDUSTRY_TEMPLATES } from '../mockData';
 import { MenuItem, Order, OrderItem, TableConfig, TenantConfig } from '../types';
 import type { PublicOrderTracking } from '@contracts/order.contract';
@@ -367,20 +367,6 @@ export default function CustomerView({
 
             <section className="px-4 pt-4 space-y-4">
               {activeCustomerOrders.length > 0 && <TrackingScreen orders={activeCustomerOrders} />}
-              <div className="rounded-[30px] bg-zinc-950 text-white p-5 overflow-hidden relative shadow-xl">
-                <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-orange-500/40 blur-2xl" />
-                <div className="relative flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[11px] font-bold text-orange-200 uppercase tracking-[0.18em]">{t('customer.menu.today')}</p>
-                    <h2 className="mt-1 text-[27px] leading-none font-black tracking-[-0.05em]">{t('customer.menu.headlineToday')}</h2>
-                  </div>
-                  <Sparkles className="h-6 w-6 text-orange-300 shrink-0" />
-                </div>
-                <div className="relative mt-4 flex gap-2 text-[11px] font-bold">
-                  <span className="rounded-full bg-white/12 px-3 py-1">{filteredItems.length} {t('customer.menu.itemCount')}</span>
-                  <span className="rounded-full bg-white/12 px-3 py-1">{tenantConfig.paymentMode === 'Pay-First' ? t('customer.menu.payFirst') : t('customer.menu.payLater')}</span>
-                </div>
-              </div>
 
               {promotion && (promotion.appliedPromotion || promotion.codeRequired) && (
                 <div className="rounded-[24px] bg-white p-4 shadow-sm border border-zinc-100 flex items-center gap-3">

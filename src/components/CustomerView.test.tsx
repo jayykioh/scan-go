@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import CustomerView from './CustomerView';
+import CustomerView, { paginateMenu } from './CustomerView';
 import type { Order, TenantConfig } from '../types';
 import type { PromotionEvaluationResult } from '../../shared/contracts/promotion.contract';
 
@@ -181,5 +181,60 @@ describe('CustomerView public menu', () => {
 
     await screen.findByText(/thank you for the feedback/i);
     expect(onSubmitFeedback).toHaveBeenCalledWith({ kind: 'issue', message: '[Facilities / cleanliness] The restroom needs attention' });
+  });
+});
+
+const dishes = (count: number) => Array.from({ length: count }, (_, index) => ({
+  ...dish,
+  id: `item-${index + 1}`,
+  name: `Món ${index + 1}`,
+  description: `Mô tả ${index + 1}`,
+  price: 10000 + index + 1,
+  image: '',
+}));
+
+describe('CustomerView menu paging', () => {
+  it('shows two dishes a row, ten a page, and pages through the rest', () => {
+    renderCustomer({ menuItems: dishes(12) });
+    expect(screen.getAllByTestId('menu-card')).toHaveLength(10);
+    expect(screen.getByTestId('menu-page-label').textContent).toBe('Page 1 of 2');
+
+    fireEvent.click(screen.getByTestId('menu-page-next'));
+    expect(screen.getAllByTestId('menu-card')).toHaveLength(2);
+    expect(screen.getByText('Món 11')).toBeTruthy();
+    expect(screen.getByTestId('menu-page-label').textContent).toBe('Page 2 of 2');
+
+    fireEvent.click(screen.getByTestId('menu-page-prev'));
+    expect(screen.getAllByTestId('menu-card')).toHaveLength(10);
+  });
+
+  it('opens the dish detail sheet from a card', () => {
+    renderCustomer({ menuItems: dishes(1) });
+    fireEvent.click(screen.getByTestId('menu-card'));
+    const sheet = screen.getByTestId('menu-item-sheet');
+    expect(sheet.textContent).toContain('Món 1');
+    expect(sheet.textContent).toContain('Mô tả 1');
+    expect(sheet.textContent).toContain('10.001đ');
+    expect(screen.getByRole('button', { name: /add to cart/i })).toBeTruthy();
+  });
+
+  it('returns to the first page when the search changes', () => {
+    renderCustomer({ menuItems: dishes(12) });
+    fireEvent.click(screen.getByTestId('menu-page-next'));
+    fireEvent.change(screen.getByPlaceholderText(/search dishes/i), { target: { value: 'Món 1' } });
+    expect(screen.getAllByTestId('menu-card')).toHaveLength(4);
+    expect(screen.queryByTestId('menu-page-label')).toBeNull();
+  });
+
+  it('shows a placeholder instead of a broken image for a dish without a photo', () => {
+    renderCustomer({ menuItems: dishes(1) });
+    expect(screen.queryAllByRole('img')).toHaveLength(0);
+    expect(screen.getByTestId('menu-card')).toBeTruthy();
+  });
+
+  it('clamps the page to the filtered list', () => {
+    expect(paginateMenu([1, 2, 3], 9)).toEqual({ items: [1, 2, 3], page: 1, pageCount: 1 });
+    expect(paginateMenu(Array.from({ length: 25 }, (_, index) => index), 9)).toMatchObject({ page: 3, pageCount: 3 });
+    expect(paginateMenu([], 3)).toEqual({ items: [], page: 1, pageCount: 1 });
   });
 });

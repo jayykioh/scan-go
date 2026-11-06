@@ -153,9 +153,11 @@ export default function PublicMenuPage() {
     ];
   }, [linkContext]);
 
+  // The resolved link carries the table, not the shop, so the table is the
+  // badge and the menu is the title instead of the table name twice.
   const tenantConfig = useMemo<TenantConfig>(
-    () => ({ ...defaultTenant, shopName: linkContext?.tableName ?? defaultTenant.shopName }),
-    [linkContext],
+    () => ({ ...defaultTenant, shopName: translate(locale, 'customer.menu.eyebrow') }),
+    [locale],
   );
 
   const [activeTableId, setActiveTableId] = useState(tableId);

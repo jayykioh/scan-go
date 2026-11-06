@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, Check, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Star, Ticket, X } from 'lucide-react';
+import { AlertCircle, Check, ChevronLeft, ChevronRight, Clock, Gift, Minus, Plus, Search, ShoppingBag, Sparkles, Star, Ticket, Utensils, X } from 'lucide-react';
 import { INDUSTRY_TEMPLATES } from '../mockData';
 import { MenuItem, Order, OrderItem, TableConfig, TenantConfig } from '../types';
 import type { PublicOrderTracking } from '@contracts/order.contract';
@@ -71,6 +71,24 @@ const inferItemType = (item: MenuItem) => {
   return drinkWords.some(word => item.category.includes(word) || item.name.includes(word)) ? 'Đồ uống' : 'Đồ ăn';
 };
 
+/** Two dishes a row, five rows a page, so a long menu stays readable. */
+export const MENU_PAGE_SIZE = 10;
+
+/**
+ * One page of the menu. The page is clamped, so a filter that leaves fewer
+ * dishes never strands the Customer on an empty page.
+ */
+export function paginateMenu<T>(
+  items: T[],
+  page: number,
+  size: number = MENU_PAGE_SIZE,
+): { items: T[]; page: number; pageCount: number } {
+  const pageCount = Math.max(Math.ceil(items.length / size), 1);
+  const current = Math.min(Math.max(page, 1), pageCount);
+  const start = (current - 1) * size;
+  return { items: items.slice(start, start + size), page: current, pageCount };
+}
+
 export default function CustomerView({
   tenantConfig,
   menuItems,
@@ -96,6 +114,7 @@ export default function CustomerView({
   const [modifierPrice, setModifierPrice] = useState(0);
   const [selectedType, setSelectedType] = useState('Tất cả');
   const [query, setQuery] = useState('');
+  const [menuPage, setMenuPage] = useState(1);
   const [showCart, setShowCart] = useState(false);
   const [showLoyalty, setShowLoyalty] = useState(false);
   const [connectionProblem, setConnectionProblem] = useState<string | null>(null);
@@ -114,6 +133,11 @@ export default function CustomerView({
     const matchesQuery = item.name.toLowerCase().includes(query.trim().toLowerCase());
     return matchesType && matchesQuery;
   });
+  const menu = paginateMenu(filteredItems, menuPage);
+
+  // A new filter or search starts at the first page, so the Customer never
+  // lands on page 3 of a shorter list.
+  useEffect(() => setMenuPage(1), [selectedType, query]);
 
   const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -409,11 +433,43 @@ export default function CustomerView({
                 ))}
               </div>
 
-              <div className={template.menu_layout === 'grid_bien_the' ? 'grid grid-cols-2 gap-3' : 'space-y-3'}>
-                {filteredItems.map(item => (
-                  <MenuCard key={item.id} item={item} compact={template.menu_layout === 'grid_bien_the'} onOpen={() => openItem(item)} />
+              <div className="grid grid-cols-2 gap-3">
+                {menu.items.map(item => (
+                  <MenuCard key={item.id} item={item} onOpen={() => openItem(item)} />
                 ))}
               </div>
+
+              {menu.pageCount > 1 && (
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setMenuPage(menu.page - 1)}
+                    disabled={menu.page <= 1}
+                    data-testid="menu-page-prev"
+                    aria-label={t('customer.menu.prev')}
+                    className="flex h-11 items-center gap-1 rounded-full border border-zinc-200 bg-white px-3 text-xs font-bold text-zinc-700 disabled:opacity-40"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    {t('customer.menu.prev')}
+                  </button>
+                  <span data-testid="menu-page-label" className="text-[11px] font-bold text-zinc-500">
+                    {t('customer.menu.page')
+                      .replace('{page}', String(menu.page))
+                      .replace('{total}', String(menu.pageCount))}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMenuPage(menu.page + 1)}
+                    disabled={menu.page >= menu.pageCount}
+                    data-testid="menu-page-next"
+                    aria-label={t('customer.menu.next')}
+                    className="flex h-11 items-center gap-1 rounded-full border border-zinc-200 bg-white px-3 text-xs font-bold text-zinc-700 disabled:opacity-40"
+                  >
+                    {t('customer.menu.next')}
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
 
               {filteredItems.length === 0 && (
                 <div className="rounded-[28px] bg-white p-8 text-center border border-zinc-100">
@@ -461,34 +517,34 @@ export default function CustomerView({
   );
 }
 
-function MenuCard({ item, compact, onOpen }: { item: MenuItem; compact: boolean; onOpen: () => void }) {
-  if (compact) {
+/**
+ * A dish photo. The image is Owner content and may be missing or a dead URL,
+ * so the card shows a calm placeholder instead of a broken image icon.
+ */
+function DishPhoto({ src, name, className, iconClassName = 'h-7 w-7' }: { src?: string; name: string; className: string; iconClassName?: string }) {
+  const [failed, setFailed] = useState(!src);
+  if (failed) {
     return (
-      <button type="button" onClick={onOpen} disabled={!item.inStock} className={`text-left rounded-[26px] bg-white p-2.5 shadow-sm border border-zinc-100 overflow-hidden ${!item.inStock ? 'opacity-45 grayscale' : 'active:scale-[0.99] transition-transform'}`}>
-        <img src={item.image} alt={item.name} className="h-28 w-full rounded-[20px] object-cover" referrerPolicy="no-referrer" />
-        <div className="mt-2 space-y-1">
-          <p className="line-clamp-2 min-h-[34px] text-sm font-black leading-tight text-zinc-950">{item.name}</p>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-black">{money(item.price)}</span>
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-950 text-white"><Plus className="h-4 w-4" /></span>
-          </div>
-        </div>
-      </button>
+      <div className={`${className} grid place-items-center bg-gradient-to-br from-orange-100 via-amber-50 to-white`}>
+        <Utensils className={`${iconClassName} text-orange-300`} aria-hidden />
+      </div>
     );
   }
-
   return (
-    <button type="button" onClick={onOpen} disabled={!item.inStock} className={`w-full rounded-[28px] bg-white p-3 text-left shadow-sm border border-zinc-100 flex gap-3 ${!item.inStock ? 'opacity-45 grayscale' : 'active:scale-[0.99] transition-transform'}`}>
-      <img src={item.image} alt={item.name} className="h-24 w-24 rounded-[22px] object-cover shrink-0" referrerPolicy="no-referrer" />
-      <div className="min-w-0 flex-1 py-1">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="line-clamp-2 text-[15px] font-black leading-tight text-zinc-950">{item.name}</p>
-            <p className="mt-1 line-clamp-1 text-xs font-medium text-zinc-500">{item.description}</p>
-          </div>
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-950 text-white shrink-0"><Plus className="h-4 w-4" /></span>
+    <img src={src} alt={name} className={`${className} object-cover`} referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+  );
+}
+
+function MenuCard({ item, onOpen }: { item: MenuItem; onOpen: () => void }) {
+  return (
+    <button type="button" data-testid="menu-card" onClick={onOpen} disabled={!item.inStock} className={`text-left rounded-[26px] bg-white p-2.5 shadow-sm border border-zinc-100 overflow-hidden ${!item.inStock ? 'opacity-45 grayscale' : 'active:scale-[0.99] transition-transform'}`}>
+      <DishPhoto src={item.image} name={item.name} className="h-28 w-full rounded-[20px]" />
+      <div className="mt-2 space-y-1">
+        <p className="line-clamp-2 min-h-[34px] text-sm font-black leading-tight text-zinc-950">{item.name}</p>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-black">{money(item.price)}</span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-950 text-white"><Plus className="h-4 w-4" /></span>
         </div>
-        <p className="mt-3 text-base font-black">{money(item.price)}</p>
       </div>
     </button>
   );
@@ -511,9 +567,9 @@ function ItemSheet({ item, template, useTemplateModifiers = true, selectedModifi
   const groups = [...(useTemplateModifiers ? template.modifier_groups : []), ...(item.toppings?.length ? [{ name: 'Topping', required: false, options: item.toppings }] : [])];
   return (
     <Sheet onClose={onClose}>
-      <div className="space-y-4">
+      <div className="space-y-4" data-testid="menu-item-sheet">
         <div className="relative">
-          <img src={item.image} alt={item.name} className="h-56 w-full rounded-[28px] object-cover" referrerPolicy="no-referrer" />
+          <DishPhoto src={item.image} name={item.name} className="h-56 w-full rounded-[28px]" iconClassName="h-12 w-12" />
           <button type="button" onClick={onClose} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-zinc-950 shadow"><X className="h-5 w-5" /></button>
         </div>
         <div>

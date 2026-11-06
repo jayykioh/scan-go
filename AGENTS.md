@@ -30,6 +30,7 @@
 - [Table performance panel verification harness](docs/feedback/harness/verify-table-performance-panel.mjs)
 - [Operating pages verification harness](docs/feedback/harness/verify-operation-pages.mjs)
 - [Cashier invoice verification harness](docs/feedback/harness/verify-cashier-invoices.mjs)
+- [Public table menu verification harness](docs/feedback/harness/verify-public-menu.mjs)
 - [Initial P0 ticket plan](docs/plan/initial-p0-ticket-plan.md)
 - [Week 1 sprint plan](docs/plan/week-1-sprint.md)
 - [P0 parallel skeleton](docs/plan/p0-parallel-skeleton.md)

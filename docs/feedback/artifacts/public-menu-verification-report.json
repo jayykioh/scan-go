@@ -1,0 +1,101 @@
+{
+  "generatedAt": "2026-11-06T03:55:42.769Z",
+  "base": "http://127.0.0.1:3000",
+  "token": "seed-table-token-06",
+  "passed": 17,
+  "failed": 0,
+  "screenshots": [
+    "docs/feedback/artifacts/public-menu-a1-phone-page1.png",
+    "docs/feedback/artifacts/public-menu-a2-phone-page2.png",
+    "docs/feedback/artifacts/public-menu-a3-phone-item-sheet.png",
+    "docs/feedback/artifacts/public-menu-b1-desktop-page1.png"
+  ],
+  "consoleErrors": [],
+  "findings": [
+    {
+      "kind": "pass",
+      "label": "Mở link bàn ra thực đơn của quán",
+      "detail": "http://127.0.0.1:3000/menu/seed-table-token-06"
+    },
+    {
+      "kind": "pass",
+      "label": "Header: số bàn là nhãn, tiêu đề là thực đơn",
+      "detail": "BÀN 6 / Thực đơn"
+    },
+    {
+      "kind": "pass",
+      "label": "Thực đơn đủ dài để kiểm tra phân trang",
+      "detail": "37 món"
+    },
+    {
+      "kind": "pass",
+      "label": "Trang 1: 5 dòng × 2 món = 10 món",
+      "detail": "10 món"
+    },
+    {
+      "kind": "pass",
+      "label": "Pager: đang ở trang 1",
+      "detail": "Trang 1/4"
+    },
+    {
+      "kind": "pass",
+      "label": "Trang 1: nút Trước bị khoá",
+      "detail": ""
+    },
+    {
+      "kind": "pass",
+      "label": "Bấm Tiếp: sang trang 2 đủ 10 món",
+      "detail": "10 món / Trang 2/4"
+    },
+    {
+      "kind": "pass",
+      "label": "Trang 2 là 10 món tiếp theo, không lặp trang 1",
+      "detail": "Trái cây theo mùa → Rau muống xào tỏi"
+    },
+    {
+      "kind": "pass",
+      "label": "Trang cuối: nút Tiếp bị khoá",
+      "detail": "Trang 4/4"
+    },
+    {
+      "kind": "pass",
+      "label": "Trang cuối hiện đúng số món còn lại",
+      "detail": "7 món"
+    },
+    {
+      "kind": "pass",
+      "label": "Bấm Trước: quay lại trang trước",
+      "detail": "Trang 3/4"
+    },
+    {
+      "kind": "pass",
+      "label": "Tìm món: lọc và quay về trang 1",
+      "detail": "Bún riêu cua → không pager"
+    },
+    {
+      "kind": "pass",
+      "label": "Bấm món: popup chi tiết có tên và giá",
+      "detail": "Trái cây theo mùa /  / Đĩa trái cây tươi theo mùa (dưa hấu, thơm, xoài)."
+    },
+    {
+      "kind": "pass",
+      "label": "Popup chi tiết có nút thêm vào giỏ",
+      "detail": ""
+    },
+    {
+      "kind": "pass",
+      "label": "Không có ảnh món bị hỏng",
+      "detail": "0 ảnh lỗi"
+    },
+    {
+      "kind": "pass",
+      "label": "Desktop: vẫn 2 món mỗi dòng, 10 món trang 1",
+      "detail": "10 món"
+    },
+    {
+      "kind": "pass",
+      "label": "Không có lỗi console",
+      "detail": ""
+    }
+  ]
+}

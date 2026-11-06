@@ -10,6 +10,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/coverage/**',
       '**/.firebase/**',
+      '**/.cache/**',
       '**/.pw-cache/**',
       '**/.playwright-cli/**',
     ],

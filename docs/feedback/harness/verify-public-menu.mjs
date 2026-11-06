@@ -138,6 +138,11 @@ try {
   await page.waitForTimeout(200);
   await shot(page, 'a2-phone-page2');
 
+  // The pager sits under the fifth row, so shoot it in view as well.
+  await page.locator(NEXT).scrollIntoViewIfNeeded();
+  await page.waitForTimeout(200);
+  await shot(page, 'a3-phone-pager');
+
   const last = await goToLastPage(page, pageCount);
   check(last && (await page.locator(NEXT).isDisabled()), 'Trang cuối: nút Tiếp bị khoá', await text(page, LABEL));
   const lastCount = (await cardTexts(page)).length;
@@ -180,7 +185,7 @@ try {
     sheetOpen && (await page.getByRole('button', { name: /Thêm vào giỏ/ }).count()) > 0,
     'Popup chi tiết có nút thêm vào giỏ',
   );
-  await shot(page, 'a3-phone-item-sheet');
+  await shot(page, 'a4-phone-item-sheet');
   await page.keyboard.press('Escape').catch(() => {});
   await page.locator('main').click({ position: { x: 10, y: 10 } }).catch(() => {});
 

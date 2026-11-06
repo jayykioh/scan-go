@@ -1,13 +1,14 @@
 {
-  "generatedAt": "2026-11-06T03:55:42.769Z",
-  "base": "http://127.0.0.1:3000",
+  "generatedAt": "2026-11-06T04:01:48.036Z",
+  "base": "https://scan-go-ashen.vercel.app",
   "token": "seed-table-token-06",
   "passed": 17,
   "failed": 0,
   "screenshots": [
     "docs/feedback/artifacts/public-menu-a1-phone-page1.png",
     "docs/feedback/artifacts/public-menu-a2-phone-page2.png",
-    "docs/feedback/artifacts/public-menu-a3-phone-item-sheet.png",
+    "docs/feedback/artifacts/public-menu-a3-phone-pager.png",
+    "docs/feedback/artifacts/public-menu-a4-phone-item-sheet.png",
     "docs/feedback/artifacts/public-menu-b1-desktop-page1.png"
   ],
   "consoleErrors": [],
@@ -15,7 +16,7 @@
     {
       "kind": "pass",
       "label": "Mở link bàn ra thực đơn của quán",
-      "detail": "http://127.0.0.1:3000/menu/seed-table-token-06"
+      "detail": "https://scan-go-ashen.vercel.app/menu/seed-table-token-06"
     },
     {
       "kind": "pass",
